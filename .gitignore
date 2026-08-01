@@ -1,0 +1,13 @@
+.DS_Store
+.idea/
+.vscode/
+apps/platform/.env
+apps/platform/.phpunit.cache/
+apps/platform/bootstrap/cache/*.php
+apps/platform/node_modules/
+apps/platform/public/build/
+apps/platform/public/hot
+apps/platform/public/storage
+apps/platform/storage/*.key
+apps/platform/storage/logs/*.log
+apps/platform/vendor/
