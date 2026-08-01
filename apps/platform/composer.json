@@ -40,9 +40,9 @@
             "npm ci",
             "npm run build"
         ],
-        "lint": "pint --parallel",
-        "lint:check": "pint --parallel --test",
-        "types:check": "phpstan analyse --memory-limit=1G",
+        "lint": "@php vendor/bin/pint --parallel",
+        "lint:check": "@php vendor/bin/pint --parallel --test",
+        "types:check": "@php vendor/bin/phpstan analyse --memory-limit=1G",
         "test": [
             "@php artisan config:clear --ansi",
             "@php artisan test"
