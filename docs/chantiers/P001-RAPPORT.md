@@ -2,7 +2,8 @@
 
 **Branche :** `codex/p001-identity-spaces-capabilities`
 **Commit de base :** `31031d58e9644c2df5e31647a2ff006e185f04f4`
-**Statut :** implémentation locale vérifiée — publication et validation VPS en attente
+**Commit publié :** `f4f0a28f83fc63aa97674fc905a0d2a0ccd83ae0`
+**Statut :** branche publiée — validation VPS en attente
 
 ## Réalisé
 
@@ -51,11 +52,10 @@ Les tests couvrent notamment la normalisation et l’unicité des identifiants, 
 
 ## Limites avant revue
 
-1. publier l’état intermédiaire sur la branche distante après autorisation explicite ;
-2. laisser GitHub Actions exécuter ses contrôles sur la branche publiée ;
-3. déployer la branche sur le VPS avec sauvegarde PostgreSQL préalable ;
-4. exécuter la migration sur PostgreSQL 17 et vérifier Redis/PHP-FPM/Nginx ;
-5. capturer les trois shells. Le navigateur automatisé local n’a pas pu être installé dans cet environnement, mais les composants, types, build et routes ont été vérifiés.
+1. confirmer les contrôles GitHub Actions lorsqu’ils seront disponibles ;
+2. déployer la branche sur le VPS avec sauvegarde PostgreSQL préalable ;
+3. exécuter la migration sur PostgreSQL 17 et vérifier Redis/PHP-FPM/Nginx ;
+4. capturer les trois shells. Le navigateur automatisé local n’a pas pu être installé dans cet environnement, mais les composants, types, build et routes ont été vérifiés.
 
 ## Déploiement VPS prévu après publication
 
