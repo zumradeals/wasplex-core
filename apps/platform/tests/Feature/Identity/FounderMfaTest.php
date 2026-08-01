@@ -16,6 +16,8 @@ it('requires a confirmed mfa challenge before the founder console', function ():
     $adminSpace = UserSpace::query()->where('kind', SpaceKind::Administration->value)->firstOrFail();
 
     $this->postJson("/api/me/spaces/{$adminSpace->id}/switch")->assertForbidden();
+    $this->post("/espaces/{$adminSpace->id}/activer")
+        ->assertRedirectToRoute('security.mfa.setup');
 
     $secret = $this->postJson('/api/me/mfa/setup')
         ->assertOk()
@@ -32,6 +34,25 @@ it('requires a confirmed mfa challenge before the founder console', function ():
 
     expect(AccessAuditEvent::query()->where('action', 'mfa.enrollment_confirmed')->where('outcome', 'success')->exists())
         ->toBeTrue();
+});
+
+it('redirects the browser to an mfa challenge when enrollment is already confirmed', function (): void {
+    registerAccount($this, 'founder-confirmed@wasplex.com');
+    $this->artisan('identity:bootstrap-founder', ['identifier' => 'founder-confirmed@wasplex.com'])
+        ->assertSuccessful();
+
+    $adminSpace = UserSpace::query()->where('kind', SpaceKind::Administration->value)->firstOrFail();
+    $secret = $this->postJson('/api/me/mfa/setup')->assertOk()->json('data.secret');
+    $this->postJson('/api/me/mfa/confirm', ['code' => totpCode($secret, time())])->assertOk();
+
+    $this->post('/deconnexion')->assertRedirect();
+    $this->post('/connexion', [
+        'identifier' => 'founder-confirmed@wasplex.com',
+        'password' => 'Wasplex-P001-Secure7',
+    ])->assertRedirect();
+
+    $this->post("/espaces/{$adminSpace->id}/activer")
+        ->assertRedirectToRoute('security.mfa.challenge');
 });
 
 it('verifies the totp algorithm with a stable timestamp', function (): void {
