@@ -2,10 +2,10 @@
 
 **Roadmap :** [IMPLEMENTATION-ROADMAP-WASPLEX.md](./IMPLEMENTATION-ROADMAP-WASPLEX.md)
 
-| Chantier | Titre | Dépendances | Phase | Statut initial |
+| Chantier | Titre | Dépendances | Phase | Statut actuel |
 |---|---|---|---|---|
-| P000 | Socle du dépôt et stack | — | Noyau | Prêt après validation roadmap |
-| P001 | Compte, espaces, capacités et shells | P000 | Noyau | En attente |
+| P000 | Socle du dépôt et stack | — | Noyau | Déployé |
+| P001 | Compte, espaces, capacités et shells | P000 | Noyau | En cours |
 | P002 | Grand Livre minimal | P001 | Noyau | En attente |
 | P003 | Wallet, projections et réservations | P002 | Noyau | En attente |
 | P004 | Configurations, plans et classes | P001, P003 | Noyau | En attente |

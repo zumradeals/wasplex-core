@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 const foundations = [
     { label: 'Backend', value: 'Laravel 13', tone: 'blue' },
@@ -46,7 +46,7 @@ const foundations = [
                     <span
                         class="size-2 rounded-full bg-wasplex-cyan shadow-[0_0_12px_rgba(25,199,255,0.9)]"
                     />
-                    P000 actif
+                    P001 actif
                 </div>
             </header>
 
@@ -67,8 +67,8 @@ const foundations = [
                         >
                     </h1>
                     <p class="mt-7 max-w-2xl text-base leading-7 text-white/62 sm:text-lg">
-                        Monolithe modulaire, données protégées, observabilité et design commun.
-                        Aucun module métier n'est simulé dans P000.
+                        Un compte universel, des espaces personnels et annonceurs clairement
+                        séparés, puis des capacités explicites, révocables et auditables.
                     </p>
 
                     <div class="mt-9 flex flex-wrap gap-3 text-sm text-white/65">
@@ -85,6 +85,18 @@ const foundations = [
                             >Trace ID</span
                         >
                     </div>
+
+                    <div class="mt-9 flex flex-wrap gap-3">
+                        <Link href="/inscription" class="wasplex-button-primary">
+                            Créer mon compte
+                        </Link>
+                        <Link
+                            href="/connexion"
+                            class="rounded-2xl border border-white/15 px-5 py-3 text-sm font-black text-white hover:border-white/30"
+                        >
+                            Me connecter
+                        </Link>
+                    </div>
                 </div>
 
                 <aside
@@ -93,7 +105,7 @@ const foundations = [
                     <div class="mb-7 flex items-center justify-between">
                         <div>
                             <p class="text-sm font-bold">État du socle</p>
-                            <p class="mt-1 text-xs text-white/40">Branche P000 · aucun métier</p>
+                            <p class="mt-1 text-xs text-white/40">P001 · identité et espaces</p>
                         </div>
                         <span
                             class="rounded-lg bg-wasplex-gold/10 px-2.5 py-1 text-xs font-bold text-wasplex-gold"
@@ -134,7 +146,7 @@ const foundations = [
             </div>
 
             <footer class="border-t border-white/10 py-5 text-xs text-white/35">
-                Wasplex Core · P000 établit la plateforme, P001 établira les comptes et les espaces.
+                Wasplex Core · Compte universel, espaces séparés et capacités explicites.
             </footer>
         </section>
     </main>
