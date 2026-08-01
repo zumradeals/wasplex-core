@@ -2,8 +2,8 @@
 
 **Branche :** `codex/p001-identity-spaces-capabilities`
 **Commit de base :** `31031d58e9644c2df5e31647a2ff006e185f04f4`
-**Commit publié :** `f4f0a28f83fc63aa97674fc905a0d2a0ccd83ae0`
-**Statut :** branche publiée — validation VPS en attente
+**Commit fonctionnel validé :** `33978e2fc4d4b32a6fa64a99fbf6cbd57ebd4d2c`
+**Statut :** accepté et déployé en production
 
 ## Réalisé
 
@@ -40,7 +40,7 @@
 |---|---|
 | Pint | Réussi — 52 fichiers analysés par Larastan après formatage |
 | Larastan niveau 8 | Réussi — aucune erreur |
-| Pest | Réussi — 16 tests, 105 assertions |
+| Pest | Réussi — 17 tests, 115 assertions |
 | Prettier | Réussi |
 | ESLint | Réussi |
 | TypeScript/Vue | Réussi |
@@ -54,28 +54,21 @@ Les tests couvrent notamment la normalisation et l’unicité des identifiants, 
 
 La première tentative VPS a été annulée automatiquement avant migration. Deux causes de préflight ont été identifiées : l’extension `pdo_sqlite` de PHP 8.4 n’était pas installée sur l’hôte et le fichier de maintenance de production affectait les tests HTTP. La dépendance SQLite est désormais déclarée dans Composer et PHPUnit utilise un backend de maintenance isolé en mémoire. Le rollback a restauré `main`, son build et l’état public sans migration P001 appliquée.
 
-## Limites avant revue
+## Validation VPS et recette
 
-1. confirmer les contrôles GitHub Actions lorsqu’ils seront disponibles ;
-2. déployer la branche sur le VPS avec sauvegarde PostgreSQL préalable ;
-3. exécuter la migration sur PostgreSQL 17 et vérifier Redis/PHP-FPM/Nginx ;
-4. capturer les trois shells. Le navigateur automatisé local n’a pas pu être installé dans cet environnement, mais les composants, types, build et routes ont été vérifiés.
+- sauvegarde PostgreSQL effectuée avant migration ;
+- dépendances Composer et npm installées depuis les fichiers de verrouillage ;
+- migration Identity appliquée avec succès sur PostgreSQL 17 ;
+- Nginx sert `wasplex-core/apps/platform/public` via PHP 8.4-FPM ;
+- Redis 7.4 persistant, PostgreSQL 17, PHP-FPM et Nginx actifs ;
+- accueil, connexion, inscription, liveness et santé API validés en HTTPS ;
+- compte `admin@wasplex.com` promu nominativement comme fondateur ;
+- MFA TOTP configuré, confirmé et vérifié ;
+- bascule entre « Mon espace » et « Console fondateur » validée ;
+- console d’administration validée avec 1 compte, 2 espaces et 4 capacités critiques ;
+- correction UX publiée : le navigateur redirige vers la configuration ou le challenge MFA au lieu d’exposer un refus 403 lors de la bascule ;
+- dépôt VPS propre sur le commit `33978e2`.
 
-## Déploiement VPS prévu après publication
+## Décision de clôture
 
-```bash
-cd /var/www/html/wasplex-core
-git fetch origin codex/p001-identity-spaces-capabilities
-git switch codex/p001-identity-spaces-capabilities
-git pull --ff-only origin codex/p001-identity-spaces-capabilities
-
-cd apps/platform
-export COMPOSER_ALLOW_SUPERUSER=1
-php8.4 /usr/local/bin/composer-wasplex install --no-interaction --prefer-dist --no-progress
-npm ci
-npm run build
-php8.4 artisan migrate --force
-php8.4 artisan optimize
-```
-
-La sauvegarde de la base, le test hors trafic et la commande fondateur doivent précéder toute bascule publique.
+P001 est accepté fonctionnellement et techniquement. Les contrats d’identité, de sessions, d’espaces, d’organisations, de capacités contextuelles, de MFA et d’audit constituent désormais le socle requis par P002.
