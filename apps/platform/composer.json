@@ -11,6 +11,7 @@
         "laravel/tinker": "^3.0"
     },
     "require-dev": {
+        "ext-pdo_sqlite": "*",
         "fakerphp/faker": "^1.24",
         "larastan/larastan": "^3.9",
         "laravel/pail": "^1.2.5",

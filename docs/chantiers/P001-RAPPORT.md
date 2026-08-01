@@ -50,6 +50,10 @@
 
 Les tests couvrent notamment la normalisation et l’unicité des identifiants, le profil minimal, les memberships, l’isolation des organisations, le refus d’une capacité expirée, la révocation de session, le MFA fondateur et l’acceptation sécurisée d’une invitation.
 
+## Incident de première bascule
+
+La première tentative VPS a été annulée automatiquement avant migration. Deux causes de préflight ont été identifiées : l’extension `pdo_sqlite` de PHP 8.4 n’était pas installée sur l’hôte et le fichier de maintenance de production affectait les tests HTTP. La dépendance SQLite est désormais déclarée dans Composer et PHPUnit utilise un backend de maintenance isolé en mémoire. Le rollback a restauré `main`, son build et l’état public sans migration P001 appliquée.
+
 ## Limites avant revue
 
 1. confirmer les contrôles GitHub Actions lorsqu’ils seront disponibles ;
