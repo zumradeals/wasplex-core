@@ -4,7 +4,9 @@ namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Identity\Application\Services\AccessAuditor;
 use App\Modules\Identity\Application\Services\SpaceService;
+use App\Modules\Identity\Domain\Enums\SpaceKind;
 use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Identity\Infrastructure\Models\AccountMfaMethod;
 use App\Modules\Identity\Infrastructure\Models\AccountSession;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
 use Illuminate\Http\JsonResponse;
@@ -40,6 +42,20 @@ final readonly class SpaceController
         $account = $request->user();
         /** @var AccountSession $session */
         $session = $request->attributes->get('identity_session');
+
+        if (
+            ! $request->expectsJson()
+            && $space->kind === SpaceKind::Administration
+            && $session->mfa_verified_at === null
+        ) {
+            $mfaConfigured = AccountMfaMethod::query()
+                ->where('account_id', $account->id)
+                ->whereNotNull('confirmed_at')
+                ->whereNull('revoked_at')
+                ->exists();
+
+            return redirect()->route($mfaConfigured ? 'security.mfa.challenge' : 'security.mfa.setup');
+        }
 
         $this->spaces->switch($account, $session, $space);
         $request->attributes->set('active_space', $space);
