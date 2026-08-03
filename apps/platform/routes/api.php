@@ -8,6 +8,7 @@ use App\Modules\Identity\Http\Controllers\MfaController;
 use App\Modules\Identity\Http\Controllers\OrganizationController;
 use App\Modules\Identity\Http\Controllers\RegisterController;
 use App\Modules\Identity\Http\Controllers\SpaceController;
+use App\Modules\Ledger\Http\Controllers\LedgerAdminController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -59,5 +60,14 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             ->middleware('capability:admin.capabilities.grant');
         Route::delete('/capabilities/{grant}', [AdminController::class, 'revoke'])
             ->middleware('capability:admin.capabilities.revoke');
+
+        Route::prefix('ledger')->group(function (): void {
+            Route::get('/transactions', [LedgerAdminController::class, 'transactions'])
+                ->middleware('capability:wallet.ledger.view');
+            Route::get('/transactions/{transactionId}', [LedgerAdminController::class, 'transaction'])
+                ->middleware('capability:wallet.audit.view');
+            Route::get('/accounts', [LedgerAdminController::class, 'accounts'])
+                ->middleware('capability:wallet.ledger.view');
+        });
     });
 });

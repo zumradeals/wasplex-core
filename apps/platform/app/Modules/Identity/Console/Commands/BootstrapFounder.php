@@ -13,7 +13,7 @@ final class BootstrapFounder extends Command
 {
     protected $signature = 'identity:bootstrap-founder {identifier : E-mail du compte existant}';
 
-    protected $description = 'Crée l’espace fondateur et lui accorde les capacités P001 explicites.';
+    protected $description = 'Crée l’espace fondateur et lui accorde les capacités explicites du noyau.';
 
     public function handle(CapabilityService $capabilities): int
     {
@@ -44,6 +44,10 @@ final class BootstrapFounder extends Command
             'admin.organizations.view',
             'admin.capabilities.grant',
             'admin.capabilities.revoke',
+            'wallet.ledger.view',
+            'wallet.correction.propose',
+            'wallet.correction.approve',
+            'wallet.audit.view',
         ] as $name) {
             $alreadyGranted = $account->capabilityGrants()
                 ->where('space_id', $space->id)
