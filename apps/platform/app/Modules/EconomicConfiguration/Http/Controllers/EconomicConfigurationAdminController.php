@@ -41,6 +41,35 @@ final readonly class EconomicConfigurationAdminController
         ]);
     }
 
+    public function applyDistribution(Request $request): JsonResponse|RedirectResponse
+    {
+        /** @var array{percentages:array{FREE:int|float|string,PREMIUM:int|float|string,GOLD:int|float|string,PLATINUM:int|float|string}} $data */
+        $data = $request->validate([
+            'percentages' => ['required', 'array', 'size:4'],
+            'percentages.FREE' => ['required', 'numeric', 'between:0,100'],
+            'percentages.PREMIUM' => ['required', 'numeric', 'between:0,100'],
+            'percentages.GOLD' => ['required', 'numeric', 'between:0,100'],
+            'percentages.PLATINUM' => ['required', 'numeric', 'between:0,100'],
+        ]);
+
+        $versions = $this->service->applyPercentageDistribution(
+            $data['percentages'],
+            $this->actorId($request),
+        );
+
+        $payload = $versions
+            ->map(fn (EconomicClassVersion $version): array => $this->versionPayload($version))
+            ->values();
+
+        return $this->respond(
+            $request,
+            $payload,
+            $versions->isEmpty()
+                ? 'Cette répartition est déjà appliquée. Aucune modification n’était nécessaire.'
+                : 'La nouvelle répartition en pourcentages a été appliquée et publiée.',
+        );
+    }
+
     public function store(Request $request, EconomicClass $economicClass): JsonResponse|RedirectResponse
     {
         /** @var array{public_name:string,quota_monthly:int,weight_basis_points:int,targeting_coefficient_basis_points:int,features?:array<string,mixed>} $data */
