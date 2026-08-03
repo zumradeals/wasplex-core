@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | P000 | Socle du dépôt et stack | — | Noyau | Déployé |
 | P001 | Compte, espaces, capacités et shells | P000 | Noyau | Déployé |
-| P002 | Grand Livre minimal | P001 | Noyau | En attente |
+| P002 | Grand Livre minimal | P001 | Noyau | Fusionné — à déployer |
 | P003 | Wallet, projections et réservations | P002 | Noyau | En attente |
 | P004 | Configurations, plans et classes | P001, P003 | Noyau | En attente |
 | P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | En attente |

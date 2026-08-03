@@ -12,6 +12,20 @@ permissions:
 jobs:
   platform:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wasplex -d wasplex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: apps/platform
@@ -26,7 +40,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: "8.4"
-          extensions: mbstring, pdo_pgsql, redis
+          extensions: mbstring, pdo_pgsql, pdo_sqlite, redis
           tools: composer:v2
           coverage: none
 
@@ -40,6 +54,9 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Prepare test environment
+        run: cp .env.example .env
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -51,6 +68,16 @@ jobs:
 
       - name: Run PHP tests
         run: composer test
+
+      - name: Run PHP tests on PostgreSQL 17
+        run: composer test
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: wasplex_test
+          DB_USERNAME: wasplex
+          DB_PASSWORD: wasplex_ci_only
 
       - name: Check frontend formatting
         run: npm run format:check
