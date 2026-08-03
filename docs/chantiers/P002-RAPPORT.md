@@ -2,7 +2,7 @@
 
 **Branche proposée :** `codex/p002-ledger-core`
 **Commit de base :** `21fdbd04f802067544554262c2a4388717c40a1f`
-**Statut :** implémentation locale réalisée — validation CI et PostgreSQL en attente de publication autorisée
+**Statut :** validé par la CI GitHub — fusion autorisée — déploiement VPS en attente
 
 ## Objectif
 
@@ -93,6 +93,10 @@ La commande fondatrice existante est idempotente et accorde désormais ces capac
 |---|---|
 | Analyse syntaxique PHP 8.4 WebAssembly | Réussi — 117 fichiers parsés |
 | Test autonome des DTO et empreintes Ledger | Réussi |
+| Pint | Réussi — 116 fichiers conformes |
+| Larastan niveau 8 | Réussi — aucune erreur |
+| Pest SQLite | Réussi — 24 tests, 165 assertions, 1 test PostgreSQL ignoré |
+| Pest PostgreSQL 17 | Réussi — 25 tests, 167 assertions |
 | ESLint | Réussi |
 | Prettier | Réussi |
 | TypeScript/Vue | Réussi |
@@ -100,18 +104,11 @@ La commande fondatrice existante est idempotente et accorde désormais ces capac
 | Analyse YAML du workflow CI | Réussi |
 | Recherche de secret dans le périmètre P002 | Aucun secret réel trouvé |
 
-## Contrôles restant obligatoires
+La CI prépare explicitement l’environnement de test et traite désormais tout avertissement PHPUnit comme un échec. Aucun test fonctionnel ne peut donc produire un faux résultat vert faute de fichier `.env`.
 
-L’environnement local de cette session ne fournit ni binaire PHP, ni Composer, ni Docker. Les commandes suivantes doivent donc être exécutées par GitHub Actions après publication de la branche :
+## Validation officielle
 
-- Pint ;
-- Larastan niveau 8 ;
-- suite Pest complète sous SQLite ;
-- suite Pest complète sous PostgreSQL 17 ;
-- migrations aller/retour PostgreSQL ;
-- triggers d’immutabilité PostgreSQL.
-
-P002 ne peut pas être déclaré `ready_for_review` avant ces résultats.
+Le workflow GitHub Actions `ci` no 7, exécuté sur le commit `ace3687`, est entièrement vert. Il valide notamment la migration et les triggers PostgreSQL 17 au travers de la suite Pest officielle.
 
 ## Interface et captures
 
@@ -132,16 +129,18 @@ Le plan détaillé se trouve dans `docs/chantiers/P002-DEPLOIEMENT-VPS.md`. Avan
 
 ## Risques surveillés
 
-- comportement des verrous concurrents à confirmer sur PostgreSQL 17 réel ;
-- compatibilité Pint/Larastan à confirmer dans l’environnement officiel ;
+- charge concurrente à surveiller lors des futurs flux Wallet P003 ;
 - aucune première écriture financière réelle sans validation explicite du fondateur.
 
-## Commit proposé
+## Commits de chantier
 
 ```text
 feat(ledger): establish the minimal double-entry core
+style(ledger): align PHP formatting
+fix(ledger): satisfy static analysis contracts
+ci: make feature test warnings blocking
 ```
 
 ## Étape suivante
 
-Publier la branche après autorisation explicite, laisser la CI SQLite/PostgreSQL terminer, corriger tout échec, puis présenter P002 au fondateur avant fusion et déploiement. P003 ne commence qu’après acceptation de P002.
+Fusionner la PR autorisée sur `main`, puis exécuter avec le fondateur le guide `P002-DEPLOIEMENT-VPS.md`. P003 ne commence qu’après validation du déploiement P002.

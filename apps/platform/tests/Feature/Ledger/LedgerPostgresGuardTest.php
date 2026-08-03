@@ -10,6 +10,7 @@ use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
@@ -56,4 +57,19 @@ it('lets PostgreSQL reject direct mutation and late entries on a posted transact
         'posted_at' => now(),
         'created_at' => now(),
     ])))->toThrow(QueryException::class);
+});
+
+it('rolls the P002 migration back cleanly on PostgreSQL', function (): void {
+    if (DB::connection()->getDriverName() !== 'pgsql') {
+        $this->markTestSkipped('Rollback PostgreSQL vérifié dans le passage CI PostgreSQL.');
+    }
+
+    expect(Schema::hasTable('ledger_transactions'))->toBeTrue();
+
+    $this->artisan('migrate:rollback', ['--step' => 1, '--force' => true])
+        ->assertSuccessful();
+
+    expect(Schema::hasTable('ledger_transactions'))->toBeFalse()
+        ->and(Schema::hasTable('ledger_entries'))->toBeFalse()
+        ->and(Schema::hasTable('ledger_idempotency_keys'))->toBeFalse();
 });
