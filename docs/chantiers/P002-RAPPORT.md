@@ -95,8 +95,8 @@ La commande fondatrice existante est idempotente et accorde désormais ces capac
 | Test autonome des DTO et empreintes Ledger | Réussi |
 | Pint | Réussi — 116 fichiers conformes |
 | Larastan niveau 8 | Réussi — aucune erreur |
-| Pest SQLite | Réussi — 24 tests, 165 assertions, 1 test PostgreSQL ignoré |
-| Pest PostgreSQL 17 | Réussi — 25 tests, 167 assertions |
+| Pest SQLite | Réussi — 24 tests, 165 assertions, 2 tests PostgreSQL ignorés |
+| Pest PostgreSQL 17 | Réussi — 26 tests, 172 assertions |
 | ESLint | Réussi |
 | Prettier | Réussi |
 | TypeScript/Vue | Réussi |
@@ -108,7 +108,7 @@ La CI prépare explicitement l’environnement de test et traite désormais tout
 
 ## Validation officielle
 
-Le workflow GitHub Actions `ci` no 7, exécuté sur le commit `ace3687`, est entièrement vert. Il valide notamment la migration et les triggers PostgreSQL 17 au travers de la suite Pest officielle.
+Le workflow GitHub Actions `ci` no 8, exécuté sur le commit `a019c06`, est entièrement vert. Il valide notamment la migration aller/retour et les triggers PostgreSQL 17 au travers de la suite Pest officielle.
 
 ## Interface et captures
 
@@ -139,6 +139,7 @@ feat(ledger): establish the minimal double-entry core
 style(ledger): align PHP formatting
 fix(ledger): satisfy static analysis contracts
 ci: make feature test warnings blocking
+test(ledger): verify PostgreSQL migration rollback
 ```
 
 ## Étape suivante
