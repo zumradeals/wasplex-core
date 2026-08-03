@@ -12,6 +12,7 @@ final class WalletPresenter
     public function wallet(Wallet $wallet): array
     {
         $wallet->loadMissing('projection');
+        $projection = $wallet->projection;
 
         return [
             'id' => $wallet->id,
@@ -20,13 +21,13 @@ final class WalletPresenter
             'currency' => $wallet->currency,
             'status' => $wallet->status->value,
             'balances' => [
-                'available' => $wallet->projection?->available_minor ?? 0,
-                'reserved' => $wallet->projection?->reserved_minor ?? 0,
-                'pending' => $wallet->projection?->pending_minor ?? 0,
-                'total' => ($wallet->projection?->available_minor ?? 0)
-                    + ($wallet->projection?->reserved_minor ?? 0)
-                    + ($wallet->projection?->pending_minor ?? 0),
-                'version' => $wallet->projection?->version ?? 0,
+                'available' => $projection->available_minor,
+                'reserved' => $projection->reserved_minor,
+                'pending' => $projection->pending_minor,
+                'total' => $projection->available_minor
+                    + $projection->reserved_minor
+                    + $projection->pending_minor,
+                'version' => $projection->version,
             ],
         ];
     }
