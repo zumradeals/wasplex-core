@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $id
+ * @property string $economic_class_id
+ * @property int $version
+ * @property ConfigurationState $state
+ * @property string $public_name
+ * @property int $quota_monthly
+ * @property int $weight_basis_points
+ * @property int $targeting_coefficient_basis_points
+ * @property array<string, mixed>|null $features
+ */
 final class EconomicClassVersion extends Model
 {
     use HasUuids;
@@ -27,6 +38,7 @@ final class EconomicClassVersion extends Model
         ];
     }
 
+    /** @return BelongsTo<EconomicClass, $this> */
     public function economicClass(): BelongsTo
     {
         return $this->belongsTo(EconomicClass::class);
