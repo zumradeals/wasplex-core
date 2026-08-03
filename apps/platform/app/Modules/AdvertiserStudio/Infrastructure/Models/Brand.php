@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $slug
  * @property BrandStatus $status
  * @property string|null $active_version_id
+ * @property int|null $versions_count
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read UserSpace $space
