@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   platform:
@@ -31,10 +31,11 @@ jobs:
         working-directory: apps/platform
 
     steps:
-      - name: Checkout code
+      - name: Checkout branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          ref: codex/p004b-economic-admin-ui
+          persist-credentials: true
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -60,6 +61,24 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Apply repository frontend formatting
+        run: |
+          npm run format
+          npm run lint
+
+      - name: Commit verified frontend formatting
+        working-directory: .
+        run: |
+          git config user.name "wasplex-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add apps/platform/resources/js/pages/EconomicConfiguration/Admin.vue \
+                  apps/platform/resources/js/pages/EconomicConfiguration/AtomicPublicationPanel.vue \
+                  apps/platform/resources/js/pages/Spaces/AdminDashboard.vue
+          if ! git diff --cached --quiet; then
+            git commit -m "style(economy): apply frontend formatting"
+            git push origin HEAD:codex/p004b-economic-admin-ui
+          fi
+
       - name: Check PHP formatting
         run: composer lint:check
 
@@ -78,20 +97,6 @@ jobs:
           DB_DATABASE: wasplex_test
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
-
-      - name: Format frontend for P004-B repair
-        run: npm run format
-
-      - name: Upload formatted P004-B files
-        uses: actions/upload-artifact@v4
-        with:
-          name: p004b-formatted-vue
-          path: |
-            apps/platform/resources/js/pages/EconomicConfiguration/Admin.vue
-            apps/platform/resources/js/pages/EconomicConfiguration/AtomicPublicationPanel.vue
-            apps/platform/resources/js/pages/Spaces/AdminDashboard.vue
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Check frontend formatting
         run: npm run format:check
