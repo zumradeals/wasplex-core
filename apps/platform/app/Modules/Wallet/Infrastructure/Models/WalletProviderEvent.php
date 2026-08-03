@@ -3,6 +3,7 @@
 namespace App\Modules\Wallet\Infrastructure\Models;
 
 use App\Modules\Wallet\Domain\Enums\ProviderEventStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,8 +18,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $attempts
  * @property array<string, mixed> $payload
  * @property string|null $last_error
- * @property \Carbon\CarbonImmutable|null $occurred_at
- * @property \Carbon\CarbonImmutable|null $processed_at
+ * @property CarbonImmutable|null $occurred_at
+ * @property CarbonImmutable|null $processed_at
  */
 class WalletProviderEvent extends Model
 {
