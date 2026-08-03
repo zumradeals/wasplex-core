@@ -2,7 +2,7 @@
 
 **Branche proposée :** `codex/p002-ledger-core`
 **Commit de base :** `21fdbd04f802067544554262c2a4388717c40a1f`
-**Statut :** validé par la CI GitHub — fusion autorisée — déploiement VPS en attente
+**Statut :** accepté, fusionné et déployé en production
 
 ## Objectif
 
@@ -110,6 +110,26 @@ La CI prépare explicitement l’environnement de test et traite désormais tout
 
 Le workflow GitHub Actions `ci` no 8, exécuté sur le commit `a019c06`, est entièrement vert. Il valide notamment la migration aller/retour et les triggers PostgreSQL 17 au travers de la suite Pest officielle.
 
+## Validation VPS et recette de production
+
+P002 a été déployé le 3 août 2026 sur le commit de fusion `47cd9ab`.
+
+- dépôt VPS basculé proprement de la branche P001 vers `main` ;
+- sauvegarde préalable créée dans `/var/backups/wasplex/p002-20260803T165707Z.dump` ;
+- PostgreSQL 17 identifié sur le port `5433`, base `wasplex_core` ;
+- ancien PostgreSQL 16 du port `5432` laissé intact ;
+- migration `2026_08_03_000000_create_ledger_core_tables` appliquée en 390 ms ;
+- catalogue vérifié avec 5 types de comptes et 2 journaux ;
+- aucune transaction financière créée : `transactions=0` ;
+- capacités P002 réappliquées de manière idempotente au compte fondateur nominatif ;
+- dépendances Composer inchangées et audit npm sans vulnérabilité ;
+- build Vite de production réussi avec 565 modules ;
+- caches Laravel reconstruits, files redémarrées, PHP-FPM et Nginx rechargés ;
+- `/up` et `/api/health` sains sur `https://wasplex.com` ;
+- dépôt redevenu propre après la sortie du mode maintenance.
+
+La première tentative de sauvegarde a révélé la coexistence de deux clusters PostgreSQL. Le guide exige désormais explicitement le port `DB_PORT` afin d’éviter toute sauvegarde ou migration sur l’ancien cluster.
+
 ## Interface et captures
 
 Aucune interface utilisateur n’est incluse dans P002. Le design actuel de Wasplex n’a pas été modifié. Les routes administratives livrent uniquement des données de lecture pour une future interface de supervision.
@@ -144,4 +164,4 @@ test(ledger): verify PostgreSQL migration rollback
 
 ## Étape suivante
 
-Fusionner la PR autorisée sur `main`, puis exécuter avec le fondateur le guide `P002-DEPLOIEMENT-VPS.md`. P003 ne commence qu’après validation du déploiement P002.
+P002 est clos. Le prochain chantier autorisé par la roadmap est P003 — Wallet, projections et réservations.

@@ -2,7 +2,7 @@
 
 **Branche proposée :** `codex/p002-ledger-core`
 **Commit de base :** `21fdbd04f802067544554262c2a4388717c40a1f`
-**Statut :** `merged_pending_deployment`
+**Statut :** `deployed`
 
 ## Objectif
 
