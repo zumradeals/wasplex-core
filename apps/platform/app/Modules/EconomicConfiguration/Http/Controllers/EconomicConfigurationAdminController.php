@@ -85,6 +85,28 @@ final readonly class EconomicConfigurationAdminController
         );
     }
 
+    public function publishMany(Request $request): JsonResponse|RedirectResponse
+    {
+        /** @var array{version_ids:list<string>} $data */
+        $data = $request->validate([
+            'version_ids' => ['required', 'array', 'min:1', 'max:4'],
+            'version_ids.*' => ['required', 'uuid', 'distinct'],
+        ]);
+
+        $versions = $this->service->publishMany($data['version_ids'], $this->actorId($request));
+        $payload = $versions
+            ->map(fn (EconomicClassVersion $version): array => $this->versionPayload($version))
+            ->values();
+
+        return $this->respond(
+            $request,
+            $payload,
+            $versions->count() === 1
+                ? 'La version sélectionnée est maintenant publiée.'
+                : "Les {$versions->count()} versions sélectionnées ont été publiées atomiquement.",
+        );
+    }
+
     public function suspend(Request $request, EconomicClassVersion $version): JsonResponse|RedirectResponse
     {
         /** @var array{reason:string} $data */
@@ -126,7 +148,7 @@ final readonly class EconomicConfigurationAdminController
         $latest = $versions->first();
         $published = $versions->first(
             fn (EconomicClassVersion $version): bool => $version->state === ConfigurationState::Published
-                && $version->getAttribute('effective_to') === null,
+                && $version->effective_to === null,
         );
 
         return [
@@ -156,12 +178,12 @@ final readonly class EconomicConfigurationAdminController
             'weightBasisPoints' => $version->weight_basis_points,
             'targetingCoefficientBasisPoints' => $version->targeting_coefficient_basis_points,
             'fundEligible' => (bool) ($features['fund_eligible'] ?? false),
-            'effectiveFrom' => $this->date($version->getAttribute('effective_from')),
-            'effectiveTo' => $this->date($version->getAttribute('effective_to')),
-            'approvedAt' => $this->date($version->getAttribute('approved_at')),
-            'publishedAt' => $this->date($version->getAttribute('published_at')),
-            'createdAt' => $this->date($version->getAttribute('created_at')),
-            'suspensionReason' => $version->getAttribute('suspension_reason'),
+            'effectiveFrom' => $this->date($version->effective_from),
+            'effectiveTo' => $this->date($version->effective_to),
+            'approvedAt' => $this->date($version->approved_at),
+            'publishedAt' => $this->date($version->published_at),
+            'createdAt' => $this->date($version->created_at),
+            'suspensionReason' => $version->suspension_reason,
         ];
     }
 
