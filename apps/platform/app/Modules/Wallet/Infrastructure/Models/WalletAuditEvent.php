@@ -4,9 +4,11 @@ namespace App\Modules\Wallet\Infrastructure\Models;
 
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 /**
  * @property string $id
@@ -19,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $subject_id
  * @property string|null $trace_id
  * @property array<string, mixed>|null $context
- * @property \Carbon\CarbonImmutable $occurred_at
+ * @property CarbonImmutable $occurred_at
  */
 class WalletAuditEvent extends Model
 {
@@ -40,10 +42,10 @@ class WalletAuditEvent extends Model
     protected static function booted(): void
     {
         static::updating(static function (): never {
-            throw new \LogicException('Un événement d’audit Wallet est immuable.');
+            throw new LogicException('Un événement d’audit Wallet est immuable.');
         });
         static::deleting(static function (): never {
-            throw new \LogicException('Un événement d’audit Wallet est immuable.');
+            throw new LogicException('Un événement d’audit Wallet est immuable.');
         });
     }
 
