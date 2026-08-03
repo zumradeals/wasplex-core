@@ -86,9 +86,11 @@ return new class extends Migration
             $table->unique(['user_subscription_id', 'cycle_start']);
         });
 
-        DB::statement("ALTER TABLE economic_class_versions ADD CONSTRAINT economic_class_versions_state_check CHECK (state IN ('draft','approved','published','suspended'))");
-        DB::statement('ALTER TABLE economic_class_versions ADD CONSTRAINT economic_class_weights_check CHECK (weight_basis_points <= 10000)');
-        DB::statement('ALTER TABLE economic_class_versions ADD CONSTRAINT economic_class_effective_period_check CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to > effective_from)');
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE economic_class_versions ADD CONSTRAINT economic_class_versions_state_check CHECK (state IN ('draft','approved','published','suspended'))");
+            DB::statement('ALTER TABLE economic_class_versions ADD CONSTRAINT economic_class_weights_check CHECK (weight_basis_points <= 10000)');
+            DB::statement('ALTER TABLE economic_class_versions ADD CONSTRAINT economic_class_effective_period_check CHECK (effective_to IS NULL OR effective_from IS NULL OR effective_to > effective_from)');
+        }
     }
 
     public function down(): void
