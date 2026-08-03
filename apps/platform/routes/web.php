@@ -42,12 +42,27 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
     Route::get('/administration', [ShellController::class, 'admin'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:admin.dashboard.view'])->name('admin.dashboard');
     Route::get('/administration/wallet', [WalletAdminController::class, 'page'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:wallet.deposit.review'])->name('admin.wallet');
 
-    Route::prefix('/administration/economie')->middleware(['space.kind:administration', 'mfa.recent'])->group(function (): void {
-        Route::get('/', [EconomicConfigurationAdminController::class, 'index'])->middleware('capability:economic.configuration.view');
-        Route::post('/simuler', [EconomicConfigurationAdminController::class, 'simulate'])->middleware('capability:economic.configuration.manage');
-        Route::post('/classes/{economicClass}/versions', [EconomicConfigurationAdminController::class, 'store'])->middleware('capability:economic.configuration.manage');
-        Route::post('/versions/{version}/approuver', [EconomicConfigurationAdminController::class, 'approve'])->middleware('capability:economic.configuration.approve');
-        Route::post('/versions/{version}/publier', [EconomicConfigurationAdminController::class, 'publish'])->middleware('capability:economic.configuration.publish');
-        Route::post('/versions/{version}/suspendre', [EconomicConfigurationAdminController::class, 'suspend'])->middleware('capability:economic.configuration.suspend');
-    });
+    Route::prefix('/administration/economie')
+        ->name('admin.economy.')
+        ->middleware(['space.kind:administration', 'mfa.recent'])
+        ->group(function (): void {
+            Route::get('/', [EconomicConfigurationAdminController::class, 'index'])
+                ->middleware('capability:economic.configuration.view')
+                ->name('index');
+            Route::post('/simuler', [EconomicConfigurationAdminController::class, 'simulate'])
+                ->middleware('capability:economic.configuration.manage')
+                ->name('simulate');
+            Route::post('/classes/{economicClass}/versions', [EconomicConfigurationAdminController::class, 'store'])
+                ->middleware('capability:economic.configuration.manage')
+                ->name('versions.store');
+            Route::post('/versions/{version}/approuver', [EconomicConfigurationAdminController::class, 'approve'])
+                ->middleware('capability:economic.configuration.approve')
+                ->name('versions.approve');
+            Route::post('/versions/{version}/publier', [EconomicConfigurationAdminController::class, 'publish'])
+                ->middleware('capability:economic.configuration.publish')
+                ->name('versions.publish');
+            Route::post('/versions/{version}/suspendre', [EconomicConfigurationAdminController::class, 'suspend'])
+                ->middleware('capability:economic.configuration.suspend')
+                ->name('versions.suspend');
+        });
 });
