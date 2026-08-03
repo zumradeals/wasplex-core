@@ -131,6 +131,7 @@ final class EconomicConfigurationService
                 ]);
             }
 
+            /** @var Collection<int, EconomicClassVersion> $approved */
             $approved = collect();
 
             foreach ($classCodes as $code) {
@@ -167,7 +168,13 @@ final class EconomicConfigurationService
                 return collect();
             }
 
-            return $this->publishMany($approved->pluck('id')->all(), $actorAccountId);
+            /** @var list<string> $approvedVersionIds */
+            $approvedVersionIds = $approved
+                ->map(fn (EconomicClassVersion $version): string => $version->id)
+                ->values()
+                ->all();
+
+            return $this->publishMany($approvedVersionIds, $actorAccountId);
         });
     }
 
