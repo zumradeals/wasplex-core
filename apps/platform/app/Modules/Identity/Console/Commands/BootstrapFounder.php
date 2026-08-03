@@ -12,18 +12,14 @@ use Illuminate\Support\Str;
 final class BootstrapFounder extends Command
 {
     protected $signature = 'identity:bootstrap-founder {identifier : E-mail du compte existant}';
-
     protected $description = 'Crée l’espace fondateur et lui accorde les capacités explicites du noyau.';
 
     public function handle(CapabilityService $capabilities): int
     {
-        $identifier = AccountIdentifier::query()
-            ->where('normalized_value', Str::lower(trim((string) $this->argument('identifier'))))
-            ->first();
+        $identifier = AccountIdentifier::query()->where('normalized_value', Str::lower(trim((string) $this->argument('identifier'))))->first();
 
         if ($identifier === null) {
             $this->error('Aucun compte ne correspond à cet identifiant.');
-
             return self::FAILURE;
         }
 
@@ -39,32 +35,19 @@ final class BootstrapFounder extends Command
         );
 
         foreach ([
-            'admin.dashboard.view',
-            'admin.accounts.view',
-            'admin.organizations.view',
-            'admin.capabilities.grant',
-            'admin.capabilities.revoke',
-            'wallet.ledger.view',
-            'wallet.correction.propose',
-            'wallet.correction.approve',
-            'wallet.audit.view',
-            'wallet.deposit.review',
-            'wallet.reconciliation.manage',
+            'admin.dashboard.view', 'admin.accounts.view', 'admin.organizations.view',
+            'admin.capabilities.grant', 'admin.capabilities.revoke',
+            'wallet.ledger.view', 'wallet.correction.propose', 'wallet.correction.approve',
+            'wallet.audit.view', 'wallet.deposit.review', 'wallet.reconciliation.manage',
             'wallet.configuration.manage',
+            'economic.configuration.view', 'economic.configuration.manage',
+            'economic.configuration.approve', 'economic.configuration.publish',
+            'economic.configuration.suspend', 'economic.configuration.audit.view',
         ] as $name) {
-            $alreadyGranted = $account->capabilityGrants()
-                ->where('space_id', $space->id)
-                ->where('capability', $name)
-                ->whereNull('revoked_at')
-                ->exists();
+            $alreadyGranted = $account->capabilityGrants()->where('space_id', $space->id)->where('capability', $name)->whereNull('revoked_at')->exists();
 
             if (! $alreadyGranted) {
-                $capabilities->grant(
-                    account: $account,
-                    capability: $name,
-                    space: $space,
-                    reason: 'Initialisation nominative du fondateur',
-                );
+                $capabilities->grant(account: $account, capability: $name, space: $space, reason: 'Initialisation nominative du fondateur');
             }
         }
 

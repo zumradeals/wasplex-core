@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\EconomicConfiguration\Infrastructure\Providers\EconomicConfigurationServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
 use App\Modules\Ledger\Infrastructure\Providers\LedgerServiceProvider;
 use App\Modules\Platform\Infrastructure\Providers\PlatformServiceProvider;
@@ -11,5 +12,6 @@ return [
     IdentityServiceProvider::class,
     LedgerServiceProvider::class,
     WalletServiceProvider::class,
+    EconomicConfigurationServiceProvider::class,
     PlatformServiceProvider::class,
 ];
