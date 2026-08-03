@@ -87,7 +87,7 @@ final class EconomicConfigurationService
     public function applyPercentageDistribution(array $percentages, string $actorAccountId): Collection
     {
         $classCodes = ['FREE', 'PREMIUM', 'GOLD', 'PLATINUM'];
-        $weights = collect($classCodes)->mapWithKeys(function (string $code) use ($percentages): array {
+        $weights = (new Collection($classCodes))->mapWithKeys(function (string $code) use ($percentages): array {
             if (! array_key_exists($code, $percentages)) {
                 throw ValidationException::withMessages([
                     "percentages.{$code}" => "Le pourcentage {$code} est obligatoire.",
@@ -132,7 +132,7 @@ final class EconomicConfigurationService
             }
 
             /** @var Collection<int, EconomicClassVersion> $approved */
-            $approved = collect();
+            $approved = new Collection;
 
             foreach ($classCodes as $code) {
                 $class = $classes->get($code);
@@ -165,7 +165,7 @@ final class EconomicConfigurationService
             }
 
             if ($approved->isEmpty()) {
-                return collect();
+                return new Collection;
             }
 
             /** @var list<string> $approvedVersionIds */
