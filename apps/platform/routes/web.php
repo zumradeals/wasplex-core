@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\EconomicConfiguration\Http\Controllers\EconomicConfigurationAdminController;
 use App\Modules\Identity\Http\Controllers\LoginController;
 use App\Modules\Identity\Http\Controllers\MfaController;
 use App\Modules\Identity\Http\Controllers\RegisterController;
@@ -21,9 +22,7 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware(['auth', 'identity.session'])->group(function (): void {
     Route::post('/deconnexion', [LoginController::class, 'destroy'])->name('logout');
     Route::get('/espace', [ShellController::class, 'home'])->name('space.home');
-    Route::post('/espaces/annonceur', [SpaceController::class, 'activateAdvertiser'])
-        ->middleware('capability:advertiser.space.activate')
-        ->name('spaces.advertiser.activate');
+    Route::post('/espaces/annonceur', [SpaceController::class, 'activateAdvertiser'])->middleware('capability:advertiser.space.activate')->name('spaces.advertiser.activate');
     Route::post('/espaces/{space}/activer', [SpaceController::class, 'switch'])->name('spaces.switch');
 
     Route::get('/securite/mfa', [MfaController::class, 'setupPage'])->name('security.mfa.setup');
@@ -32,32 +31,23 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
     Route::get('/securite/mfa/verification', [MfaController::class, 'challengePage'])->name('security.mfa.challenge');
     Route::post('/securite/mfa/verification', [MfaController::class, 'verify'])->middleware('throttle:6,1')->name('security.mfa.verify');
 
-    Route::get('/mon-espace', [ShellController::class, 'user'])
-        ->middleware(['space.kind:user', 'capability:account.self.manage'])
-        ->name('user.dashboard');
+    Route::get('/mon-espace', [ShellController::class, 'user'])->middleware(['space.kind:user', 'capability:account.self.manage'])->name('user.dashboard');
+    Route::get('/wallet', [WalletController::class, 'show'])->middleware(['space.kind:user', 'capability:wallet.view.self'])->name('wallet.show');
+    Route::post('/wallet/depot', [WalletController::class, 'storeDeposit'])->middleware(['space.kind:user', 'capability:wallet.deposit.create.self', 'throttle:6,1'])->name('wallet.deposit.store');
 
-    Route::get('/wallet', [WalletController::class, 'show'])
-        ->middleware(['space.kind:user', 'capability:wallet.view.self'])
-        ->name('wallet.show');
-    Route::post('/wallet/depot', [WalletController::class, 'storeDeposit'])
-        ->middleware(['space.kind:user', 'capability:wallet.deposit.create.self', 'throttle:6,1'])
-        ->name('wallet.deposit.store');
+    Route::get('/studio', [ShellController::class, 'advertiser'])->middleware(['space.kind:advertiser', 'capability:advertiser.space.view'])->name('studio.dashboard');
+    Route::get('/studio/wallet', [WalletController::class, 'show'])->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.view'])->name('studio.wallet');
+    Route::post('/studio/wallet/depot', [WalletController::class, 'storeDeposit'])->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.fund', 'throttle:6,1'])->name('studio.wallet.deposit.store');
 
-    Route::get('/studio', [ShellController::class, 'advertiser'])
-        ->middleware(['space.kind:advertiser', 'capability:advertiser.space.view'])
-        ->name('studio.dashboard');
+    Route::get('/administration', [ShellController::class, 'admin'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:admin.dashboard.view'])->name('admin.dashboard');
+    Route::get('/administration/wallet', [WalletAdminController::class, 'page'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:wallet.deposit.review'])->name('admin.wallet');
 
-    Route::get('/studio/wallet', [WalletController::class, 'show'])
-        ->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.view'])
-        ->name('studio.wallet');
-    Route::post('/studio/wallet/depot', [WalletController::class, 'storeDeposit'])
-        ->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.fund', 'throttle:6,1'])
-        ->name('studio.wallet.deposit.store');
-
-    Route::get('/administration', [ShellController::class, 'admin'])
-        ->middleware(['space.kind:administration', 'mfa.recent', 'capability:admin.dashboard.view'])
-        ->name('admin.dashboard');
-    Route::get('/administration/wallet', [WalletAdminController::class, 'page'])
-        ->middleware(['space.kind:administration', 'mfa.recent', 'capability:wallet.deposit.review'])
-        ->name('admin.wallet');
+    Route::prefix('/administration/economie')->middleware(['space.kind:administration', 'mfa.recent'])->group(function (): void {
+        Route::get('/', [EconomicConfigurationAdminController::class, 'index'])->middleware('capability:economic.configuration.view');
+        Route::post('/simuler', [EconomicConfigurationAdminController::class, 'simulate'])->middleware('capability:economic.configuration.manage');
+        Route::post('/classes/{economicClass}/versions', [EconomicConfigurationAdminController::class, 'store'])->middleware('capability:economic.configuration.manage');
+        Route::post('/versions/{version}/approuver', [EconomicConfigurationAdminController::class, 'approve'])->middleware('capability:economic.configuration.approve');
+        Route::post('/versions/{version}/publier', [EconomicConfigurationAdminController::class, 'publish'])->middleware('capability:economic.configuration.publish');
+        Route::post('/versions/{version}/suspendre', [EconomicConfigurationAdminController::class, 'suspend'])->middleware('capability:economic.configuration.suspend');
+    });
 });

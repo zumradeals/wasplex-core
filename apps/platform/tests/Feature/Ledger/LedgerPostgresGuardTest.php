@@ -66,8 +66,8 @@ it('rolls the P002 migration back cleanly on PostgreSQL', function (): void {
 
     expect(Schema::hasTable('ledger_transactions'))->toBeTrue();
 
-    // P003 dépend du Ledger : annuler d'abord sa migration Wallet, puis celle de P002.
-    $this->artisan('migrate:rollback', ['--step' => 2, '--force' => true])
+    // P003 et P004 dépendent du Ledger : annuler leurs migrations, puis celle de P002.
+    $this->artisan('migrate:rollback', ['--step' => 3, '--force' => true])
         ->assertSuccessful();
 
     expect(Schema::hasTable('ledger_transactions'))->toBeFalse()
