@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 final class BootstrapFounder extends Command
 {
     protected $signature = 'identity:bootstrap-founder {identifier : E-mail du compte existant}';
+
     protected $description = 'Crée l’espace fondateur et lui accorde les capacités explicites du noyau.';
 
     public function handle(CapabilityService $capabilities): int
@@ -20,6 +21,7 @@ final class BootstrapFounder extends Command
 
         if ($identifier === null) {
             $this->error('Aucun compte ne correspond à cet identifiant.');
+
             return self::FAILURE;
         }
 
