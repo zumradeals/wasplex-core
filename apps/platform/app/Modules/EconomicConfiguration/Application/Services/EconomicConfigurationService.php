@@ -5,6 +5,7 @@ namespace App\Modules\EconomicConfiguration\Application\Services;
 use App\Modules\EconomicConfiguration\Domain\Enums\ConfigurationState;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClass;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClassVersion;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -138,20 +139,20 @@ final class EconomicConfigurationService
                 ]);
             }
 
-            $publishedAt = now();
+            $transitionAt = $this->transitionAfter(...$active->values()->all());
 
             foreach ($candidates as $candidate) {
                 $current = $active->get($candidate->economic_class_id);
 
                 if ($current instanceof EconomicClassVersion && $current->id !== $candidate->id) {
-                    $current->forceFill(['effective_to' => $publishedAt])->save();
+                    $current->forceFill(['effective_to' => $transitionAt])->save();
                 }
 
                 $candidate->forceFill([
                     'state' => ConfigurationState::Published,
-                    'effective_from' => $publishedAt,
+                    'effective_from' => $transitionAt,
                     'effective_to' => null,
-                    'published_at' => $publishedAt,
+                    'published_at' => $transitionAt,
                     'published_by_account_id' => $actorAccountId,
                 ])->save();
             }
@@ -172,7 +173,7 @@ final class EconomicConfigurationService
 
         $version->forceFill([
             'state' => ConfigurationState::Suspended,
-            'effective_to' => now(),
+            'effective_to' => $this->transitionAfter($version),
             'suspended_by_account_id' => $actorAccountId,
             'suspension_reason' => trim($reason),
         ])->save();
@@ -189,6 +190,19 @@ final class EconomicConfigurationService
         $total = array_sum(array_map('intval', $weights));
 
         return ['total_basis_points' => $total, 'valid' => $total === 10_000];
+    }
+
+    private function transitionAfter(EconomicClassVersion ...$versions): CarbonImmutable
+    {
+        $transitionAt = CarbonImmutable::now();
+
+        foreach ($versions as $version) {
+            if ($version->effective_from !== null && ! $transitionAt->greaterThan($version->effective_from)) {
+                $transitionAt = $version->effective_from->addSecond();
+            }
+        }
+
+        return $transitionAt;
     }
 
     private function assertVersionValues(EconomicClassVersion $version): void
