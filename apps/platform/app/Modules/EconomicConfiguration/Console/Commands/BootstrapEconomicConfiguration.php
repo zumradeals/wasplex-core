@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 final class BootstrapEconomicConfiguration extends Command
 {
     protected $signature = 'economic:bootstrap';
+
     protected $description = 'Initialise les quatre classes économiques canoniques de Wasplex.';
 
     public function handle(): int
