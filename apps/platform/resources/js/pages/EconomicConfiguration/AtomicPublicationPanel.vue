@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 type EconomicVersion = {
     id: string;
@@ -49,7 +49,10 @@ const projectedTotal = computed(() =>
             (entry) => entry.economicClass.id === economicClass.id,
         );
 
-        return total + (selected?.version.weightBasisPoints ?? economicClass.published?.weightBasisPoints ?? 0);
+        return (
+            total +
+            (selected?.version.weightBasisPoints ?? economicClass.published?.weightBasisPoints ?? 0)
+        );
     }, 0),
 );
 
@@ -87,7 +90,9 @@ const submit = () => {
             class="ml-auto flex items-center gap-3 rounded-2xl border border-wasplex-gold/25 bg-[#0b1520]/95 px-5 py-4 text-left shadow-2xl backdrop-blur transition hover:border-wasplex-gold/50"
             @click="open = true"
         >
-            <span class="grid size-10 place-items-center rounded-xl bg-wasplex-gold/10 text-wasplex-gold">
+            <span
+                class="grid size-10 place-items-center rounded-xl bg-wasplex-gold/10 text-wasplex-gold"
+            >
                 ∑
             </span>
             <span>
@@ -109,8 +114,8 @@ const submit = () => {
                     </p>
                     <h2 class="mt-2 text-xl font-black text-white">Publier plusieurs classes</h2>
                     <p class="mt-2 text-xs leading-5 text-white/40">
-                        Sélectionne une version approuvée par classe. Toutes seront publiées dans une
-                        seule transaction.
+                        Sélectionne une version approuvée par classe. Toutes seront publiées dans
+                        une seule transaction.
                     </p>
                 </div>
                 <button
@@ -140,7 +145,11 @@ const submit = () => {
                             <p class="font-black text-white">{{ entry.economicClass.code }}</p>
                             <p class="mt-1 text-xs text-white/35">
                                 Publié :
-                                {{ percentage(entry.economicClass.published?.weightBasisPoints ?? 0) }}
+                                {{
+                                    percentage(
+                                        entry.economicClass.published?.weightBasisPoints ?? 0,
+                                    )
+                                }}
                             </p>
                         </div>
                         <select
