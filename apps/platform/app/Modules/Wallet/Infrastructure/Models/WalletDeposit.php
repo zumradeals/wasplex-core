@@ -4,6 +4,8 @@ namespace App\Modules\Wallet\Infrastructure\Models;
 
 use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
 use App\Modules\Wallet\Domain\Enums\DepositStatus;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,10 +25,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $idempotency_key
  * @property string|null $checkout_url
  * @property array<string, mixed>|null $provider_metadata
- * @property \Carbon\CarbonImmutable|null $expires_at
- * @property \Carbon\CarbonImmutable|null $confirmed_at
- * @property \Carbon\CarbonImmutable|null $credited_at
- * @property \Carbon\CarbonInterface|null $created_at
+ * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $confirmed_at
+ * @property CarbonImmutable|null $credited_at
+ * @property CarbonInterface|null $created_at
  * @property-read Wallet $wallet
  */
 class WalletDeposit extends Model
