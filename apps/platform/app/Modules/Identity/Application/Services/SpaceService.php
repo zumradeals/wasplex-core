@@ -55,7 +55,13 @@ final class SpaceService
                 'title' => 'Propriétaire',
             ]);
 
-            foreach (['advertiser.space.view', 'advertiser.space.manage', 'organization.members.invite'] as $capability) {
+            foreach ([
+                'advertiser.space.view',
+                'advertiser.space.manage',
+                'advertiser.wallet.view',
+                'advertiser.wallet.fund',
+                'organization.members.invite',
+            ] as $capability) {
                 $this->capabilities->grant(
                     account: $account,
                     capability: $capability,

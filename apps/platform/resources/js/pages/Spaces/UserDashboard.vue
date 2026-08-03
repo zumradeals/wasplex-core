@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import SpaceSwitcher from '@/components/SpaceSwitcher.vue';
 import WasplexMark from '@/components/WasplexMark.vue';
 
@@ -10,13 +10,24 @@ type Space = {
     active: boolean;
 };
 
-defineProps<{
+const props = defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
+    wallet: { balances: { available: number } };
 }>();
 
 const advertiser = useForm({ organization_name: '' });
+const services = [
+    { label: 'Feed', href: '#', detail: 'Bientôt disponible' },
+    {
+        label: 'Wallet',
+        href: '/wallet',
+        detail: `${new Intl.NumberFormat('fr-FR').format(props.wallet.balances.available)} WP disponible`,
+    },
+    { label: 'Carte', href: '#', detail: 'Bientôt disponible' },
+    { label: 'Services', href: '#', detail: 'Bientôt disponible' },
+];
 </script>
 
 <template>
@@ -59,15 +70,16 @@ const advertiser = useForm({ organization_name: '' });
                             Un compte, plusieurs espaces strictement séparés.
                         </p>
                     </article>
-                    <article
-                        v-for="item in ['Feed', 'Wallet', 'Carte', 'Services']"
-                        :key="item"
+                    <Link
+                        v-for="item in services"
+                        :key="item.label"
+                        :href="item.href"
                         class="rounded-3xl border border-white/8 bg-white/5 p-5"
                     >
                         <div class="size-9 rounded-2xl bg-wasplex-cyan/10" />
-                        <p class="mt-6 font-bold">{{ item }}</p>
-                        <p class="mt-1 text-xs text-white/35">Bientôt disponible</p>
-                    </article>
+                        <p class="mt-6 font-bold">{{ item.label }}</p>
+                        <p class="mt-1 text-xs text-white/35">{{ item.detail }}</p>
+                    </Link>
                 </div>
 
                 <section
@@ -103,8 +115,8 @@ const advertiser = useForm({ organization_name: '' });
             <nav
                 class="sticky bottom-0 mt-6 grid grid-cols-4 border-t border-white/10 bg-wasplex-night/95 px-3 py-3 text-center text-[0.68rem] font-bold text-white/40 backdrop-blur-xl"
             >
-                <span class="text-wasplex-cyan">Espace</span><span>Feed</span><span>Wallet</span
-                ><span>Profil</span>
+                <span class="text-wasplex-cyan">Espace</span><span>Feed</span
+                ><Link href="/wallet">Wallet</Link><span>Profil</span>
             </nav>
         </div>
     </main>

@@ -5,6 +5,8 @@ namespace App\Modules\Identity\Http\Controllers;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
+use App\Modules\Wallet\Application\Services\WalletCatalog;
+use App\Modules\Wallet\Application\Services\WalletPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,6 +14,11 @@ use Inertia\Response;
 
 final class ShellController
 {
+    public function __construct(
+        private readonly WalletCatalog $wallets,
+        private readonly WalletPresenter $walletPresenter,
+    ) {}
+
     public function home(Request $request): RedirectResponse
     {
         $space = $request->attributes->get('active_space');
@@ -52,7 +59,7 @@ final class ShellController
         $account->load(['profile', 'spaces.organization']);
         $activeSpace = $request->attributes->get('active_space');
 
-        return [
+        $props = [
             'account' => [
                 'id' => $account->id,
                 'displayName' => $account->profile?->display_name,
@@ -69,5 +76,11 @@ final class ShellController
                 'active' => $activeSpace?->id === $space->id,
             ])->values(),
         ];
+
+        if ($activeSpace instanceof UserSpace && in_array($activeSpace->kind, [SpaceKind::User, SpaceKind::Advertiser], true)) {
+            $props['wallet'] = $this->walletPresenter->wallet($this->wallets->forSpace($activeSpace));
+        }
+
+        return $props;
     }
 }

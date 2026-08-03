@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: ['api/webhooks/geniuspay']);
         $middleware->alias([
             'identity.session' => EnsureAccountSessionActive::class,
             'capability' => RequireCapability::class,

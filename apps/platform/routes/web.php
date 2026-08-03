@@ -5,6 +5,8 @@ use App\Modules\Identity\Http\Controllers\MfaController;
 use App\Modules\Identity\Http\Controllers\RegisterController;
 use App\Modules\Identity\Http\Controllers\ShellController;
 use App\Modules\Identity\Http\Controllers\SpaceController;
+use App\Modules\Wallet\Http\Controllers\WalletAdminController;
+use App\Modules\Wallet\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -34,11 +36,28 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
         ->middleware(['space.kind:user', 'capability:account.self.manage'])
         ->name('user.dashboard');
 
+    Route::get('/wallet', [WalletController::class, 'show'])
+        ->middleware(['space.kind:user', 'capability:wallet.view.self'])
+        ->name('wallet.show');
+    Route::post('/wallet/depot', [WalletController::class, 'storeDeposit'])
+        ->middleware(['space.kind:user', 'capability:wallet.deposit.create.self', 'throttle:6,1'])
+        ->name('wallet.deposit.store');
+
     Route::get('/studio', [ShellController::class, 'advertiser'])
         ->middleware(['space.kind:advertiser', 'capability:advertiser.space.view'])
         ->name('studio.dashboard');
 
+    Route::get('/studio/wallet', [WalletController::class, 'show'])
+        ->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.view'])
+        ->name('studio.wallet');
+    Route::post('/studio/wallet/depot', [WalletController::class, 'storeDeposit'])
+        ->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.fund', 'throttle:6,1'])
+        ->name('studio.wallet.deposit.store');
+
     Route::get('/administration', [ShellController::class, 'admin'])
         ->middleware(['space.kind:administration', 'mfa.recent', 'capability:admin.dashboard.view'])
         ->name('admin.dashboard');
+    Route::get('/administration/wallet', [WalletAdminController::class, 'page'])
+        ->middleware(['space.kind:administration', 'mfa.recent', 'capability:wallet.deposit.review'])
+        ->name('admin.wallet');
 });
