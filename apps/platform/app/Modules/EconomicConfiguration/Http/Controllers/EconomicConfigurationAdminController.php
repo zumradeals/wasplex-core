@@ -32,7 +32,7 @@ final readonly class EconomicConfigurationAdminController
             return response()->json(['data' => $classes]);
         }
 
-        return Inertia::render('EconomicConfiguration/Admin', [
+        return Inertia::render('EconomicConfiguration/AdminConsole', [
             'classes' => $classes,
             'flash' => [
                 'success' => $request->session()->get('success'),
