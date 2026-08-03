@@ -3,6 +3,7 @@
 namespace App\Modules\Wallet\Infrastructure\Models;
 
 use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $pending_minor
  * @property int $version
  * @property string|null $last_ledger_transaction_id
- * @property \Carbon\CarbonImmutable|null $rebuilt_at
+ * @property CarbonImmutable|null $rebuilt_at
  * @property-read Wallet $wallet
  */
 class WalletBalanceProjection extends Model
