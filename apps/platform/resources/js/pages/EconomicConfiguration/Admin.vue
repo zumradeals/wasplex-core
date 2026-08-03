@@ -84,10 +84,11 @@ const orderedClasses = computed(() =>
     }),
 );
 
-const total = computed(() =>
-    Math.round(
-        classOrder.reduce((sum, code) => sum + Number(form.percentages[code] || 0), 0) * 100,
-    ) / 100,
+const total = computed(
+    () =>
+        Math.round(
+            classOrder.reduce((sum, code) => sum + Number(form.percentages[code] || 0), 0) * 100,
+        ) / 100,
 );
 
 const isValid = computed(() => Math.abs(total.value - 100) < 0.001);
@@ -146,17 +147,21 @@ const submit = () => {
 
     <main class="min-h-screen bg-[#030a12] text-white">
         <section class="mx-auto max-w-[1280px] px-5 py-8 lg:px-10 lg:py-12">
-            <header class="flex flex-wrap items-end justify-between gap-6 border-b border-white/8 pb-7">
+            <header
+                class="flex flex-wrap items-end justify-between gap-6 border-b border-white/8 pb-7"
+            >
                 <div>
                     <WasplexMark />
-                    <p class="mt-8 text-xs font-black tracking-[0.22em] text-wasplex-orange uppercase">
+                    <p
+                        class="mt-8 text-xs font-black tracking-[0.22em] text-wasplex-orange uppercase"
+                    >
                         Administration Wasplex
                     </p>
                     <h1 class="mt-2 text-4xl font-black">Répartition des pourcentages</h1>
                     <p class="mt-3 max-w-3xl text-base leading-7 text-white/45">
-                        Indique simplement le pourcentage attribué à chaque formule. Wasplex s’occupe
-                        automatiquement de toute la partie technique et conserve l’historique de la
-                        décision.
+                        Indique simplement le pourcentage attribué à chaque formule. Wasplex
+                        s’occupe automatiquement de toute la partie technique et conserve
+                        l’historique de la décision.
                     </p>
                 </div>
 
@@ -175,17 +180,23 @@ const submit = () => {
                 {{ flash.success }}
             </div>
 
-            <section class="mt-8 overflow-hidden rounded-3xl border border-white/8 bg-white/[0.035]">
+            <section
+                class="mt-8 overflow-hidden rounded-3xl border border-white/8 bg-white/[0.035]"
+            >
                 <div class="border-b border-white/8 p-6 lg:p-8">
                     <div class="flex flex-wrap items-start justify-between gap-5">
                         <div>
-                            <p class="text-xs font-black tracking-[0.18em] text-wasplex-cyan uppercase">
+                            <p
+                                class="text-xs font-black tracking-[0.18em] text-wasplex-cyan uppercase"
+                            >
                                 Configuration simple
                             </p>
-                            <h2 class="mt-2 text-2xl font-black">Le total doit toujours faire 100 %</h2>
+                            <h2 class="mt-2 text-2xl font-black">
+                                Le total doit toujours faire 100 %
+                            </h2>
                             <p class="mt-2 max-w-2xl text-sm leading-6 text-white/40">
-                                Tu peux saisir des nombres entiers ou des décimales, par exemple
-                                35 %, 12,5 % ou 7,25 %.
+                                Tu peux saisir des nombres entiers ou des décimales, par exemple 35
+                                %, 12,5 % ou 7,25 %.
                             </p>
                         </div>
 
@@ -218,15 +229,21 @@ const submit = () => {
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div>
-                                    <p class="text-xs font-black tracking-[0.14em] text-wasplex-cyan uppercase">
+                                    <p
+                                        class="text-xs font-black tracking-[0.14em] text-wasplex-cyan uppercase"
+                                    >
                                         {{ economicClass.code }}
                                     </p>
-                                    <h3 class="mt-2 text-xl font-black">{{ economicClass.publicName }}</h3>
+                                    <h3 class="mt-2 text-xl font-black">
+                                        {{ economicClass.publicName }}
+                                    </h3>
                                     <p class="mt-1 text-sm text-white/35">
                                         {{ classDescriptions[economicClass.code] }}
                                     </p>
                                 </div>
-                                <span class="rounded-full bg-white/7 px-3 py-1 text-xs font-bold text-white/50">
+                                <span
+                                    class="rounded-full bg-white/7 px-3 py-1 text-xs font-bold text-white/50"
+                                >
                                     Actuel : {{ formatPercentage(economicClass.currentPercentage) }}
                                 </span>
                             </div>
@@ -242,7 +259,7 @@ const submit = () => {
                                         step="0.01"
                                         inputmode="decimal"
                                         required
-                                        class="w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 pr-12 text-2xl font-black outline-none transition focus:border-wasplex-cyan/55"
+                                        class="w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 pr-12 text-2xl font-black transition outline-none focus:border-wasplex-cyan/55"
                                     />
                                     <span
                                         class="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-lg font-black text-white/35"
@@ -277,13 +294,17 @@ const submit = () => {
                         {{ form.errors.percentages }}
                     </div>
 
-                    <div class="mt-7 flex flex-wrap items-center justify-between gap-5 border-t border-white/8 pt-7">
+                    <div
+                        class="mt-7 flex flex-wrap items-center justify-between gap-5 border-t border-white/8 pt-7"
+                    >
                         <div class="max-w-2xl">
-                            <p class="font-bold text-white/70">Aucun réglage technique à renseigner</p>
+                            <p class="font-bold text-white/70">
+                                Aucun réglage technique à renseigner
+                            </p>
                             <p class="mt-1 text-sm leading-6 text-white/35">
-                                Les noms, quotas et paramètres internes déjà publiés restent inchangés.
-                                Seuls les quatre pourcentages sont remplacés, ensemble et de manière
-                                traçable.
+                                Les noms, quotas et paramètres internes déjà publiés restent
+                                inchangés. Seuls les quatre pourcentages sont remplacés, ensemble et
+                                de manière traçable.
                             </p>
                         </div>
 
@@ -308,7 +329,9 @@ const submit = () => {
                 </form>
             </section>
 
-            <aside class="mt-6 rounded-2xl border border-wasplex-orange/15 bg-wasplex-orange/[0.045] p-5">
+            <aside
+                class="mt-6 rounded-2xl border border-wasplex-orange/15 bg-wasplex-orange/[0.045] p-5"
+            >
                 <p class="text-sm leading-6 text-white/45">
                     <span class="font-black text-wasplex-orange">Sécurité :</span>
                     la modification exige toujours la session fondatrice renforcée. L’ancienne
