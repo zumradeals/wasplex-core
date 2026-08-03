@@ -13,6 +13,7 @@ use App\Modules\Wallet\Application\Services\WalletCatalog;
 use App\Modules\Wallet\Application\Services\WalletProjector;
 use App\Modules\Wallet\Domain\Enums\ReservationStatus;
 use App\Modules\Wallet\Domain\Exceptions\InsufficientWalletBalance;
+use App\Modules\Wallet\Domain\Exceptions\WalletException;
 use App\Modules\Wallet\Infrastructure\Models\Wallet;
 use App\Modules\Wallet\Infrastructure\Models\WalletReservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,7 +104,7 @@ it('rejects reuse of a reservation key for a different economic intent', functio
         amountMinor: 800,
         businessReference: 'campaign:test:idempotency-other',
         idempotencyKey: 'reservation-same-key',
-    )))->toThrow(\App\Modules\Wallet\Domain\Exceptions\WalletException::class, 'autre réservation');
+    )))->toThrow(WalletException::class, 'autre réservation');
 
     expect(WalletReservation::query()->count())->toBe(1)
         ->and(LedgerTransaction::query()->where('type', 'VALUE_RESERVATION')->count())->toBe(1);
