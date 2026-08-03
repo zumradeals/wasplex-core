@@ -194,11 +194,11 @@ final class EconomicConfigurationService
 
     private function transitionAfter(EconomicClassVersion ...$versions): CarbonImmutable
     {
-        $transitionAt = CarbonImmutable::now();
+        $transitionAt = CarbonImmutable::now()->startOfSecond()->addSecond();
 
         foreach ($versions as $version) {
             if ($version->effective_from !== null && ! $transitionAt->greaterThan($version->effective_from)) {
-                $transitionAt = $version->effective_from->addSecond();
+                $transitionAt = $version->effective_from->startOfSecond()->addSecond();
             }
         }
 
