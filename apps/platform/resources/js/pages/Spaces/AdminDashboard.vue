@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import SpaceSwitcher from '@/components/SpaceSwitcher.vue';
 import WasplexMark from '@/components/WasplexMark.vue';
 
@@ -37,17 +37,18 @@ defineProps<{
                     <a class="block rounded-xl bg-white/8 px-4 py-3 text-white"
                         >Centre de pilotage</a
                     >
-                    <a
+                    <Link
                         v-for="item in [
                             'Comptes & espaces',
                             'Capacités',
                             'Organisations',
                             'Audit d’accès',
-                            'Incidents',
+                            'Wallet & dépôts',
                         ]"
                         :key="item"
                         class="block rounded-xl px-4 py-3 text-white/40 hover:bg-white/5 hover:text-white"
-                        >{{ item }}</a
+                        :href="item === 'Wallet & dépôts' ? '/administration/wallet' : '#'"
+                        >{{ item }}</Link
                     >
                 </nav>
                 <button

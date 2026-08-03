@@ -33,7 +33,7 @@ it('creates one universal account with its personal space and revocable session'
         ->and($session->active_space_id)->toBe($space->id)
         ->and($session->device?->platform)->toBe('Linux')
         ->and(SpaceMembership::query()->where('space_id', $space->id)->where('account_id', $account->id)->exists())->toBeTrue()
-        ->and(CapabilityGrant::query()->where('account_id', $account->id)->count())->toBe(3)
+        ->and(CapabilityGrant::query()->where('account_id', $account->id)->count())->toBe(6)
         ->and(AccessAuditEvent::query()->where('action', 'account.registered')->exists())->toBeTrue();
 
     $this->getJson('/api/me')

@@ -43,7 +43,14 @@ final class IdentityProvisioner
                 'title' => 'Propriétaire',
             ]);
 
-            foreach (['account.self.manage', 'account.sessions.manage', 'advertiser.space.activate'] as $capability) {
+            foreach ([
+                'account.self.manage',
+                'account.sessions.manage',
+                'advertiser.space.activate',
+                'wallet.view.self',
+                'wallet.deposit.create.self',
+                'wallet.history.view.self',
+            ] as $capability) {
                 $account->capabilityGrants()->create([
                     'space_id' => $space->id,
                     'capability' => $capability,

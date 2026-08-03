@@ -9,6 +9,9 @@ use App\Modules\Identity\Http\Controllers\OrganizationController;
 use App\Modules\Identity\Http\Controllers\RegisterController;
 use App\Modules\Identity\Http\Controllers\SpaceController;
 use App\Modules\Ledger\Http\Controllers\LedgerAdminController;
+use App\Modules\Wallet\Http\Controllers\GeniusPayWebhookController;
+use App\Modules\Wallet\Http\Controllers\WalletAdminController;
+use App\Modules\Wallet\Http\Controllers\WalletController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -22,6 +25,10 @@ Route::get('/health', function (): JsonResponse {
         ],
     ]);
 })->name('api.health');
+
+Route::post('/webhooks/geniuspay', GeniusPayWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('api.webhooks.geniuspay');
 
 Route::prefix('auth')->middleware('guest')->group(function (): void {
     Route::post('/register', RegisterController::class)->middleware('throttle:4,1');
@@ -51,6 +58,14 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
     Route::post('/invitations/{token}/accept', [OrganizationController::class, 'accept'])
         ->middleware('throttle:6,1');
 
+    Route::prefix('wallet')->group(function (): void {
+        Route::get('/', [WalletController::class, 'index']);
+        Route::get('/operations', [WalletController::class, 'operations']);
+        Route::get('/deposits', [WalletController::class, 'deposits']);
+        Route::post('/deposits', [WalletController::class, 'storeDeposit'])->middleware('throttle:6,1');
+        Route::get('/deposits/{depositId}', [WalletController::class, 'deposit']);
+    });
+
     Route::prefix('admin')->middleware(['space.kind:administration', 'mfa.recent'])->group(function (): void {
         Route::get('/accounts', [AdminController::class, 'accounts'])
             ->middleware('capability:admin.accounts.view');
@@ -69,5 +84,8 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             Route::get('/accounts', [LedgerAdminController::class, 'accounts'])
                 ->middleware('capability:wallet.ledger.view');
         });
+
+        Route::get('/wallet', [WalletAdminController::class, 'index'])
+            ->middleware('capability:wallet.deposit.review');
     });
 });

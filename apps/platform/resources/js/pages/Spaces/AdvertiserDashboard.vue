@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import SpaceSwitcher from '@/components/SpaceSwitcher.vue';
 import WasplexMark from '@/components/WasplexMark.vue';
 
@@ -10,13 +11,21 @@ type Space = {
     active: boolean;
 };
 
-defineProps<{
+const props = defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
+    wallet: { balances: { available: number; reserved: number; pending: number } };
 }>();
 
 const nav = ['Vue d’ensemble', 'Marques', 'Médias', 'Campagnes', 'Budget', 'Équipe'];
+const money = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
+const metrics = computed(() => [
+    { label: 'Budget disponible', value: `${money(props.wallet.balances.available)} WP` },
+    { label: 'Budget réservé', value: `${money(props.wallet.balances.reserved)} WP` },
+    { label: 'Campagnes actives', value: '0' },
+    { label: 'Membres', value: '1' },
+]);
 </script>
 
 <template>
@@ -74,12 +83,7 @@ const nav = ['Vue d’ensemble', 'Marques', 'Médias', 'Campagnes', 'Budget', '�
 
             <div class="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <article
-                    v-for="metric in [
-                        { label: 'Budget disponible', value: '— WP' },
-                        { label: 'Campagnes actives', value: '0' },
-                        { label: 'Audience touchée', value: '0' },
-                        { label: 'Membres', value: '1' },
-                    ]"
+                    v-for="metric in metrics"
                     :key="metric.label"
                     class="rounded-3xl border border-white/8 bg-white/[0.045] p-5"
                 >
@@ -103,7 +107,7 @@ const nav = ['Vue d’ensemble', 'Marques', 'Médias', 'Campagnes', 'Budget', '�
                         >
                     </div>
                     <div class="mt-8 space-y-4">
-                        <div
+                        <Link
                             v-for="(step, index) in [
                                 'Créer votre première marque',
                                 'Importer vos médias',
@@ -112,13 +116,14 @@ const nav = ['Vue d’ensemble', 'Marques', 'Médias', 'Campagnes', 'Budget', '�
                             ]"
                             :key="step"
                             class="flex items-center gap-4 rounded-2xl bg-black/15 p-4"
+                            :href="index === 2 ? '/studio/wallet' : '#'"
                         >
                             <span
                                 class="grid size-9 place-items-center rounded-xl bg-white/5 text-sm font-black text-white/45"
                                 >{{ index + 1 }}</span
                             >
                             <p class="font-semibold">{{ step }}</p>
-                        </div>
+                        </Link>
                     </div>
                 </article>
 

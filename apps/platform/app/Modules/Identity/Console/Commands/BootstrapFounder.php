@@ -48,6 +48,9 @@ final class BootstrapFounder extends Command
             'wallet.correction.propose',
             'wallet.correction.approve',
             'wallet.audit.view',
+            'wallet.deposit.review',
+            'wallet.reconciliation.manage',
+            'wallet.configuration.manage',
         ] as $name) {
             $alreadyGranted = $account->capabilityGrants()
                 ->where('space_id', $space->id)
