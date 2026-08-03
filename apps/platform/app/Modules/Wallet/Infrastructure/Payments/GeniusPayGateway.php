@@ -65,7 +65,7 @@ final class GeniusPayGateway implements PaymentGatewayContract
         }
 
         $tolerance = max(30, (int) config('services.geniuspay.webhook_tolerance_seconds', 300));
-        if (abs(now()->timestamp - (int) $timestamp) > $tolerance) {
+        if (abs((int) now()->timestamp - (int) $timestamp) > $tolerance) {
             throw new PaymentGatewayException('Le webhook GeniusPay est expiré.');
         }
 
@@ -118,7 +118,8 @@ final class GeniusPayGateway implements PaymentGatewayContract
                 'amount' => (int) $amount,
                 'status' => $status,
                 'environment' => $environment,
-                'metadata' => $safeMetadata,
+                'deposit_id' => $safeMetadata['deposit_id'] ?? null,
+                'wallet_id' => $safeMetadata['wallet_id'] ?? null,
             ],
         );
     }
