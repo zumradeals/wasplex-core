@@ -5,10 +5,12 @@ namespace App\Modules\EconomicConfiguration\Application\Services;
 use App\Modules\EconomicConfiguration\Domain\Enums\ConfigurationState;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClass;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClassVersion;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 
 final class EconomicConfigurationService
 {
@@ -65,32 +67,101 @@ final class EconomicConfigurationService
 
     public function publish(EconomicClassVersion $version, string $actorAccountId): EconomicClassVersion
     {
-        if ($version->state !== ConfigurationState::Approved) {
-            throw ValidationException::withMessages(['state' => 'La version doit être approuvée avant publication.']);
+        $published = $this->publishMany([$version->id], $actorAccountId)->first();
+
+        if (! $published instanceof EconomicClassVersion) {
+            throw new LogicException('La version économique publiée est introuvable.');
         }
 
-        return DB::transaction(function () use ($version, $actorAccountId): EconomicClassVersion {
-            $siblings = EconomicClassVersion::query()
-                ->where('economic_class_id', $version->economic_class_id)
-                ->where('state', ConfigurationState::Published)
+        return $published;
+    }
+
+    /**
+     * Publie une ou plusieurs versions approuvées dans une seule transaction afin que la
+     * répartition économique ne traverse jamais un état intermédiaire différent de 100 %.
+     *
+     * @param  list<string>  $versionIds
+     * @return Collection<int, EconomicClassVersion>
+     */
+    public function publishMany(array $versionIds, string $actorAccountId): Collection
+    {
+        $versionIds = array_values(array_unique(array_filter($versionIds)));
+
+        if ($versionIds === []) {
+            throw ValidationException::withMessages([
+                'version_ids' => 'Sélectionnez au moins une version approuvée à publier.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($versionIds, $actorAccountId): Collection {
+            $candidates = EconomicClassVersion::query()
+                ->whereIn('id', $versionIds)
                 ->lockForUpdate()
                 ->get();
 
-            foreach ($siblings as $published) {
-                $published->forceFill(['effective_to' => now()])->save();
+            if ($candidates->count() !== count($versionIds)) {
+                throw ValidationException::withMessages([
+                    'version_ids' => 'Une version sélectionnée est introuvable.',
+                ]);
             }
 
-            $version->forceFill([
-                'state' => ConfigurationState::Published,
-                'effective_from' => now(),
-                'published_at' => now(),
-                'published_by_account_id' => $actorAccountId,
-            ])->save();
+            if ($candidates->contains(
+                fn (EconomicClassVersion $version): bool => $version->state !== ConfigurationState::Approved,
+            )) {
+                throw ValidationException::withMessages([
+                    'version_ids' => 'Toutes les versions sélectionnées doivent être approuvées.',
+                ]);
+            }
 
-            $this->assertPublishedWeightsAfter($version);
+            if ($candidates->pluck('economic_class_id')->unique()->count() !== $candidates->count()) {
+                throw ValidationException::withMessages([
+                    'version_ids' => 'Une seule version peut être publiée par classe dans une même décision.',
+                ]);
+            }
+
+            $active = EconomicClassVersion::query()
+                ->where('state', ConfigurationState::Published)
+                ->where('effective_from', '<=', now())
+                ->where(fn ($query) => $query->whereNull('effective_to')->orWhere('effective_to', '>', now()))
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('economic_class_id');
+
+            $projected = $active->collect();
+
+            foreach ($candidates as $candidate) {
+                $projected->put($candidate->economic_class_id, $candidate);
+            }
+
+            if ($projected->count() !== 4 || $projected->sum('weight_basis_points') !== 10_000) {
+                throw ValidationException::withMessages([
+                    'version_ids' => 'La décision publiée doit couvrir quatre classes et totaliser exactement 100 %.',
+                ]);
+            }
+
+            $transitionAt = $this->transitionAfter(...$active->values()->all());
+
+            foreach ($candidates as $candidate) {
+                $current = $active->get($candidate->economic_class_id);
+
+                if ($current instanceof EconomicClassVersion && $current->id !== $candidate->id) {
+                    $current->forceFill(['effective_to' => $transitionAt])->save();
+                }
+
+                $candidate->forceFill([
+                    'state' => ConfigurationState::Published,
+                    'effective_from' => $transitionAt,
+                    'effective_to' => null,
+                    'published_at' => $transitionAt,
+                    'published_by_account_id' => $actorAccountId,
+                ])->save();
+            }
+
             DB::afterCommit(fn () => Cache::forget(self::CACHE_KEY));
 
-            return $version->refresh();
+            return $candidates
+                ->map(fn (EconomicClassVersion $version): EconomicClassVersion => $version->refresh())
+                ->values();
         });
     }
 
@@ -102,7 +173,7 @@ final class EconomicConfigurationService
 
         $version->forceFill([
             'state' => ConfigurationState::Suspended,
-            'effective_to' => now(),
+            'effective_to' => $this->transitionAfter($version),
             'suspended_by_account_id' => $actorAccountId,
             'suspension_reason' => trim($reason),
         ])->save();
@@ -121,6 +192,19 @@ final class EconomicConfigurationService
         return ['total_basis_points' => $total, 'valid' => $total === 10_000];
     }
 
+    private function transitionAfter(EconomicClassVersion ...$versions): CarbonImmutable
+    {
+        $transitionAt = CarbonImmutable::now()->startOfSecond()->addSecond();
+
+        foreach ($versions as $version) {
+            if ($version->effective_from !== null && ! $transitionAt->greaterThan($version->effective_from)) {
+                $transitionAt = $version->effective_from->startOfSecond()->addSecond();
+            }
+        }
+
+        return $transitionAt;
+    }
+
     private function assertVersionValues(EconomicClassVersion $version): void
     {
         if ($version->quota_monthly < 0) {
@@ -133,19 +217,6 @@ final class EconomicConfigurationService
 
         if ($version->targeting_coefficient_basis_points < 1) {
             throw ValidationException::withMessages(['targeting_coefficient_basis_points' => 'Le coefficient doit être strictement positif.']);
-        }
-    }
-
-    private function assertPublishedWeightsAfter(EconomicClassVersion $candidate): void
-    {
-        $active = EconomicClassVersion::query()
-            ->where('state', ConfigurationState::Published)
-            ->where('effective_from', '<=', now())
-            ->where(fn ($query) => $query->whereNull('effective_to')->orWhere('effective_to', '>', now()))
-            ->get();
-
-        if ($active->count() === 4 && $active->sum('weight_basis_points') !== 10_000) {
-            throw ValidationException::withMessages(['weight_basis_points' => 'Les quatre classes publiées doivent totaliser exactement 100 %.']);
         }
     }
 }
