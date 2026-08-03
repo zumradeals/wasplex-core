@@ -10,7 +10,7 @@ interface LedgerQueryContract
     public function transaction(string $transactionId): ?array;
 
     /**
-     * @param array<string, string> $filters
+     * @param  array<string, string>  $filters
      * @return LengthAwarePaginator<int, array<string, mixed>>
      */
     public function transactions(array $filters = [], int $perPage = 25): LengthAwarePaginator;

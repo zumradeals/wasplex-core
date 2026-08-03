@@ -8,6 +8,7 @@ use App\Modules\Ledger\Domain\Enums\EntryDirection;
 use App\Modules\Ledger\Domain\Exceptions\IdempotencyConflict;
 use App\Modules\Ledger\Domain\Exceptions\InvalidLedgerPosting;
 use App\Modules\Ledger\Domain\Exceptions\UnbalancedTransaction;
+use App\Modules\Ledger\Infrastructure\Models\LedgerAccount;
 use App\Modules\Ledger\Infrastructure\Models\LedgerEntry;
 use App\Modules\Ledger\Infrastructure\Models\LedgerIdempotencyKey;
 use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
@@ -124,7 +125,7 @@ it('refuses imbalance and account currency mismatch before commit', function ():
     expect(LedgerTransaction::query()->count())->toBe(0);
 });
 
-/** @return array{0: \App\Modules\Ledger\Infrastructure\Models\LedgerAccount, 1: \App\Modules\Ledger\Infrastructure\Models\LedgerAccount} */
+/** @return array{0: LedgerAccount, 1: LedgerAccount} */
 function createPostingLedgerCatalog(): array
 {
     $catalog = app(LedgerCatalog::class);

@@ -8,8 +8,8 @@ use DateTimeImmutable;
 final readonly class PostingRequest
 {
     /**
-     * @param list<PostingEntry> $entries
-     * @param array<string, mixed> $metadata
+     * @param  list<PostingEntry>  $entries
+     * @param  array<string, mixed>  $metadata
      */
     public function __construct(
         public string $journalCode,
