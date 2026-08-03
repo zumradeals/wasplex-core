@@ -3,9 +3,11 @@
 namespace App\Modules\Wallet\Infrastructure\Models;
 
 use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 /**
  * @property string $id
@@ -21,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $idempotency_key
  * @property string $description
  * @property array<string, mixed>|null $metadata
- * @property \Carbon\CarbonImmutable $occurred_at
+ * @property CarbonImmutable $occurred_at
  */
 class WalletOperation extends Model
 {
@@ -41,10 +43,10 @@ class WalletOperation extends Model
     protected static function booted(): void
     {
         static::updating(static function (): never {
-            throw new \LogicException('Une opération Wallet publiée est immuable.');
+            throw new LogicException('Une opération Wallet publiée est immuable.');
         });
         static::deleting(static function (): never {
-            throw new \LogicException('Une opération Wallet publiée est immuable.');
+            throw new LogicException('Une opération Wallet publiée est immuable.');
         });
     }
 
