@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { computed, reactive, ref, watch } from 'vue';
 import WasplexMark from '@/components/WasplexMark.vue';
 
 type ConfigurationState = 'draft' | 'approved' | 'published' | 'suspended';
@@ -104,10 +104,11 @@ const simulatedTotal = computed(() =>
 const simulationIsValid = computed(() => simulatedTotal.value === 10000);
 
 const percentage = (basisPoints: number) => `${(basisPoints / 100).toLocaleString('fr-FR')} %`;
-const coefficient = (basisPoints: number) => (basisPoints / 10000).toLocaleString('fr-FR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-});
+const coefficient = (basisPoints: number) =>
+    (basisPoints / 10000).toLocaleString('fr-FR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
 const date = (value: string | null) =>
     value
         ? new Intl.DateTimeFormat('fr-FR', {
@@ -140,8 +141,7 @@ const openDraft = (economicClass: EconomicClass) => {
     draftForm.public_name = source?.publicName ?? economicClass.code;
     draftForm.quota_monthly = source?.quotaMonthly ?? 0;
     draftForm.weight_basis_points = source?.weightBasisPoints ?? 0;
-    draftForm.targeting_coefficient_basis_points =
-        source?.targetingCoefficientBasisPoints ?? 10000;
+    draftForm.targeting_coefficient_basis_points = source?.targetingCoefficientBasisPoints ?? 10000;
     draftForm.features.fund_eligible = source?.fundEligible ?? false;
 };
 
@@ -172,10 +172,7 @@ const runAction = (key: string, url: string, data: Record<string, unknown> = {})
 };
 
 const approve = (version: EconomicVersion) => {
-    runAction(
-        `approve-${version.id}`,
-        `/administration/economie/versions/${version.id}/approuver`,
-    );
+    runAction(`approve-${version.id}`, `/administration/economie/versions/${version.id}/approuver`);
 };
 
 const publish = (version: EconomicVersion) => {
@@ -183,10 +180,7 @@ const publish = (version: EconomicVersion) => {
         return;
     }
 
-    runAction(
-        `publish-${version.id}`,
-        `/administration/economie/versions/${version.id}/publier`,
-    );
+    runAction(`publish-${version.id}`, `/administration/economie/versions/${version.id}/publier`);
 };
 
 const suspend = (version: EconomicVersion) => {
@@ -325,8 +319,8 @@ const verifySimulation = () => {
 
                     <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
                         <p class="text-sm text-white/40">
-                            La simulation ne publie rien. Elle vérifie uniquement la cohérence de
-                            la répartition proposée.
+                            La simulation ne publie rien. Elle vérifie uniquement la cohérence de la
+                            répartition proposée.
                         </p>
                         <button
                             type="button"
@@ -334,7 +328,11 @@ const verifySimulation = () => {
                             :disabled="simulationForm.processing"
                             @click="verifySimulation"
                         >
-                            {{ simulationForm.processing ? 'Vérification…' : 'Vérifier côté serveur' }}
+                            {{
+                                simulationForm.processing
+                                    ? 'Vérification…'
+                                    : 'Vérifier côté serveur'
+                            }}
                         </button>
                     </div>
                 </section>
@@ -356,8 +354,8 @@ const verifySimulation = () => {
                             périmètre tant qu’une décision fondatrice n’a pas été enregistrée.
                         </p>
                         <p>
-                            Une suspension exige un motif. Les anciennes versions demeurent
-                            visibles dans l’historique.
+                            Une suspension exige un motif. Les anciennes versions demeurent visibles
+                            dans l’historique.
                         </p>
                     </div>
                     <div
@@ -379,9 +377,7 @@ const verifySimulation = () => {
             <section class="mt-8">
                 <div class="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p
-                            class="text-xs font-black tracking-[0.18em] text-wasplex-gold uppercase"
-                        >
+                        <p class="text-xs font-black tracking-[0.18em] text-wasplex-gold uppercase">
                             Classes économiques
                         </p>
                         <h2 class="mt-2 text-3xl font-black">FREE, PREMIUM, GOLD, PLATINUM</h2>
@@ -398,7 +394,9 @@ const verifySimulation = () => {
                         :key="economicClass.id"
                         class="overflow-hidden rounded-3xl border border-white/8 bg-white/[0.03]"
                     >
-                        <header class="flex items-center justify-between border-b border-white/8 p-6">
+                        <header
+                            class="flex items-center justify-between border-b border-white/8 p-6"
+                        >
                             <div class="flex items-center gap-4">
                                 <span
                                     class="grid size-12 place-items-center rounded-2xl bg-white/8 text-sm font-black text-wasplex-cyan"
@@ -407,7 +405,9 @@ const verifySimulation = () => {
                                 </span>
                                 <div>
                                     <p class="text-xs font-bold text-white/35">Classe canonique</p>
-                                    <h3 class="mt-1 text-2xl font-black">{{ economicClass.code }}</h3>
+                                    <h3 class="mt-1 text-2xl font-black">
+                                        {{ economicClass.code }}
+                                    </h3>
                                 </div>
                             </div>
                             <span
@@ -433,7 +433,11 @@ const verifySimulation = () => {
                                 <div class="rounded-2xl bg-black/15 p-4">
                                     <p class="text-xs text-white/35">Quota mensuel</p>
                                     <p class="mt-2 font-black">
-                                        {{ economicClass.published.quotaMonthly.toLocaleString('fr-FR') }}
+                                        {{
+                                            economicClass.published.quotaMonthly.toLocaleString(
+                                                'fr-FR',
+                                            )
+                                        }}
                                     </p>
                                 </div>
                                 <div class="rounded-2xl bg-black/15 p-4">
@@ -495,10 +499,14 @@ const verifySimulation = () => {
                                         :key="version.id"
                                         class="rounded-2xl border border-white/8 bg-black/10 p-4"
                                     >
-                                        <div class="flex flex-wrap items-start justify-between gap-3">
+                                        <div
+                                            class="flex flex-wrap items-start justify-between gap-3"
+                                        >
                                             <div>
                                                 <div class="flex items-center gap-2">
-                                                    <span class="font-black">v{{ version.version }}</span>
+                                                    <span class="font-black"
+                                                        >v{{ version.version }}</span
+                                                    >
                                                     <span
                                                         class="rounded-full px-2.5 py-1 text-[11px] font-black"
                                                         :class="stateClass(version.state)"
@@ -508,7 +516,9 @@ const verifySimulation = () => {
                                                 </div>
                                                 <p class="mt-2 text-sm text-white/45">
                                                     {{ version.publicName }} ·
-                                                    {{ version.quotaMonthly.toLocaleString('fr-FR') }}
+                                                    {{
+                                                        version.quotaMonthly.toLocaleString('fr-FR')
+                                                    }}
                                                     unités ·
                                                     {{ percentage(version.weightBasisPoints) }}
                                                 </p>
@@ -554,7 +564,10 @@ const verifySimulation = () => {
                                         </div>
 
                                         <div
-                                            v-if="version.state === 'published' && !version.effectiveTo"
+                                            v-if="
+                                                version.state === 'published' &&
+                                                !version.effectiveTo
+                                            "
                                             class="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-4"
                                         >
                                             <input
@@ -600,9 +613,7 @@ const verifySimulation = () => {
             >
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p
-                            class="text-xs font-black tracking-[0.18em] text-wasplex-cyan uppercase"
-                        >
+                        <p class="text-xs font-black tracking-[0.18em] text-wasplex-cyan uppercase">
                             Nouvelle version · {{ selectedClass.code }}
                         </p>
                         <h2 class="mt-2 text-3xl font-black">Créer un brouillon</h2>
