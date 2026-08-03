@@ -58,6 +58,9 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             Route::post('/versions/{version}/approuver', [EconomicConfigurationAdminController::class, 'approve'])
                 ->middleware('capability:economic.configuration.approve')
                 ->name('versions.approve');
+            Route::post('/versions/publier-ensemble', [EconomicConfigurationAdminController::class, 'publishMany'])
+                ->middleware('capability:economic.configuration.publish')
+                ->name('versions.publish-many');
             Route::post('/versions/{version}/publier', [EconomicConfigurationAdminController::class, 'publish'])
                 ->middleware('capability:economic.configuration.publish')
                 ->name('versions.publish');
