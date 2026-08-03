@@ -79,6 +79,20 @@ jobs:
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
 
+      - name: Format frontend for P004-B repair
+        run: npm run format
+
+      - name: Upload formatted P004-B files
+        uses: actions/upload-artifact@v4
+        with:
+          name: p004b-formatted-vue
+          path: |
+            apps/platform/resources/js/pages/EconomicConfiguration/Admin.vue
+            apps/platform/resources/js/pages/EconomicConfiguration/AtomicPublicationPanel.vue
+            apps/platform/resources/js/pages/Spaces/AdminDashboard.vue
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Check frontend formatting
         run: npm run format:check
 
