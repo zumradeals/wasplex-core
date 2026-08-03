@@ -5,6 +5,7 @@ namespace App\Modules\Wallet\Application\Services;
 use App\Modules\Wallet\Infrastructure\Models\Wallet;
 use App\Modules\Wallet\Infrastructure\Models\WalletDeposit;
 use App\Modules\Wallet\Infrastructure\Models\WalletOperation;
+use LogicException;
 
 final class WalletPresenter
 {
@@ -13,6 +14,10 @@ final class WalletPresenter
     {
         $wallet->loadMissing('projection');
         $projection = $wallet->projection;
+
+        if ($projection === null) {
+            throw new LogicException('La projection comptable du Wallet est absente.');
+        }
 
         return [
             'id' => $wallet->id,
