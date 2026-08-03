@@ -19,17 +19,19 @@ git rev-parse HEAD
 WASPLEX_ROOT=/var/www/html/wasplex-core
 WASPLEX_PREVIOUS_COMMIT=$(git rev-parse HEAD)
 WASPLEX_DB_NAME=$(sed -n 's/^DB_DATABASE=//p' "$WASPLEX_ROOT/apps/platform/.env" | tail -n 1 | tr -d '\r"')
+WASPLEX_DB_PORT=$(sed -n 's/^DB_PORT=//p' "$WASPLEX_ROOT/apps/platform/.env" | tail -n 1 | tr -d '\r"')
+WASPLEX_DB_PORT=${WASPLEX_DB_PORT:-5432}
 WASPLEX_APP_URL=$(sed -n 's/^APP_URL=//p' "$WASPLEX_ROOT/apps/platform/.env" | tail -n 1 | tr -d '\r"')
 WASPLEX_APP_URL=${WASPLEX_APP_URL%/}
 WASPLEX_BACKUP_DIR=/var/backups/wasplex
 WASPLEX_BACKUP_FILE="$WASPLEX_BACKUP_DIR/p002-$(date -u +%Y%m%dT%H%M%SZ).dump"
 
 sudo install -d -o postgres -g postgres -m 700 "$WASPLEX_BACKUP_DIR"
-sudo -u postgres pg_dump --format=custom --file="$WASPLEX_BACKUP_FILE" "$WASPLEX_DB_NAME"
+sudo -u postgres pg_dump --port="$WASPLEX_DB_PORT" --dbname="$WASPLEX_DB_NAME" --format=custom --file="$WASPLEX_BACKUP_FILE"
 sudo test -s "$WASPLEX_BACKUP_FILE" && echo "Sauvegarde P002 vérifiée : $WASPLEX_BACKUP_FILE"
 ```
 
-La dernière commande doit afficher `Sauvegarde P002 vérifiée`. Sinon, arrêter.
+La dernière commande doit afficher `Sauvegarde P002 vérifiée`. Sinon, arrêter. Sur un serveur qui héberge plusieurs clusters PostgreSQL, ne jamais omettre le port lu depuis `.env`.
 
 ## 3. Activer la maintenance et récupérer `main`
 
