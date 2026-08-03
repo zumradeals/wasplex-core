@@ -49,6 +49,13 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             Route::get('/', [EconomicConfigurationAdminController::class, 'index'])
                 ->middleware('capability:economic.configuration.view')
                 ->name('index');
+            Route::post('/repartition', [EconomicConfigurationAdminController::class, 'applyDistribution'])
+                ->middleware([
+                    'capability:economic.configuration.manage',
+                    'capability:economic.configuration.approve',
+                    'capability:economic.configuration.publish',
+                ])
+                ->name('distribution.apply');
             Route::post('/simuler', [EconomicConfigurationAdminController::class, 'simulate'])
                 ->middleware('capability:economic.configuration.manage')
                 ->name('simulate');

@@ -77,6 +77,108 @@ final class EconomicConfigurationService
     }
 
     /**
+     * Applique une répartition exprimée directement en pourcentages par le fondateur.
+     * Les champs techniques de chaque classe sont conservés depuis la version publiée,
+     * tandis que la création, l'approbation et la publication restent traçables.
+     *
+     * @param  array<string, int|float|string>  $percentages
+     * @return Collection<int, EconomicClassVersion>
+     */
+    public function applyPercentageDistribution(array $percentages, string $actorAccountId): Collection
+    {
+        $classCodes = ['FREE', 'PREMIUM', 'GOLD', 'PLATINUM'];
+        $weights = (new Collection($classCodes))->mapWithKeys(function (string $code) use ($percentages): array {
+            if (! array_key_exists($code, $percentages)) {
+                throw ValidationException::withMessages([
+                    "percentages.{$code}" => "Le pourcentage {$code} est obligatoire.",
+                ]);
+            }
+
+            return [$code => $this->percentageToBasisPoints($percentages[$code])];
+        });
+
+        if ($weights->sum() !== 10_000) {
+            throw ValidationException::withMessages([
+                'percentages' => 'La somme des quatre pourcentages doit être exactement égale à 100 %.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($actorAccountId, $classCodes, $weights): Collection {
+            $classes = EconomicClass::query()
+                ->whereIn('code', $classCodes)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('code');
+
+            if ($classes->count() !== count($classCodes)) {
+                throw ValidationException::withMessages([
+                    'percentages' => 'Les quatre classes économiques canoniques sont obligatoires.',
+                ]);
+            }
+
+            $active = EconomicClassVersion::query()
+                ->whereIn('economic_class_id', $classes->pluck('id'))
+                ->where('state', ConfigurationState::Published)
+                ->where('effective_from', '<=', now())
+                ->where(fn ($query) => $query->whereNull('effective_to')->orWhere('effective_to', '>', now()))
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('economic_class_id');
+
+            if ($active->count() !== count($classCodes)) {
+                throw ValidationException::withMessages([
+                    'percentages' => 'Une version publiée doit exister pour chacune des quatre classes.',
+                ]);
+            }
+
+            /** @var Collection<int, EconomicClassVersion> $approved */
+            $approved = new Collection;
+
+            foreach ($classCodes as $code) {
+                $class = $classes->get($code);
+
+                if (! $class instanceof EconomicClass) {
+                    throw new LogicException("La classe économique {$code} est introuvable.");
+                }
+
+                $current = $active->get($class->id);
+
+                if (! $current instanceof EconomicClassVersion) {
+                    throw new LogicException("La version publiée de {$code} est introuvable.");
+                }
+
+                $weight = (int) $weights->get($code);
+
+                if ($current->weight_basis_points === $weight) {
+                    continue;
+                }
+
+                $draft = $this->createDraft($class, [
+                    'public_name' => $current->public_name,
+                    'quota_monthly' => $current->quota_monthly,
+                    'weight_basis_points' => $weight,
+                    'targeting_coefficient_basis_points' => $current->targeting_coefficient_basis_points,
+                    'features' => $current->features ?? [],
+                ], $actorAccountId);
+
+                $approved->push($this->approve($draft, $actorAccountId));
+            }
+
+            if ($approved->isEmpty()) {
+                return new Collection;
+            }
+
+            /** @var list<string> $approvedVersionIds */
+            $approvedVersionIds = $approved
+                ->map(fn (EconomicClassVersion $version): string => $version->id)
+                ->values()
+                ->all();
+
+            return $this->publishMany($approvedVersionIds, $actorAccountId);
+        });
+    }
+
+    /**
      * Publie une ou plusieurs versions approuvées dans une seule transaction afin que la
      * répartition économique ne traverse jamais un état intermédiaire différent de 100 %.
      *
@@ -190,6 +292,27 @@ final class EconomicConfigurationService
         $total = array_sum(array_map('intval', $weights));
 
         return ['total_basis_points' => $total, 'valid' => $total === 10_000];
+    }
+
+    private function percentageToBasisPoints(int|float|string $percentage): int
+    {
+        $normalized = str_replace(',', '.', trim((string) $percentage));
+
+        if (! is_numeric($normalized)) {
+            throw ValidationException::withMessages([
+                'percentages' => 'Chaque pourcentage doit être un nombre valide.',
+            ]);
+        }
+
+        $basisPoints = (int) round(((float) $normalized) * 100);
+
+        if ($basisPoints < 0 || $basisPoints > 10_000) {
+            throw ValidationException::withMessages([
+                'percentages' => 'Chaque pourcentage doit être compris entre 0 % et 100 %.',
+            ]);
+        }
+
+        return $basisPoints;
     }
 
     private function transitionAfter(EconomicClassVersion ...$versions): CarbonImmutable
