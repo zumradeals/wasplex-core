@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Models\UserSpace;
 use App\Modules\Ledger\Infrastructure\Models\LedgerAccount;
 use App\Modules\Wallet\Domain\Enums\WalletKind;
 use App\Modules\Wallet\Domain\Enums\WalletStatus;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,9 +31,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read UserSpace $space
  * @property-read Organization|null $organization
  * @property-read WalletBalanceProjection|null $projection
- * @property-read \Illuminate\Database\Eloquent\Collection<int, WalletOperation> $operations
- * @property-read \Illuminate\Database\Eloquent\Collection<int, WalletReservation> $reservations
- * @property-read \Illuminate\Database\Eloquent\Collection<int, WalletDeposit> $deposits
+ * @property-read Collection<int, WalletOperation> $operations
+ * @property-read Collection<int, WalletReservation> $reservations
+ * @property-read Collection<int, WalletDeposit> $deposits
  */
 class Wallet extends Model
 {
