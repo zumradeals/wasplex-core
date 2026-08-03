@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Admin from './Admin.vue';
-import AtomicPublicationPanel from './AtomicPublicationPanel.vue';
 
 type EconomicVersion = {
     id: string;
@@ -21,7 +20,7 @@ type EconomicVersion = {
 
 type EconomicClass = {
     id: string;
-    code: string;
+    code: 'FREE' | 'PREMIUM' | 'GOLD' | 'PLATINUM';
     status: string;
     latest: EconomicVersion | null;
     published: EconomicVersion | null;
@@ -44,5 +43,4 @@ defineProps<{
 
 <template>
     <Admin :classes="classes" :flash="flash" />
-    <AtomicPublicationPanel :classes="classes" />
 </template>
