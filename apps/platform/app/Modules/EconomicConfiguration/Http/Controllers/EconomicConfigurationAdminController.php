@@ -5,6 +5,8 @@ namespace App\Modules\EconomicConfiguration\Http\Controllers;
 use App\Modules\EconomicConfiguration\Application\Services\EconomicConfigurationService;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClass;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClassVersion;
+use App\Modules\Identity\Infrastructure\Models\Account;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,23 +29,23 @@ final readonly class EconomicConfigurationAdminController
             'features' => ['sometimes', 'array'],
         ]);
 
-        return response()->json($this->service->createDraft($economicClass, $data, (string) $request->user()->getAuthIdentifier()), 201);
+        return response()->json($this->service->createDraft($economicClass, $data, $this->actorId($request)), 201);
     }
 
     public function approve(Request $request, EconomicClassVersion $version): JsonResponse
     {
-        return response()->json($this->service->approve($version, (string) $request->user()->getAuthIdentifier()));
+        return response()->json($this->service->approve($version, $this->actorId($request)));
     }
 
     public function publish(Request $request, EconomicClassVersion $version): JsonResponse
     {
-        return response()->json($this->service->publish($version, (string) $request->user()->getAuthIdentifier()));
+        return response()->json($this->service->publish($version, $this->actorId($request)));
     }
 
     public function suspend(Request $request, EconomicClassVersion $version): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
-        $this->service->suspend($version, (string) $request->user()->getAuthIdentifier(), $data['reason']);
+        $this->service->suspend($version, $this->actorId($request), $data['reason']);
 
         return response()->json(['status' => 'suspended']);
     }
@@ -53,5 +55,16 @@ final readonly class EconomicConfigurationAdminController
         $data = $request->validate(['weights' => ['required', 'array', 'size:4'], 'weights.*' => ['integer', 'between:0,10000']]);
 
         return response()->json($this->service->simulateWeights($data['weights']));
+    }
+
+    private function actorId(Request $request): string
+    {
+        $account = $request->user();
+
+        if (! $account instanceof Account) {
+            throw new AuthenticationException;
+        }
+
+        return (string) $account->getAuthIdentifier();
     }
 }
