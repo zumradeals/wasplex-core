@@ -16,6 +16,20 @@ defineProps<{
     spaces: Space[];
     metrics: { accounts: number; spaces: number };
 }>();
+
+const navigation = [
+    { label: 'Centre de pilotage', href: '/administration', active: true },
+    { label: 'Comptes & espaces', href: '#', active: false },
+    { label: 'Capacités', href: '#', active: false },
+    { label: 'Organisations', href: '#', active: false },
+    { label: 'Audit d’accès', href: '#', active: false },
+    { label: 'Wallet & dépôts', href: '/administration/wallet', active: false },
+    {
+        label: 'Économie & abonnements',
+        href: '/administration/economie',
+        active: false,
+    },
+];
 </script>
 
 <template>
@@ -34,22 +48,19 @@ defineProps<{
                     <p class="mt-2 text-sm text-white/45">MFA vérifiée · accès nominatif</p>
                 </div>
                 <nav class="mt-8 space-y-1 text-sm font-semibold">
-                    <a class="block rounded-xl bg-white/8 px-4 py-3 text-white"
-                        >Centre de pilotage</a
-                    >
                     <Link
-                        v-for="item in [
-                            'Comptes & espaces',
-                            'Capacités',
-                            'Organisations',
-                            'Audit d’accès',
-                            'Wallet & dépôts',
-                        ]"
-                        :key="item"
-                        class="block rounded-xl px-4 py-3 text-white/40 hover:bg-white/5 hover:text-white"
-                        :href="item === 'Wallet & dépôts' ? '/administration/wallet' : '#'"
-                        >{{ item }}</Link
+                        v-for="item in navigation"
+                        :key="item.label"
+                        :href="item.href"
+                        class="block rounded-xl px-4 py-3 transition"
+                        :class="
+                            item.active
+                                ? 'bg-white/8 text-white'
+                                : 'text-white/40 hover:bg-white/5 hover:text-white'
+                        "
                     >
+                        {{ item.label }}
+                    </Link>
                 </nav>
                 <button
                     class="mt-10 text-xs font-bold text-white/35"
@@ -118,25 +129,49 @@ defineProps<{
                                 :key="item"
                                 class="flex items-center justify-between py-4"
                             >
-                                <span class="font-semibold">{{ item }}</span
-                                ><span class="text-xs font-bold text-emerald-300">ACTIF</span>
+                                <span class="font-semibold">{{ item }}</span>
+                                <span class="text-xs font-bold text-emerald-300">ACTIF</span>
                             </div>
                         </div>
                     </article>
-                    <article
-                        class="rounded-3xl border border-wasplex-orange/15 bg-wasplex-orange/[0.055] p-7"
-                    >
-                        <p class="text-xs font-bold tracking-widest text-wasplex-orange uppercase">
-                            Autorité contrôlée
-                        </p>
-                        <h2 class="mt-4 text-2xl font-black">
-                            Chaque intervention laisse une preuve.
-                        </h2>
-                        <p class="mt-4 text-sm leading-6 text-white/45">
-                            Les futures actions critiques exigeront capacité, contexte,
-                            justification, MFA et événement d’audit.
-                        </p>
-                    </article>
+
+                    <div class="space-y-6">
+                        <Link
+                            href="/administration/economie"
+                            class="block rounded-3xl border border-wasplex-cyan/20 bg-wasplex-cyan/[0.055] p-7 transition hover:border-wasplex-cyan/40 hover:bg-wasplex-cyan/[0.08]"
+                        >
+                            <p
+                                class="text-xs font-bold tracking-widest text-wasplex-cyan uppercase"
+                            >
+                                P004 · Noyau économique
+                            </p>
+                            <h2 class="mt-4 text-2xl font-black">Configurer l’économie Wasplex</h2>
+                            <p class="mt-4 text-sm leading-6 text-white/45">
+                                Piloter les classes FREE, PREMIUM, GOLD et PLATINUM, leurs quotas,
+                                leurs poids et leurs versions publiées.
+                            </p>
+                            <span class="mt-6 inline-flex text-sm font-black text-wasplex-cyan">
+                                Ouvrir la configuration →
+                            </span>
+                        </Link>
+
+                        <article
+                            class="rounded-3xl border border-wasplex-orange/15 bg-wasplex-orange/[0.055] p-7"
+                        >
+                            <p
+                                class="text-xs font-bold tracking-widest text-wasplex-orange uppercase"
+                            >
+                                Autorité contrôlée
+                            </p>
+                            <h2 class="mt-4 text-2xl font-black">
+                                Chaque intervention laisse une preuve.
+                            </h2>
+                            <p class="mt-4 text-sm leading-6 text-white/45">
+                                Les actions critiques exigent capacité, contexte, justification,
+                                MFA et historique de version.
+                            </p>
+                        </article>
+                    </div>
                 </div>
             </section>
         </div>
