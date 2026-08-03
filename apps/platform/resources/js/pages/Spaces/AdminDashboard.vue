@@ -167,8 +167,8 @@ const navigation = [
                                 Chaque intervention laisse une preuve.
                             </h2>
                             <p class="mt-4 text-sm leading-6 text-white/45">
-                                Les actions critiques exigent capacité, contexte, justification,
-                                MFA et historique de version.
+                                Les actions critiques exigent capacité, contexte, justification, MFA
+                                et historique de version.
                             </p>
                         </article>
                     </div>
