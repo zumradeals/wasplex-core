@@ -4,6 +4,7 @@ namespace App\Modules\Wallet\Infrastructure\Models;
 
 use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
 use App\Modules\Wallet\Domain\Enums\ReservationStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,8 +21,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ReservationStatus $status
  * @property string $business_reference
  * @property string $idempotency_key
- * @property \Carbon\CarbonImmutable|null $expires_at
- * @property \Carbon\CarbonImmutable|null $resolved_at
+ * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $resolved_at
  * @property array<string, mixed>|null $metadata
  */
 class WalletReservation extends Model
