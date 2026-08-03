@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Modules\EconomicConfiguration;
 
+use App\Modules\EconomicConfiguration\Application\Services\EconomicConfigurationService;
 use App\Modules\EconomicConfiguration\Console\Commands\BootstrapEconomicConfiguration;
 use App\Modules\EconomicConfiguration\Domain\Enums\ConfigurationState;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClass;
@@ -41,7 +42,7 @@ final class EconomicConfigurationAdminTest extends TestCase
             ->get(route('admin.economy.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page): Assert => $page
-                ->component('EconomicConfiguration/Admin')
+                ->component('EconomicConfiguration/AdminConsole')
                 ->has('classes', 4)
                 ->where('classes.0.code', 'FREE')
                 ->where('classes.0.published.state', ConfigurationState::Published->value)
@@ -99,6 +100,49 @@ final class EconomicConfigurationAdminTest extends TestCase
         expect($version->state)->toBe(ConfigurationState::Suspended)
             ->and($version->suspended_by_account_id)->toBe($account->id)
             ->and($version->suspension_reason)->toBe('Suspension de validation fonctionnelle.');
+    }
+
+    public function test_founder_can_publish_compensating_weight_changes_atomically(): void
+    {
+        $account = $this->account();
+        $service = app(EconomicConfigurationService::class);
+        $free = EconomicClass::query()->where('code', 'FREE')->firstOrFail();
+        $premium = EconomicClass::query()->where('code', 'PREMIUM')->firstOrFail();
+
+        $freeVersion = $service->createDraft($free, [
+            'public_name' => 'Gratuit',
+            'quota_monthly' => 120,
+            'weight_basis_points' => 1200,
+            'targeting_coefficient_basis_points' => 10000,
+            'features' => ['fund_eligible' => false],
+        ], $account->id);
+        $premiumVersion = $service->createDraft($premium, [
+            'public_name' => 'Premium',
+            'quota_monthly' => 300,
+            'weight_basis_points' => 1800,
+            'targeting_coefficient_basis_points' => 11500,
+            'features' => ['fund_eligible' => true],
+        ], $account->id);
+
+        $service->approve($freeVersion, $account->id);
+        $service->approve($premiumVersion, $account->id);
+
+        $this->actingAs($account)
+            ->post(route('admin.economy.versions.publish-many'), [
+                'version_ids' => [$freeVersion->id, $premiumVersion->id],
+            ])
+            ->assertRedirect(route('admin.economy.index'))
+            ->assertSessionHas('success');
+
+        $freeVersion->refresh();
+        $premiumVersion->refresh();
+
+        expect($freeVersion->state)->toBe(ConfigurationState::Published)
+            ->and($premiumVersion->state)->toBe(ConfigurationState::Published)
+            ->and($freeVersion->published_by_account_id)->toBe($account->id)
+            ->and($premiumVersion->published_by_account_id)->toBe($account->id)
+            ->and($service->published()->sum('weight_basis_points'))->toBe(10_000)
+            ->and($service->published())->toHaveCount(4);
     }
 
     public function test_server_simulation_returns_a_visible_validation_result(): void
