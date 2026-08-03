@@ -110,7 +110,10 @@ final class EconomicConfigurationService
         Cache::forget(self::CACHE_KEY);
     }
 
-    /** @return array{total_basis_points:int,valid:bool} */
+    /**
+     * @param  array<array-key, int|string>  $weights
+     * @return array{total_basis_points:int,valid:bool}
+     */
     public function simulateWeights(array $weights): array
     {
         $total = array_sum(array_map('intval', $weights));
