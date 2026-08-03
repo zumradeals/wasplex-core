@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { RequestPayload } from '@inertiajs/core';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import WasplexMark from '@/components/WasplexMark.vue';
@@ -161,7 +162,7 @@ const submitDraft = () => {
     });
 };
 
-const runAction = (key: string, url: string, data: Record<string, unknown> = {}) => {
+const runAction = (key: string, url: string, data: RequestPayload = {}) => {
     actionBusy.value = key;
     router.post(url, data, {
         preserveScroll: true,
