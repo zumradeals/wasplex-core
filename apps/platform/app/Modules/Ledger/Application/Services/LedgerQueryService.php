@@ -70,18 +70,7 @@ final class LedgerQueryService implements LedgerQueryContract
             ->with('accountType')
             ->orderBy('code')
             ->paginate(min(max($perPage, 1), 100))
-            ->through(static fn (LedgerAccount $account): array => [
-                'id' => $account->id,
-                'code' => $account->code,
-                'type' => $account->accountType->code,
-                'owner_type' => $account->owner_type,
-                'owner_id' => $account->owner_id,
-                'unit' => $account->unit,
-                'currency' => $account->currency,
-                'status' => $account->status->value,
-                'country_code' => $account->country_code,
-                'created_at' => $account->created_at?->toIso8601String(),
-            ]);
+            ->through(fn (LedgerAccount $account): array => $this->accountSummary($account));
     }
 
     /** @return array<string, mixed> */
@@ -100,6 +89,23 @@ final class LedgerQueryService implements LedgerQueryContract
             'created_by_account_id' => $transaction->created_by_account_id,
             'beneficiary_account_id' => $transaction->beneficiary_account_id,
             'posted_at' => $transaction->posted_at->toIso8601String(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function accountSummary(LedgerAccount $account): array
+    {
+        return [
+            'id' => $account->id,
+            'code' => $account->code,
+            'type' => $account->accountType->code,
+            'owner_type' => $account->owner_type,
+            'owner_id' => $account->owner_id,
+            'unit' => $account->unit,
+            'currency' => $account->currency,
+            'status' => $account->status->value,
+            'country_code' => $account->country_code,
+            'created_at' => $account->created_at?->toIso8601String(),
         ];
     }
 }

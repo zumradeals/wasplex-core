@@ -179,6 +179,15 @@ final readonly class LedgerPoster implements LedgerContract
                 }
             }
 
+            /** @var list<PostingEntry> $reversalEntries */
+            $reversalEntries = $original->entries->map(static fn (LedgerEntry $entry): PostingEntry => new PostingEntry(
+                accountId: $entry->account_id,
+                direction: $entry->direction->opposite(),
+                amountMinor: $entry->amount_minor,
+                description: Str::limit("Compensation — {$entry->description}", 500, ''),
+                externalReference: $entry->external_reference,
+            ))->values()->all();
+
             $request = new PostingRequest(
                 journalCode: $original->journal->code,
                 type: 'REVERSAL',
@@ -187,13 +196,7 @@ final readonly class LedgerPoster implements LedgerContract
                 idempotencyKey: $idempotencyKey,
                 unit: $original->unit,
                 currency: $original->currency,
-                entries: $original->entries->map(static fn (LedgerEntry $entry): PostingEntry => new PostingEntry(
-                    accountId: $entry->account_id,
-                    direction: $entry->direction->opposite(),
-                    amountMinor: $entry->amount_minor,
-                    description: Str::limit("Compensation — {$entry->description}", 500, ''),
-                    externalReference: $entry->external_reference,
-                ))->values()->all(),
+                entries: $reversalEntries,
                 actorAccountId: $actorAccountId,
                 beneficiaryAccountId: $original->beneficiary_account_id,
                 justification: $justification,
