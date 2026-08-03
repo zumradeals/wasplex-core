@@ -24,6 +24,7 @@ final class EconomicConfigurationAdminTest extends TestCase
     {
         parent::setUp();
 
+        $this->withoutVite();
         $this->withoutMiddleware([
             EnsureAccountSessionActive::class,
             RequireCapability::class,
