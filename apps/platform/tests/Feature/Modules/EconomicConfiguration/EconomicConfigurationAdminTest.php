@@ -49,6 +49,77 @@ final class EconomicConfigurationAdminTest extends TestCase
                 ->where('classes.0.published.quotaMonthly', 120));
     }
 
+    public function test_founder_can_apply_simple_percentages_and_preserve_technical_values(): void
+    {
+        $account = $this->account();
+        $gold = EconomicClass::query()->where('code', 'GOLD')->firstOrFail();
+        $goldBefore = EconomicClassVersion::query()
+            ->where('economic_class_id', $gold->id)
+            ->where('state', ConfigurationState::Published)
+            ->whereNull('effective_to')
+            ->firstOrFail();
+
+        $this->actingAs($account)
+            ->post(route('admin.economy.distribution.apply'), [
+                'percentages' => [
+                    'FREE' => 40,
+                    'PREMIUM' => 30,
+                    'GOLD' => 20,
+                    'PLATINUM' => 10,
+                ],
+            ])
+            ->assertRedirect(route('admin.economy.index'))
+            ->assertSessionHas('success');
+
+        $weights = EconomicClassVersion::query()
+            ->with('economicClass')
+            ->where('state', ConfigurationState::Published)
+            ->whereNull('effective_to')
+            ->get()
+            ->mapWithKeys(fn (EconomicClassVersion $version): array => [
+                $version->economicClass->code => $version->weight_basis_points,
+            ]);
+
+        $goldAfter = EconomicClassVersion::query()
+            ->where('economic_class_id', $gold->id)
+            ->where('state', ConfigurationState::Published)
+            ->whereNull('effective_to')
+            ->firstOrFail();
+
+        expect($weights->all())->toBe([
+            'FREE' => 4000,
+            'PREMIUM' => 3000,
+            'GOLD' => 2000,
+            'PLATINUM' => 1000,
+        ])->and($goldAfter->quota_monthly)->toBe($goldBefore->quota_monthly)
+            ->and($goldAfter->targeting_coefficient_basis_points)
+            ->toBe($goldBefore->targeting_coefficient_basis_points)
+            ->and($goldAfter->features)->toBe($goldBefore->features)
+            ->and($goldAfter->created_by_account_id)->toBe($account->id)
+            ->and($goldAfter->approved_by_account_id)->toBe($account->id)
+            ->and($goldAfter->published_by_account_id)->toBe($account->id);
+    }
+
+    public function test_simple_percentage_distribution_rejects_a_total_other_than_one_hundred_percent(): void
+    {
+        $versionsBefore = EconomicClassVersion::query()->count();
+
+        $this->actingAs($this->account())
+            ->from(route('admin.economy.index'))
+            ->post(route('admin.economy.distribution.apply'), [
+                'percentages' => [
+                    'FREE' => 50,
+                    'PREMIUM' => 20,
+                    'GOLD' => 20,
+                    'PLATINUM' => 20,
+                ],
+            ])
+            ->assertRedirect(route('admin.economy.index'))
+            ->assertSessionHasErrors('percentages');
+
+        expect(EconomicClassVersion::query()->count())->toBe($versionsBefore);
+    }
+
     public function test_founder_can_version_approve_publish_and_suspend_a_class(): void
     {
         $account = $this->account();
