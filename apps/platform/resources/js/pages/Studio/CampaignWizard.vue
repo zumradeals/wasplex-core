@@ -104,7 +104,7 @@ const steps = [
 const version = props.campaign?.version;
 const currentStep = ref(props.campaign?.currentStep ?? 1);
 const saveState = ref<'idle' | 'saving' | 'saved'>('idle');
-let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autosaveTimer: number | null = null;
 
 const form = useForm({
     name: props.campaign?.name ?? '',
