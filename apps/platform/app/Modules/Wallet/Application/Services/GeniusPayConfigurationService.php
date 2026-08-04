@@ -263,19 +263,29 @@ final class GeniusPayConfigurationService
             'services.geniuspay.checkout_hosts',
             $this->defaultCheckoutHosts(),
         ));
+        $apiKey = $configuration instanceof PaymentProviderConfiguration
+            ? (string) $configuration->api_key
+            : ($useFallback ? (string) config('services.geniuspay.api_key', '') : '');
+        $apiSecret = $configuration instanceof PaymentProviderConfiguration
+            ? (string) $configuration->api_secret
+            : ($useFallback ? (string) config('services.geniuspay.api_secret', '') : '');
+        $webhookSecret = $configuration instanceof PaymentProviderConfiguration
+            ? (string) $configuration->webhook_secret
+            : ($useFallback ? (string) config('services.geniuspay.webhook_secret', '') : '');
+        $baseUrl = $configuration instanceof PaymentProviderConfiguration
+            ? $configuration->base_url
+            : ($useFallback ? $fallbackBaseUrl : $this->defaultBaseUrl());
+        $checkoutHosts = $configuration instanceof PaymentProviderConfiguration
+            ? $configuration->checkout_hosts
+            : ($useFallback ? $fallbackCheckoutHosts : $this->defaultCheckoutHosts());
 
         return [
             'environment' => $environment,
-            'api_key' => $configuration?->api_key
-                ?? ($useFallback ? (string) config('services.geniuspay.api_key', '') : ''),
-            'api_secret' => $configuration?->api_secret
-                ?? ($useFallback ? (string) config('services.geniuspay.api_secret', '') : ''),
-            'webhook_secret' => $configuration?->webhook_secret
-                ?? ($useFallback ? (string) config('services.geniuspay.webhook_secret', '') : ''),
-            'base_url' => $configuration?->base_url
-                ?: ($useFallback ? $fallbackBaseUrl : $this->defaultBaseUrl()),
-            'checkout_hosts' => $configuration?->checkout_hosts
-                ?: ($useFallback ? $fallbackCheckoutHosts : $this->defaultCheckoutHosts()),
+            'api_key' => $apiKey,
+            'api_secret' => $apiSecret,
+            'webhook_secret' => $webhookSecret,
+            'base_url' => $baseUrl,
+            'checkout_hosts' => $checkoutHosts,
             'webhook_tolerance_seconds' => max(
                 30,
                 (int) config('services.geniuspay.webhook_tolerance_seconds', 300),
