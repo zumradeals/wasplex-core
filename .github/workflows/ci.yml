@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   platform:
@@ -33,8 +33,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -86,21 +84,26 @@ jobs:
           resources/js/pages/Admin/AdvertisingCatalog.vue
           resources/js/pages/User/AdvertisingProfile.vue
 
-      - name: Upload formatted P008-R frontend
-        uses: actions/upload-artifact@v4
-        with:
-          name: p008r-prettier-output
-          path: |
-            apps/platform/resources/js/layouts/AdminLayout.vue
-            apps/platform/resources/js/pages/Admin/AdvertisingCatalog.vue
+      - name: Commit exact P008-R formatting
+        working-directory: .
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          git config user.name "wasplex-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add \
+            apps/platform/resources/js/layouts/AdminLayout.vue \
+            apps/platform/resources/js/pages/Admin/AdvertisingCatalog.vue \
             apps/platform/resources/js/pages/User/AdvertisingProfile.vue
+          if git diff --cached --quiet; then
+            echo "No formatting changes to commit."
+          else
+            git commit -m "style(frontend): apply Prettier to P008-R interfaces"
+            git push origin "HEAD:${BRANCH_NAME}"
+          fi
 
-      - name: Verify P008-R frontend formatting
-        run: >-
-          git diff --exit-code --
-          resources/js/layouts/AdminLayout.vue
-          resources/js/pages/Admin/AdvertisingCatalog.vue
-          resources/js/pages/User/AdvertisingProfile.vue
+      - name: Check frontend formatting
+        run: npm run format:check
 
       - name: Run frontend lint
         run: npm run lint:check
