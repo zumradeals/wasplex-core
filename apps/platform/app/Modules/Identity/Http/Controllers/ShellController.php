@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Http\Controllers;
 
+use App\Modules\Campaign\Application\Services\CampaignReviewService;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
@@ -17,6 +18,7 @@ final class ShellController
     public function __construct(
         private readonly WalletCatalog $wallets,
         private readonly WalletPresenter $walletPresenter,
+        private readonly CampaignReviewService $campaignReviews,
     ) {}
 
     public function home(Request $request): RedirectResponse
@@ -47,6 +49,7 @@ final class ShellController
             'metrics' => [
                 'accounts' => Account::query()->count(),
                 'spaces' => UserSpace::query()->count(),
+                'campaignReviews' => $this->campaignReviews->pendingCount(),
             ],
         ]);
     }
