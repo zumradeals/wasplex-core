@@ -176,7 +176,7 @@ final class GeniusPayGateway implements PaymentGatewayContract
         }
 
         if ($mode === 'production' && ! $this->settings->productionActivationAllowed()) {
-            throw new PaymentGatewayException('L’activation GeniusPay Production est verrouillée par la gouvernance Wasplex.');
+            throw new PaymentGatewayException('P003 interdit toute activation GeniusPay en production tant que le verrou de gouvernance est actif.');
         }
 
         if (parse_url($baseUrl, PHP_URL_SCHEME) !== 'https') {
@@ -358,7 +358,7 @@ final class GeniusPayGateway implements PaymentGatewayContract
     }
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      * @return array<string, scalar|null>
      */
     private function safeMetadata(array $metadata): array
