@@ -28,12 +28,7 @@ final class GeniusPayConfigurationService
             return $this->effectiveConfiguration($active->environment, $active);
         }
 
-        $environment = strtolower((string) config('services.geniuspay.mode', 'sandbox'));
-        if (! in_array($environment, self::ENVIRONMENTS, true)) {
-            $environment = 'sandbox';
-        }
-
-        return $this->effectiveConfiguration($environment, null);
+        return $this->effectiveConfiguration($this->fallbackEnvironment(), null);
     }
 
     /** @return array<string, mixed> */
@@ -48,10 +43,9 @@ final class GeniusPayConfigurationService
             ->where('provider', self::PROVIDER)
             ->where('is_active', true)
             ->value('environment');
-        $fallbackEnvironment = strtolower((string) config('services.geniuspay.mode', 'sandbox'));
         $isActive = is_string($activeStoredEnvironment)
             ? $activeStoredEnvironment === $environment
-            : $fallbackEnvironment === $environment;
+            : $this->fallbackEnvironment() === $environment;
         $effective = $this->effectiveConfiguration($environment, $configuration);
 
         return [
@@ -257,8 +251,15 @@ final class GeniusPayConfigurationService
         string $environment,
         ?PaymentProviderConfiguration $configuration,
     ): array {
-        $fallbackEnvironment = strtolower((string) config('services.geniuspay.mode', 'sandbox'));
-        $useFallback = $fallbackEnvironment === $environment;
+        $useFallback = $this->fallbackEnvironment() === $environment;
+        $fallbackBaseUrl = rtrim(
+            (string) config('services.geniuspay.base_url', $this->defaultBaseUrl()),
+            '/',
+        );
+        $fallbackCheckoutHosts = array_values((array) config(
+            'services.geniuspay.checkout_hosts',
+            $this->defaultCheckoutHosts(),
+        ));
 
         return [
             'environment' => $environment,
@@ -268,13 +269,26 @@ final class GeniusPayConfigurationService
                 ?? ($useFallback ? (string) config('services.geniuspay.api_secret', '') : ''),
             'webhook_secret' => $configuration?->webhook_secret
                 ?? ($useFallback ? (string) config('services.geniuspay.webhook_secret', '') : ''),
-            'base_url' => $configuration?->base_url ?: $this->defaultBaseUrl(),
-            'checkout_hosts' => $configuration?->checkout_hosts ?: $this->defaultCheckoutHosts(),
+            'base_url' => $configuration?->base_url
+                ?: ($useFallback ? $fallbackBaseUrl : $this->defaultBaseUrl()),
+            'checkout_hosts' => $configuration?->checkout_hosts
+                ?: ($useFallback ? $fallbackCheckoutHosts : $this->defaultCheckoutHosts()),
             'webhook_tolerance_seconds' => max(
                 30,
                 (int) config('services.geniuspay.webhook_tolerance_seconds', 300),
             ),
         ];
+    }
+
+    private function fallbackEnvironment(): string
+    {
+        $environment = strtolower(trim((string) config('services.geniuspay.mode', 'sandbox')));
+
+        if ($environment === 'live') {
+            return 'production';
+        }
+
+        return in_array($environment, self::ENVIRONMENTS, true) ? $environment : 'sandbox';
     }
 
     private function environment(string $environment): string
