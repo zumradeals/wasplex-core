@@ -14,10 +14,6 @@ final class AdvertisingExplanationService
         $reasons = [];
 
         foreach ($match->explanation_tokens as $token) {
-            if (! is_string($token)) {
-                continue;
-            }
-
             $reason = $this->reason($token);
 
             if ($reason !== null) {
@@ -56,7 +52,7 @@ final class AdvertisingExplanationService
     private function reason(string $token): ?string
     {
         $parts = explode(':', $token, 3);
-        $kind = $parts[0] ?? '';
+        $kind = $parts[0];
         $code = $parts[1] ?? '';
         $value = $parts[2] ?? '';
 
