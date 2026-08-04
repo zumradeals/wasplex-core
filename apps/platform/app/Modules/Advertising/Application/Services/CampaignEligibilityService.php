@@ -282,13 +282,18 @@ final readonly class CampaignEligibilityService
             ];
         }
 
+        $windowSeconds = $hours * 3600;
+        $windowStartTimestamp = intdiv($now->timestamp, $windowSeconds) * $windowSeconds;
+        $windowStart = $now->copy()->setTimestamp($windowStartTimestamp)->utc();
+        $windowEnd = $windowStart->copy()->addSeconds($windowSeconds);
+
         return [
             'impressions' => 0,
             'limit' => max(1, (int) config('advertising.frequency_limit', 3)),
             'fatigueScore' => 0,
             'fatigueLimit' => max(1, (int) config('advertising.fatigue_limit', 100)),
-            'windowStart' => $now->copy()->subHours($hours)->toIso8601String(),
-            'windowEnd' => $now->copy()->addHours($hours)->toIso8601String(),
+            'windowStart' => $windowStart->toIso8601String(),
+            'windowEnd' => $windowEnd->toIso8601String(),
         ];
     }
 
