@@ -14,5 +14,6 @@ return [
         'webhook_tolerance_seconds' => (int) env('GENIUSPAY_WEBHOOK_TOLERANCE_SECONDS', 300),
         'minimum_deposit_minor' => (int) env('GENIUSPAY_MINIMUM_DEPOSIT_MINOR', 200),
         'maximum_deposit_minor' => (int) env('GENIUSPAY_MAXIMUM_DEPOSIT_MINOR', 5000000),
+        'allow_production_activation' => (bool) env('GENIUSPAY_ALLOW_PRODUCTION_ACTIVATION', false),
     ],
 ];
