@@ -20,6 +20,7 @@ final readonly class AdvertisingSegmentService
     public function __construct(
         private AdvertisingProfileService $profiles,
         private EconomicClassEligibilityProjection $economicClasses,
+        private AdvertisingConfigurationService $configuration,
     ) {}
 
     /** @return array<int, array<string, mixed>> */
@@ -95,8 +96,16 @@ final readonly class AdvertisingSegmentService
         }
 
         $ruleVersion = hash('sha256', $this->encode($normalized));
+        $minimumSize = $this->configuration->runtime()['minimumSegmentSize'];
 
-        return DB::transaction(function () use ($campaign, $version, $actor, $normalized, $ruleVersion): AdvertisingSegment {
+        return DB::transaction(function () use (
+            $campaign,
+            $version,
+            $actor,
+            $normalized,
+            $ruleVersion,
+            $minimumSize,
+        ): AdvertisingSegment {
             $locked = Campaign::query()->whereKey($campaign->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->active_version_id !== $version->id) {
@@ -129,7 +138,7 @@ final readonly class AdvertisingSegmentService
                 'version' => $nextVersion,
                 'status' => 'active',
                 'rule_version' => $ruleVersion,
-                'minimum_size' => max(1, (int) config('advertising.minimum_segment_size', 25)),
+                'minimum_size' => $minimumSize,
                 'created_by_account_id' => $actor->id,
             ]);
 
@@ -173,10 +182,15 @@ final readonly class AdvertisingSegmentService
     public function estimate(AdvertisingSegment $segment, ?Account $actor = null): AdvertisingSegmentEstimate
     {
         $segment->loadMissing(['rules.taxonomy', 'campaignVersion']);
+        $controls = $this->configuration->runtime();
+        $threshold = max(1, $segment->minimum_size, $controls['minimumSegmentSize']);
+        $step = $controls['estimateRoundingStep'];
         $estimateKey = hash('sha256', implode('|', [
             $segment->id,
             $segment->rule_version,
-            (string) $segment->minimum_size,
+            (string) $controls['version'],
+            (string) $threshold,
+            (string) $step,
             now()->utc()->format('Y-m-d-H'),
         ]));
         $existing = AdvertisingSegmentEstimate::query()
@@ -201,12 +215,6 @@ final readonly class AdvertisingSegmentService
             }
         }
 
-        $threshold = max(
-            1,
-            $segment->minimum_size,
-            (int) config('advertising.minimum_segment_size', 25),
-        );
-        $step = max(1, (int) config('advertising.estimate_rounding_step', 10));
         $available = $rawCount >= $threshold;
         $rounded = $available ? (int) (round($rawCount / $step) * $step) : null;
         $protectedMin = $rounded === null
@@ -228,6 +236,7 @@ final readonly class AdvertisingSegmentService
             'queried_by_account_id' => $actor?->id,
             'estimated_at' => now(),
             'metadata' => [
+                'configuration_version' => $controls['version'],
                 'rounding_step' => $step,
                 'rule_version' => $segment->rule_version,
                 'members_exported' => false,
