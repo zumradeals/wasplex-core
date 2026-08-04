@@ -37,7 +37,7 @@ type Asset = {
     url: string | null;
 };
 
-const props = defineProps<{
+defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
@@ -109,12 +109,7 @@ const archive = (brand: Brand) => {
 
 <template>
     <Head title="Marques" />
-    <StudioLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="brands"
-    >
+    <StudioLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="brands">
         <header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-xs font-black tracking-[0.24em] text-orange-400 uppercase">
@@ -200,7 +195,9 @@ const archive = (brand: Brand) => {
                         }}
                     </p>
 
-                    <div class="mt-6 flex items-center justify-between border-t border-white/7 pt-5">
+                    <div
+                        class="mt-6 flex items-center justify-between border-t border-white/7 pt-5"
+                    >
                         <p class="text-xs text-white/28">{{ brand.versionCount }} version(s)</p>
                         <div class="flex gap-2">
                             <button
@@ -226,7 +223,11 @@ const archive = (brand: Brand) => {
             v-else
             class="mt-8 rounded-[2rem] border border-dashed border-white/12 bg-white/[0.025] px-6 py-16 text-center"
         >
-            <div class="mx-auto grid size-16 place-items-center rounded-3xl bg-cyan-300/10 text-2xl">✦</div>
+            <div
+                class="mx-auto grid size-16 place-items-center rounded-3xl bg-cyan-300/10 text-2xl"
+            >
+                ✦
+            </div>
             <h2 class="mt-5 text-2xl font-black">Créez votre première marque</h2>
             <p class="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/38">
                 Nom, slogan, couleurs et logo : tout ce qu’il faut pour préparer une identité
@@ -252,13 +253,19 @@ const archive = (brand: Brand) => {
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-[10px] font-black tracking-[0.18em] text-cyan-300 uppercase">
-                            {{ editing ? `Nouvelle version · ${editing.name}` : 'Nouvelle identité' }}
+                            {{
+                                editing ? `Nouvelle version · ${editing.name}` : 'Nouvelle identité'
+                            }}
                         </p>
                         <h2 class="mt-2 text-2xl font-black">
                             {{ editing ? 'Modifier la marque' : 'Créer une marque' }}
                         </h2>
                     </div>
-                    <button type="button" class="text-sm font-bold text-white/35" @click="closeEditor">
+                    <button
+                        type="button"
+                        class="text-sm font-bold text-white/35"
+                        @click="closeEditor"
+                    >
                         Fermer
                     </button>
                 </div>
@@ -272,7 +279,11 @@ const archive = (brand: Brand) => {
                             maxlength="160"
                             class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none focus:border-cyan-300/50"
                         />
-                        <span v-if="form.errors.public_name" class="mt-2 block text-xs text-red-300">{{ form.errors.public_name }}</span>
+                        <span
+                            v-if="form.errors.public_name"
+                            class="mt-2 block text-xs text-red-300"
+                            >{{ form.errors.public_name }}</span
+                        >
                     </label>
                     <label class="md:col-span-2">
                         <span class="text-xs font-black text-white/55">Slogan</span>
@@ -285,20 +296,40 @@ const archive = (brand: Brand) => {
                     </label>
                     <label>
                         <span class="text-xs font-black text-white/55">Couleur principale</span>
-                        <div class="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-                            <input v-model="form.primary_color" type="color" class="size-9 rounded-lg bg-transparent" />
-                            <input v-model="form.primary_color" class="min-w-0 flex-1 bg-transparent text-sm font-black uppercase outline-none" />
+                        <div
+                            class="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3"
+                        >
+                            <input
+                                v-model="form.primary_color"
+                                type="color"
+                                class="size-9 rounded-lg bg-transparent"
+                            />
+                            <input
+                                v-model="form.primary_color"
+                                class="min-w-0 flex-1 bg-transparent text-sm font-black uppercase outline-none"
+                            />
                         </div>
                     </label>
                     <label>
                         <span class="text-xs font-black text-white/55">Couleur secondaire</span>
-                        <div class="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-                            <input v-model="form.secondary_color" type="color" class="size-9 rounded-lg bg-transparent" />
-                            <input v-model="form.secondary_color" class="min-w-0 flex-1 bg-transparent text-sm font-black uppercase outline-none" />
+                        <div
+                            class="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3"
+                        >
+                            <input
+                                v-model="form.secondary_color"
+                                type="color"
+                                class="size-9 rounded-lg bg-transparent"
+                            />
+                            <input
+                                v-model="form.secondary_color"
+                                class="min-w-0 flex-1 bg-transparent text-sm font-black uppercase outline-none"
+                            />
                         </div>
                     </label>
                     <label class="md:col-span-2">
-                        <span class="text-xs font-black text-white/55">Logo depuis la médiathèque</span>
+                        <span class="text-xs font-black text-white/55"
+                            >Logo depuis la médiathèque</span
+                        >
                         <select
                             v-model="form.logo_asset_id"
                             class="mt-2 w-full rounded-2xl border border-white/10 bg-[#071423] px-4 py-3.5 text-sm outline-none focus:border-cyan-300/50"
@@ -309,11 +340,14 @@ const archive = (brand: Brand) => {
                             </option>
                         </select>
                         <p v-if="!logoChoices.length" class="mt-2 text-xs text-white/28">
-                            Ajoutez d’abord une image dans la médiathèque pour l’utiliser comme logo.
+                            Ajoutez d’abord une image dans la médiathèque pour l’utiliser comme
+                            logo.
                         </p>
                     </label>
                     <label class="md:col-span-2">
-                        <span class="text-xs font-black text-white/55">Présentation de la marque</span>
+                        <span class="text-xs font-black text-white/55"
+                            >Présentation de la marque</span
+                        >
                         <textarea
                             v-model="form.description"
                             rows="4"
@@ -338,8 +372,12 @@ const archive = (brand: Brand) => {
                         {{ form.public_name.slice(0, 1).toUpperCase() || 'W' }}
                     </div>
                     <div class="min-w-0">
-                        <p class="truncate font-black">{{ form.public_name || 'Aperçu de la marque' }}</p>
-                        <p class="mt-1 truncate text-xs text-white/35">{{ form.slogan || 'Votre slogan apparaîtra ici' }}</p>
+                        <p class="truncate font-black">
+                            {{ form.public_name || 'Aperçu de la marque' }}
+                        </p>
+                        <p class="mt-1 truncate text-xs text-white/35">
+                            {{ form.slogan || 'Votre slogan apparaîtra ici' }}
+                        </p>
                     </div>
                 </div>
 

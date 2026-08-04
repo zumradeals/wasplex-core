@@ -62,7 +62,9 @@ const uploadForm = useForm<{
 const metadataForm = useForm({ label: '', alt_text: '', usage_context: '' });
 
 const filteredAssets = computed(() =>
-    filter.value === 'all' ? props.assets : props.assets.filter((asset) => asset.kind === filter.value),
+    filter.value === 'all'
+        ? props.assets
+        : props.assets.filter((asset) => asset.kind === filter.value),
 );
 
 const fileChanged = (event: Event) => {
@@ -113,12 +115,7 @@ const size = (bytes: number) => {
 
 <template>
     <Head title="Médiathèque" />
-    <StudioLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="media"
-    >
+    <StudioLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="media">
         <header>
             <p class="text-xs font-black tracking-[0.24em] text-orange-400 uppercase">
                 Images & vidéos
@@ -160,7 +157,10 @@ const size = (bytes: number) => {
                         class="sr-only"
                         @change="fileChanged"
                     />
-                    <span class="mx-auto grid size-12 place-items-center rounded-2xl bg-white/5 text-xl">＋</span>
+                    <span
+                        class="mx-auto grid size-12 place-items-center rounded-2xl bg-white/5 text-xl"
+                        >＋</span
+                    >
                     <span class="mt-3 block text-sm font-black">
                         {{ uploadForm.file?.name || 'Choisir une image ou une vidéo' }}
                     </span>
@@ -218,7 +218,9 @@ const size = (bytes: number) => {
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="text-xl font-black">Bibliothèque</h2>
-                        <p class="mt-1 text-sm text-white/30">{{ assets.length }} média(s) disponibles</p>
+                        <p class="mt-1 text-sm text-white/30">
+                            {{ assets.length }} média(s) disponibles
+                        </p>
                     </div>
                     <div class="flex rounded-2xl border border-white/8 bg-white/[0.035] p-1">
                         <button
@@ -229,7 +231,9 @@ const size = (bytes: number) => {
                             ]"
                             :key="item.key"
                             class="rounded-xl px-4 py-2 text-xs font-black transition"
-                            :class="filter === item.key ? 'bg-white text-[#06111f]' : 'text-white/35'"
+                            :class="
+                                filter === item.key ? 'bg-white text-[#06111f]' : 'text-white/35'
+                            "
                             @click="filter = item.key as 'all' | 'image' | 'video'"
                         >
                             {{ item.label }}
@@ -237,7 +241,10 @@ const size = (bytes: number) => {
                     </div>
                 </div>
 
-                <div v-if="filteredAssets.length" class="mt-5 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                <div
+                    v-if="filteredAssets.length"
+                    class="mt-5 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3"
+                >
                     <article
                         v-for="asset in filteredAssets"
                         :key="asset.id"
@@ -257,7 +264,10 @@ const size = (bytes: number) => {
                                 controls
                                 preload="metadata"
                             />
-                            <div v-else class="grid size-full place-items-center text-sm font-black text-white/30">
+                            <div
+                                v-else
+                                class="grid size-full place-items-center text-sm font-black text-white/30"
+                            >
                                 {{ asset.kind === 'video' ? 'VIDÉO' : 'IMAGE' }}
                             </div>
                             <span
@@ -267,8 +277,12 @@ const size = (bytes: number) => {
                             </span>
                         </div>
                         <div class="p-5">
-                            <p class="truncate font-black">{{ asset.label || asset.originalName }}</p>
-                            <div class="mt-2 flex items-center justify-between text-xs text-white/30">
+                            <p class="truncate font-black">
+                                {{ asset.label || asset.originalName }}
+                            </p>
+                            <div
+                                class="mt-2 flex items-center justify-between text-xs text-white/30"
+                            >
                                 <span>{{ asset.brandName || 'Sans marque' }}</span>
                                 <span>{{ size(asset.sizeBytes) }}</span>
                             </div>
@@ -295,7 +309,9 @@ const size = (bytes: number) => {
                     class="mt-5 rounded-[2rem] border border-dashed border-white/12 bg-white/[0.025] px-6 py-16 text-center"
                 >
                     <p class="text-xl font-black">Aucun média dans cette vue</p>
-                    <p class="mt-2 text-sm text-white/35">Utilisez le formulaire pour commencer la bibliothèque.</p>
+                    <p class="mt-2 text-sm text-white/35">
+                        Utilisez le formulaire pour commencer la bibliothèque.
+                    </p>
                 </div>
             </div>
         </section>
@@ -316,7 +332,11 @@ const size = (bytes: number) => {
                         </p>
                         <h2 class="mt-2 text-xl font-black">Informations du média</h2>
                     </div>
-                    <button type="button" class="text-xs font-black text-white/35" @click="editor = null">
+                    <button
+                        type="button"
+                        class="text-xs font-black text-white/35"
+                        @click="editor = null"
+                    >
                         Fermer
                     </button>
                 </div>
@@ -367,7 +387,9 @@ const size = (bytes: number) => {
                         :disabled="metadataForm.processing"
                         class="rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-black text-[#04111e] disabled:opacity-50"
                     >
-                        {{ metadataForm.processing ? 'Enregistrement…' : 'Enregistrer une version' }}
+                        {{
+                            metadataForm.processing ? 'Enregistrement…' : 'Enregistrer une version'
+                        }}
                     </button>
                 </div>
             </form>

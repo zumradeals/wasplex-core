@@ -126,9 +126,13 @@ const steps = computed(() => [
             <article class="rounded-3xl border border-white/8 bg-white/[0.045] p-5">
                 <p class="text-xs font-semibold text-white/35">Budget disponible</p>
                 <p class="mt-4 text-2xl font-black">
-                    {{ money(wallet.balances.available) }} <span class="text-sm text-cyan-300">WP</span>
+                    {{ money(wallet.balances.available) }}
+                    <span class="text-sm text-cyan-300">WP</span>
                 </p>
-                <Link href="/studio/wallet" class="mt-4 inline-block text-xs font-black text-cyan-300">
+                <Link
+                    href="/studio/wallet"
+                    class="mt-4 inline-block text-xs font-black text-cyan-300"
+                >
                     Gérer le budget →
                 </Link>
             </article>
@@ -146,7 +150,10 @@ const steps = computed(() => [
                 <p class="text-xs font-semibold text-cyan-200/60">Prêt pour P006</p>
                 <p class="mt-4 text-2xl font-black text-cyan-200">{{ readiness }} %</p>
                 <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-black/25">
-                    <div class="h-full rounded-full bg-cyan-300" :style="{ width: `${readiness}%` }" />
+                    <div
+                        class="h-full rounded-full bg-cyan-300"
+                        :style="{ width: `${readiness}%` }"
+                    />
                 </div>
             </article>
         </section>
@@ -158,7 +165,9 @@ const steps = computed(() => [
                         <p class="text-lg font-black">Préparation du Studio</p>
                         <p class="mt-1 text-sm text-white/35">Quatre actions avant la campagne.</p>
                     </div>
-                    <span class="rounded-full bg-white/5 px-3 py-1 text-xs font-black text-white/45">
+                    <span
+                        class="rounded-full bg-white/5 px-3 py-1 text-xs font-black text-white/45"
+                    >
                         {{ steps.filter((step) => step.done).length }}/4
                     </span>
                 </div>
@@ -182,14 +191,21 @@ const steps = computed(() => [
                         </span>
                         <span class="min-w-0 flex-1">
                             <span class="block font-black">{{ step.label }}</span>
-                            <span class="mt-1 block truncate text-xs text-white/30">{{ step.detail }}</span>
+                            <span class="mt-1 block truncate text-xs text-white/30">{{
+                                step.detail
+                            }}</span>
                         </span>
-                        <span class="text-white/20 transition group-hover:translate-x-1 group-hover:text-cyan-300">→</span>
+                        <span
+                            class="text-white/20 transition group-hover:translate-x-1 group-hover:text-cyan-300"
+                            >→</span
+                        >
                     </Link>
                 </div>
             </article>
 
-            <article class="overflow-hidden rounded-[2rem] border border-orange-400/15 bg-[#130f0c] p-6 sm:p-8">
+            <article
+                class="overflow-hidden rounded-[2rem] border border-orange-400/15 bg-[#130f0c] p-6 sm:p-8"
+            >
                 <p class="text-[10px] font-black tracking-[0.2em] text-orange-400 uppercase">
                     Prochaine étape
                 </p>
@@ -208,13 +224,18 @@ const steps = computed(() => [
             </article>
         </section>
 
-        <section v-if="recentBrands.length" class="mt-6 rounded-[2rem] border border-white/8 bg-white/[0.035] p-6 sm:p-8">
+        <section
+            v-if="recentBrands.length"
+            class="mt-6 rounded-[2rem] border border-white/8 bg-white/[0.035] p-6 sm:p-8"
+        >
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-lg font-black">Marques récentes</h2>
                     <p class="mt-1 text-sm text-white/30">Les identités actuellement publiées.</p>
                 </div>
-                <Link href="/studio/marques" class="text-xs font-black text-cyan-300">Tout voir →</Link>
+                <Link href="/studio/marques" class="text-xs font-black text-cyan-300"
+                    >Tout voir →</Link
+                >
             </div>
             <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <article
@@ -244,10 +265,15 @@ const steps = computed(() => [
             </div>
         </section>
 
-        <section v-if="recentAssets.length" class="mt-6 rounded-[2rem] border border-white/8 bg-white/[0.035] p-6 sm:p-8">
+        <section
+            v-if="recentAssets.length"
+            class="mt-6 rounded-[2rem] border border-white/8 bg-white/[0.035] p-6 sm:p-8"
+        >
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-black">Derniers médias</h2>
-                <Link href="/studio/medias" class="text-xs font-black text-cyan-300">Médiathèque →</Link>
+                <Link href="/studio/medias" class="text-xs font-black text-cyan-300"
+                    >Médiathèque →</Link
+                >
             </div>
             <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                 <article
@@ -261,7 +287,10 @@ const steps = computed(() => [
                         :alt="asset.label || asset.originalName"
                         class="size-full object-cover"
                     />
-                    <div v-else class="grid size-full place-items-center text-center text-xs font-black text-white/30">
+                    <div
+                        v-else
+                        class="grid size-full place-items-center text-center text-xs font-black text-white/30"
+                    >
                         {{ asset.kind === 'video' ? 'VIDÉO' : 'MÉDIA' }}
                     </div>
                 </article>

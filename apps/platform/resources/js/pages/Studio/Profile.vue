@@ -43,18 +43,15 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
 
 <template>
     <Head title="Profil annonceur" />
-    <StudioLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="profile"
-    >
+    <StudioLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="profile">
         <header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-xs font-black tracking-[0.24em] text-orange-400 uppercase">
                     Organisation
                 </p>
-                <h1 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Profil annonceur</h1>
+                <h1 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+                    Profil annonceur
+                </h1>
                 <p class="mt-2 max-w-2xl text-sm leading-6 text-white/40">
                     Ces informations représentent votre organisation dans Wasplex. Elles restent
                     séparées de votre profil personnel.
@@ -65,7 +62,10 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                     <span>Complété</span><span>{{ profile.completion }} %</span>
                 </div>
                 <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-black/25">
-                    <div class="h-full rounded-full bg-cyan-300" :style="{ width: `${profile.completion}%` }" />
+                    <div
+                        class="h-full rounded-full bg-cyan-300"
+                        :style="{ width: `${profile.completion}%` }"
+                    />
                 </div>
             </div>
         </header>
@@ -86,9 +86,13 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                             v-model="form.display_name"
                             required
                             maxlength="160"
-                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm transition outline-none focus:border-cyan-300/50"
                         />
-                        <span v-if="form.errors.display_name" class="mt-2 block text-xs text-red-300">{{ form.errors.display_name }}</span>
+                        <span
+                            v-if="form.errors.display_name"
+                            class="mt-2 block text-xs text-red-300"
+                            >{{ form.errors.display_name }}</span
+                        >
                     </label>
 
                     <label>
@@ -97,7 +101,7 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                             v-model="form.legal_name"
                             maxlength="200"
                             placeholder="Ex. GAMAD SARL"
-                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm transition outline-none focus:border-cyan-300/50"
                         />
                     </label>
                     <label>
@@ -106,7 +110,7 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                             v-model="form.industry"
                             maxlength="120"
                             placeholder="Commerce, technologie, agriculture…"
-                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm transition outline-none focus:border-cyan-300/50"
                         />
                     </label>
                     <label>
@@ -131,16 +135,18 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                             v-model="form.city"
                             maxlength="120"
                             placeholder="Abidjan"
-                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm transition outline-none focus:border-cyan-300/50"
                         />
                     </label>
                     <label>
-                        <span class="text-xs font-black text-white/55">Téléphone professionnel</span>
+                        <span class="text-xs font-black text-white/55"
+                            >Téléphone professionnel</span
+                        >
                         <input
                             v-model="form.phone"
                             maxlength="40"
                             placeholder="+225…"
-                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm transition outline-none focus:border-cyan-300/50"
                         />
                     </label>
                     <label>
@@ -150,9 +156,13 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                             type="url"
                             maxlength="500"
                             placeholder="https://…"
-                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm transition outline-none focus:border-cyan-300/50"
                         />
-                        <span v-if="form.errors.website_url" class="mt-2 block text-xs text-red-300">{{ form.errors.website_url }}</span>
+                        <span
+                            v-if="form.errors.website_url"
+                            class="mt-2 block text-xs text-red-300"
+                            >{{ form.errors.website_url }}</span
+                        >
                     </label>
                     <label class="md:col-span-2">
                         <span class="text-xs font-black text-white/55">Présentation</span>
@@ -161,12 +171,14 @@ const submit = () => form.patch('/studio/profil', { preserveScroll: true });
                             rows="5"
                             maxlength="2000"
                             placeholder="Présentez brièvement votre activité, vos clients et votre positionnement."
-                            class="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm leading-6 outline-none transition focus:border-cyan-300/50"
+                            class="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm leading-6 transition outline-none focus:border-cyan-300/50"
                         />
                     </label>
                 </div>
 
-                <div class="mt-7 flex flex-col-reverse gap-3 border-t border-white/7 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                    class="mt-7 flex flex-col-reverse gap-3 border-t border-white/7 pt-6 sm:flex-row sm:items-center sm:justify-between"
+                >
                     <p class="text-xs leading-5 text-white/30">
                         Le nom public met aussi à jour le nom affiché dans le sélecteur d’espace.
                     </p>
