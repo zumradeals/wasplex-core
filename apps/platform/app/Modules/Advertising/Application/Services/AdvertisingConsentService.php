@@ -42,13 +42,27 @@ final class AdvertisingConsentService
             $version = $purpose->currentVersion;
             $decision = $latest->get($purpose->id);
 
+            if ($version === null) {
+                return [
+                    'code' => $purpose->code,
+                    'title' => $purpose->code,
+                    'description' => '',
+                    'refusalConsequence' => null,
+                    'required' => true,
+                    'version' => 0,
+                    'decision' => $decision?->status->value,
+                    'decidedAt' => $decision?->decided_at->toIso8601String(),
+                    'active' => false,
+                ];
+            }
+
             return [
                 'code' => $purpose->code,
-                'title' => $version?->title ?? $purpose->code,
-                'description' => $version?->description ?? '',
-                'refusalConsequence' => $version?->refusal_consequence,
-                'required' => (bool) ($version?->consent_required ?? true),
-                'version' => (int) ($version?->version ?? 0),
+                'title' => $version->title,
+                'description' => $version->description,
+                'refusalConsequence' => $version->refusal_consequence,
+                'required' => $version->consent_required,
+                'version' => $version->version,
                 'decision' => $decision?->status->value,
                 'decidedAt' => $decision?->decided_at->toIso8601String(),
                 'active' => $this->isDecisionActive($purpose, $decision),
@@ -131,12 +145,9 @@ final class AdvertisingConsentService
                         $purpose->code,
                         $consent->id,
                     ),
-                    default => null,
                 };
 
-                if ($event !== null) {
-                    event($event);
-                }
+                event($event);
             });
 
             return $consent;
