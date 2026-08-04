@@ -82,8 +82,8 @@ final class AdvertisingCatalogController
                     'userVisible' => $taxonomy->user_visible,
                     'aiUsageMode' => $taxonomy->ai_usage_mode,
                     'freshnessDays' => $taxonomy->default_freshness_days,
-                    'question' => $question?->currentVersion?->prompt,
-                    'options' => $question?->currentVersion?->options ?? [],
+                    'question' => $question === null ? null : $question->currentVersion->prompt,
+                    'options' => $question === null ? [] : ($question->currentVersion->options ?? []),
                 ];
             })
             ->values();
