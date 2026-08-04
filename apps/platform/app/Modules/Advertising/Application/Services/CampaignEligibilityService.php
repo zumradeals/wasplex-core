@@ -283,7 +283,7 @@ final readonly class CampaignEligibilityService
         }
 
         $windowSeconds = $hours * 3600;
-        $windowStartTimestamp = intdiv($now->timestamp, $windowSeconds) * $windowSeconds;
+        $windowStartTimestamp = intdiv((int) $now->timestamp, $windowSeconds) * $windowSeconds;
         $windowStart = $now->copy()->setTimestamp($windowStartTimestamp)->utc();
         $windowEnd = $windowStart->copy()->addSeconds($windowSeconds);
 
