@@ -228,10 +228,14 @@ final class GeniusPayGateway implements PaymentGatewayContract
             Log::warning('wallet.geniuspay.response_incomplete', [
                 'http_status' => $response->status(),
                 'missing' => $missing,
-                'data_keys' => array_values(array_map('strval', array_keys($data))),
+                'data_keys' => array_map('strval', array_keys($data)),
             ]);
 
             throw new PaymentGatewayException('La réponse GeniusPay est incompatible : '.implode(', ', $missing).' manquant(s).');
+        }
+
+        if ($amount === null) {
+            throw new PaymentGatewayException('Le montant GeniusPay est invalide.');
         }
 
         if ($environment !== 'sandbox') {
@@ -267,6 +271,7 @@ final class GeniusPayGateway implements PaymentGatewayContract
         );
     }
 
+    /** @param array<string, mixed> $decoded */
     private function webhookOccurredAt(array $decoded, string $timestamp): DateTimeImmutable
     {
         $createdAt = Arr::get($decoded, 'created_at');
