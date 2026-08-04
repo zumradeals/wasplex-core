@@ -41,6 +41,27 @@ final class AdvertisingProfileService
         $presented = $questions->map(function (AdvertisingProfileQuestion $question) use ($latest, &$answered): array {
             $version = $question->currentVersion;
             $answer = $latest->get($question->id);
+
+            if ($version === null) {
+                return [
+                    'code' => $question->code,
+                    'category' => $question->taxonomy->category,
+                    'taxonomyCode' => $question->taxonomy->code,
+                    'taxonomyLabel' => $question->taxonomy->label,
+                    'prompt' => '',
+                    'helpText' => '',
+                    'privacyNote' => '',
+                    'optional' => true,
+                    'options' => [],
+                    'purposeCodes' => [],
+                    'answer' => null,
+                    'answerVersion' => null,
+                    'answeredAt' => null,
+                    'expiresAt' => null,
+                    'status' => null,
+                ];
+            }
+
             $active = $answer instanceof AdvertisingProfileAnswer
                 && $answer->status === 'active'
                 && ($answer->expires_at === null || $answer->expires_at->isFuture());
