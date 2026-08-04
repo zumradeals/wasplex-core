@@ -5,6 +5,8 @@ namespace App\Modules\Advertising\Application\Services;
 use App\Modules\Advertising\Domain\Events\AdvertisingProfileUpdated;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingProfileAnswer;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingProfileQuestion;
+use App\Modules\Advertising\Infrastructure\Models\AdvertisingProfileSignal;
+use App\Modules\Advertising\Infrastructure\Models\AdvertisingSector;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -12,10 +14,16 @@ use Illuminate\Validation\ValidationException;
 
 final class AdvertisingProfileService
 {
-    public function __construct(private readonly AdvertisingConsentService $consents) {}
+    public function __construct(
+        private readonly AdvertisingConsentService $consents,
+        private readonly AdvertisingProfileSignalService $signals,
+    ) {}
 
     /**
      * @return array{
+     *     market:array{code:string,name:string},
+     *     summary:array{activeInformation:int,sectorsExplored:int,availableSectors:int,pendingSuggestions:int},
+     *     sectors:array<int, array<string, mixed>>,
      *     completion:int,
      *     answered:int,
      *     total:int,
@@ -24,8 +32,10 @@ final class AdvertisingProfileService
      */
     public function profile(Account $account): array
     {
+        $marketCode = strtoupper((string) config('profile_intelligence.default_market', 'ML'));
+        $locale = (string) config('profile_intelligence.default_locale', 'fr');
         $questions = AdvertisingProfileQuestion::query()
-            ->with(['taxonomy', 'currentVersion'])
+            ->with(['taxonomy.sector.translations', 'currentVersion'])
             ->where('status', 'active')
             ->orderBy('sort_order')
             ->orderBy('code')
@@ -33,19 +43,29 @@ final class AdvertisingProfileService
             ->filter(static fn (AdvertisingProfileQuestion $question): bool => $question->currentVersion !== null
                 && $question->currentVersion->state === 'published'
                 && $question->taxonomy->status === 'active'
-                && ! $question->taxonomy->sensitive)
+                && $question->taxonomy->user_visible
+                && ! $question->taxonomy->sensitive
+                && $question->taxonomy->appliesToMarket($marketCode))
             ->values();
         $latest = $this->latestAnswers($account);
         $answered = 0;
 
-        $presented = $questions->map(function (AdvertisingProfileQuestion $question) use ($latest, &$answered): array {
+        $presented = $questions->map(function (AdvertisingProfileQuestion $question) use (
+            $latest,
+            $locale,
+            &$answered,
+        ): array {
             $version = $question->currentVersion;
             $answer = $latest->get($question->id);
+            $sector = $question->taxonomy->sector;
 
             if ($version === null) {
                 return [
                     'code' => $question->code,
                     'category' => $question->taxonomy->category,
+                    'signalKind' => $question->taxonomy->signal_kind,
+                    'sectorCode' => $sector?->code ?? 'general',
+                    'sectorLabel' => $sector?->translatedName($locale) ?? 'Profil général',
                     'taxonomyCode' => $question->taxonomy->code,
                     'taxonomyLabel' => $question->taxonomy->label,
                     'prompt' => '',
@@ -73,6 +93,9 @@ final class AdvertisingProfileService
             return [
                 'code' => $question->code,
                 'category' => $question->taxonomy->category,
+                'signalKind' => $question->taxonomy->signal_kind,
+                'sectorCode' => $sector?->code ?? 'general',
+                'sectorLabel' => $sector?->translatedName($locale) ?? 'Profil général',
                 'taxonomyCode' => $question->taxonomy->code,
                 'taxonomyLabel' => $question->taxonomy->label,
                 'prompt' => $version->prompt,
@@ -88,9 +111,52 @@ final class AdvertisingProfileService
                 'status' => $answer?->status,
             ];
         })->all();
+        $presentedCollection = collect($presented);
+        $latestSignals = $this->signals->latestSignals($account);
+        $activeSignalCount = $latestSignals->filter(
+            static fn (AdvertisingProfileSignal $signal): bool => $signal->status === 'active'
+                && ! $signal->requires_user_confirmation
+                && ($signal->expires_at === null || $signal->expires_at->isFuture()),
+        )->count();
+        $pendingSuggestions = $latestSignals->where('status', 'proposed')->count();
+        $sectors = AdvertisingSector::query()
+            ->with('translations')
+            ->where('status', 'active')
+            ->where('allowed_for_targeting', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get()
+            ->map(function (AdvertisingSector $sector) use ($presentedCollection, $locale): array {
+                $sectorQuestions = $presentedCollection->where('sectorCode', $sector->code);
+                $sectorAnswered = $sectorQuestions->whereNotNull('answer')->count();
+
+                return [
+                    'code' => $sector->code,
+                    'name' => $sector->translatedName($locale),
+                    'icon' => $sector->icon,
+                    'questions' => $sectorQuestions->count(),
+                    'answered' => $sectorAnswered,
+                    'explored' => $sectorAnswered > 0,
+                ];
+            })
+            ->values()
+            ->all();
         $total = $questions->count();
+        $sectorsExplored = collect($sectors)->where('explored', true)->count();
 
         return [
+            'market' => [
+                'code' => $marketCode,
+                'name' => $marketCode === 'ML' ? 'Mali' : $marketCode,
+            ],
+            'summary' => [
+                'activeInformation' => $answered + $activeSignalCount,
+                'sectorsExplored' => $sectorsExplored,
+                'availableSectors' => count($sectors),
+                'pendingSuggestions' => $pendingSuggestions,
+            ],
+            'sectors' => $sectors,
+            // Compatibilité transitoire P008 : l’interface P008-R n’utilise plus ce faux score.
             'completion' => $total === 0 ? 0 : (int) round(($answered / $total) * 100),
             'answered' => $answered,
             'total' => $total,
@@ -108,11 +174,14 @@ final class AdvertisingProfileService
                 ->lockForUpdate()
                 ->firstOrFail();
             $version = $question->currentVersion;
+            $marketCode = strtoupper((string) config('profile_intelligence.default_market', 'ML'));
 
             if (
                 $version === null
                 || $version->state !== 'published'
                 || $question->taxonomy->status !== 'active'
+                || ! $question->taxonomy->user_visible
+                || ! $question->taxonomy->appliesToMarket($marketCode)
                 || $question->taxonomy->sensitive
                 || ! $question->taxonomy->allowed_for_targeting
             ) {
@@ -230,7 +299,7 @@ final class AdvertisingProfileService
         });
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, mixed> */
     public function matchingFacts(Account $account): array
     {
         if (! $this->consents->hasActive($account, [
@@ -240,6 +309,7 @@ final class AdvertisingProfileService
             return [];
         }
 
+        $marketCode = strtoupper((string) config('profile_intelligence.default_market', 'ML'));
         $approximateLocationAllowed = $this->consents->hasActive(
             $account,
             ['approximate_location_targeting'],
@@ -255,6 +325,7 @@ final class AdvertisingProfileService
                 || ($answer->expires_at !== null && $answer->expires_at->isPast())
                 || $answer->taxonomy->sensitive
                 || ! $answer->taxonomy->allowed_for_targeting
+                || ! $answer->taxonomy->appliesToMarket($marketCode)
             ) {
                 continue;
             }
@@ -270,7 +341,10 @@ final class AdvertisingProfileService
             }
         }
 
-        return $facts;
+        return [
+            ...$facts,
+            ...$this->signals->activeFacts($account, $marketCode),
+        ];
     }
 
     /** @return Collection<string, AdvertisingProfileAnswer> */
