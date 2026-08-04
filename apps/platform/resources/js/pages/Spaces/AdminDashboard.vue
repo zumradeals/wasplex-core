@@ -14,11 +14,12 @@ defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
-    metrics: { accounts: number; spaces: number };
+    metrics: { accounts: number; spaces: number; campaignReviews: number };
 }>();
 
 const navigation = [
     { label: 'Centre de pilotage', href: '/administration', active: true },
+    { label: 'Revue des campagnes', href: '/administration/campagnes', active: false },
     { label: 'Comptes & espaces', href: '#', active: false },
     { label: 'Capacités', href: '#', active: false },
     { label: 'Organisations', href: '#', active: false },
@@ -94,7 +95,7 @@ const navigation = [
                         v-for="metric in [
                             { label: 'Comptes', value: metrics.accounts },
                             { label: 'Espaces', value: metrics.spaces },
-                            { label: 'Capacités critiques', value: 4 },
+                            { label: 'Campagnes à traiter', value: metrics.campaignReviews },
                             { label: 'Alertes sécurité', value: 0 },
                         ]"
                         :key="metric.label"
@@ -105,12 +106,12 @@ const navigation = [
                     </article>
                 </div>
 
-                <div class="mt-7 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+                <div class="mt-7 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                     <article class="rounded-3xl border border-white/8 bg-white/[0.035] p-7">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h2 class="text-xl font-black">Contrôles du noyau Identity</h2>
-                                <p class="mt-1 text-sm text-white/35">État opérationnel P001</p>
+                                <h2 class="text-xl font-black">Contrôles du noyau</h2>
+                                <p class="mt-1 text-sm text-white/35">Identité, économie et campagne</p>
                             </div>
                             <span
                                 class="size-3 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.8)]"
@@ -124,7 +125,8 @@ const navigation = [
                                     'Espaces isolés',
                                     'Capacités expirables',
                                     'MFA administration',
-                                    'Audit append-only',
+                                    'Réservations Wallet',
+                                    'Revue administrative',
                                 ]"
                                 :key="item"
                                 class="flex items-center justify-between py-4"
@@ -136,6 +138,34 @@ const navigation = [
                     </article>
 
                     <div class="space-y-6">
+                        <Link
+                            href="/administration/campagnes"
+                            class="block rounded-3xl border border-wasplex-orange/20 bg-wasplex-orange/[0.055] p-7 transition hover:border-wasplex-orange/40 hover:bg-wasplex-orange/[0.08]"
+                        >
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p
+                                        class="text-xs font-bold tracking-widest text-wasplex-orange uppercase"
+                                    >
+                                        P007 · Campagnes
+                                    </p>
+                                    <h2 class="mt-4 text-2xl font-black">Revue administrative</h2>
+                                </div>
+                                <span
+                                    class="grid size-12 place-items-center rounded-2xl bg-wasplex-orange/10 text-xl font-black text-wasplex-orange"
+                                >
+                                    {{ metrics.campaignReviews }}
+                                </span>
+                            </div>
+                            <p class="mt-4 text-sm leading-6 text-white/45">
+                                Examiner le média, l’audience, le devis et le budget réservé avant
+                                toute éligibilité au Matching.
+                            </p>
+                            <span class="mt-6 inline-flex text-sm font-black text-wasplex-orange">
+                                Ouvrir la file →
+                            </span>
+                        </Link>
+
                         <Link
                             href="/administration/economie"
                             class="block rounded-3xl border border-wasplex-cyan/20 bg-wasplex-cyan/[0.055] p-7 transition hover:border-wasplex-cyan/40 hover:bg-wasplex-cyan/[0.08]"
@@ -150,52 +180,37 @@ const navigation = [
                                 Piloter les classes FREE, PREMIUM, GOLD et PLATINUM, leurs quotas,
                                 leurs poids et leurs versions publiées.
                             </p>
-                            <span class="mt-6 inline-flex text-sm font-black text-wasplex-cyan">
-                                Ouvrir la configuration →
-                            </span>
                         </Link>
-
-                        <article
-                            class="rounded-3xl border border-wasplex-orange/15 bg-wasplex-orange/[0.055] p-7"
-                        >
-                            <p
-                                class="text-xs font-bold tracking-widest text-wasplex-orange uppercase"
-                            >
-                                Autorité contrôlée
-                            </p>
-                            <h2 class="mt-4 text-2xl font-black">
-                                Chaque intervention laisse une preuve.
-                            </h2>
-                            <p class="mt-4 text-sm leading-6 text-white/45">
-                                Les actions critiques exigent capacité, contexte, justification, MFA
-                                et historique de version.
-                            </p>
-                        </article>
                     </div>
                 </div>
             </section>
         </div>
 
-        <section class="grid min-h-screen place-items-center px-6 text-center md:hidden">
-            <div>
+        <section class="min-h-screen px-4 py-5 md:hidden">
+            <div class="flex items-center justify-between gap-4">
                 <WasplexMark />
-                <p class="mt-10 text-xs font-bold tracking-widest text-wasplex-orange uppercase">
-                    Accès mobile limité
-                </p>
-                <h1 class="mt-4 text-3xl font-black">
-                    La console complète nécessite un écran sécurisé.
-                </h1>
-                <p class="mt-4 leading-7 text-white/45">
-                    Sur mobile, seules les urgences administratives seront accessibles dans un
-                    chantier dédié.
-                </p>
                 <button
-                    class="mt-7 rounded-2xl border border-white/15 px-5 py-3 text-sm font-bold"
+                    class="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/55"
                     @click="router.post('/deconnexion')"
                 >
-                    Fermer la session
+                    Sortir
                 </button>
             </div>
+            <div class="mt-5"><SpaceSwitcher :spaces="spaces" /></div>
+            <p class="mt-8 text-xs font-bold tracking-widest text-wasplex-orange uppercase">
+                Urgences administratives
+            </p>
+            <h1 class="mt-4 text-3xl font-black">Console fondateur</h1>
+            <Link
+                href="/administration/campagnes"
+                class="mt-6 block rounded-3xl border border-wasplex-orange/20 bg-wasplex-orange/[0.055] p-6"
+            >
+                <p class="text-sm font-black text-wasplex-orange">Campagnes à traiter</p>
+                <p class="mt-3 text-4xl font-black">{{ metrics.campaignReviews }}</p>
+                <p class="mt-3 text-sm leading-6 text-white/42">
+                    Ouvrir la file P007 pour examiner ou suspendre une campagne.
+                </p>
+            </Link>
         </section>
     </main>
 </template>
