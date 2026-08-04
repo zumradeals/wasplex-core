@@ -66,6 +66,7 @@ final class AdvertisingMatchingTest extends TestCase
         $service = app(CampaignEligibilityService::class);
 
         $match = $service->evaluate($user, $campaign);
+        $this->travel(2)->seconds();
         $replayed = $service->evaluate($user, $campaign);
         $explanation = app(AdvertisingExplanationService::class)->explain($user, $match);
         $estimate = app(AdvertisingSegmentService::class)->estimate($segment);
@@ -166,6 +167,27 @@ final class AdvertisingMatchingTest extends TestCase
             ->and($limited->id)->not->toBe($first->id)
             ->and($limited->decision)->toBe('ineligible')
             ->and($limited->exclusion_codes)->toContain('frequency_limit_reached');
+    }
+
+    public function test_fatigue_threshold_withholds_matching_without_consuming_quota(): void
+    {
+        $user = $this->readyGoldUser();
+        [$campaign] = $this->approvedOrangeCampaign();
+        AdvertisingFrequencyCounter::query()->create([
+            'account_id' => $user->id,
+            'campaign_id' => $campaign->id,
+            'window_start' => now()->subHour(),
+            'window_end' => now()->addHours(23),
+            'impressions' => 1,
+            'fatigue_score' => 100,
+            'version' => 1,
+        ]);
+
+        $match = app(CampaignEligibilityService::class)->evaluate($user, $campaign);
+
+        expect($match->decision)->toBe('withheld')
+            ->and($match->exclusion_codes)->toContain('fatigue_safety_hold')
+            ->and($match->frequency_state['impressions'])->toBe(1);
     }
 
     /** @return array{0:Campaign,1:AdvertisingSegment} */
