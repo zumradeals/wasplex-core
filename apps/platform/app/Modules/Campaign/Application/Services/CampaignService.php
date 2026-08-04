@@ -19,6 +19,7 @@ use App\Modules\Identity\Infrastructure\Models\UserSpace;
 use App\Modules\Wallet\Application\Contracts\WalletReservationContract;
 use App\Modules\Wallet\Application\Data\ReservationRequest;
 use App\Modules\Wallet\Application\Services\WalletCatalog;
+use App\Modules\Wallet\Domain\Enums\ReservationStatus;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -107,7 +108,7 @@ final readonly class CampaignService
                 if (
                     ! $funding instanceof CampaignFunding
                     || $funding->budgetReservation?->status !== 'active'
-                    || $funding->budgetReservation?->walletReservation?->status !== 'active'
+                    || $funding->budgetReservation?->walletReservation?->status !== ReservationStatus::Active
                 ) {
                     throw ValidationException::withMessages([
                         'campaign' => 'La réservation budgétaire de cette correction est introuvable.',
@@ -283,7 +284,7 @@ final readonly class CampaignService
                 ! $funding instanceof CampaignFunding
                 || ! in_array($funding->status, $allowedFundingStatuses, true)
                 || $funding->budgetReservation?->status !== 'active'
-                || $funding->budgetReservation?->walletReservation?->status !== 'active'
+                || $funding->budgetReservation?->walletReservation?->status !== ReservationStatus::Active
             ) {
                 throw ValidationException::withMessages([
                     'campaign' => 'La réservation budgétaire active est introuvable.',
