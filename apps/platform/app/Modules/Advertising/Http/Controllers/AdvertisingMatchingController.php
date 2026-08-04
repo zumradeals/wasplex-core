@@ -47,7 +47,7 @@ final readonly class AdvertisingMatchingController
                 'version' => [
                     'territoryName' => $campaign->activeVersion?->territory_name,
                     'radiusKm' => $campaign->activeVersion?->radius_km,
-                    'selectedClasses' => $campaign->activeVersion?->selected_classes ?? [],
+                    'selectedClasses' => $campaign->activeVersion->selected_classes ?? [],
                 ],
             ],
             'taxonomies' => $this->segments->allowedTaxonomies(),
