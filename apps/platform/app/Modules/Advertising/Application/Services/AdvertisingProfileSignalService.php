@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 final class AdvertisingProfileSignalService
 {
-    /** @param array<string, mixed> $value */
+    /** @param  array<string, mixed>  $value */
     public function recordDeclared(
         Account $account,
         AdvertisingTaxonomy $taxonomy,
@@ -37,8 +37,8 @@ final class AdvertisingProfileSignalService
     }
 
     /**
-     * @param array<string, mixed> $value
-     * @param array<string, mixed> $evidence
+     * @param  array<string, mixed>  $value
+     * @param  array<string, mixed>  $evidence
      */
     public function proposeDerived(
         Account $account,
@@ -179,8 +179,8 @@ final class AdvertisingProfileSignalService
     }
 
     /**
-     * @param array<string, mixed> $value
-     * @param array<string, mixed>|null $evidence
+     * @param  array<string, mixed>  $value
+     * @param  array<string, mixed>|null  $evidence
      */
     private function append(
         Account $account,
