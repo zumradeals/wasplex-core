@@ -12,6 +12,7 @@ use App\Modules\Campaign\Infrastructure\Models\CampaignAudience;
 use App\Modules\Campaign\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaign\Infrastructure\Models\CampaignFunding;
 use App\Modules\Campaign\Infrastructure\Models\CampaignPriceCatalog;
+use App\Modules\Campaign\Infrastructure\Models\CampaignReviewCase;
 use App\Modules\Campaign\Infrastructure\Models\CampaignVersion;
 use App\Modules\Identity\Domain\Enums\AccountStatus;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
@@ -84,12 +85,13 @@ final class CampaignTest extends TestCase
         $campaign = $service->create($space, $account, $this->campaignData($brand, $asset));
         $quote = $service->quote($campaign, $space, $account);
         $funding = $service->fund($campaign, $quote, $space, $account);
-        $submitted = $service->submit($campaign->refresh(), $space);
+        $submitted = $service->submit($campaign->refresh(), $space, $account);
 
         expect($funding->status)->toBe('reserved')
             ->and(CampaignFunding::query()->count())->toBe(1)
             ->and(CampaignBudgetReservation::query()->count())->toBe(1)
             ->and(WalletReservation::query()->count())->toBe(1)
+            ->and(CampaignReviewCase::query()->where('status', 'pending')->count())->toBe(1)
             ->and($wallet->projection()->firstOrFail()->available_minor)->toBe(65000)
             ->and($wallet->projection()->firstOrFail()->reserved_minor)->toBe(35000)
             ->and($submitted->status)->toBe('submitted')
