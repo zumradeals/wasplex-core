@@ -48,11 +48,16 @@ final class BootstrapFounder extends Command
             'advertising.configuration.view', 'advertising.configuration.manage',
             'advertising.configuration.publish', 'advertising.match.audit.view',
         ] as $name) {
-            $alreadyGranted = $account->capabilityGrants()->where('space_id', $space->id)->where('capability', $name)->whereNull('revoked_at')->exists();
-
-            if (! $alreadyGranted) {
-                $capabilities->grant(account: $account, capability: $name, space: $space, reason: 'Initialisation nominative du fondateur');
+            if ($capabilities->allows($account, $name, $space)) {
+                continue;
             }
+
+            $capabilities->grant(
+                account: $account,
+                capability: $name,
+                space: $space,
+                reason: 'Initialisation nominative du fondateur',
+            );
         }
 
         $this->info("Espace fondateur prêt pour {$identifier->display_value}.");
