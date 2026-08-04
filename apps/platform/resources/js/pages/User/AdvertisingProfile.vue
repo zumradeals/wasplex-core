@@ -45,7 +45,7 @@ type Consent = {
     active: boolean;
 };
 
-const props = defineProps<{
+defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
