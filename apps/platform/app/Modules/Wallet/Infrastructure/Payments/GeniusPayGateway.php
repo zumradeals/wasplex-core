@@ -201,11 +201,16 @@ final class GeniusPayGateway implements PaymentGatewayContract
         $reference = trim((string) ($data['reference'] ?? ''));
         $amount = $this->positiveMinorAmount($data['amount'] ?? null);
         $fees = $this->nonNegativeMinorAmount($data['fees'] ?? 0) ?? 0;
-        $status = strtolower(trim((string) ($data['status'] ?? '')));
+        $rawStatus = $data['status'] ?? null;
+        $status = is_string($rawStatus) ? strtolower(trim($rawStatus)) : '';
         $environment = strtolower(trim((string) ($data['environment'] ?? '')));
         $currency = strtoupper(trim((string) ($data['currency'] ?? 'XOF')));
         $checkoutValue = $data['checkout_url'] ?? $data['payment_url'] ?? null;
         $checkoutUrl = is_string($checkoutValue) && trim($checkoutValue) !== '' ? trim($checkoutValue) : null;
+
+        if ($status === '' && $checkoutUrl !== null) {
+            $status = 'pending';
+        }
 
         $missing = [];
         if ($id === '') {
