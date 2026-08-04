@@ -12,7 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 final class AdvertisingProfileService
 {
-    public function __construct(private readonly AdvertisingConsentService $consents) {}
+    public function __construct(private readonly AdvertisingConsentService $consents)
+    {
+    }
 
     /**
      * @return array{
@@ -30,12 +32,10 @@ final class AdvertisingProfileService
             ->orderBy('sort_order')
             ->orderBy('code')
             ->get()
-            ->filter(static fn (AdvertisingProfileQuestion $question): bool =>
-                $question->currentVersion !== null
+            ->filter(static fn (AdvertisingProfileQuestion $question): bool => $question->currentVersion !== null
                 && $question->currentVersion->state === 'published'
                 && $question->taxonomy->status === 'active'
-                && ! $question->taxonomy->sensitive
-            )
+                && ! $question->taxonomy->sensitive)
             ->values();
         $latest = $this->latestAnswers($account);
         $answered = 0;
