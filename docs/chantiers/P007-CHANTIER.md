@@ -1,12 +1,14 @@
 # P007 — REVUE ADMINISTRATIVE ET ACTIVATION DE CAMPAGNE
 
-**Statut :** `merged`  
+**Statut :** `deployed`  
 **Branche :** `codex/p007-campaign-admin-review`  
 **Pull Request :** `#10`  
 **Commit de base :** `63d355409b30cac77340f59243322d611e59e18e`  
 **Commit fusionné :** `b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e`  
+**Commit déployé :** `7a7d42e55de333a65e313756044a4faef91aa202`  
 **Date d’ouverture :** 4 août 2026  
 **Date d’acceptation et de fusion :** 4 août 2026  
+**Date de déploiement en production :** 4 août 2026  
 **Autorité :** fondateur Wasplex
 
 ## 1. Objectif
@@ -139,3 +141,21 @@ Tous les critères techniques ont été validés avant fusion de la PR #10.
 - la migration P007 peut être annulée tant qu’aucun chantier P008 ne dépend des cas de revue ;
 - les rejets déjà exécutés restent expliqués par l’audit Wallet et ne doivent jamais être annulés par suppression directe ;
 - toute correction financière éventuelle passe par une nouvelle opération compensatoire.
+
+## 13. Déploiement en production
+
+P007 a été déployé sur le VPS Wasplex le 4 août 2026 depuis le `main` au commit `7a7d42e55de333a65e313756044a4faef91aa202`.
+
+Preuves de déploiement :
+
+- build Vite réussi avec 597 modules transformés ;
+- migration `2026_08_04_030000_create_campaign_review_tables` exécutée ;
+- migration `2026_08_04_031000_extend_campaign_statuses_for_review` exécutée ;
+- bootstrap P007 exécuté pour 1 espace administration ;
+- 0 dossier historique manquant à reprendre ;
+- 6 routes administratives P007 disponibles ;
+- routes annonceur de correction et resoumission disponibles ;
+- application Laravel en production, debug désactivé, maintenance désactivée ;
+- santé HTTP 200 ;
+- connexion HTTP 200 ;
+- accès administration invité redirigé vers la connexion en HTTP 302.
