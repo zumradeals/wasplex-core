@@ -54,12 +54,12 @@ final class AdvertisingProfileService
                 'category' => $question->taxonomy->category,
                 'taxonomyCode' => $question->taxonomy->code,
                 'taxonomyLabel' => $question->taxonomy->label,
-                'prompt' => $version?->prompt ?? '',
-                'helpText' => $version?->help_text ?? '',
-                'privacyNote' => $version?->privacy_note ?? '',
-                'optional' => (bool) ($version?->optional ?? true),
-                'options' => $version?->options ?? [],
-                'purposeCodes' => $version?->purpose_codes ?? [],
+                'prompt' => $version->prompt,
+                'helpText' => $version->help_text,
+                'privacyNote' => $version->privacy_note,
+                'optional' => $version->optional,
+                'options' => $version->options ?? [],
+                'purposeCodes' => $version->purpose_codes,
                 'answer' => $active ? ($answer?->value['selected'] ?? null) : null,
                 'answerVersion' => $answer?->version,
                 'answeredAt' => $answer?->answered_at->toIso8601String(),
@@ -101,7 +101,7 @@ final class AdvertisingProfileService
             }
 
             $allowed = collect($version->options ?? [])
-                ->map(static fn (array $option): string => (string) ($option['value'] ?? ''))
+                ->map(static fn (array $option): string => $option['value'])
                 ->filter()
                 ->values();
 
@@ -126,20 +126,30 @@ final class AdvertisingProfileService
                 return $latest;
             }
 
+            $nextVersion = $latest instanceof AdvertisingProfileAnswer
+                ? $latest->version + 1
+                : 1;
+            $provenance = $latest instanceof AdvertisingProfileAnswer
+                ? 'corrected'
+                : 'declared_by_user';
+            $replacesAnswerId = $latest instanceof AdvertisingProfileAnswer
+                ? $latest->id
+                : null;
+
             $answer = AdvertisingProfileAnswer::query()->create([
                 'account_id' => $account->id,
                 'advertising_profile_question_id' => $question->id,
                 'advertising_taxonomy_id' => $question->taxonomy->id,
-                'version' => ($latest?->version ?? 0) + 1,
+                'version' => $nextVersion,
                 'value' => ['selected' => $selected],
-                'provenance' => $latest === null ? 'declared_by_user' : 'corrected',
+                'provenance' => $provenance,
                 'status' => 'active',
                 'answered_at' => now(),
                 'confirmed_at' => now(),
                 'expires_at' => $version->freshness_days === null
                     ? null
                     : now()->addDays($version->freshness_days),
-                'replaces_answer_id' => $latest?->id,
+                'replaces_answer_id' => $replacesAnswerId,
             ]);
 
             DB::afterCommit(static fn () => event(new AdvertisingProfileUpdated(
@@ -170,16 +180,23 @@ final class AdvertisingProfileService
                 return $latest;
             }
 
+            $nextVersion = $latest instanceof AdvertisingProfileAnswer
+                ? $latest->version + 1
+                : 1;
+            $replacesAnswerId = $latest instanceof AdvertisingProfileAnswer
+                ? $latest->id
+                : null;
+
             $answer = AdvertisingProfileAnswer::query()->create([
                 'account_id' => $account->id,
                 'advertising_profile_question_id' => $question->id,
                 'advertising_taxonomy_id' => $question->advertising_taxonomy_id,
-                'version' => ($latest?->version ?? 0) + 1,
+                'version' => $nextVersion,
                 'value' => ['selected' => null],
                 'provenance' => 'corrected',
                 'status' => 'deleted',
                 'answered_at' => now(),
-                'replaces_answer_id' => $latest?->id,
+                'replaces_answer_id' => $replacesAnswerId,
             ]);
 
             DB::afterCommit(static fn () => event(new AdvertisingProfileUpdated(
