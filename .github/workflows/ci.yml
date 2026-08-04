@@ -98,7 +98,31 @@ jobs:
           retention-days: 7
 
       - name: Check frontend formatting
-        run: npm run format:check
+        id: prettier
+        run: |
+          set +e
+          npm run format:check
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            npm run format
+            mkdir -p storage/prettier-formatted
+            git diff --name-only -- resources/ > storage/prettier-formatted/files.txt
+            while IFS= read -r file; do
+              [ -n "$file" ] || continue
+              mkdir -p "storage/prettier-formatted/$(dirname "$file")"
+              cp "$file" "storage/prettier-formatted/$file"
+            done < storage/prettier-formatted/files.txt
+            exit "$status"
+          fi
+
+      - name: Preserve exact Prettier corrections
+        if: failure() && steps.prettier.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: prettier-formatted-files
+          path: apps/platform/storage/prettier-formatted
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Run frontend lint
         run: npm run lint:check
