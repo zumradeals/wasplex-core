@@ -3,6 +3,7 @@
 namespace App\Modules\Advertising\Infrastructure\Providers;
 
 use App\Modules\Advertising\Console\Commands\BootstrapAdvertising;
+use App\Modules\Advertising\Http\Controllers\AdvertisingAdministrationController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingMatchingController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingProfileController;
 use Illuminate\Support\Facades\Route;
@@ -72,6 +73,43 @@ final class AdvertisingServiceProvider extends ServiceProvider
                         'throttle:12,1',
                     ])
                     ->name('estimate');
+            });
+
+        Route::prefix('/administration/publicite')
+            ->name('advertising.admin.')
+            ->middleware([
+                'web',
+                'auth',
+                'identity.session',
+                'space.kind:administration',
+                'mfa.recent',
+            ])
+            ->group(function (): void {
+                Route::get('/', [AdvertisingAdministrationController::class, 'index'])
+                    ->middleware([
+                        'capability:advertising.configuration.view',
+                        'capability:advertising.match.audit.view',
+                    ])
+                    ->name('index');
+                Route::post('/configuration', [AdvertisingAdministrationController::class, 'publish'])
+                    ->middleware([
+                        'capability:advertising.configuration.manage',
+                        'capability:advertising.configuration.publish',
+                        'throttle:12,1',
+                    ])
+                    ->name('configuration.publish');
+                Route::patch('/finalites/{purpose}/statut', [AdvertisingAdministrationController::class, 'purposeStatus'])
+                    ->middleware([
+                        'capability:advertising.configuration.manage',
+                        'throttle:20,1',
+                    ])
+                    ->name('purposes.status');
+                Route::patch('/taxonomies/{taxonomy}/statut', [AdvertisingAdministrationController::class, 'taxonomyStatus'])
+                    ->middleware([
+                        'capability:advertising.configuration.manage',
+                        'throttle:20,1',
+                    ])
+                    ->name('taxonomies.status');
             });
 
         if ($this->app->runningInConsole()) {
