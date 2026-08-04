@@ -25,8 +25,12 @@ const services = [
         href: '/wallet',
         detail: `${new Intl.NumberFormat('fr-FR').format(props.wallet.balances.available)} WP disponible`,
     },
+    {
+        label: 'Profil intelligent',
+        href: '/mon-espace/profil-intelligent',
+        detail: 'Vos réponses et consentements',
+    },
     { label: 'Carte', href: '#', detail: 'Bientôt disponible' },
-    { label: 'Services', href: '#', detail: 'Bientôt disponible' },
 ];
 </script>
 
@@ -116,7 +120,8 @@ const services = [
                 class="sticky bottom-0 mt-6 grid grid-cols-4 border-t border-white/10 bg-wasplex-night/95 px-3 py-3 text-center text-[0.68rem] font-bold text-white/40 backdrop-blur-xl"
             >
                 <span class="text-wasplex-cyan">Espace</span><span>Feed</span
-                ><Link href="/wallet">Wallet</Link><span>Profil</span>
+                ><Link href="/wallet">Wallet</Link
+                ><Link href="/mon-espace/profil-intelligent">Profil</Link>
             </nav>
         </div>
     </main>
