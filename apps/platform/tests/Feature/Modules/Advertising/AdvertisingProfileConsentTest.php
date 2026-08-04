@@ -73,7 +73,7 @@ final class AdvertisingProfileConsentTest extends TestCase
         $profiles->answer($account, 'mobile_internet_interest', 'yes');
         $profiles->answer($account, 'abidjan_approximate_commune', 'cocody');
 
-        self::assertSame([
+        $this->assertMatchingFacts([
             'telecom.network.primary' => 'orange',
             'interest.mobile_internet' => 'yes',
             'geo.ci.abidjan.commune' => 'cocody',
@@ -104,7 +104,7 @@ final class AdvertisingProfileConsentTest extends TestCase
         $profiles->answer($account, 'primary_telecom_network', 'orange');
         $profiles->answer($account, 'abidjan_approximate_commune', 'cocody');
 
-        self::assertSame([
+        $this->assertMatchingFacts([
             'telecom.network.primary' => 'orange',
         ], $profiles->matchingFacts($account));
 
@@ -114,7 +114,7 @@ final class AdvertisingProfileConsentTest extends TestCase
             AdvertisingConsentStatus::Granted,
         );
 
-        self::assertSame([
+        $this->assertMatchingFacts([
             'telecom.network.primary' => 'orange',
             'geo.ci.abidjan.commune' => 'cocody',
         ], $profiles->matchingFacts($account));
@@ -139,6 +139,18 @@ final class AdvertisingProfileConsentTest extends TestCase
             'primary_telecom_network',
             'orange',
         );
+    }
+
+    /**
+     * @param array<string, string> $expected
+     * @param array<string, string> $actual
+     */
+    private function assertMatchingFacts(array $expected, array $actual): void
+    {
+        ksort($expected);
+        ksort($actual);
+
+        self::assertSame($expected, $actual);
     }
 
     private function readyAccount(): Account
