@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $status
  * @property CarbonImmutable|null $expires_at
  * @property-read CampaignFunding $funding
- * @property-read WalletReservation $walletReservation
+ * @property-read WalletReservation|null $walletReservation
  */
 final class CampaignBudgetReservation extends Model
 {
