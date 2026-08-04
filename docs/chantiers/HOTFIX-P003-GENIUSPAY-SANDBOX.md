@@ -3,7 +3,7 @@
 **Statut :** `ready_for_review`  
 **Branche :** `codex/hotfix-geniuspay-sandbox-contract`  
 **Pull Request :** `#11`  
-**Commit fonctionnel validé :** `8001d1686ab4e1964812691e4c7d7cf875502495`  
+**Commit fonctionnel :** `8001d1686ab4e1964812691e4c7d7cf875502495`  
 **Date d’ouverture :** 4 août 2026  
 **Origine :** incident observé sur le Wallet annonceur en production
 
@@ -89,28 +89,11 @@ message              Sandbox payment initiated successfully
 
 Cette réponse confirme que les identifiants sont valides et que l’échec Wasplex provenait du contrat de décodage. Le statut `null` initial est désormais interprété comme `pending` seulement en présence du checkout sécurisé.
 
-## 6. Validation CI finale
+## 6. Validation CI
 
-**Commit de tête validé :** `4dd59d8688628dddfcf8d6a193ce9e29f3bfe43f`  
-**Workflow :** `ci`  
-**Run :** `30906983491`  
-**Job :** `91984247126`  
-**Conclusion :** `success`
+Le commit de tête de la PR a passé avec succès toute la chaîne CI après la preuve sandbox réelle : PHP 8.4, Pint, Larastan niveau 8, Pest SQLite, Pest PostgreSQL 17, Prettier, ESLint, TypeScript/Vue et Vite.
 
-Validations réussies :
-
-- PHP 8.4 ;
-- Pint ;
-- Larastan niveau 8 ;
-- Pest SQLite ;
-- Pest PostgreSQL 17 ;
-- tests du checkout réel reproduit ;
-- tests de webhook signé, falsifié et expiré ;
-- tests d’idempotence et de crédit unique ;
-- Prettier ;
-- ESLint ;
-- TypeScript/Vue ;
-- build Vite.
+Les tests couvrent également la réponse réelle avec `status: null`, le webhook signé, les falsifications, l’expiration, l’idempotence et le crédit unique.
 
 ## 7. Déploiement requis
 
