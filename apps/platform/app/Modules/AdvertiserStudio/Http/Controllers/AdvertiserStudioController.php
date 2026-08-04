@@ -30,8 +30,7 @@ final readonly class AdvertiserStudioController
         private AdvertiserStudioPresenter $presenter,
         private WalletCatalog $wallets,
         private WalletPresenter $walletPresenter,
-    )
-    {}
+    ) {}
 
     public function dashboard(Request $request): Response
     {
