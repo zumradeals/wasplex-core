@@ -66,15 +66,17 @@ it('rolls the P002 migration back cleanly on PostgreSQL', function (): void {
 
     expect(Schema::hasTable('ledger_transactions'))->toBeTrue()
         ->and(Schema::hasTable('advertising_consents'))->toBeTrue()
-        ->and(Schema::hasTable('advertising_matches'))->toBeTrue();
+        ->and(Schema::hasTable('advertising_matches'))->toBeTrue()
+        ->and(Schema::hasTable('advertising_configuration_versions'))->toBeTrue();
 
-    // P003 à P007, GeniusPay et les trois migrations P008 dépendent du Ledger ou de l’identité.
-    $this->artisan('migrate:rollback', ['--step' => 12, '--force' => true])
+    // P003 à P007, GeniusPay et les quatre migrations P008 dépendent du Ledger ou de l’identité.
+    $this->artisan('migrate:rollback', ['--step' => 13, '--force' => true])
         ->assertSuccessful();
 
     expect(Schema::hasTable('ledger_transactions'))->toBeFalse()
         ->and(Schema::hasTable('ledger_entries'))->toBeFalse()
         ->and(Schema::hasTable('ledger_idempotency_keys'))->toBeFalse()
         ->and(Schema::hasTable('advertising_consents'))->toBeFalse()
-        ->and(Schema::hasTable('advertising_matches'))->toBeFalse();
+        ->and(Schema::hasTable('advertising_matches'))->toBeFalse()
+        ->and(Schema::hasTable('advertising_configuration_versions'))->toBeFalse();
 });
