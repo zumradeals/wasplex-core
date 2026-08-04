@@ -7,6 +7,7 @@ use App\Modules\Wallet\Infrastructure\Models\PaymentProviderConfiguration;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 final class GeniusPayConfigurationService
@@ -19,13 +20,15 @@ final class GeniusPayConfigurationService
     /** @return array<string, mixed> */
     public function runtime(): array
     {
-        $active = PaymentProviderConfiguration::query()
-            ->where('provider', self::PROVIDER)
-            ->where('is_active', true)
-            ->first();
+        if ($this->configurationTableExists()) {
+            $active = PaymentProviderConfiguration::query()
+                ->where('provider', self::PROVIDER)
+                ->where('is_active', true)
+                ->first();
 
-        if ($active instanceof PaymentProviderConfiguration) {
-            return $this->effectiveConfiguration($active->environment, $active);
+            if ($active instanceof PaymentProviderConfiguration) {
+                return $this->effectiveConfiguration($active->environment, $active);
+            }
         }
 
         return $this->effectiveConfiguration($this->fallbackEnvironment(), null);
@@ -71,7 +74,7 @@ final class GeniusPayConfigurationService
     }
 
     /**
-     * @param array{api_key?:string|null,api_secret?:string|null,webhook_secret?:string|null} $data
+     * @param  array{api_key?:string|null,api_secret?:string|null,webhook_secret?:string|null}  $data
      */
     public function save(string $environment, array $data, Account $actor): PaymentProviderConfiguration
     {
@@ -278,6 +281,15 @@ final class GeniusPayConfigurationService
                 (int) config('services.geniuspay.webhook_tolerance_seconds', 300),
             ),
         ];
+    }
+
+    private function configurationTableExists(): bool
+    {
+        try {
+            return Schema::hasTable('payment_provider_configurations');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     private function fallbackEnvironment(): string
