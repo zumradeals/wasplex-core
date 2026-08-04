@@ -3,6 +3,8 @@
 namespace App\Modules\Campaign\Application\Services;
 
 use App\Modules\Campaign\Infrastructure\Models\Campaign;
+use App\Modules\Campaign\Infrastructure\Models\CampaignFunding;
+use App\Modules\Campaign\Infrastructure\Models\CampaignQuote;
 use App\Modules\Campaign\Infrastructure\Models\CampaignReviewCase;
 use App\Modules\Campaign\Infrastructure\Models\CampaignReviewEvent;
 use App\Modules\Campaign\Infrastructure\Models\CampaignStatusEvent;
@@ -17,6 +19,16 @@ final readonly class CampaignReviewPresenter
         $case = $campaign->reviewCases->first();
         $quote = $campaign->quotes->first();
         $funding = $campaign->funding;
+        $amountMinor = 0;
+        $currency = 'XOF';
+
+        if ($quote instanceof CampaignQuote) {
+            $amountMinor = $quote->gross_amount_minor;
+            $currency = $quote->currency;
+        } elseif ($funding instanceof CampaignFunding) {
+            $amountMinor = $funding->amount_minor;
+            $currency = $funding->currency;
+        }
 
         return [
             'id' => $campaign->id,
@@ -35,8 +47,8 @@ final readonly class CampaignReviewPresenter
             ],
             'review' => $case instanceof CampaignReviewCase ? $this->reviewCase($case) : null,
             'budget' => [
-                'amountMinor' => $quote?->gross_amount_minor ?? $funding?->amount_minor ?? 0,
-                'currency' => $quote?->currency ?? $funding?->currency ?? 'XOF',
+                'amountMinor' => $amountMinor,
+                'currency' => $currency,
                 'reservationStatus' => $funding?->budgetReservation?->status,
             ],
             'submittedAt' => $campaign->submitted_at?->toIso8601String(),
