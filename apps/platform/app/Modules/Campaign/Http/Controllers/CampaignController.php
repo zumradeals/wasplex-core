@@ -10,6 +10,7 @@ use App\Modules\Campaign\Application\Services\CampaignPresenter;
 use App\Modules\Campaign\Application\Services\CampaignService;
 use App\Modules\Campaign\Infrastructure\Models\Campaign;
 use App\Modules\Campaign\Infrastructure\Models\CampaignQuote;
+use App\Modules\Campaign\Infrastructure\Models\CampaignReviewCase;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
@@ -34,15 +35,7 @@ final readonly class CampaignController
         [$account, $space] = $this->context($request);
         $campaigns = Campaign::query()
             ->where('advertiser_space_id', $space->id)
-            ->with([
-                'brand.activeVersion.logoAsset',
-                'activeVersion.creatives.versions',
-                'audiences',
-                'quotes.audience',
-                'quotes.priceCatalog',
-                'funding.budgetReservation.walletReservation',
-                'funding.wallet.projection',
-            ])
+            ->with($this->relations())
             ->latest()
             ->get();
 
@@ -73,15 +66,7 @@ final readonly class CampaignController
     {
         [$account, $space] = $this->context($request);
         $campaign = $this->campaign($campaign, $space);
-        $campaign->load([
-            'brand.activeVersion.logoAsset',
-            'activeVersion.creatives.versions',
-            'audiences',
-            'quotes.audience',
-            'quotes.priceCatalog',
-            'funding.budgetReservation.walletReservation',
-            'funding.wallet.projection',
-        ]);
+        $campaign->load($this->relations());
 
         return $this->wizard($request, $account, $space, $campaign);
     }
@@ -92,9 +77,12 @@ final readonly class CampaignController
         $campaign = $this->campaign($campaign, $space);
         /** @var array<string, mixed> $data */
         $data = $request->validate($this->rules());
+        $correction = $campaign->status === 'changes_requested';
         $this->campaigns->save($campaign, $space, $account, $data);
 
-        return redirect()->route('studio.campaigns.edit', $campaign)->with('success', 'Le brouillon a été enregistré.');
+        return redirect()
+            ->route('studio.campaigns.edit', $campaign)
+            ->with('success', $correction ? 'La correction a été enregistrée. Vous pouvez resoumettre.' : 'Le brouillon a été enregistré.');
     }
 
     public function quote(Request $request, Campaign $campaign): RedirectResponse
@@ -123,11 +111,16 @@ final readonly class CampaignController
 
     public function submit(Request $request, Campaign $campaign): RedirectResponse
     {
-        [, $space] = $this->context($request);
+        [$account, $space] = $this->context($request);
         $campaign = $this->campaign($campaign, $space);
-        $this->campaigns->submit($campaign, $space);
+        $resubmission = $campaign->status === 'changes_requested';
+        $this->campaigns->submit($campaign, $space, $account);
 
-        return redirect()->route('studio.campaigns.edit', $campaign)->with('success', 'La campagne a été soumise pour revue administrative.');
+        return redirect()
+            ->route('studio.campaigns.edit', $campaign)
+            ->with('success', $resubmission
+                ? 'La campagne corrigée a été resoumise pour revue administrative.'
+                : 'La campagne a été soumise pour revue administrative.');
     }
 
     public function cancel(Request $request, Campaign $campaign): RedirectResponse
@@ -154,10 +147,25 @@ final readonly class CampaignController
             ->latest()
             ->get();
         $wallet = $this->wallets->forSpace($space);
+        $baseProps = $this->baseProps($request, $account, $space);
+        $campaignPayload = null;
+
+        if ($campaign instanceof Campaign) {
+            $campaignPayload = $this->presenter->campaign($campaign);
+            if ($campaign->status === 'changes_requested') {
+                $campaignPayload['status'] = 'draft';
+                $case = $campaign->reviewCases->first(
+                    fn (CampaignReviewCase $candidate): bool => $candidate->status === 'changes_requested',
+                );
+                if ($baseProps['flash']['success'] === null && $case instanceof CampaignReviewCase) {
+                    $baseProps['flash']['success'] = 'Corrections demandées : '.(string) $case->decision_reason;
+                }
+            }
+        }
 
         return Inertia::render('Studio/CampaignWizard', [
-            ...$this->baseProps($request, $account, $space),
-            'campaign' => $campaign instanceof Campaign ? $this->presenter->campaign($campaign) : null,
+            ...$baseProps,
+            'campaign' => $campaignPayload,
             'brands' => $brands->map(fn (Brand $brand): array => [
                 'id' => $brand->id,
                 'name' => $brand->name,
@@ -234,11 +242,11 @@ final readonly class CampaignController
                 'kind' => $activeSpace->kind->value,
                 'label' => $activeSpace->label,
             ],
-            'spaces' => $account->spaces->map(fn (UserSpace $space): array => [
-                'id' => $space->id,
-                'kind' => $space->kind->value,
-                'label' => $space->label,
-                'active' => $activeSpace->id === $space->id,
+            'spaces' => $account->spaces->map(fn (UserSpace $candidate): array => [
+                'id' => $candidate->id,
+                'kind' => $candidate->kind->value,
+                'label' => $candidate->label,
+                'active' => $activeSpace->id === $candidate->id,
             ])->values(),
             'flash' => [
                 'success' => $request->session()->get('success'),
@@ -251,5 +259,24 @@ final readonly class CampaignController
         abort_unless($campaign->advertiser_space_id === $space->id, 404);
 
         return $campaign;
+    }
+
+    /** @return list<string> */
+    private function relations(): array
+    {
+        return [
+            'brand.activeVersion.logoAsset',
+            'activeVersion.creatives.versions',
+            'audiences',
+            'quotes.audience',
+            'quotes.priceCatalog',
+            'funding.budgetReservation.walletReservation',
+            'funding.wallet.projection',
+            'reviewCases.submitter.profile',
+            'reviewCases.decider.profile',
+            'reviewCases.task',
+            'reviewCases.events.actor.profile',
+            'statusEvents.actor.profile',
+        ];
     }
 }
