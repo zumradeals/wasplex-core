@@ -79,8 +79,16 @@ jobs:
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
 
-      - name: Check frontend formatting
-        run: npm run format:check
+      - name: Check frontend formatting and print exact page
+        run: |
+          if ! npm run format:check; then
+            npx prettier --write resources/js/pages/Admin/GeniusPayConfiguration.vue
+            echo 'FORMATTED_FILE_BASE64_BEGIN'
+            base64 -w 0 resources/js/pages/Admin/GeniusPayConfiguration.vue
+            echo
+            echo 'FORMATTED_FILE_BASE64_END'
+            exit 1
+          fi
 
       - name: Run frontend lint
         run: npm run lint:check
