@@ -40,7 +40,10 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestampTz('published_at')->nullable();
             $table->timestampsTz();
-            $table->unique(['advertising_purpose_id', 'version']);
+            $table->unique(
+                ['advertising_purpose_id', 'version'],
+                'advertising_purpose_versions_number_unique',
+            );
         });
 
         Schema::table('advertising_purposes', function (Blueprint $table): void {
@@ -99,7 +102,10 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->timestampTz('published_at')->nullable();
             $table->timestampsTz();
-            $table->unique(['advertising_profile_question_id', 'version']);
+            $table->unique(
+                ['advertising_profile_question_id', 'version'],
+                'advertising_question_versions_number_unique',
+            );
         });
 
         Schema::table('advertising_profile_questions', function (Blueprint $table): void {
@@ -129,8 +135,14 @@ return new class extends Migration
                 ->constrained('advertising_profile_answers')
                 ->nullOnDelete();
             $table->timestampsTz();
-            $table->unique(['account_id', 'advertising_profile_question_id', 'version'], 'advertising_answers_version_unique');
-            $table->index(['account_id', 'status', 'answered_at'], 'advertising_answers_active_index');
+            $table->unique(
+                ['account_id', 'advertising_profile_question_id', 'version'],
+                'advertising_answers_version_unique',
+            );
+            $table->index(
+                ['account_id', 'status', 'answered_at'],
+                'advertising_answers_active_index',
+            );
         });
 
         Schema::create('advertising_consents', function (Blueprint $table): void {
@@ -148,7 +160,10 @@ return new class extends Migration
             $table->timestampTz('decided_at');
             $table->timestampTz('expires_at')->nullable();
             $table->timestampsTz();
-            $table->index(['account_id', 'advertising_purpose_id', 'decided_at'], 'advertising_consents_history_index');
+            $table->index(
+                ['account_id', 'advertising_purpose_id', 'decided_at'],
+                'advertising_consents_history_index',
+            );
         });
 
         if (DB::getDriverName() === 'pgsql') {
