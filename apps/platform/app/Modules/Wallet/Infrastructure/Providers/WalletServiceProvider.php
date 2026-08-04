@@ -42,7 +42,7 @@ final class WalletServiceProvider extends ServiceProvider
                 Route::post('/{environment}/activer', [GeniusPayConfigurationAdminController::class, 'activate'])
                     ->middleware(['capability:payment.configuration.activate', 'throttle:5,1'])
                     ->name('activate');
-                Route::post('/revérifier-les-dépôts', [GeniusPayConfigurationAdminController::class, 'reconcilePending'])
+                Route::post('/reverifier-les-depots', [GeniusPayConfigurationAdminController::class, 'reconcilePending'])
                     ->middleware(['capability:wallet.deposit.reconcile', 'throttle:5,1'])
                     ->name('reconcile');
             });
