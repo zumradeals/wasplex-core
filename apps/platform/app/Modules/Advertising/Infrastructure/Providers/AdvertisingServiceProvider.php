@@ -54,6 +54,12 @@ final class AdvertisingServiceProvider extends ServiceProvider
                 Route::get('/ciblage/taxonomies', [AdvertisingMatchingController::class, 'taxonomies'])
                     ->middleware('capability:advertiser.targeting.taxonomy.view')
                     ->name('taxonomies');
+                Route::get('/campagnes/{campaign}/ciblage', [AdvertisingMatchingController::class, 'page'])
+                    ->middleware([
+                        'capability:advertiser.targeting.taxonomy.view',
+                        'capability:advertiser.segment.estimate',
+                    ])
+                    ->name('page');
                 Route::post('/campagnes/{campaign}/ciblage', [AdvertisingMatchingController::class, 'configure'])
                     ->middleware([
                         'capability:advertiser.segment.estimate',
