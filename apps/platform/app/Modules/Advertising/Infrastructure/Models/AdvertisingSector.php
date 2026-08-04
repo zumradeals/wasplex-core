@@ -77,6 +77,10 @@ final class AdvertisingSector extends Model
             ?? $this->translations->firstWhere('locale', 'fr')
             ?? $this->translations->first();
 
-        return $translation?->name ?? $this->code;
+        if (! $translation instanceof AdvertisingSectorTranslation) {
+            return $this->code;
+        }
+
+        return $translation->name;
     }
 }
