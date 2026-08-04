@@ -3,7 +3,6 @@
 **Statut :** `ready_for_review`  
 **Branche :** `codex/hotfix-geniuspay-sandbox-contract`  
 **Pull Request :** `#11`  
-**Commit fonctionnel :** `8001d1686ab4e1964812691e4c7d7cf875502495`  
 **Date d’ouverture :** 4 août 2026  
 **Origine :** incident observé sur le Wallet annonceur en production
 
@@ -64,46 +63,24 @@ Le hotfix conserve les verrous suivants :
 
 Le 4 août 2026, les clés présentes en production ont été testées sans être affichées.
 
-### Compte marchand
-
 ```text
-HTTP                 200
-success              true
-account_status       active
-environment          sandbox
-```
-
-### Création de paiement sandbox
-
-```text
-HTTP                 201
-success              true
-id                   14498
-reference            SANDBOX_*
-amount               1000 XOF
-status fournisseur   null
-checkout             https://geniuspay.ci/checkout/SANDBOX_*
-environment          sandbox
-message              Sandbox payment initiated successfully
+Compte marchand : HTTP 200, active, sandbox
+Création paiement : HTTP 201, success
+Référence : SANDBOX_*
+Checkout : https://geniuspay.ci/checkout/SANDBOX_*
+Statut initial fournisseur : null
+Environnement : sandbox
 ```
 
 Cette réponse confirme que les identifiants sont valides et que l’échec Wasplex provenait du contrat de décodage. Le statut `null` initial est désormais interprété comme `pending` seulement en présence du checkout sécurisé.
 
 ## 6. Validation CI
 
-Le commit de tête de la PR a passé avec succès toute la chaîne CI après la preuve sandbox réelle : PHP 8.4, Pint, Larastan niveau 8, Pest SQLite, Pest PostgreSQL 17, Prettier, ESLint, TypeScript/Vue et Vite.
+Toute la chaîne CI a été validée après la preuve sandbox réelle : PHP 8.4, Pint, Larastan niveau 8, Pest SQLite, Pest PostgreSQL 17, Prettier, ESLint, TypeScript/Vue et Vite.
 
-Les tests couvrent également la réponse réelle avec `status: null`, le webhook signé, les falsifications, l’expiration, l’idempotence et le crédit unique.
+Les tests couvrent la réponse réelle avec `status: null`, le webhook signé, les falsifications, l’expiration, l’idempotence et le crédit unique.
 
 ## 7. Déploiement requis
-
-La production devra remplacer :
-
-```text
-GENIUSPAY_BASE_URL=https://pay.genius.ci/api/v1/merchant
-```
-
-par :
 
 ```text
 GENIUSPAY_BASE_URL=https://geniuspay.ci/api/v1/merchant
@@ -118,12 +95,12 @@ Les tentatives déjà marquées `unknown` sans référence fournisseur ne doiven
 
 ## 9. Critères d’acceptation
 
-1. L’appel compte marchand sandbox répond avec succès — **validé**.
-2. Un nouveau paiement retourne une référence `SANDBOX_*` et une URL de checkout GeniusPay — **validé**.
-3. La réponse initiale `status: null` est normalisée sans masquer une réponse réellement incomplète — **validé par test**.
-4. La page sandbox s’ouvre depuis le parcours Wallet — **à vérifier après déploiement**.
-5. Un webhook officiel signé est accepté — **validé en CI, à confirmer après paiement sandbox**.
-6. Un webhook falsifié ou expiré est refusé — **validé en CI**.
-7. Le paiement est revérifié côté serveur avant crédit — **validé en CI**.
-8. Le Wallet n’est crédité qu’une fois — **validé en CI**.
-9. Toute la chaîne qualité reste verte — **validé**.
+1. Compte marchand sandbox — **validé**.
+2. Référence `SANDBOX_*` et checkout — **validé**.
+3. Normalisation sûre de `status: null` — **validé**.
+4. Ouverture depuis le parcours Wallet — **à vérifier après déploiement**.
+5. Webhook officiel — **validé en CI, à confirmer après paiement sandbox**.
+6. Falsification et expiration refusées — **validé**.
+7. Revérification serveur avant crédit — **validé**.
+8. Crédit unique — **validé**.
+9. Chaîne qualité complète — **validé**.
