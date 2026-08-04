@@ -1,12 +1,14 @@
 # P007 — RAPPORT DE LIVRAISON
 
 **Chantier :** Revue administrative et activation de campagne  
-**Statut :** `ready_for_review`  
+**Statut :** `merged`  
 **Branche :** `codex/p007-campaign-admin-review`  
 **Pull Request :** `#10`  
 **Commit de base :** `63d355409b30cac77340f59243322d611e59e18e`  
-**Commit technique validé :** `b758477c42a2afeda65ccc88f13c402c99f4f53d`  
-**Date :** 4 août 2026
+**Commit technique validé :** `e1c34522d5f035e8ed30a4ffc3d95b49c483f274`  
+**Commit de fusion :** `b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e`  
+**Date d’acceptation et de fusion :** 4 août 2026  
+**Autorité d’acceptation :** fondateur Wasplex
 
 ## 1. Résultat livré
 
@@ -157,7 +159,7 @@ Elle :
 - états administratifs dans la liste annonceur ;
 - écran annonceur de correction/resoumission.
 
-Les captures de recette sur le VPS seront produites après fusion et déploiement, lors de l’acceptation fonctionnelle du fondateur.
+Les captures de recette sur le VPS seront produites après déploiement, lors de l’acceptation fonctionnelle du fondateur.
 
 ## 9. Tests P007
 
@@ -175,8 +177,9 @@ Les tests P006 ont également été adaptés pour vérifier l’ouverture automa
 ## 10. Validation CI finale
 
 **Workflow :** `ci`  
-**Run :** `30901314412`  
-**Job :** `91966015333`  
+**Run :** `30901618819`  
+**Job :** `91967007354`  
+**Commit validé :** `e1c34522d5f035e8ed30a4ffc3d95b49c483f274`  
 **Conclusion :** `success`
 
 Validations réussies :
@@ -221,6 +224,16 @@ P007 ne contient pas :
 
 Ces responsabilités restent respectivement à P008, P009, P010 et P011.
 
-## 13. Conclusion
+## 13. Acceptation et fusion
 
-Le code P007 est techniquement prêt pour revue. La prochaine décision du fondateur porte sur l’acceptation et la fusion de la PR #10. Aucun déploiement n’a été effectué.
+Le fondateur Wasplex a explicitement autorisé l’acceptation et la fusion de P007 le 4 août 2026.
+
+GitHub interdisant l’auto-approbation formelle d’une Pull Request créée par le même compte, la décision fondatrice a été enregistrée comme revue de type commentaire avant la fusion.
+
+La PR #10 a ensuite été fusionnée sur `main` au commit :
+
+```text
+b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e
+```
+
+P007 est donc intégré au dépôt principal. Aucun déploiement sur le VPS n’a été effectué dans cette opération.
