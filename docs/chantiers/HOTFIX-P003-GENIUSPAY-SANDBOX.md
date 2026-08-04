@@ -3,7 +3,7 @@
 **Statut :** `ready_for_review`  
 **Branche :** `codex/hotfix-geniuspay-sandbox-contract`  
 **Pull Request :** `#11`  
-**Commit final :** `8001d1686ab4e1964812691e4c7d7cf875502495`  
+**Commit fonctionnel validé :** `8001d1686ab4e1964812691e4c7d7cf875502495`  
 **Date d’ouverture :** 4 août 2026  
 **Origine :** incident observé sur le Wallet annonceur en production
 
@@ -91,10 +91,10 @@ Cette réponse confirme que les identifiants sont valides et que l’échec Wasp
 
 ## 6. Validation CI finale
 
-**Commit validé :** `8001d1686ab4e1964812691e4c7d7cf875502495`  
+**Commit de tête validé :** `4dd59d8688628dddfcf8d6a193ce9e29f3bfe43f`  
 **Workflow :** `ci`  
-**Run :** `30906777581`  
-**Job :** `91983592027`  
+**Run :** `30906983491`  
+**Job :** `91984247126`  
 **Conclusion :** `success`
 
 Validations réussies :
