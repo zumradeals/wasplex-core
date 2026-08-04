@@ -78,7 +78,7 @@ final class AdvertisingProfileSignal extends Model
     /** @return BelongsTo<AdvertisingTaxonomy, $this> */
     public function taxonomy(): BelongsTo
     {
-        return $this->belongsTo(AdvertisingTaxonomy::class);
+        return $this->belongsTo(AdvertisingTaxonomy::class, 'advertising_taxonomy_id');
     }
 
     /** @return BelongsTo<AdvertisingProfileSignal, $this> */
