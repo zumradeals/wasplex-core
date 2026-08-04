@@ -3,6 +3,7 @@
 namespace App\Modules\Advertising\Infrastructure\Providers;
 
 use App\Modules\Advertising\Console\Commands\BootstrapAdvertising;
+use App\Modules\Advertising\Console\Commands\BootstrapProfileIntelligence;
 use App\Modules\Advertising\Http\Controllers\AdvertisingAdministrationController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingMatchingController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingProfileController;
@@ -113,7 +114,10 @@ final class AdvertisingServiceProvider extends ServiceProvider
             });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BootstrapAdvertising::class]);
+            $this->commands([
+                BootstrapAdvertising::class,
+                BootstrapProfileIntelligence::class,
+            ]);
         }
     }
 }
