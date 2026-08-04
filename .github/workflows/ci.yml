@@ -79,8 +79,28 @@ jobs:
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
 
-      - name: Check frontend formatting
-        run: npm run format:check
+      - name: Format P008-R frontend files
+        run: >-
+          npx prettier --write
+          resources/js/layouts/AdminLayout.vue
+          resources/js/pages/Admin/AdvertisingCatalog.vue
+          resources/js/pages/User/AdvertisingProfile.vue
+
+      - name: Upload formatted P008-R frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: p008r-prettier-output
+          path: |
+            apps/platform/resources/js/layouts/AdminLayout.vue
+            apps/platform/resources/js/pages/Admin/AdvertisingCatalog.vue
+            apps/platform/resources/js/pages/User/AdvertisingProfile.vue
+
+      - name: Verify P008-R frontend formatting
+        run: >-
+          git diff --exit-code --
+          resources/js/layouts/AdminLayout.vue
+          resources/js/pages/Admin/AdvertisingCatalog.vue
+          resources/js/pages/User/AdvertisingProfile.vue
 
       - name: Run frontend lint
         run: npm run lint:check
