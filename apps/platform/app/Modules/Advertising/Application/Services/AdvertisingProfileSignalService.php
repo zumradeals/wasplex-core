@@ -91,11 +91,11 @@ final class AdvertisingProfileSignalService
             ]);
         }
 
-        $proposal->loadMissing('taxonomy');
+        $taxonomy = AdvertisingTaxonomy::query()->findOrFail($proposal->advertising_taxonomy_id);
 
         return $this->append(
             account: $account,
-            taxonomy: $proposal->taxonomy,
+            taxonomy: $taxonomy,
             value: $proposal->value,
             source: $accepted ? 'confirmed_by_user' : 'corrected_by_user',
             status: $accepted ? 'active' : 'rejected',
