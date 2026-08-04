@@ -3,6 +3,7 @@
 namespace App\Modules\Advertising\Infrastructure\Providers;
 
 use App\Modules\Advertising\Console\Commands\BootstrapAdvertising;
+use App\Modules\Advertising\Http\Controllers\AdvertisingMatchingController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingProfileController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -41,6 +42,30 @@ final class AdvertisingServiceProvider extends ServiceProvider
                         'throttle:20,1',
                     ])
                     ->name('consents.decide');
+                Route::get('/pourquoi/{match}', [AdvertisingMatchingController::class, 'explanation'])
+                    ->middleware('capability:advertising.explanation.view.self')
+                    ->name('explanation');
+            });
+
+        Route::prefix('/studio')
+            ->name('advertising.targeting.')
+            ->middleware(['web', 'auth', 'identity.session', 'space.kind:advertiser'])
+            ->group(function (): void {
+                Route::get('/ciblage/taxonomies', [AdvertisingMatchingController::class, 'taxonomies'])
+                    ->middleware('capability:advertiser.targeting.taxonomy.view')
+                    ->name('taxonomies');
+                Route::post('/campagnes/{campaign}/ciblage', [AdvertisingMatchingController::class, 'configure'])
+                    ->middleware([
+                        'capability:advertiser.segment.estimate',
+                        'throttle:20,1',
+                    ])
+                    ->name('configure');
+                Route::post('/campagnes/{campaign}/ciblage/estimation', [AdvertisingMatchingController::class, 'estimate'])
+                    ->middleware([
+                        'capability:advertiser.segment.estimate',
+                        'throttle:12,1',
+                    ])
+                    ->name('estimate');
             });
 
         if ($this->app->runningInConsole()) {
