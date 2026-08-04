@@ -71,18 +71,49 @@ final readonly class CampaignController
         return $this->wizard($request, $account, $space, $campaign);
     }
 
+    public function correctionPage(Request $request, Campaign $campaign): Response
+    {
+        [$account, $space] = $this->context($request);
+        $campaign = $this->campaign($campaign, $space);
+        abort_unless($campaign->status === 'changes_requested', 404);
+        $campaign->load($this->relations());
+        $case = $campaign->reviewCases->first(
+            fn (CampaignReviewCase $candidate): bool => $candidate->status === 'changes_requested',
+        );
+
+        return Inertia::render('Studio/CampaignCorrection', [
+            ...$this->baseProps($request, $account, $space),
+            'campaign' => $this->presenter->campaign($campaign),
+            'brands' => $this->brands($space),
+            'assets' => $this->assets($space),
+            'reviewReason' => $case?->decision_reason,
+        ]);
+    }
+
     public function update(Request $request, Campaign $campaign): RedirectResponse
     {
         [$account, $space] = $this->context($request);
         $campaign = $this->campaign($campaign, $space);
         /** @var array<string, mixed> $data */
         $data = $request->validate($this->rules());
-        $correction = $campaign->status === 'changes_requested';
         $this->campaigns->save($campaign, $space, $account, $data);
 
+        return redirect()->route('studio.campaigns.edit', $campaign)->with('success', 'Le brouillon a été enregistré.');
+    }
+
+    public function resubmitCorrection(Request $request, Campaign $campaign): RedirectResponse
+    {
+        [$account, $space] = $this->context($request);
+        $campaign = $this->campaign($campaign, $space);
+        abort_unless($campaign->status === 'changes_requested', 404);
+        /** @var array<string, mixed> $data */
+        $data = $request->validate($this->rules());
+        $corrected = $this->campaigns->save($campaign, $space, $account, $data);
+        $this->campaigns->submit($corrected, $space, $account);
+
         return redirect()
-            ->route('studio.campaigns.edit', $campaign)
-            ->with('success', $correction ? 'La correction a été enregistrée. Vous pouvez resoumettre.' : 'Le brouillon a été enregistré.');
+            ->route('studio.campaigns.index')
+            ->with('success', 'La correction a été enregistrée et resoumise pour revue administrative.');
     }
 
     public function quote(Request $request, Campaign $campaign): RedirectResponse
@@ -113,14 +144,9 @@ final readonly class CampaignController
     {
         [$account, $space] = $this->context($request);
         $campaign = $this->campaign($campaign, $space);
-        $resubmission = $campaign->status === 'changes_requested';
         $this->campaigns->submit($campaign, $space, $account);
 
-        return redirect()
-            ->route('studio.campaigns.edit', $campaign)
-            ->with('success', $resubmission
-                ? 'La campagne corrigée a été resoumise pour revue administrative.'
-                : 'La campagne a été soumise pour revue administrative.');
+        return redirect()->route('studio.campaigns.edit', $campaign)->with('success', 'La campagne a été soumise pour revue administrative.');
     }
 
     public function cancel(Request $request, Campaign $campaign): RedirectResponse
@@ -134,46 +160,13 @@ final readonly class CampaignController
 
     private function wizard(Request $request, Account $account, UserSpace $space, ?Campaign $campaign = null): Response
     {
-        $brands = Brand::query()
-            ->where('advertiser_space_id', $space->id)
-            ->where('status', BrandStatus::Active->value)
-            ->with('activeVersion.logoAsset')
-            ->orderBy('name')
-            ->get();
-        $assets = CreativeAsset::query()
-            ->where('advertiser_space_id', $space->id)
-            ->where('status', AssetStatus::Ready->value)
-            ->with('versions')
-            ->latest()
-            ->get();
         $wallet = $this->wallets->forSpace($space);
-        $baseProps = $this->baseProps($request, $account, $space);
-        $campaignPayload = null;
-
-        if ($campaign instanceof Campaign) {
-            $campaignPayload = $this->presenter->campaign($campaign);
-            if ($campaign->status === 'changes_requested') {
-                $campaignPayload['status'] = 'draft';
-                $case = $campaign->reviewCases->first(
-                    fn (CampaignReviewCase $candidate): bool => $candidate->status === 'changes_requested',
-                );
-                if ($baseProps['flash']['success'] === null && $case instanceof CampaignReviewCase) {
-                    $baseProps['flash']['success'] = 'Corrections demandées : '.(string) $case->decision_reason;
-                }
-            }
-        }
 
         return Inertia::render('Studio/CampaignWizard', [
-            ...$baseProps,
-            'campaign' => $campaignPayload,
-            'brands' => $brands->map(fn (Brand $brand): array => [
-                'id' => $brand->id,
-                'name' => $brand->name,
-                'slogan' => $brand->activeVersion?->slogan,
-                'primaryColor' => $brand->activeVersion?->primary_color,
-                'secondaryColor' => $brand->activeVersion?->secondary_color,
-            ])->values(),
-            'assets' => $assets->map(fn (CreativeAsset $asset): array => $this->presenter->asset($asset))->values(),
+            ...$this->baseProps($request, $account, $space),
+            'campaign' => $campaign instanceof Campaign ? $this->presenter->campaign($campaign) : null,
+            'brands' => $this->brands($space),
+            'assets' => $this->assets($space),
             'wallet' => $this->walletPresenter->wallet($wallet),
             'economicClasses' => [
                 ['code' => 'FREE', 'label' => 'Gratuit'],
@@ -189,6 +182,40 @@ final readonly class CampaignController
             ],
             'minimumBudgetMinor' => (int) config('campaign.minimum_budget_minor', 5000),
         ]);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function brands(UserSpace $space): array
+    {
+        return Brand::query()
+            ->where('advertiser_space_id', $space->id)
+            ->where('status', BrandStatus::Active->value)
+            ->with('activeVersion.logoAsset')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Brand $brand): array => [
+                'id' => $brand->id,
+                'name' => $brand->name,
+                'slogan' => $brand->activeVersion?->slogan,
+                'primaryColor' => $brand->activeVersion?->primary_color,
+                'secondaryColor' => $brand->activeVersion?->secondary_color,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function assets(UserSpace $space): array
+    {
+        return CreativeAsset::query()
+            ->where('advertiser_space_id', $space->id)
+            ->where('status', AssetStatus::Ready->value)
+            ->with('versions')
+            ->latest()
+            ->get()
+            ->map(fn (CreativeAsset $asset): array => $this->presenter->asset($asset))
+            ->values()
+            ->all();
     }
 
     /** @return array<string, mixed> */
