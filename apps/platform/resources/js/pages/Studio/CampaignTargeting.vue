@@ -130,9 +130,13 @@ const saveSegment = () => {
 
 const estimate = () => {
     if (!canEstimate.value) return;
-    router.post(`/studio/campagnes/${props.campaign.id}/ciblage/estimation`, {}, {
-        preserveScroll: true,
-    });
+    router.post(
+        `/studio/campagnes/${props.campaign.id}/ciblage/estimation`,
+        {},
+        {
+            preserveScroll: true,
+        },
+    );
 };
 
 const number = (value: number | null) =>
@@ -176,9 +180,9 @@ const categoryLabel = (category: string) =>
                     Segment de {{ campaign.name }}
                 </h1>
                 <p class="mt-2 max-w-2xl text-sm leading-6 text-white/42">
-                    Sélectionnez seulement des critères autorisés. Wasplex comparera ces critères aux
-                    choix volontaires des utilisateurs sans vous transmettre leur identité, leurs
-                    réponses ni une liste de membres.
+                    Sélectionnez seulement des critères autorisés. Wasplex comparera ces critères
+                    aux choix volontaires des utilisateurs sans vous transmettre leur identité,
+                    leurs réponses ni une liste de membres.
                 </p>
             </div>
             <span
@@ -202,7 +206,9 @@ const categoryLabel = (category: string) =>
                 >
                     <div class="grid gap-4 sm:grid-cols-3">
                         <div>
-                            <p class="text-[0.68rem] font-black tracking-widest text-white/35 uppercase">
+                            <p
+                                class="text-[0.68rem] font-black tracking-widest text-white/35 uppercase"
+                            >
                                 Classes
                             </p>
                             <p class="mt-2 font-black">
@@ -210,7 +216,9 @@ const categoryLabel = (category: string) =>
                             </p>
                         </div>
                         <div>
-                            <p class="text-[0.68rem] font-black tracking-widest text-white/35 uppercase">
+                            <p
+                                class="text-[0.68rem] font-black tracking-widest text-white/35 uppercase"
+                            >
                                 Territoire déclaré
                             </p>
                             <p class="mt-2 font-black">
@@ -218,11 +226,17 @@ const categoryLabel = (category: string) =>
                             </p>
                         </div>
                         <div>
-                            <p class="text-[0.68rem] font-black tracking-widest text-white/35 uppercase">
+                            <p
+                                class="text-[0.68rem] font-black tracking-widest text-white/35 uppercase"
+                            >
                                 Rayon
                             </p>
                             <p class="mt-2 font-black">
-                                {{ campaign.version.radiusKm ? `${campaign.version.radiusKm} km` : '—' }}
+                                {{
+                                    campaign.version.radiusKm
+                                        ? `${campaign.version.radiusKm} km`
+                                        : '—'
+                                }}
                             </p>
                         </div>
                     </div>
@@ -351,7 +365,8 @@ const categoryLabel = (category: string) =>
                             ≈ {{ number(estimate.approximateCount) }}
                         </p>
                         <p class="mt-2 text-sm leading-6 text-white/45">
-                            Fourchette protégée : {{ number(estimate.protectedRange?.min ?? null) }} à
+                            Fourchette protégée :
+                            {{ number(estimate.protectedRange?.min ?? null) }} à
                             {{ number(estimate.protectedRange?.max ?? null) }} utilisateurs.
                         </p>
                         <p class="mt-3 text-xs text-white/28">
@@ -370,9 +385,7 @@ const categoryLabel = (category: string) =>
                     </p>
                 </article>
 
-                <article
-                    class="rounded-[2rem] border border-rose-300/15 bg-rose-300/[0.035] p-6"
-                >
+                <article class="rounded-[2rem] border border-rose-300/15 bg-rose-300/[0.035] p-6">
                     <p class="font-black text-rose-200">Barrière anti-réidentification</p>
                     <p class="mt-3 text-xs leading-5 text-white/38">
                         Aucun nom, compte, téléphone, réponse individuelle ou liste d’utilisateurs

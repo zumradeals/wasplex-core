@@ -71,9 +71,7 @@ const decisionLabel = {
                 <p class="text-xs font-black tracking-[0.2em] text-wasplex-cyan uppercase">
                     Transparence publicitaire
                 </p>
-                <h1 class="mt-3 text-3xl font-black tracking-tight">
-                    Pourquoi cette publicité ?
-                </h1>
+                <h1 class="mt-3 text-3xl font-black tracking-tight">Pourquoi cette publicité ?</h1>
                 <p class="mt-3 text-sm leading-6 text-white/45">
                     Wasplex explique la décision avec des raisons compréhensibles, sans dévoiler le
                     fonctionnement interne de sécurité ni transmettre votre profil à l’annonceur.
@@ -161,9 +159,7 @@ const decisionLabel = {
             >
                 <Link href="/mon-espace">Espace</Link><span>Feed</span
                 ><Link href="/wallet">Wallet</Link
-                ><Link href="/mon-espace/profil-intelligent" class="text-wasplex-cyan"
-                    >Profil</Link
-                >
+                ><Link href="/mon-espace/profil-intelligent" class="text-wasplex-cyan">Profil</Link>
             </nav>
         </div>
     </main>
