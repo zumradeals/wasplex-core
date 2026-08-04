@@ -131,9 +131,7 @@ return new class extends Migration
             $table->timestampTz('answered_at');
             $table->timestampTz('confirmed_at')->nullable();
             $table->timestampTz('expires_at')->nullable();
-            $table->foreignUlid('replaces_answer_id')->nullable()
-                ->constrained('advertising_profile_answers')
-                ->nullOnDelete();
+            $table->ulid('replaces_answer_id')->nullable();
             $table->timestampsTz();
             $table->unique(
                 ['account_id', 'advertising_profile_question_id', 'version'],
@@ -143,6 +141,13 @@ return new class extends Migration
                 ['account_id', 'status', 'answered_at'],
                 'advertising_answers_active_index',
             );
+        });
+
+        Schema::table('advertising_profile_answers', function (Blueprint $table): void {
+            $table->foreign('replaces_answer_id', 'advertising_answers_replaces_fk')
+                ->references('id')
+                ->on('advertising_profile_answers')
+                ->nullOnDelete();
         });
 
         Schema::create('advertising_consents', function (Blueprint $table): void {
