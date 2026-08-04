@@ -121,12 +121,12 @@ final class AdvertisingProfileService
                 ]);
             }
 
-            $allowed = collect($version->options ?? [])
-                ->map(static fn (array $option): string => $option['value'])
-                ->filter()
-                ->values();
+            $allowed = array_values(array_filter(array_map(
+                static fn (array $option): string => $option['value'],
+                $version->options ?? [],
+            )));
 
-            if ($allowed->isNotEmpty() && ! $allowed->contains($selected)) {
+            if ($allowed !== [] && ! in_array($selected, $allowed, true)) {
                 throw ValidationException::withMessages([
                     'answer' => 'La réponse choisie ne fait pas partie des options autorisées.',
                 ]);
