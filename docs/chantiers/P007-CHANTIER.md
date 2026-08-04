@@ -1,6 +1,6 @@
 # P007 — REVUE ADMINISTRATIVE ET ACTIVATION DE CAMPAGNE
 
-**Statut :** `in_progress`  
+**Statut :** `ready_for_review`  
 **Branche :** `codex/p007-campaign-admin-review`  
 **Commit de base :** `63d355409b30cac77340f59243322d611e59e18e`  
 **Date d’ouverture :** 4 août 2026  
