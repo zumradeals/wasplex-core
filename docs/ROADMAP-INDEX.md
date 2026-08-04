@@ -12,7 +12,7 @@
 | P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | Déployé |
 | P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | Déployé |
 | P007 | Revue administrative | P006 | Annonceur | Déployé |
-| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En attente |
+| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En cours |
 | P009 | Feed et livraison publicitaire | P005, P007, P008 | Distribution | En attente |
 | P010 | Attention et moteur de valeur | P003, P006, P009 | Valeur | En attente |
 | P011 | Crédit Wallet et temps réel | P002, P003, P010 | Valeur | En attente |
