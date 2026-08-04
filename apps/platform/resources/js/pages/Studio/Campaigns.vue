@@ -102,6 +102,11 @@ const actionLabel = (status: CampaignStatus) => {
 
     return 'Continuer';
 };
+
+const actionHref = (campaign: Campaign) =>
+    campaign.status === 'changes_requested'
+        ? `/studio/campagnes/${campaign.id}/correction`
+        : `/studio/campagnes/${campaign.id}/modifier`;
 </script>
 
 <template>
@@ -250,7 +255,7 @@ const actionLabel = (status: CampaignStatus) => {
                                 Annuler
                             </button>
                             <Link
-                                :href="`/studio/campagnes/${campaign.id}/modifier`"
+                                :href="actionHref(campaign)"
                                 class="rounded-xl bg-white px-4 py-2 text-xs font-black text-[#04111e]"
                             >
                                 {{ actionLabel(campaign.status) }}
