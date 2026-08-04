@@ -28,7 +28,7 @@ type Campaign = {
     updatedAt: string | null;
 };
 
-const props = defineProps<{
+defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
