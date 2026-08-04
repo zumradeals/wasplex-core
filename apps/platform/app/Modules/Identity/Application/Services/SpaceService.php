@@ -104,6 +104,8 @@ final class SpaceService
             'advertiser.campaign.quote',
             'advertiser.campaign.fund',
             'advertiser.campaign.submit',
+            'advertiser.targeting.taxonomy.view',
+            'advertiser.segment.estimate',
             'organization.members.invite',
         ] as $capability) {
             if ($this->capabilities->allows($account, $capability, $space)) {
