@@ -142,8 +142,8 @@ final class AdvertisingProfileConsentTest extends TestCase
     }
 
     /**
-     * @param array<string, string> $expected
-     * @param array<string, string> $actual
+     * @param  array<string, string>  $expected
+     * @param  array<string, string>  $actual
      */
     private function assertMatchingFacts(array $expected, array $actual): void
     {
