@@ -8,11 +8,13 @@ use App\Modules\Wallet\Application\Data\GatewayPayment;
 use App\Modules\Wallet\Application\Data\GatewayWebhook;
 use App\Modules\Wallet\Domain\Exceptions\PaymentGatewayException;
 use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 
 final class GeniusPayGateway implements PaymentGatewayContract
@@ -47,21 +49,24 @@ final class GeniusPayGateway implements PaymentGatewayContract
     public function parseWebhook(string $payload, array $headers): GatewayWebhook
     {
         $secret = (string) config('services.geniuspay.webhook_secret', '');
-        $signature = (string) ($headers['signature'] ?? '');
-        $timestamp = (string) ($headers['timestamp'] ?? '');
-        $headerEvent = (string) ($headers['event'] ?? '');
+        $signature = trim((string) ($headers['signature'] ?? ''));
+        $timestamp = trim((string) ($headers['timestamp'] ?? ''));
+        $headerEvent = trim((string) ($headers['event'] ?? ''));
+        $headerEnvironment = strtolower(trim((string) ($headers['environment'] ?? '')));
+        $deliveryId = trim((string) ($headers['delivery'] ?? ''));
 
         if ($secret === '' || $signature === '' || $timestamp === '') {
             throw new PaymentGatewayException('Le webhook GeniusPay ne possède pas les éléments de sécurité requis.');
         }
 
-        $expected = hash_hmac('sha256', $payload, $secret);
-        if (! hash_equals($expected, $signature)) {
-            throw new PaymentGatewayException('La signature du webhook GeniusPay est invalide.');
-        }
-
         if (! ctype_digit($timestamp)) {
             throw new PaymentGatewayException('Le timestamp du webhook GeniusPay est invalide.');
+        }
+
+        $signature = preg_replace('/^sha256=/i', '', $signature) ?? $signature;
+        $expected = hash_hmac('sha256', $timestamp.'.'.$payload, $secret);
+        if (! hash_equals($expected, $signature)) {
+            throw new PaymentGatewayException('La signature du webhook GeniusPay est invalide.');
         }
 
         $tolerance = max(30, (int) config('services.geniuspay.webhook_tolerance_seconds', 300));
@@ -76,30 +81,31 @@ final class GeniusPayGateway implements PaymentGatewayContract
             throw new PaymentGatewayException('Le webhook GeniusPay contient un JSON invalide.', previous: $exception);
         }
 
-        $eventName = (string) Arr::get($decoded, 'event', '');
+        $eventName = trim((string) Arr::get($decoded, 'event', ''));
         if ($eventName === '' || ($headerEvent !== '' && ! hash_equals($eventName, $headerEvent))) {
             throw new PaymentGatewayException('Le type du webhook GeniusPay est incohérent.');
         }
 
-        $reference = (string) Arr::get($decoded, 'data.transaction.reference', '');
-        $status = strtolower((string) Arr::get($decoded, 'data.transaction.status', ''));
-        $amount = filter_var(Arr::get($decoded, 'data.transaction.amount'), FILTER_VALIDATE_INT);
-        $environment = strtolower((string) Arr::get($decoded, 'data.environment', ''));
-        $occurredAt = (string) Arr::get($decoded, 'timestamp', '');
+        $reference = trim((string) Arr::get($decoded, 'data.reference', ''));
+        $status = strtolower(trim((string) Arr::get($decoded, 'data.status', '')));
+        $amount = $this->positiveMinorAmount(Arr::get($decoded, 'data.amount'));
+        $environment = strtolower(trim((string) Arr::get($decoded, 'environment', $headerEnvironment)));
 
-        if ($reference === '' || $status === '' || $amount === false || $amount <= 0 || $environment !== 'sandbox' || $occurredAt === '') {
+        if ($headerEnvironment !== '' && $environment !== $headerEnvironment) {
+            throw new PaymentGatewayException('L’environnement du webhook GeniusPay est incohérent.');
+        }
+
+        if ($reference === '' || $status === '' || $amount === null || $environment !== 'sandbox') {
             throw new PaymentGatewayException('Le webhook GeniusPay ne correspond pas à un paiement sandbox exploitable.');
         }
 
-        try {
-            $occurred = new DateTimeImmutable($occurredAt);
-        } catch (\Exception $exception) {
-            throw new PaymentGatewayException('La date du webhook GeniusPay est invalide.', previous: $exception);
-        }
-
+        $occurred = $this->webhookOccurredAt($decoded, $timestamp);
         $payloadHash = hash('sha256', $payload);
-        $eventKey = hash('sha256', implode('|', [$eventName, $reference, $timestamp, $payloadHash]));
-        $safeMetadata = $this->safeMetadata((array) Arr::get($decoded, 'data.transaction.metadata', []));
+        $providerEventId = trim((string) Arr::get($decoded, 'id', ''));
+        $eventKey = $providerEventId !== ''
+            ? hash('sha256', 'geniuspay|'.$providerEventId)
+            : hash('sha256', implode('|', [$eventName, $reference, $timestamp, $payloadHash]));
+        $safeMetadata = $this->safeMetadata((array) Arr::get($decoded, 'data.metadata', []));
 
         return new GatewayWebhook(
             eventKey: $eventKey,
@@ -107,15 +113,17 @@ final class GeniusPayGateway implements PaymentGatewayContract
             eventName: $eventName,
             paymentReference: $reference,
             paymentStatus: $status,
-            amountMinor: (int) $amount,
+            amountMinor: $amount,
             environment: $environment,
             occurredAt: $occurred,
             safePayload: [
+                'event_id' => $providerEventId !== '' ? $providerEventId : null,
+                'delivery_id' => $deliveryId !== '' ? $deliveryId : null,
                 'event' => $eventName,
-                'timestamp' => $occurredAt,
-                'transaction_id' => (string) Arr::get($decoded, 'data.transaction.id', ''),
+                'timestamp' => (int) $timestamp,
+                'transaction_id' => (string) Arr::get($decoded, 'data.id', ''),
                 'reference' => $reference,
-                'amount' => (int) $amount,
+                'amount' => $amount,
                 'status' => $status,
                 'environment' => $environment,
                 'deposit_id' => $safeMetadata['deposit_id'] ?? null,
@@ -149,6 +157,8 @@ final class GeniusPayGateway implements PaymentGatewayContract
         $baseUrl = $this->baseUrl();
         $key = (string) config('services.geniuspay.api_key', '');
         $secret = (string) config('services.geniuspay.api_secret', '');
+        $host = strtolower((string) parse_url($baseUrl, PHP_URL_HOST));
+        $path = rtrim((string) parse_url($baseUrl, PHP_URL_PATH), '/');
 
         if ($mode !== 'sandbox') {
             throw new PaymentGatewayException('P003 interdit toute activation GeniusPay en production.');
@@ -156,6 +166,10 @@ final class GeniusPayGateway implements PaymentGatewayContract
 
         if (parse_url($baseUrl, PHP_URL_SCHEME) !== 'https') {
             throw new PaymentGatewayException('GeniusPay doit être contacté exclusivement en HTTPS.');
+        }
+
+        if ($host !== 'geniuspay.ci' || $path !== '/api/v1/merchant') {
+            throw new PaymentGatewayException('La base API GeniusPay doit être https://geniuspay.ci/api/v1/merchant.');
         }
 
         if ($key === '' || $secret === '') {
@@ -170,20 +184,63 @@ final class GeniusPayGateway implements PaymentGatewayContract
     private function paymentFromResponse(Response $response): GatewayPayment
     {
         if (! $response->successful() || $response->json('success') !== true) {
-            throw new PaymentGatewayException('GeniusPay n’a pas accepté la demande de paiement sandbox.');
+            $providerMessage = trim((string) ($response->json('error.message') ?? $response->json('message') ?? ''));
+            $message = 'GeniusPay n’a pas accepté la demande de paiement sandbox.';
+
+            if ($providerMessage !== '') {
+                $message .= ' '.$providerMessage;
+            }
+
+            throw new PaymentGatewayException($message);
         }
 
-        $id = (string) $response->json('data.id', '');
-        $reference = (string) $response->json('data.reference', '');
-        $amount = filter_var($response->json('data.amount'), FILTER_VALIDATE_INT);
-        $fees = filter_var($response->json('data.fees', 0), FILTER_VALIDATE_INT);
-        $status = strtolower((string) $response->json('data.status', ''));
-        $environment = strtolower((string) $response->json('data.environment', 'sandbox'));
-        $currency = strtoupper((string) $response->json('data.currency', 'XOF'));
-        $checkoutUrl = $response->json('data.checkout_url') ?? $response->json('data.payment_url');
+        $data = $response->json('data');
+        $data = is_array($data) ? $data : [];
 
-        if ($id === '' || $reference === '' || $amount === false || $amount <= 0 || $status === '') {
-            throw new PaymentGatewayException('La réponse GeniusPay est incomplète.');
+        $id = trim((string) ($data['id'] ?? ''));
+        $reference = trim((string) ($data['reference'] ?? ''));
+        $amount = $this->positiveMinorAmount($data['amount'] ?? null);
+        $fees = $this->nonNegativeMinorAmount($data['fees'] ?? 0) ?? 0;
+        $rawStatus = $data['status'] ?? null;
+        $status = is_string($rawStatus) ? strtolower(trim($rawStatus)) : '';
+        $environment = strtolower(trim((string) ($data['environment'] ?? '')));
+        $currency = strtoupper(trim((string) ($data['currency'] ?? 'XOF')));
+        $checkoutValue = $data['checkout_url'] ?? $data['payment_url'] ?? null;
+        $checkoutUrl = is_string($checkoutValue) && trim($checkoutValue) !== '' ? trim($checkoutValue) : null;
+
+        if ($status === '' && $checkoutUrl !== null) {
+            $status = 'pending';
+        }
+
+        $missing = [];
+        if ($id === '') {
+            $missing[] = 'data.id';
+        }
+        if ($reference === '') {
+            $missing[] = 'data.reference';
+        }
+        if ($amount === null) {
+            $missing[] = 'data.amount';
+        }
+        if ($status === '') {
+            $missing[] = 'data.status';
+        }
+        if ($environment === '') {
+            $missing[] = 'data.environment';
+        }
+
+        if ($missing !== []) {
+            Log::warning('wallet.geniuspay.response_incomplete', [
+                'http_status' => $response->status(),
+                'missing' => $missing,
+                'data_keys' => array_map('strval', array_keys($data)),
+            ]);
+
+            throw new PaymentGatewayException('La réponse GeniusPay est incompatible : '.implode(', ', $missing).' manquant(s).');
+        }
+
+        if ($amount === null) {
+            throw new PaymentGatewayException('Le montant GeniusPay est invalide.');
         }
 
         if ($environment !== 'sandbox') {
@@ -191,26 +248,92 @@ final class GeniusPayGateway implements PaymentGatewayContract
         }
 
         if ($checkoutUrl !== null) {
-            $checkoutHost = strtolower((string) parse_url((string) $checkoutUrl, PHP_URL_HOST));
-            if (parse_url((string) $checkoutUrl, PHP_URL_SCHEME) !== 'https' || $checkoutHost !== 'pay.genius.ci') {
+            $checkoutHost = strtolower((string) parse_url($checkoutUrl, PHP_URL_HOST));
+            $allowedHosts = array_map(
+                static fn (mixed $host): string => strtolower(trim((string) $host)),
+                (array) config('services.geniuspay.checkout_hosts', ['geniuspay.ci', 'pay.genius.ci']),
+            );
+
+            if (parse_url($checkoutUrl, PHP_URL_SCHEME) !== 'https' || ! in_array($checkoutHost, $allowedHosts, true)) {
                 throw new PaymentGatewayException('L’URL de checkout GeniusPay n’est pas sécurisée.');
             }
         }
 
         /** @var array<string, scalar|null> $metadata */
-        $metadata = $this->safeMetadata((array) $response->json('data.metadata', []));
+        $metadata = $this->safeMetadata(is_array($data['metadata'] ?? null) ? $data['metadata'] : []);
 
         return new GatewayPayment(
             id: $id,
             reference: $reference,
-            amountMinor: (int) $amount,
-            feeMinor: $fees === false ? 0 : (int) $fees,
+            amountMinor: $amount,
+            feeMinor: $fees,
             currency: $currency,
             status: $status,
-            checkoutUrl: $checkoutUrl === null ? null : (string) $checkoutUrl,
+            checkoutUrl: $checkoutUrl,
             environment: $environment,
             metadata: $metadata,
+            expiresAt: $this->optionalDate($data['expires_at'] ?? null),
         );
+    }
+
+    /** @param array<string, mixed> $decoded */
+    private function webhookOccurredAt(array $decoded, string $timestamp): DateTimeImmutable
+    {
+        $createdAt = Arr::get($decoded, 'created_at');
+
+        if (is_string($createdAt) && trim($createdAt) !== '') {
+            try {
+                return new DateTimeImmutable($createdAt);
+            } catch (\Exception $exception) {
+                throw new PaymentGatewayException('La date du webhook GeniusPay est invalide.', previous: $exception);
+            }
+        }
+
+        return (new DateTimeImmutable('@'.(int) $timestamp))->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    private function optionalDate(mixed $value): ?DateTimeImmutable
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return new DateTimeImmutable($value);
+        } catch (\Exception $exception) {
+            throw new PaymentGatewayException('La date d’expiration GeniusPay est invalide.', previous: $exception);
+        }
+    }
+
+    private function positiveMinorAmount(mixed $value): ?int
+    {
+        $amount = $this->wholeNumber($value);
+
+        return $amount !== null && $amount > 0 ? $amount : null;
+    }
+
+    private function nonNegativeMinorAmount(mixed $value): ?int
+    {
+        $amount = $this->wholeNumber($value);
+
+        return $amount !== null && $amount >= 0 ? $amount : null;
+    }
+
+    private function wholeNumber(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_float($value) && is_finite($value) && floor($value) === $value) {
+            return (int) $value;
+        }
+
+        if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
+            return (int) trim($value);
+        }
+
+        return null;
     }
 
     /**

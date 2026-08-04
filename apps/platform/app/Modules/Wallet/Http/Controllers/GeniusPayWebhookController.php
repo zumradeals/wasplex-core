@@ -20,12 +20,17 @@ final readonly class GeniusPayWebhookController
     {
         try {
             $webhook = $this->gateway->parseWebhook($request->getContent(), [
-                'signature' => $request->header('X-GeniusPay-Signature'),
-                'timestamp' => $request->header('X-GeniusPay-Timestamp'),
-                'event' => $request->header('X-GeniusPay-Event'),
+                'signature' => $request->header('X-Webhook-Signature'),
+                'timestamp' => $request->header('X-Webhook-Timestamp'),
+                'event' => $request->header('X-Webhook-Event'),
+                'delivery' => $request->header('X-Webhook-Delivery'),
+                'environment' => $request->header('X-Webhook-Environment'),
             ]);
         } catch (PaymentGatewayException $exception) {
-            Log::warning('wallet.webhook.rejected', ['provider' => 'geniuspay', 'reason' => $exception::class]);
+            Log::warning('wallet.webhook.rejected', [
+                'provider' => 'geniuspay',
+                'reason' => $exception::class,
+            ]);
 
             return response()->json(['message' => 'Webhook refusé.'], 401);
         }

@@ -15,10 +15,11 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config()->set('services.geniuspay.mode', 'sandbox');
-    config()->set('services.geniuspay.base_url', 'https://pay.genius.ci/api/v1/merchant');
+    config()->set('services.geniuspay.base_url', 'https://geniuspay.ci/api/v1/merchant');
+    config()->set('services.geniuspay.checkout_hosts', ['geniuspay.ci', 'pay.genius.ci']);
     config()->set('services.geniuspay.api_key', 'pk_sandbox_test');
     config()->set('services.geniuspay.api_secret', 'sk_sandbox_test');
-    config()->set('services.geniuspay.webhook_secret', 'whsec_test');
+    config()->set('services.geniuspay.webhook_secret', 'whsec_sandbox_test');
 });
 
 it('credits one advertiser wallet once after a signed webhook and server verification', function (): void {
@@ -38,10 +39,11 @@ it('credits one advertiser wallet once after a signed webhook and server verific
                     'fees' => 3000,
                     'currency' => 'XOF',
                     'status' => 'pending',
-                    'checkout_url' => 'https://pay.genius.ci/checkout/P003',
+                    'checkout_url' => 'https://geniuspay.ci/checkout/P003',
                     'environment' => 'sandbox',
+                    'expires_at' => now()->addDay()->toIso8601String(),
                 ],
-            ]);
+            ], 201);
         }
 
         return Http::response([
@@ -62,29 +64,37 @@ it('credits one advertiser wallet once after a signed webhook and server verific
         ->postJson('/api/wallet/deposits', ['amount_minor' => 100000])
         ->assertCreated()
         ->assertJsonPath('data.status', 'awaiting_payment')
-        ->assertJsonPath('data.checkoutUrl', 'https://pay.genius.ci/checkout/P003');
+        ->assertJsonPath('data.checkoutUrl', 'https://geniuspay.ci/checkout/P003');
 
     $timestamp = (string) now()->timestamp;
     $payload = [
+        'id' => 'event-p003-100k',
         'event' => 'payment.success',
-        'timestamp' => now()->toIso8601String(),
+        'timestamp' => (int) $timestamp,
+        'created_at' => now()->toIso8601String(),
         'data' => [
-            'transaction' => [
-                'id' => 456,
-                'reference' => 'MTX-P003-100K',
-                'amount' => 100000,
-                'status' => 'completed',
-                'customer' => ['name' => 'Ne doit pas être stocké', 'phone' => '+2250000000000'],
-            ],
-            'environment' => 'sandbox',
+            'object' => 'transaction',
+            'id' => 456,
+            'reference' => 'MTX-P003-100K',
+            'amount' => 100000.0,
+            'currency' => 'XOF',
+            'fees' => 3000.0,
+            'status' => 'completed',
+            'customer_name' => 'Ne doit pas être stocké',
+            'customer_phone' => '+2250000000000',
+            'metadata' => [],
         ],
+        'environment' => 'sandbox',
+        'api_version' => '2024-01-01',
     ];
     $raw = json_encode($payload, JSON_THROW_ON_ERROR);
-    $signature = hash_hmac('sha256', $raw, 'whsec_test');
+    $signature = hash_hmac('sha256', $timestamp.'.'.$raw, 'whsec_sandbox_test');
     $headers = [
-        'X-GeniusPay-Signature' => $signature,
-        'X-GeniusPay-Timestamp' => $timestamp,
-        'X-GeniusPay-Event' => 'payment.success',
+        'X-Webhook-Signature' => $signature,
+        'X-Webhook-Timestamp' => $timestamp,
+        'X-Webhook-Event' => 'payment.success',
+        'X-Webhook-Delivery' => 'delivery-p003-100k',
+        'X-Webhook-Environment' => 'sandbox',
     ];
 
     $this->withHeaders($headers)->postJson('/api/webhooks/geniuspay', $payload)
@@ -106,20 +116,30 @@ it('credits one advertiser wallet once after a signed webhook and server verific
         ->and($wallet->projection?->reserved_minor)->toBe(0)
         ->and(LedgerTransaction::query()->where('type', 'DEPOSIT')->count())->toBe(1)
         ->and(WalletProviderEvent::query()->count())->toBe(1)
-        ->and(WalletProviderEvent::query()->firstOrFail()->payload)->not->toHaveKey('customer');
+        ->and(WalletProviderEvent::query()->firstOrFail()->payload)->not->toHaveKey('customer_name')
+        ->and(WalletProviderEvent::query()->firstOrFail()->payload)->not->toHaveKey('customer_phone');
 });
 
 it('rejects a forged GeniusPay webhook without creating value', function (): void {
+    $timestamp = (string) now()->timestamp;
     $payload = [
+        'id' => 'forged-event',
         'event' => 'payment.success',
-        'timestamp' => now()->toIso8601String(),
-        'data' => ['transaction' => ['reference' => 'FORGED', 'amount' => 100000, 'status' => 'completed'], 'environment' => 'sandbox'],
+        'timestamp' => (int) $timestamp,
+        'data' => [
+            'id' => 999,
+            'reference' => 'FORGED',
+            'amount' => 100000,
+            'status' => 'completed',
+        ],
+        'environment' => 'sandbox',
     ];
 
     $this->withHeaders([
-        'X-GeniusPay-Signature' => str_repeat('0', 64),
-        'X-GeniusPay-Timestamp' => (string) now()->timestamp,
-        'X-GeniusPay-Event' => 'payment.success',
+        'X-Webhook-Signature' => str_repeat('0', 64),
+        'X-Webhook-Timestamp' => $timestamp,
+        'X-Webhook-Event' => 'payment.success',
+        'X-Webhook-Environment' => 'sandbox',
     ])->postJson('/api/webhooks/geniuspay', $payload)->assertUnauthorized();
 
     expect(WalletProviderEvent::query()->count())->toBe(0)
@@ -142,7 +162,7 @@ it('does not create a second provider payment when an idempotency key is reused'
     registerAccount($this, 'idempotent-deposit@example.com');
 
     Http::fake([
-        'https://pay.genius.ci/api/v1/merchant/payments' => Http::response([
+        'https://geniuspay.ci/api/v1/merchant/payments' => Http::response([
             'success' => true,
             'data' => [
                 'id' => 789,
@@ -151,7 +171,7 @@ it('does not create a second provider payment when an idempotency key is reused'
                 'fees' => 3000,
                 'currency' => 'XOF',
                 'status' => 'pending',
-                'checkout_url' => 'https://pay.genius.ci/checkout/IDEMPOTENT',
+                'checkout_url' => 'https://geniuspay.ci/checkout/IDEMPOTENT',
                 'environment' => 'sandbox',
             ],
         ], 201),

@@ -3,7 +3,11 @@
 return [
     'geniuspay' => [
         'mode' => env('GENIUSPAY_MODE', 'sandbox'),
-        'base_url' => env('GENIUSPAY_BASE_URL', 'https://pay.genius.ci/api/v1/merchant'),
+        'base_url' => env('GENIUSPAY_BASE_URL', 'https://geniuspay.ci/api/v1/merchant'),
+        'checkout_hosts' => array_values(array_filter(array_map(
+            static fn (string $host): string => trim($host),
+            explode(',', (string) env('GENIUSPAY_CHECKOUT_HOSTS', 'geniuspay.ci,pay.genius.ci')),
+        ))),
         'api_key' => env('GENIUSPAY_API_KEY'),
         'api_secret' => env('GENIUSPAY_API_SECRET'),
         'webhook_secret' => env('GENIUSPAY_WEBHOOK_SECRET'),
