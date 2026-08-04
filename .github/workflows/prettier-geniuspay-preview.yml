@@ -1,14 +1,15 @@
 name: prettier-geniuspay-preview
 
 on:
-  pull_request:
+  push:
+    branches:
+      - codex/admin-geniuspay-configuration
 
 permissions:
   contents: read
 
 jobs:
   preview:
-    if: github.head_ref == 'codex/admin-geniuspay-configuration'
     runs-on: ubuntu-latest
     defaults:
       run:
