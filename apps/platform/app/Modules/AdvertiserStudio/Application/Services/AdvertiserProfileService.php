@@ -20,7 +20,7 @@ final class AdvertiserProfileService
             [
                 'organization_id' => $space->organization_id,
                 'created_by_account_id' => $actor->id,
-                'display_name' => $space->organization?->name ?? $space->label,
+                'display_name' => $space->organization->name ?? $space->label,
                 'country_code' => 'CI',
                 'status' => 'active',
             ],
