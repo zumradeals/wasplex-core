@@ -21,6 +21,7 @@ final readonly class CampaignEligibilityService
         private AdvertisingConsentService $consents,
         private AdvertisingSegmentService $segments,
         private EconomicClassEligibilityProjection $economicClasses,
+        private AdvertisingConfigurationService $configuration,
     ) {}
 
     public function evaluate(Account $account, Campaign $campaign): AdvertisingMatch
@@ -38,11 +39,13 @@ final readonly class CampaignEligibilityService
         $segment->loadMissing(['rules.taxonomy', 'estimates']);
         $facts = $this->profiles->matchingFacts($account);
         $economicClass = $this->economicClasses->code($account);
-        $frequency = $this->frequencyState($account, $campaign);
+        $controls = $this->configuration->runtime();
+        $frequency = $this->frequencyState($account, $campaign, $controls);
         $stateHash = hash('sha256', $this->encode([
             'campaign_status' => $campaign->status,
             'campaign_version' => $version->id,
             'segment_rule_version' => $segment->rule_version,
+            'configuration' => $controls,
             'facts' => $facts,
             'economic_class' => $economicClass,
             'frequency' => $frequency,
@@ -106,6 +109,18 @@ final readonly class CampaignEligibilityService
             $explanations[] = "class:{$economicClass}";
         }
 
+        if (
+            $decision === 'eligible'
+            && $segment->rules->contains(
+                static fn (AdvertisingSegmentRule $rule): bool => $rule->taxonomy->status !== 'active'
+                    || ! $rule->taxonomy->allowed_for_targeting
+                    || $rule->taxonomy->sensitive,
+            )
+        ) {
+            $decision = 'withheld';
+            $exclusions[] = 'targeting_taxonomy_unavailable';
+        }
+
         if ($decision === 'eligible') {
             [$rulesMatched, $ruleScore, $ruleExplanations, $ruleExclusions] = $this->evaluateRules(
                 $segment,
@@ -160,6 +175,7 @@ final readonly class CampaignEligibilityService
             $explanations,
             $exclusions,
             $frequency,
+            $controls,
         ): AdvertisingMatch {
             $match = AdvertisingMatch::query()->firstOrCreate(
                 ['idempotency_key' => $idempotencyKey],
@@ -192,6 +208,7 @@ final readonly class CampaignEligibilityService
                     'occurred_at' => now(),
                     'metadata' => [
                         'rule_version' => $segment->rule_version,
+                        'configuration_version' => $controls['version'],
                         'profile_exported' => false,
                         'financial_operation_created' => false,
                     ],
@@ -258,10 +275,21 @@ final readonly class CampaignEligibilityService
         return array_values(array_unique($purposes));
     }
 
-    /** @return array{impressions:int,limit:int,fatigueScore:int,fatigueLimit:int,windowStart:string,windowEnd:string} */
-    private function frequencyState(Account $account, Campaign $campaign): array
+    /**
+     * @param array{
+     *     version:int|null,
+     *     minimumSegmentSize:int,
+     *     estimateRoundingStep:int,
+     *     frequencyWindowHours:int,
+     *     frequencyLimit:int,
+     *     fatigueLimit:int,
+     *     effectiveFrom:string|null
+     * } $controls
+     * @return array{impressions:int,limit:int,fatigueScore:int,fatigueLimit:int,windowStart:string,windowEnd:string}
+     */
+    private function frequencyState(Account $account, Campaign $campaign, array $controls): array
     {
-        $hours = max(1, (int) config('advertising.frequency_window_hours', 24));
+        $hours = $controls['frequencyWindowHours'];
         $now = now();
         $counter = AdvertisingFrequencyCounter::query()
             ->where('account_id', $account->id)
@@ -274,9 +302,9 @@ final readonly class CampaignEligibilityService
         if ($counter instanceof AdvertisingFrequencyCounter) {
             return [
                 'impressions' => $counter->impressions,
-                'limit' => max(1, (int) config('advertising.frequency_limit', 3)),
+                'limit' => $controls['frequencyLimit'],
                 'fatigueScore' => $counter->fatigue_score,
-                'fatigueLimit' => max(1, (int) config('advertising.fatigue_limit', 100)),
+                'fatigueLimit' => $controls['fatigueLimit'],
                 'windowStart' => $counter->window_start->toIso8601String(),
                 'windowEnd' => $counter->window_end->toIso8601String(),
             ];
@@ -289,9 +317,9 @@ final readonly class CampaignEligibilityService
 
         return [
             'impressions' => 0,
-            'limit' => max(1, (int) config('advertising.frequency_limit', 3)),
+            'limit' => $controls['frequencyLimit'],
             'fatigueScore' => 0,
-            'fatigueLimit' => max(1, (int) config('advertising.fatigue_limit', 100)),
+            'fatigueLimit' => $controls['fatigueLimit'],
             'windowStart' => $windowStart->toIso8601String(),
             'windowEnd' => $windowEnd->toIso8601String(),
         ];
