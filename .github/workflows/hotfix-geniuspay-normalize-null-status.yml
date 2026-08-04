@@ -1,17 +1,20 @@
 name: Apply GeniusPay verified response normalization
 
 on:
-  push:
+  pull_request:
     branches:
-      - codex/hotfix-geniuspay-sandbox-contract
-    paths:
-      - .github/workflows/hotfix-geniuspay-normalize-null-status.yml
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 permissions:
   contents: write
 
 jobs:
   normalize:
+    if: github.head_ref == 'codex/hotfix-geniuspay-sandbox-contract'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -42,23 +45,32 @@ jobs:
             $status = 'pending';
         }
 """
-          if text.count(old) != 1:
+          if text.count(old) == 1:
+              gateway.write_text(text.replace(old, new))
+          elif text.count(new) != 1:
               raise SystemExit('Unexpected GeniusPay gateway source shape')
-          gateway.write_text(text.replace(old, new))
 
           test = Path('apps/platform/tests/Feature/Wallet/GeniusPayGatewayTest.php')
           text = test.read_text()
-          text = text.replace("'reference' => 'MTX-A1B2C3D4E5',", "'reference' => 'SANDBOX_TESTPAYMENT',", 1)
-          text = text.replace("'status' => 'pending',", "'status' => null,", 1)
-          text = text.replace("'checkout_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',", "'checkout_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',", 1)
-          text = text.replace("'payment_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',", "'payment_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',", 1)
-          text = text.replace("->and($payment->reference)->toBe('MTX-A1B2C3D4E5')", "->and($payment->reference)->toBe('SANDBOX_TESTPAYMENT')", 1)
-          text = text.replace("->and($payment->feeMinor)->toBe(3000)\n        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/MTX-A1B2C3D4E5')", "->and($payment->feeMinor)->toBe(3000)\n        ->and($payment->status)->toBe('pending')\n        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT')", 1)
-          test.write_text(text)
+          if "'reference' => 'MTX-A1B2C3D4E5'," in text:
+              text = text.replace("'reference' => 'MTX-A1B2C3D4E5',", "'reference' => 'SANDBOX_TESTPAYMENT',", 1)
+              text = text.replace("'status' => 'pending',", "'status' => null,", 1)
+              text = text.replace("'checkout_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',", "'checkout_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',", 1)
+              text = text.replace("'payment_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',", "'payment_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',", 1)
+              text = text.replace("->and($payment->reference)->toBe('MTX-A1B2C3D4E5')", "->and($payment->reference)->toBe('SANDBOX_TESTPAYMENT')", 1)
+              text = text.replace("->and($payment->feeMinor)->toBe(3000)\n        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/MTX-A1B2C3D4E5')", "->and($payment->feeMinor)->toBe(3000)\n        ->and($payment->status)->toBe('pending')\n        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT')", 1)
+              test.write_text(text)
+          elif "'reference' => 'SANDBOX_TESTPAYMENT'," not in text:
+              raise SystemExit('Unexpected GeniusPay gateway test source shape')
           PY
 
       - name: Commit normalization
         run: |
+          if git diff --quiet; then
+            echo "Verified normalization already applied."
+            exit 0
+          fi
+
           git config user.name "wasplex-ci"
           git config user.email "ci@wasplex.com"
           git add apps/platform/app/Modules/Wallet/Infrastructure/Payments/GeniusPayGateway.php \
