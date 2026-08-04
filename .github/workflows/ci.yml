@@ -60,8 +60,16 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Check PHP formatting
-        run: composer lint:check
+      - name: Check PHP formatting and print exact P008 service
+        run: |
+          if ! composer lint:check; then
+            vendor/bin/pint app/Modules/Advertising/Application/Services/AdvertisingProfileService.php
+            echo 'P008_PINT_BASE64_BEGIN'
+            base64 -w 0 app/Modules/Advertising/Application/Services/AdvertisingProfileService.php
+            echo
+            echo 'P008_PINT_BASE64_END'
+            exit 1
+          fi
 
       - name: Run PHP static analysis
         run: composer types:check
