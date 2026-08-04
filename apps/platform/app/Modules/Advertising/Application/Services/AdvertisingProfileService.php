@@ -12,9 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 final class AdvertisingProfileService
 {
-    public function __construct(private readonly AdvertisingConsentService $consents)
-    {
-    }
+    public function __construct(private readonly AdvertisingConsentService $consents) {}
 
     /**
      * @return array{
