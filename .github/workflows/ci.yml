@@ -109,8 +109,9 @@ jobs:
             git diff --name-only -- resources/ > storage/prettier-formatted/files.txt
             while IFS= read -r file; do
               [ -n "$file" ] || continue
-              mkdir -p "storage/prettier-formatted/$(dirname "$file")"
-              cp "$file" "storage/prettier-formatted/$file"
+              relative="${file#apps/platform/}"
+              mkdir -p "storage/prettier-formatted/$(dirname "$relative")"
+              cp "$GITHUB_WORKSPACE/$file" "storage/prettier-formatted/$relative"
             done < storage/prettier-formatted/files.txt
             exit "$status"
           fi
