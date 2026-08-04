@@ -128,7 +128,7 @@ const saveSegment = () => {
     );
 };
 
-const estimate = () => {
+const requestEstimate = () => {
     if (!canEstimate.value) return;
     router.post(
         `/studio/campagnes/${props.campaign.id}/ciblage/estimation`,
@@ -313,7 +313,7 @@ const categoryLabel = (category: string) =>
                         type="button"
                         class="rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-black text-[#04111e] disabled:cursor-not-allowed disabled:opacity-35"
                         :disabled="!canEstimate"
-                        @click="estimate"
+                        @click="requestEstimate"
                     >
                         Calculer l’estimation protégée
                     </button>
