@@ -29,16 +29,30 @@ final readonly class AdvertisingAdministrationController
             ->map(static function (AdvertisingPurpose $purpose): array {
                 $version = $purpose->currentVersion;
 
+                if ($version === null) {
+                    return [
+                        'id' => $purpose->id,
+                        'code' => $purpose->code,
+                        'domain' => $purpose->domain,
+                        'status' => $purpose->status,
+                        'version' => null,
+                        'title' => $purpose->code,
+                        'description' => '',
+                        'consentRequired' => true,
+                        'publishedAt' => null,
+                    ];
+                }
+
                 return [
                     'id' => $purpose->id,
                     'code' => $purpose->code,
                     'domain' => $purpose->domain,
                     'status' => $purpose->status,
-                    'version' => $version?->version,
-                    'title' => $version?->title ?? $purpose->code,
-                    'description' => $version?->description ?? '',
-                    'consentRequired' => $version?->consent_required ?? true,
-                    'publishedAt' => $version?->published_at?->toIso8601String(),
+                    'version' => $version->version,
+                    'title' => $version->title,
+                    'description' => $version->description,
+                    'consentRequired' => $version->consent_required,
+                    'publishedAt' => $version->published_at?->toIso8601String(),
                 ];
             })
             ->values();
