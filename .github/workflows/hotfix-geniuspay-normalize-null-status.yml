@@ -1,0 +1,67 @@
+name: Apply GeniusPay verified response normalization
+
+on:
+  push:
+    branches:
+      - codex/hotfix-geniuspay-sandbox-contract
+    paths:
+      - .github/workflows/hotfix-geniuspay-normalize-null-status.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/hotfix-geniuspay-sandbox-contract
+
+      - name: Apply verified sandbox response shape
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          gateway = Path('apps/platform/app/Modules/Wallet/Infrastructure/Payments/GeniusPayGateway.php')
+          text = gateway.read_text()
+          old = """        $status = strtolower(trim((string) ($data['status'] ?? '')));
+        $environment = strtolower(trim((string) ($data['environment'] ?? '')));
+        $currency = strtoupper(trim((string) ($data['currency'] ?? 'XOF')));
+        $checkoutValue = $data['checkout_url'] ?? $data['payment_url'] ?? null;
+        $checkoutUrl = is_string($checkoutValue) && trim($checkoutValue) !== '' ? trim($checkoutValue) : null;
+"""
+          new = """        $rawStatus = $data['status'] ?? null;
+        $status = is_string($rawStatus) ? strtolower(trim($rawStatus)) : '';
+        $environment = strtolower(trim((string) ($data['environment'] ?? '')));
+        $currency = strtoupper(trim((string) ($data['currency'] ?? 'XOF')));
+        $checkoutValue = $data['checkout_url'] ?? $data['payment_url'] ?? null;
+        $checkoutUrl = is_string($checkoutValue) && trim($checkoutValue) !== '' ? trim($checkoutValue) : null;
+
+        if ($status === '' && $checkoutUrl !== null) {
+            $status = 'pending';
+        }
+"""
+          if text.count(old) != 1:
+              raise SystemExit('Unexpected GeniusPay gateway source shape')
+          gateway.write_text(text.replace(old, new))
+
+          test = Path('apps/platform/tests/Feature/Wallet/GeniusPayGatewayTest.php')
+          text = test.read_text()
+          text = text.replace("'reference' => 'MTX-A1B2C3D4E5',", "'reference' => 'SANDBOX_TESTPAYMENT',", 1)
+          text = text.replace("'status' => 'pending',", "'status' => null,", 1)
+          text = text.replace("'checkout_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',", "'checkout_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',", 1)
+          text = text.replace("'payment_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',", "'payment_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',", 1)
+          text = text.replace("->and($payment->reference)->toBe('MTX-A1B2C3D4E5')", "->and($payment->reference)->toBe('SANDBOX_TESTPAYMENT')", 1)
+          text = text.replace("->and($payment->feeMinor)->toBe(3000)\n        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/MTX-A1B2C3D4E5')", "->and($payment->feeMinor)->toBe(3000)\n        ->and($payment->status)->toBe('pending')\n        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT')", 1)
+          test.write_text(text)
+          PY
+
+      - name: Commit normalization
+        run: |
+          git config user.name "wasplex-ci"
+          git config user.email "ci@wasplex.com"
+          git add apps/platform/app/Modules/Wallet/Infrastructure/Payments/GeniusPayGateway.php \
+                  apps/platform/tests/Feature/Wallet/GeniusPayGatewayTest.php
+          git commit -m "fix(wallet): normalize GeniusPay null checkout status"
+          git push origin HEAD:codex/hotfix-geniuspay-sandbox-contract
