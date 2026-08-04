@@ -94,7 +94,7 @@ final class CampaignPresenter
             'userShareMinor' => $quote->user_share_minor,
             'cpmMinor' => $quote->cpm_minor,
             'estimatedImpressions' => $quote->estimated_impressions,
-            'catalogVersion' => $quote->priceCatalog?->version,
+            'catalogVersion' => $quote->priceCatalog->version,
             'issuedAt' => $quote->issued_at->toIso8601String(),
             'expiresAt' => $quote->expires_at->toIso8601String(),
             'fundedAt' => $quote->funded_at?->toIso8601String(),
