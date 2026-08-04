@@ -37,33 +37,40 @@ it('refuses the obsolete GeniusPay API base URL', function (): void {
     Http::assertNothingSent();
 });
 
-it('parses the documented merchant checkout response', function (): void {
+it('parses the real sandbox checkout response with a null initial status', function (): void {
     Http::fake([
         'https://geniuspay.ci/api/v1/merchant/payments' => Http::response([
             'success' => true,
+            'message' => 'Sandbox payment initiated successfully',
             'data' => [
-                'id' => 123,
-                'reference' => 'MTX-A1B2C3D4E5',
+                'id' => 14498,
+                'reference' => 'SANDBOX_TESTPAYMENT',
+                'external_reference' => null,
                 'amount' => 100000,
-                'fees' => 3000,
                 'currency' => 'XOF',
-                'status' => 'pending',
-                'checkout_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',
-                'payment_url' => 'https://geniuspay.ci/checkout/MTX-A1B2C3D4E5',
+                'status' => null,
+                'scenario' => null,
+                'gateway' => null,
+                'checkout_url' => 'https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT',
+                'customer' => null,
+                'success_url' => 'https://wasplex.com/studio/wallet?paiement=retour',
+                'error_url' => 'https://wasplex.com/studio/wallet?paiement=annule',
                 'metadata' => ['deposit_id' => '01TESTDEPOSIT'],
                 'environment' => 'sandbox',
-                'expires_at' => now()->addDay()->toIso8601String(),
+                'expires_at' => now()->addHour()->toIso8601String(),
+                'created_at' => now()->toIso8601String(),
             ],
         ], 201),
     ]);
 
     $payment = app(GeniusPayGateway::class)->createPayment(gatewayPaymentRequest());
 
-    expect($payment->id)->toBe('123')
-        ->and($payment->reference)->toBe('MTX-A1B2C3D4E5')
+    expect($payment->id)->toBe('14498')
+        ->and($payment->reference)->toBe('SANDBOX_TESTPAYMENT')
         ->and($payment->amountMinor)->toBe(100000)
-        ->and($payment->feeMinor)->toBe(3000)
-        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/MTX-A1B2C3D4E5')
+        ->and($payment->feeMinor)->toBe(0)
+        ->and($payment->status)->toBe('pending')
+        ->and($payment->checkoutUrl)->toBe('https://geniuspay.ci/checkout/SANDBOX_TESTPAYMENT')
         ->and($payment->environment)->toBe('sandbox')
         ->and($payment->expiresAt)->not->toBeNull();
 
