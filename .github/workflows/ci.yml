@@ -70,7 +70,16 @@ jobs:
         run: composer test
 
       - name: Run PHP tests on PostgreSQL 17
-        run: composer test
+        run: |
+          set +e
+          composer test > storage/logs/postgres-tests.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "PostgreSQL test failure summary:"
+            tail -n 160 storage/logs/postgres-tests.log
+            exit "$status"
+          fi
+          grep -E "Tests:|Duration:" storage/logs/postgres-tests.log | tail -n 2
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
@@ -78,6 +87,15 @@ jobs:
           DB_DATABASE: wasplex_test
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
+
+      - name: Preserve PostgreSQL failure report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: postgres-test-failure
+          path: apps/platform/storage/logs/postgres-tests.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Check frontend formatting
         run: npm run format:check
