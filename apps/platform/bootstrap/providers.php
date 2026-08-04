@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\AdvertiserStudio\Infrastructure\Providers\AdvertiserStudioServiceProvider;
 use App\Modules\EconomicConfiguration\Infrastructure\Providers\EconomicConfigurationServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
 use App\Modules\Ledger\Infrastructure\Providers\LedgerServiceProvider;
@@ -13,5 +14,6 @@ return [
     LedgerServiceProvider::class,
     WalletServiceProvider::class,
     EconomicConfigurationServiceProvider::class,
+    AdvertiserStudioServiceProvider::class,
     PlatformServiceProvider::class,
 ];

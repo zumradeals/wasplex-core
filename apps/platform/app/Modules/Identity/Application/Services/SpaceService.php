@@ -25,6 +25,8 @@ final class SpaceService
             $existing = $account->spaces()->where('kind', SpaceKind::Advertiser->value)->first();
 
             if ($existing instanceof UserSpace) {
+                $this->ensureAdvertiserCapabilities($account, $existing);
+
                 return $existing;
             }
 
@@ -55,21 +57,7 @@ final class SpaceService
                 'title' => 'Propriétaire',
             ]);
 
-            foreach ([
-                'advertiser.space.view',
-                'advertiser.space.manage',
-                'advertiser.wallet.view',
-                'advertiser.wallet.fund',
-                'organization.members.invite',
-            ] as $capability) {
-                $this->capabilities->grant(
-                    account: $account,
-                    capability: $capability,
-                    space: $space,
-                    organizationId: $organization->id,
-                    reason: 'Activation de son espace annonceur',
-                );
-            }
+            $this->ensureAdvertiserCapabilities($account, $space);
 
             DB::afterCommit(static function () use ($account, $organization, $space): void {
                 event(new OrganizationCreated($organization->id, $account->id));
@@ -94,5 +82,35 @@ final class SpaceService
         $space->forceFill(['last_opened_at' => now()])->save();
 
         event(new UserSpaceSwitched($account->id, $space->id, $session->id));
+    }
+
+    private function ensureAdvertiserCapabilities(Account $account, UserSpace $space): void
+    {
+        foreach ([
+            'advertiser.space.view',
+            'advertiser.space.manage',
+            'advertiser.profile.view',
+            'advertiser.profile.manage',
+            'advertiser.brand.view',
+            'advertiser.brand.manage',
+            'advertiser.media.view',
+            'advertiser.media.upload',
+            'advertiser.media.manage',
+            'advertiser.wallet.view',
+            'advertiser.wallet.fund',
+            'organization.members.invite',
+        ] as $capability) {
+            if ($this->capabilities->allows($account, $capability, $space)) {
+                continue;
+            }
+
+            $this->capabilities->grant(
+                account: $account,
+                capability: $capability,
+                space: $space,
+                organizationId: $space->organization_id,
+                reason: 'Activation de son espace annonceur',
+            );
+        }
     }
 }

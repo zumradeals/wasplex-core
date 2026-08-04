@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\AdvertiserStudio\Http\Controllers\AdvertiserStudioController;
 use App\Modules\EconomicConfiguration\Http\Controllers\EconomicConfigurationAdminController;
 use App\Modules\Identity\Http\Controllers\LoginController;
 use App\Modules\Identity\Http\Controllers\MfaController;
@@ -35,9 +36,50 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
     Route::get('/wallet', [WalletController::class, 'show'])->middleware(['space.kind:user', 'capability:wallet.view.self'])->name('wallet.show');
     Route::post('/wallet/depot', [WalletController::class, 'storeDeposit'])->middleware(['space.kind:user', 'capability:wallet.deposit.create.self', 'throttle:6,1'])->name('wallet.deposit.store');
 
-    Route::get('/studio', [ShellController::class, 'advertiser'])->middleware(['space.kind:advertiser', 'capability:advertiser.space.view'])->name('studio.dashboard');
-    Route::get('/studio/wallet', [WalletController::class, 'show'])->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.view'])->name('studio.wallet');
-    Route::post('/studio/wallet/depot', [WalletController::class, 'storeDeposit'])->middleware(['space.kind:advertiser', 'capability:advertiser.wallet.fund', 'throttle:6,1'])->name('studio.wallet.deposit.store');
+    Route::prefix('/studio')
+        ->name('studio.')
+        ->middleware('space.kind:advertiser')
+        ->group(function (): void {
+            Route::get('/', [AdvertiserStudioController::class, 'dashboard'])
+                ->middleware('capability:advertiser.space.view')
+                ->name('dashboard');
+            Route::get('/profil', [AdvertiserStudioController::class, 'profile'])
+                ->middleware('capability:advertiser.profile.view')
+                ->name('profile');
+            Route::patch('/profil', [AdvertiserStudioController::class, 'updateProfile'])
+                ->middleware('capability:advertiser.profile.manage')
+                ->name('profile.update');
+            Route::get('/marques', [AdvertiserStudioController::class, 'brands'])
+                ->middleware('capability:advertiser.brand.view')
+                ->name('brands');
+            Route::post('/marques', [AdvertiserStudioController::class, 'storeBrand'])
+                ->middleware('capability:advertiser.brand.manage')
+                ->name('brands.store');
+            Route::patch('/marques/{brand}', [AdvertiserStudioController::class, 'updateBrand'])
+                ->middleware('capability:advertiser.brand.manage')
+                ->name('brands.update');
+            Route::delete('/marques/{brand}', [AdvertiserStudioController::class, 'archiveBrand'])
+                ->middleware('capability:advertiser.brand.manage')
+                ->name('brands.archive');
+            Route::get('/medias', [AdvertiserStudioController::class, 'media'])
+                ->middleware('capability:advertiser.media.view')
+                ->name('media');
+            Route::post('/medias', [AdvertiserStudioController::class, 'storeMedia'])
+                ->middleware(['capability:advertiser.media.upload', 'throttle:20,1'])
+                ->name('media.store');
+            Route::patch('/medias/{asset}', [AdvertiserStudioController::class, 'updateMedia'])
+                ->middleware('capability:advertiser.media.manage')
+                ->name('media.update');
+            Route::delete('/medias/{asset}', [AdvertiserStudioController::class, 'archiveMedia'])
+                ->middleware('capability:advertiser.media.manage')
+                ->name('media.archive');
+            Route::get('/wallet', [WalletController::class, 'show'])
+                ->middleware('capability:advertiser.wallet.view')
+                ->name('wallet');
+            Route::post('/wallet/depot', [WalletController::class, 'storeDeposit'])
+                ->middleware(['capability:advertiser.wallet.fund', 'throttle:6,1'])
+                ->name('wallet.deposit.store');
+        });
 
     Route::get('/administration', [ShellController::class, 'admin'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:admin.dashboard.view'])->name('admin.dashboard');
     Route::get('/administration/wallet', [WalletAdminController::class, 'page'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:wallet.deposit.review'])->name('admin.wallet');
