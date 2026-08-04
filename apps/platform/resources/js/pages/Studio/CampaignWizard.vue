@@ -124,16 +124,28 @@ const form = useForm({
     current_step: currentStep.value,
 });
 
-const editable = computed(() => !props.campaign || ['draft', 'quoted'].includes(props.campaign.status));
-const selectedBrand = computed(() => props.brands.find((brand) => brand.id === form.brand_id) ?? null);
-const selectedAssets = computed(() => props.assets.filter((asset) => form.creative_asset_ids.includes(asset.id)));
+const editable = computed(
+    () => !props.campaign || ['draft', 'quoted'].includes(props.campaign.status),
+);
+const selectedBrand = computed(
+    () => props.brands.find((brand) => brand.id === form.brand_id) ?? null,
+);
+const selectedAssets = computed(() =>
+    props.assets.filter((asset) => form.creative_asset_ids.includes(asset.id)),
+);
 const quote = computed(() => props.campaign?.quote ?? null);
 const canFund = computed(
-    () => quote.value?.status === 'issued' && props.wallet.balances.available >= quote.value.grossAmountMinor,
+    () =>
+        quote.value?.status === 'issued' &&
+        props.wallet.balances.available >= quote.value.grossAmountMinor,
 );
 
 const money = (value: number, currency = 'XOF') =>
-    new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
+    new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0,
+    }).format(value);
 
 const number = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
 
@@ -241,7 +253,13 @@ const submit = () => {
             </div>
             <div class="flex items-center gap-3">
                 <span class="text-xs font-bold text-white/30">
-                    {{ saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? 'Enregistré' : '' }}
+                    {{
+                        saveState === 'saving'
+                            ? 'Enregistrement…'
+                            : saveState === 'saved'
+                              ? 'Enregistré'
+                              : ''
+                    }}
                 </span>
                 <button
                     v-if="editable"
@@ -275,7 +293,9 @@ const submit = () => {
                 "
                 @click="currentStep = step.number"
             >
-                <span class="grid size-6 place-items-center rounded-full bg-black/10">{{ step.number }}</span>
+                <span class="grid size-6 place-items-center rounded-full bg-black/10">{{
+                    step.number
+                }}</span>
                 {{ step.label }}
             </button>
         </div>
@@ -283,19 +303,27 @@ const submit = () => {
         <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <section class="rounded-[2rem] border border-white/8 bg-white/[0.035] p-5 sm:p-8">
                 <div v-if="currentStep === 1">
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 1</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 1
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Choisissez la marque</h2>
-                    <p class="mt-2 text-sm text-white/38">La campagne héritera de son identité visuelle.</p>
+                    <p class="mt-2 text-sm text-white/38">
+                        La campagne héritera de son identité visuelle.
+                    </p>
 
                     <label class="mt-7 block">
-                        <span class="text-xs font-black text-white/55">Nom interne de la campagne</span>
+                        <span class="text-xs font-black text-white/55"
+                            >Nom interne de la campagne</span
+                        >
                         <input
                             v-model="form.name"
                             :disabled="!editable"
                             placeholder="Ex. Autodesk Abidjan — août"
                             class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none focus:border-cyan-300/50 disabled:opacity-50"
                         />
-                        <span v-if="form.errors.name" class="mt-2 block text-xs text-rose-300">{{ form.errors.name }}</span>
+                        <span v-if="form.errors.name" class="mt-2 block text-xs text-rose-300">{{
+                            form.errors.name
+                        }}</span>
                     </label>
 
                     <div class="mt-6 grid gap-3 sm:grid-cols-2">
@@ -303,30 +331,52 @@ const submit = () => {
                             v-for="brand in brands"
                             :key="brand.id"
                             class="cursor-pointer rounded-2xl border p-4 transition"
-                            :class="form.brand_id === brand.id ? 'border-cyan-300/60 bg-cyan-300/8' : 'border-white/8 bg-black/10'"
+                            :class="
+                                form.brand_id === brand.id
+                                    ? 'border-cyan-300/60 bg-cyan-300/8'
+                                    : 'border-white/8 bg-black/10'
+                            "
                         >
-                            <input v-model="form.brand_id" type="radio" :value="brand.id" class="sr-only" :disabled="!editable" />
+                            <input
+                                v-model="form.brand_id"
+                                type="radio"
+                                :value="brand.id"
+                                class="sr-only"
+                                :disabled="!editable"
+                            />
                             <div
                                 class="h-2 rounded-full"
-                                :style="{ background: `linear-gradient(90deg, ${brand.primaryColor ?? '#22D3EE'}, ${brand.secondaryColor ?? '#38BDF8'})` }"
+                                :style="{
+                                    background: `linear-gradient(90deg, ${brand.primaryColor ?? '#22D3EE'}, ${brand.secondaryColor ?? '#38BDF8'})`,
+                                }"
                             />
                             <p class="mt-4 font-black">{{ brand.name }}</p>
-                            <p class="mt-1 text-xs text-white/35">{{ brand.slogan || 'Aucun slogan' }}</p>
+                            <p class="mt-1 text-xs text-white/35">
+                                {{ brand.slogan || 'Aucun slogan' }}
+                            </p>
                         </label>
                     </div>
                 </div>
 
                 <div v-else-if="currentStep === 2">
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 2</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 2
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Sélectionnez le contenu</h2>
-                    <p class="mt-2 text-sm text-white/38">Images et vidéos déjà présentes dans votre médiathèque.</p>
+                    <p class="mt-2 text-sm text-white/38">
+                        Images et vidéos déjà présentes dans votre médiathèque.
+                    </p>
 
                     <div v-if="assets.length" class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <label
                             v-for="asset in assets"
                             :key="asset.id"
                             class="cursor-pointer overflow-hidden rounded-2xl border transition"
-                            :class="form.creative_asset_ids.includes(asset.id) ? 'border-cyan-300/60 bg-cyan-300/8' : 'border-white/8 bg-black/10'"
+                            :class="
+                                form.creative_asset_ids.includes(asset.id)
+                                    ? 'border-cyan-300/60 bg-cyan-300/8'
+                                    : 'border-white/8 bg-black/10'
+                            "
                         >
                             <input
                                 v-model="form.creative_asset_ids"
@@ -336,113 +386,238 @@ const submit = () => {
                                 :disabled="!editable"
                             />
                             <div class="grid h-28 place-items-center overflow-hidden bg-black/25">
-                                <img v-if="asset.kind === 'image' && asset.url" :src="asset.url" :alt="asset.name" class="size-full object-cover" />
-                                <video v-else-if="asset.kind === 'video' && asset.url" :src="asset.url" muted class="size-full object-cover" />
-                                <span v-else class="text-2xl">{{ asset.kind === 'video' ? '▶' : '▧' }}</span>
+                                <img
+                                    v-if="asset.kind === 'image' && asset.url"
+                                    :src="asset.url"
+                                    :alt="asset.name"
+                                    class="size-full object-cover"
+                                />
+                                <video
+                                    v-else-if="asset.kind === 'video' && asset.url"
+                                    :src="asset.url"
+                                    muted
+                                    class="size-full object-cover"
+                                />
+                                <span v-else class="text-2xl">{{
+                                    asset.kind === 'video' ? '▶' : '▧'
+                                }}</span>
                             </div>
                             <p class="truncate p-3 text-xs font-black">{{ asset.name }}</p>
                         </label>
                     </div>
-                    <div v-else class="mt-7 rounded-2xl border border-dashed border-white/12 p-8 text-center">
+                    <div
+                        v-else
+                        class="mt-7 rounded-2xl border border-dashed border-white/12 p-8 text-center"
+                    >
                         <p class="text-sm text-white/40">Votre médiathèque est vide.</p>
-                        <Link href="/studio/medias" class="mt-4 inline-flex text-sm font-black text-cyan-300">Ajouter un média</Link>
+                        <Link
+                            href="/studio/medias"
+                            class="mt-4 inline-flex text-sm font-black text-cyan-300"
+                            >Ajouter un média</Link
+                        >
                     </div>
-                    <span v-if="form.errors.creative_asset_ids" class="mt-3 block text-xs text-rose-300">{{ form.errors.creative_asset_ids }}</span>
+                    <span
+                        v-if="form.errors.creative_asset_ids"
+                        class="mt-3 block text-xs text-rose-300"
+                        >{{ form.errors.creative_asset_ids }}</span
+                    >
                 </div>
 
                 <div v-else-if="currentStep === 3">
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 3</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 3
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Définissez l’objectif</h2>
                     <div class="mt-7 grid gap-3 sm:grid-cols-2">
                         <label
                             v-for="objective in objectives"
                             :key="objective.code"
                             class="cursor-pointer rounded-2xl border p-4 text-sm font-black"
-                            :class="form.objective === objective.code ? 'border-cyan-300/60 bg-cyan-300/8' : 'border-white/8 bg-black/10'"
+                            :class="
+                                form.objective === objective.code
+                                    ? 'border-cyan-300/60 bg-cyan-300/8'
+                                    : 'border-white/8 bg-black/10'
+                            "
                         >
-                            <input v-model="form.objective" type="radio" :value="objective.code" class="sr-only" :disabled="!editable" />
+                            <input
+                                v-model="form.objective"
+                                type="radio"
+                                :value="objective.code"
+                                class="sr-only"
+                                :disabled="!editable"
+                            />
                             {{ objective.label }}
                         </label>
                     </div>
                     <div class="mt-6 grid gap-5">
                         <label>
                             <span class="text-xs font-black text-white/55">Titre publicitaire</span>
-                            <input v-model="form.headline" :disabled="!editable" maxlength="180" class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none focus:border-cyan-300/50 disabled:opacity-50" />
+                            <input
+                                v-model="form.headline"
+                                :disabled="!editable"
+                                maxlength="180"
+                                class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none focus:border-cyan-300/50 disabled:opacity-50"
+                            />
                         </label>
                         <label>
                             <span class="text-xs font-black text-white/55">Message</span>
-                            <textarea v-model="form.body" :disabled="!editable" rows="5" maxlength="2000" class="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm leading-6 outline-none focus:border-cyan-300/50 disabled:opacity-50" />
+                            <textarea
+                                v-model="form.body"
+                                :disabled="!editable"
+                                rows="5"
+                                maxlength="2000"
+                                class="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm leading-6 outline-none focus:border-cyan-300/50 disabled:opacity-50"
+                            />
                         </label>
                         <div class="grid gap-5 sm:grid-cols-2">
                             <label>
-                                <span class="text-xs font-black text-white/55">Bouton d’action</span>
-                                <input v-model="form.call_to_action" :disabled="!editable" placeholder="Découvrir l’offre" maxlength="80" class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50" />
+                                <span class="text-xs font-black text-white/55"
+                                    >Bouton d’action</span
+                                >
+                                <input
+                                    v-model="form.call_to_action"
+                                    :disabled="!editable"
+                                    placeholder="Découvrir l’offre"
+                                    maxlength="80"
+                                    class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50"
+                                />
                             </label>
                             <label>
-                                <span class="text-xs font-black text-white/55">Lien de destination</span>
-                                <input v-model="form.destination_url" :disabled="!editable" type="url" placeholder="https://…" class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50" />
+                                <span class="text-xs font-black text-white/55"
+                                    >Lien de destination</span
+                                >
+                                <input
+                                    v-model="form.destination_url"
+                                    :disabled="!editable"
+                                    type="url"
+                                    placeholder="https://…"
+                                    class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50"
+                                />
                             </label>
                         </div>
                     </div>
                 </div>
 
                 <div v-else-if="currentStep === 4">
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 4</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 4
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Choisissez les classes</h2>
-                    <p class="mt-2 text-sm text-white/38">Sélection simple, sans coefficient technique.</p>
+                    <p class="mt-2 text-sm text-white/38">
+                        Sélection simple, sans coefficient technique.
+                    </p>
                     <div class="mt-7 grid gap-3 sm:grid-cols-2">
                         <label
                             v-for="economicClass in economicClasses"
                             :key="economicClass.code"
                             class="cursor-pointer rounded-2xl border p-5"
-                            :class="form.selected_classes.includes(economicClass.code) ? 'border-cyan-300/60 bg-cyan-300/8' : 'border-white/8 bg-black/10'"
+                            :class="
+                                form.selected_classes.includes(economicClass.code)
+                                    ? 'border-cyan-300/60 bg-cyan-300/8'
+                                    : 'border-white/8 bg-black/10'
+                            "
                         >
-                            <input v-model="form.selected_classes" type="checkbox" :value="economicClass.code" class="sr-only" :disabled="!editable" />
+                            <input
+                                v-model="form.selected_classes"
+                                type="checkbox"
+                                :value="economicClass.code"
+                                class="sr-only"
+                                :disabled="!editable"
+                            />
                             <p class="font-black">{{ economicClass.label }}</p>
                             <p class="mt-1 text-xs text-white/32">{{ economicClass.code }}</p>
                         </label>
                     </div>
-                    <span v-if="form.errors.selected_classes" class="mt-3 block text-xs text-rose-300">{{ form.errors.selected_classes }}</span>
+                    <span
+                        v-if="form.errors.selected_classes"
+                        class="mt-3 block text-xs text-rose-300"
+                        >{{ form.errors.selected_classes }}</span
+                    >
                 </div>
 
                 <div v-else-if="currentStep === 5">
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 5</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 5
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Territoire et calendrier</h2>
                     <div class="mt-7 grid gap-5 sm:grid-cols-2">
                         <label>
-                            <span class="text-xs font-black text-white/55">Ville ou territoire</span>
-                            <input v-model="form.territory_name" :disabled="!editable" placeholder="Abidjan" class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50" />
+                            <span class="text-xs font-black text-white/55"
+                                >Ville ou territoire</span
+                            >
+                            <input
+                                v-model="form.territory_name"
+                                :disabled="!editable"
+                                placeholder="Abidjan"
+                                class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50"
+                            />
                         </label>
                         <label>
-                            <span class="text-xs font-black text-white/55">Rayon autour du territoire</span>
-                            <div class="mt-2 flex items-center rounded-2xl border border-white/10 bg-black/20 px-4">
-                                <input v-model.number="form.radius_km" :disabled="!editable" type="number" min="1" max="100" class="min-w-0 flex-1 bg-transparent py-3.5 text-sm outline-none disabled:opacity-50" />
+                            <span class="text-xs font-black text-white/55"
+                                >Rayon autour du territoire</span
+                            >
+                            <div
+                                class="mt-2 flex items-center rounded-2xl border border-white/10 bg-black/20 px-4"
+                            >
+                                <input
+                                    v-model.number="form.radius_km"
+                                    :disabled="!editable"
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    class="min-w-0 flex-1 bg-transparent py-3.5 text-sm outline-none disabled:opacity-50"
+                                />
                                 <span class="text-xs font-black text-white/35">km</span>
                             </div>
                         </label>
                         <label>
                             <span class="text-xs font-black text-white/55">Début souhaité</span>
-                            <input v-model="form.starts_on" :disabled="!editable" type="date" class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50" />
+                            <input
+                                v-model="form.starts_on"
+                                :disabled="!editable"
+                                type="date"
+                                class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50"
+                            />
                         </label>
                         <label>
                             <span class="text-xs font-black text-white/55">Fin souhaitée</span>
-                            <input v-model="form.ends_on" :disabled="!editable" type="date" class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50" />
+                            <input
+                                v-model="form.ends_on"
+                                :disabled="!editable"
+                                type="date"
+                                class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none disabled:opacity-50"
+                            />
                         </label>
                     </div>
                 </div>
 
                 <div v-else-if="currentStep === 6">
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 6</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 6
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Budget et devis</h2>
-                    <p class="mt-2 text-sm text-white/38">Saisissez uniquement le budget global souhaité.</p>
+                    <p class="mt-2 text-sm text-white/38">
+                        Saisissez uniquement le budget global souhaité.
+                    </p>
 
                     <label class="mt-7 block">
                         <span class="text-xs font-black text-white/55">Budget global</span>
-                        <div class="mt-2 flex items-center rounded-2xl border border-white/10 bg-black/20 px-4">
-                            <input v-model.number="form.budget_minor" :disabled="!editable" type="number" :min="minimumBudgetMinor" step="1000" class="min-w-0 flex-1 bg-transparent py-4 text-xl font-black outline-none disabled:opacity-50" />
+                        <div
+                            class="mt-2 flex items-center rounded-2xl border border-white/10 bg-black/20 px-4"
+                        >
+                            <input
+                                v-model.number="form.budget_minor"
+                                :disabled="!editable"
+                                type="number"
+                                :min="minimumBudgetMinor"
+                                step="1000"
+                                class="min-w-0 flex-1 bg-transparent py-4 text-xl font-black outline-none disabled:opacity-50"
+                            />
                             <span class="text-sm font-black text-white/35">FCFA</span>
                         </div>
-                        <p class="mt-2 text-xs text-white/28">Minimum sandbox : {{ money(minimumBudgetMinor) }}</p>
+                        <p class="mt-2 text-xs text-white/28">
+                            Minimum sandbox : {{ money(minimumBudgetMinor) }}
+                        </p>
                     </label>
 
                     <button
@@ -454,52 +629,95 @@ const submit = () => {
                         {{ campaign ? 'Obtenir mon devis' : 'Créez d’abord le brouillon' }}
                     </button>
 
-                    <div v-if="campaign?.audience" class="mt-6 rounded-2xl border border-white/8 bg-black/15 p-5">
-                        <p class="text-xs font-black text-white/40 uppercase">Audience de planification</p>
-                        <p class="mt-2 text-2xl font-black">
-                            {{ number(campaign.audience.estimatedMin) }} à {{ number(campaign.audience.estimatedMax) }} personnes
+                    <div
+                        v-if="campaign?.audience"
+                        class="mt-6 rounded-2xl border border-white/8 bg-black/15 p-5"
+                    >
+                        <p class="text-xs font-black text-white/40 uppercase">
+                            Audience de planification
                         </p>
-                        <p class="mt-2 text-xs leading-5 text-white/30">{{ campaign.audience.notice }}</p>
+                        <p class="mt-2 text-2xl font-black">
+                            {{ number(campaign.audience.estimatedMin) }} à
+                            {{ number(campaign.audience.estimatedMax) }} personnes
+                        </p>
+                        <p class="mt-2 text-xs leading-5 text-white/30">
+                            {{ campaign.audience.notice }}
+                        </p>
                     </div>
 
-                    <div v-if="quote && quote.status !== 'void'" class="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/7 p-5">
+                    <div
+                        v-if="quote && quote.status !== 'void'"
+                        class="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/7 p-5"
+                    >
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <p class="text-xs font-black text-amber-200 uppercase">Devis v{{ quote.catalogVersion }}</p>
-                                <p class="mt-2 text-3xl font-black">{{ money(quote.grossAmountMinor, quote.currency) }}</p>
+                                <p class="text-xs font-black text-amber-200 uppercase">
+                                    Devis v{{ quote.catalogVersion }}
+                                </p>
+                                <p class="mt-2 text-3xl font-black">
+                                    {{ money(quote.grossAmountMinor, quote.currency) }}
+                                </p>
                             </div>
-                            <span class="rounded-full bg-amber-200/10 px-3 py-1 text-[10px] font-black text-amber-100 uppercase">Figé</span>
+                            <span
+                                class="rounded-full bg-amber-200/10 px-3 py-1 text-[10px] font-black text-amber-100 uppercase"
+                                >Figé</span
+                            >
                         </div>
                         <div class="mt-5 grid grid-cols-2 gap-3 text-sm">
                             <div class="rounded-xl bg-black/15 p-3">
                                 <p class="text-xs text-white/35">Valeur utilisateurs</p>
-                                <p class="mt-1 font-black">{{ money(quote.userShareMinor, quote.currency) }}</p>
+                                <p class="mt-1 font-black">
+                                    {{ money(quote.userShareMinor, quote.currency) }}
+                                </p>
                             </div>
                             <div class="rounded-xl bg-black/15 p-3">
                                 <p class="text-xs text-white/35">Part plateforme</p>
-                                <p class="mt-1 font-black">{{ money(quote.platformShareMinor, quote.currency) }}</p>
+                                <p class="mt-1 font-black">
+                                    {{ money(quote.platformShareMinor, quote.currency) }}
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div v-else>
-                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">Étape 7</p>
+                    <p class="text-xs font-black tracking-[0.2em] text-cyan-300 uppercase">
+                        Étape 7
+                    </p>
                     <h2 class="mt-3 text-2xl font-black">Prévisualiser et soumettre</h2>
 
-                    <div class="mt-7 overflow-hidden rounded-[2rem] border border-white/10 bg-[#081522]">
+                    <div
+                        class="mt-7 overflow-hidden rounded-[2rem] border border-white/10 bg-[#081522]"
+                    >
                         <div
                             class="h-3"
-                            :style="{ background: `linear-gradient(90deg, ${selectedBrand?.primaryColor ?? '#22D3EE'}, ${selectedBrand?.secondaryColor ?? '#38BDF8'})` }"
+                            :style="{
+                                background: `linear-gradient(90deg, ${selectedBrand?.primaryColor ?? '#22D3EE'}, ${selectedBrand?.secondaryColor ?? '#38BDF8'})`,
+                            }"
                         />
                         <div class="p-6">
-                            <p class="text-xs font-black text-cyan-300">{{ selectedBrand?.name || 'Marque' }}</p>
-                            <h3 class="mt-3 text-2xl font-black">{{ form.headline || form.name || 'Votre campagne' }}</h3>
-                            <p class="mt-3 text-sm leading-6 text-white/45">{{ form.body || 'Votre message publicitaire apparaîtra ici.' }}</p>
+                            <p class="text-xs font-black text-cyan-300">
+                                {{ selectedBrand?.name || 'Marque' }}
+                            </p>
+                            <h3 class="mt-3 text-2xl font-black">
+                                {{ form.headline || form.name || 'Votre campagne' }}
+                            </h3>
+                            <p class="mt-3 text-sm leading-6 text-white/45">
+                                {{ form.body || 'Votre message publicitaire apparaîtra ici.' }}
+                            </p>
                             <div class="mt-5 flex flex-wrap gap-2">
-                                <span class="rounded-full bg-white/6 px-3 py-1 text-xs font-bold text-white/45">{{ form.territory_name }} + {{ form.radius_km }} km</span>
-                                <span class="rounded-full bg-white/6 px-3 py-1 text-xs font-bold text-white/45">{{ form.selected_classes.length }} classe(s)</span>
-                                <span class="rounded-full bg-white/6 px-3 py-1 text-xs font-bold text-white/45">{{ selectedAssets.length }} contenu(s)</span>
+                                <span
+                                    class="rounded-full bg-white/6 px-3 py-1 text-xs font-bold text-white/45"
+                                    >{{ form.territory_name }} + {{ form.radius_km }} km</span
+                                >
+                                <span
+                                    class="rounded-full bg-white/6 px-3 py-1 text-xs font-bold text-white/45"
+                                    >{{ form.selected_classes.length }} classe(s)</span
+                                >
+                                <span
+                                    class="rounded-full bg-white/6 px-3 py-1 text-xs font-bold text-white/45"
+                                    >{{ selectedAssets.length }} contenu(s)</span
+                                >
                             </div>
                         </div>
                     </div>
@@ -511,7 +729,11 @@ const submit = () => {
                         </div>
                         <div class="mt-3 flex items-center justify-between gap-4">
                             <span class="text-sm text-white/40">Budget du devis</span>
-                            <strong>{{ quote ? money(quote.grossAmountMinor, quote.currency) : 'Aucun devis' }}</strong>
+                            <strong>{{
+                                quote
+                                    ? money(quote.grossAmountMinor, quote.currency)
+                                    : 'Aucun devis'
+                            }}</strong>
                         </div>
                     </div>
 
@@ -521,7 +743,11 @@ const submit = () => {
                         :disabled="!canFund"
                         @click="fund"
                     >
-                        {{ canFund ? 'Réserver le budget dans mon Wallet' : 'Solde insuffisant — approvisionnez le Wallet' }}
+                        {{
+                            canFund
+                                ? 'Réserver le budget dans mon Wallet'
+                                : 'Solde insuffisant — approvisionnez le Wallet'
+                        }}
                     </button>
                     <button
                         v-else-if="campaign?.status === 'funded'"
@@ -530,11 +756,21 @@ const submit = () => {
                     >
                         Soumettre pour revue administrative
                     </button>
-                    <div v-else-if="campaign?.status === 'submitted'" class="mt-6 rounded-2xl border border-emerald-300/20 bg-emerald-300/8 p-5 text-center">
+                    <div
+                        v-else-if="campaign?.status === 'submitted'"
+                        class="mt-6 rounded-2xl border border-emerald-300/20 bg-emerald-300/8 p-5 text-center"
+                    >
                         <p class="font-black text-emerald-200">Campagne soumise avec succès</p>
-                        <p class="mt-2 text-xs text-white/35">La réservation budgétaire reste protégée jusqu’à la décision P007.</p>
+                        <p class="mt-2 text-xs text-white/35">
+                            La réservation budgétaire reste protégée jusqu’à la décision P007.
+                        </p>
                     </div>
-                    <Link v-else-if="!quote" href="#" class="mt-6 block text-center text-sm font-black text-cyan-300" @click.prevent="currentStep = 6">
+                    <Link
+                        v-else-if="!quote"
+                        href="#"
+                        class="mt-6 block text-center text-sm font-black text-cyan-300"
+                        @click.prevent="currentStep = 6"
+                    >
                         Générer d’abord le devis
                     </Link>
                 </div>
@@ -563,7 +799,9 @@ const submit = () => {
                     <dl class="mt-5 space-y-4 text-sm">
                         <div class="flex justify-between gap-4">
                             <dt class="text-white/35">Marque</dt>
-                            <dd class="text-right font-black">{{ selectedBrand?.name || 'À choisir' }}</dd>
+                            <dd class="text-right font-black">
+                                {{ selectedBrand?.name || 'À choisir' }}
+                            </dd>
                         </div>
                         <div class="flex justify-between gap-4">
                             <dt class="text-white/35">Contenus</dt>
@@ -571,7 +809,9 @@ const submit = () => {
                         </div>
                         <div class="flex justify-between gap-4">
                             <dt class="text-white/35">Territoire</dt>
-                            <dd class="text-right font-black">{{ form.territory_name || 'À définir' }}</dd>
+                            <dd class="text-right font-black">
+                                {{ form.territory_name || 'À définir' }}
+                            </dd>
                         </div>
                         <div class="flex justify-between gap-4">
                             <dt class="text-white/35">Budget</dt>
@@ -583,9 +823,9 @@ const submit = () => {
                 <div class="rounded-[2rem] border border-cyan-300/12 bg-cyan-300/[0.045] p-6">
                     <p class="text-xs font-black text-cyan-200 uppercase">Protection Wasplex</p>
                     <p class="mt-3 text-xs leading-5 text-white/38">
-                        Le devis est versionné. Le financement réserve la valeur dans le Wallet sans la
-                        consommer. Aucune diffusion ni rémunération utilisateur n’est déclenchée avant
-                        les étapes suivantes.
+                        Le devis est versionné. Le financement réserve la valeur dans le Wallet sans
+                        la consommer. Aucune diffusion ni rémunération utilisateur n’est déclenchée
+                        avant les étapes suivantes.
                     </p>
                 </div>
             </aside>

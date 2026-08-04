@@ -53,7 +53,11 @@ const statusClass: Record<Campaign['status'], string> = {
 };
 
 const money = (value: number, currency = 'XOF') =>
-    new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
+    new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0,
+    }).format(value);
 
 const number = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
 
@@ -76,10 +80,12 @@ const cancel = (campaign: Campaign) => {
                 <p class="text-xs font-black tracking-[0.24em] text-cyan-300 uppercase">
                     Campagnes publicitaires
                 </p>
-                <h1 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Créer et financer</h1>
+                <h1 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+                    Créer et financer
+                </h1>
                 <p class="mt-2 max-w-2xl text-sm leading-6 text-white/40">
-                    Préparez votre contenu, choisissez votre audience, obtenez un devis et réservez le
-                    budget avant la revue administrative.
+                    Préparez votre contenu, choisissez votre audience, obtenez un devis et réservez
+                    le budget avant la revue administrative.
                 </p>
             </div>
             <Link
@@ -112,7 +118,9 @@ const cancel = (campaign: Campaign) => {
                 <div class="p-6 sm:p-7">
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
-                            <p class="text-xs font-black text-cyan-300/65">{{ campaign.brand.name }}</p>
+                            <p class="text-xs font-black text-cyan-300/65">
+                                {{ campaign.brand.name }}
+                            </p>
                             <h2 class="mt-2 truncate text-xl font-black">{{ campaign.name }}</h2>
                         </div>
                         <span
@@ -131,7 +139,13 @@ const cancel = (campaign: Campaign) => {
                         <div class="rounded-2xl bg-black/15 p-3">
                             <p class="text-[10px] font-bold text-white/28 uppercase">Budget</p>
                             <p class="mt-1 truncate font-black">
-                                {{ money(campaign.quote?.grossAmountMinor ?? campaign.version?.budgetMinor ?? 0) }}
+                                {{
+                                    money(
+                                        campaign.quote?.grossAmountMinor ??
+                                            campaign.version?.budgetMinor ??
+                                            0,
+                                    )
+                                }}
                             </p>
                         </div>
                         <div class="rounded-2xl bg-black/15 p-3">
@@ -143,12 +157,16 @@ const cancel = (campaign: Campaign) => {
                         <div class="rounded-2xl bg-black/15 p-3">
                             <p class="text-[10px] font-bold text-white/28 uppercase">Audience</p>
                             <p class="mt-1 truncate font-black">
-                                {{ campaign.audience ? number(campaign.audience.estimatedMax) : '—' }}
+                                {{
+                                    campaign.audience ? number(campaign.audience.estimatedMax) : '—'
+                                }}
                             </p>
                         </div>
                     </div>
 
-                    <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/7 pt-5">
+                    <div
+                        class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/7 pt-5"
+                    >
                         <p class="text-xs text-white/28">
                             {{ campaign.version?.creatives.length ?? 0 }} contenu(s) sélectionné(s)
                         </p>
@@ -176,11 +194,15 @@ const cancel = (campaign: Campaign) => {
             v-else
             class="mt-8 rounded-[2rem] border border-dashed border-white/12 bg-white/[0.025] px-6 py-16 text-center"
         >
-            <div class="mx-auto grid size-16 place-items-center rounded-3xl bg-cyan-300/10 text-2xl">◎</div>
+            <div
+                class="mx-auto grid size-16 place-items-center rounded-3xl bg-cyan-300/10 text-2xl"
+            >
+                ◎
+            </div>
             <h2 class="mt-5 text-2xl font-black">Votre première campagne</h2>
             <p class="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/38">
-                L’assistant vous guide en sept étapes simples, sans exposer les calculs techniques du
-                Wallet ou de la répartition économique.
+                L’assistant vous guide en sept étapes simples, sans exposer les calculs techniques
+                du Wallet ou de la répartition économique.
             </p>
             <Link
                 href="/studio/campagnes/nouvelle"
