@@ -182,7 +182,8 @@ const actionHref = (campaign: Campaign) =>
                             {{ campaign.review.reason }}
                         </p>
                         <p class="mt-2 text-xs text-white/28">
-                            Le budget reste réservé. Corrigez puis resoumettez sans nouveau paiement.
+                            Le budget reste réservé. Corrigez puis resoumettez sans nouveau
+                            paiement.
                         </p>
                     </div>
 

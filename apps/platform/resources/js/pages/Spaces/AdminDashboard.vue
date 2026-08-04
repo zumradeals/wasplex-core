@@ -111,7 +111,9 @@ const navigation = [
                         <div class="flex items-center justify-between">
                             <div>
                                 <h2 class="text-xl font-black">Contrôles du noyau</h2>
-                                <p class="mt-1 text-sm text-white/35">Identité, économie et campagne</p>
+                                <p class="mt-1 text-sm text-white/35">
+                                    Identité, économie et campagne
+                                </p>
                             </div>
                             <span
                                 class="size-3 rounded-full bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.8)]"

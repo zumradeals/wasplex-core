@@ -167,12 +167,7 @@ const statusLabel: Record<CampaignDetail['status'], string> = {
 
 <template>
     <Head :title="`Revue — ${campaign.name}`" />
-    <AdminLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="campaigns"
-    >
+    <AdminLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="campaigns">
         <header class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div class="min-w-0">
                 <Link href="/administration/campagnes" class="text-xs font-black text-cyan-300/70">
@@ -204,7 +199,9 @@ const statusLabel: Record<CampaignDetail['status'], string> = {
 
         <div class="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_23rem]">
             <div class="space-y-6">
-                <section class="overflow-hidden rounded-[2rem] border border-white/8 bg-white/[0.035]">
+                <section
+                    class="overflow-hidden rounded-[2rem] border border-white/8 bg-white/[0.035]"
+                >
                     <div
                         class="h-2"
                         :style="{
@@ -218,7 +215,7 @@ const statusLabel: Record<CampaignDetail['status'], string> = {
                         <h2 class="mt-3 text-2xl font-black">
                             {{ campaign.version?.headline || campaign.name }}
                         </h2>
-                        <p class="mt-4 whitespace-pre-line text-sm leading-7 text-white/52">
+                        <p class="mt-4 text-sm leading-7 whitespace-pre-line text-white/52">
                             {{ campaign.version?.body || 'Aucun message renseigné.' }}
                         </p>
                         <div class="mt-5 flex flex-wrap gap-2 text-xs font-black text-white/55">
@@ -314,7 +311,9 @@ const statusLabel: Record<CampaignDetail['status'], string> = {
                     </article>
 
                     <article class="rounded-[2rem] border border-white/8 bg-white/[0.035] p-6">
-                        <p class="text-xs font-black tracking-[0.2em] text-wasplex-orange uppercase">
+                        <p
+                            class="text-xs font-black tracking-[0.2em] text-wasplex-orange uppercase"
+                        >
                             Budget protégé
                         </p>
                         <p class="mt-5 text-3xl font-black">
@@ -334,11 +333,15 @@ const statusLabel: Record<CampaignDetail['status'], string> = {
                             </div>
                             <div class="flex justify-between gap-4">
                                 <span class="text-white/38">Part Wasplex</span>
-                                <strong>{{ money(campaign.quote?.platformShareMinor ?? 0) }}</strong>
+                                <strong>{{
+                                    money(campaign.quote?.platformShareMinor ?? 0)
+                                }}</strong>
                             </div>
                             <div class="flex justify-between gap-4">
                                 <span class="text-white/38">Impressions estimées</span>
-                                <strong>{{ number(campaign.quote?.estimatedImpressions ?? 0) }}</strong>
+                                <strong>{{
+                                    number(campaign.quote?.estimatedImpressions ?? 0)
+                                }}</strong>
                             </div>
                             <div class="flex justify-between gap-4 border-t border-white/8 pt-3">
                                 <span class="text-white/38">Réservation</span>

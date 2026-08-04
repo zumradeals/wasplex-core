@@ -119,9 +119,7 @@ const money = (value: number, currency = 'XOF') =>
             </p>
         </header>
 
-        <div
-            class="mt-6 rounded-2xl border border-orange-300/20 bg-orange-300/8 px-5 py-4"
-        >
+        <div class="mt-6 rounded-2xl border border-orange-300/20 bg-orange-300/8 px-5 py-4">
             <p class="text-xs font-black text-orange-200">Motif de la revue</p>
             <p class="mt-2 text-sm leading-6 text-white/60">
                 {{ reviewReason || 'Des corrections ont été demandées par l’administration.' }}
@@ -180,7 +178,9 @@ const money = (value: number, currency = 'XOF') =>
                         </label>
                         <div class="grid gap-5 sm:grid-cols-2">
                             <label>
-                                <span class="text-xs font-black text-white/55">Bouton d’action</span>
+                                <span class="text-xs font-black text-white/55"
+                                    >Bouton d’action</span
+                                >
                                 <input
                                     v-model="form.call_to_action"
                                     maxlength="80"
@@ -188,7 +188,9 @@ const money = (value: number, currency = 'XOF') =>
                                 />
                             </label>
                             <label>
-                                <span class="text-xs font-black text-white/55">Lien de destination</span>
+                                <span class="text-xs font-black text-white/55"
+                                    >Lien de destination</span
+                                >
                                 <input
                                     v-model="form.destination_url"
                                     type="url"
@@ -240,7 +242,9 @@ const money = (value: number, currency = 'XOF') =>
                                     muted
                                     class="size-full object-cover"
                                 />
-                                <span v-else class="text-2xl">{{ asset.kind === 'video' ? '▶' : '▧' }}</span>
+                                <span v-else class="text-2xl">{{
+                                    asset.kind === 'video' ? '▶' : '▧'
+                                }}</span>
                             </div>
                             <p class="truncate p-3 text-xs font-black">{{ asset.name }}</p>
                         </label>
