@@ -169,12 +169,7 @@ const signalLabel = (kind: string) =>
 
 <template>
     <Head title="Catalogue du Profil intelligent" />
-    <AdminLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="catalog"
-    >
+    <AdminLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="catalog">
         <header class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <p class="text-xs font-black tracking-[0.22em] text-cyan-300 uppercase">
@@ -246,7 +241,11 @@ const signalLabel = (kind: string) =>
                             placeholder="agriculture"
                             class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 outline-none focus:border-cyan-300/55"
                         />
-                        <span v-if="sectorForm.errors.code" class="mt-2 block text-xs text-rose-300">{{ sectorForm.errors.code }}</span>
+                        <span
+                            v-if="sectorForm.errors.code"
+                            class="mt-2 block text-xs text-rose-300"
+                            >{{ sectorForm.errors.code }}</span
+                        >
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Nom affiché</span>
@@ -256,7 +255,11 @@ const signalLabel = (kind: string) =>
                             placeholder="Agriculture"
                             class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 outline-none focus:border-cyan-300/55"
                         />
-                        <span v-if="sectorForm.errors.name" class="mt-2 block text-xs text-rose-300">{{ sectorForm.errors.name }}</span>
+                        <span
+                            v-if="sectorForm.errors.name"
+                            class="mt-2 block text-xs text-rose-300"
+                            >{{ sectorForm.errors.name }}</span
+                        >
                     </label>
                     <label class="block sm:col-span-2">
                         <span class="text-sm font-black">Description</span>
@@ -268,17 +271,31 @@ const signalLabel = (kind: string) =>
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Secteur parent · facultatif</span>
-                        <select v-model="sectorForm.parent_id" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3">
+                        <select
+                            v-model="sectorForm.parent_id"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        >
                             <option value="">Aucun</option>
-                            <option v-for="sector in sectors" :key="sector.id" :value="sector.id">{{ sector.name }}</option>
+                            <option v-for="sector in sectors" :key="sector.id" :value="sector.id">
+                                {{ sector.name }}
+                            </option>
                         </select>
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Ordre</span>
-                        <input v-model.number="sectorForm.sort_order" type="number" min="0" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3" />
+                        <input
+                            v-model.number="sectorForm.sort_order"
+                            type="number"
+                            min="0"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        />
                     </label>
-                    <div class="sm:col-span-2 flex justify-end">
-                        <button type="submit" :disabled="sectorForm.processing" class="rounded-xl bg-cyan-300 px-6 py-3 text-sm font-black text-[#04111e] disabled:opacity-40">
+                    <div class="flex justify-end sm:col-span-2">
+                        <button
+                            type="submit"
+                            :disabled="sectorForm.processing"
+                            class="rounded-xl bg-cyan-300 px-6 py-3 text-sm font-black text-[#04111e] disabled:opacity-40"
+                        >
                             {{ sectorForm.processing ? 'Création…' : 'Créer le secteur' }}
                         </button>
                     </div>
@@ -297,13 +314,22 @@ const signalLabel = (kind: string) =>
                 <form class="mt-6 grid gap-4 sm:grid-cols-2" @submit.prevent="createTaxonomy">
                     <label class="block">
                         <span class="text-sm font-black">Secteur</span>
-                        <select v-model="taxonomyForm.sector_id" required class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3">
-                            <option v-for="sector in sectors" :key="sector.id" :value="sector.id">{{ sector.name }}</option>
+                        <select
+                            v-model="taxonomyForm.sector_id"
+                            required
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        >
+                            <option v-for="sector in sectors" :key="sector.id" :value="sector.id">
+                                {{ sector.name }}
+                            </option>
                         </select>
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Nature du signal</span>
-                        <select v-model="taxonomyForm.signal_kind" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3">
+                        <select
+                            v-model="taxonomyForm.signal_kind"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        >
                             <option value="interest">Intérêt</option>
                             <option value="habit">Habitude</option>
                             <option value="preference">Préférence</option>
@@ -315,51 +341,116 @@ const signalLabel = (kind: string) =>
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Code stable</span>
-                        <input v-model="taxonomyForm.code" required placeholder="agriculture.equipment.need" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3" />
-                        <span v-if="taxonomyForm.errors.code" class="mt-2 block text-xs text-rose-300">{{ taxonomyForm.errors.code }}</span>
+                        <input
+                            v-model="taxonomyForm.code"
+                            required
+                            placeholder="agriculture.equipment.need"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        />
+                        <span
+                            v-if="taxonomyForm.errors.code"
+                            class="mt-2 block text-xs text-rose-300"
+                            >{{ taxonomyForm.errors.code }}</span
+                        >
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Libellé administratif</span>
-                        <input v-model="taxonomyForm.label" required class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3" />
+                        <input
+                            v-model="taxonomyForm.label"
+                            required
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        />
                     </label>
                     <label class="block sm:col-span-2">
                         <span class="text-sm font-black">Question utilisateur</span>
-                        <textarea v-model="taxonomyForm.prompt" required rows="2" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3" />
+                        <textarea
+                            v-model="taxonomyForm.prompt"
+                            required
+                            rows="2"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        />
                     </label>
                     <label class="block sm:col-span-2">
                         <span class="text-sm font-black">Explication utile</span>
-                        <textarea v-model="taxonomyForm.help_text" required rows="2" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3" />
+                        <textarea
+                            v-model="taxonomyForm.help_text"
+                            required
+                            rows="2"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        />
                     </label>
                     <label class="block sm:col-span-2">
                         <span class="text-sm font-black">Options</span>
-                        <textarea v-model="taxonomyForm.options_text" required rows="6" placeholder="owner|Je possède déjà ce produit&#10;purchase_project|Je souhaite l’acheter&#10;general_interest|Je m’informe seulement" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 font-mono text-sm" />
-                        <span class="mt-2 block text-xs text-white/30">{{ parsedOptions.length }} option(s) reconnue(s).</span>
-                        <span v-if="taxonomyForm.errors.options" class="mt-2 block text-xs text-rose-300">{{ taxonomyForm.errors.options }}</span>
+                        <textarea
+                            v-model="taxonomyForm.options_text"
+                            required
+                            rows="6"
+                            placeholder="owner|Je possède déjà ce produit&#10;purchase_project|Je souhaite l’acheter&#10;general_interest|Je m’informe seulement"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 font-mono text-sm"
+                        />
+                        <span class="mt-2 block text-xs text-white/30"
+                            >{{ parsedOptions.length }} option(s) reconnue(s).</span
+                        >
+                        <span
+                            v-if="taxonomyForm.errors.options"
+                            class="mt-2 block text-xs text-rose-300"
+                            >{{ taxonomyForm.errors.options }}</span
+                        >
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Fraîcheur · jours</span>
-                        <input v-model.number="taxonomyForm.freshness_days" type="number" min="1" max="1825" required class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3" />
+                        <input
+                            v-model.number="taxonomyForm.freshness_days"
+                            type="number"
+                            min="1"
+                            max="1825"
+                            required
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        />
                     </label>
                     <label class="block">
                         <span class="text-sm font-black">Assistance IA</span>
-                        <select v-model="taxonomyForm.ai_usage_mode" class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3">
+                        <select
+                            v-model="taxonomyForm.ai_usage_mode"
+                            class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3"
+                        >
                             <option value="forbidden">Interdite</option>
                             <option value="assist_only">Assistance sans déduction</option>
-                            <option value="proposal_with_confirmation">Proposition avec confirmation</option>
+                            <option value="proposal_with_confirmation">
+                                Proposition avec confirmation
+                            </option>
                         </select>
                     </label>
                     <fieldset class="sm:col-span-2">
-                        <legend class="text-sm font-black">Pays concernés · aucun choix = international</legend>
+                        <legend class="text-sm font-black">
+                            Pays concernés · aucun choix = international
+                        </legend>
                         <div class="mt-3 flex flex-wrap gap-2">
-                            <label v-for="market in markets" :key="market.code" class="flex items-center gap-2 rounded-xl border border-white/8 bg-black/15 px-3 py-2 text-xs font-bold">
-                                <input v-model="taxonomyForm.country_codes" type="checkbox" :value="market.code" />
+                            <label
+                                v-for="market in markets"
+                                :key="market.code"
+                                class="flex items-center gap-2 rounded-xl border border-white/8 bg-black/15 px-3 py-2 text-xs font-bold"
+                            >
+                                <input
+                                    v-model="taxonomyForm.country_codes"
+                                    type="checkbox"
+                                    :value="market.code"
+                                />
                                 {{ market.name }}
                             </label>
                         </div>
                     </fieldset>
-                    <div class="sm:col-span-2 flex justify-end">
-                        <button type="submit" :disabled="taxonomyForm.processing || parsedOptions.length < 2" class="rounded-xl bg-wasplex-gold px-6 py-3 text-sm font-black text-[#171000] disabled:opacity-40">
-                            {{ taxonomyForm.processing ? 'Publication…' : 'Publier dans le catalogue' }}
+                    <div class="flex justify-end sm:col-span-2">
+                        <button
+                            type="submit"
+                            :disabled="taxonomyForm.processing || parsedOptions.length < 2"
+                            class="rounded-xl bg-wasplex-gold px-6 py-3 text-sm font-black text-[#171000] disabled:opacity-40"
+                        >
+                            {{
+                                taxonomyForm.processing
+                                    ? 'Publication…'
+                                    : 'Publier dans le catalogue'
+                            }}
                         </button>
                     </div>
                 </form>
@@ -369,33 +460,67 @@ const signalLabel = (kind: string) =>
         <section class="mt-8">
             <div class="flex items-end justify-between gap-4">
                 <div>
-                    <p class="text-xs font-black tracking-widest text-white/35 uppercase">Référentiel actif</p>
+                    <p class="text-xs font-black tracking-widest text-white/35 uppercase">
+                        Référentiel actif
+                    </p>
                     <h2 class="mt-2 text-2xl font-black">Taxonomies par secteur</h2>
                 </div>
                 <p class="text-xs text-white/30">Aucune identité utilisateur n’est visible ici.</p>
             </div>
 
             <div class="mt-5 space-y-5">
-                <article v-for="group in groupedTaxonomies" :key="group.sector" class="rounded-[2rem] border border-white/8 bg-white/[0.03] p-5 sm:p-6">
+                <article
+                    v-for="group in groupedTaxonomies"
+                    :key="group.sector"
+                    class="rounded-[2rem] border border-white/8 bg-white/[0.03] p-5 sm:p-6"
+                >
                     <div class="flex items-center justify-between gap-3">
                         <h3 class="text-xl font-black">{{ group.sector }}</h3>
-                        <span class="rounded-full bg-white/7 px-3 py-1 text-xs font-black text-white/45">{{ group.items.length }}</span>
+                        <span
+                            class="rounded-full bg-white/7 px-3 py-1 text-xs font-black text-white/45"
+                            >{{ group.items.length }}</span
+                        >
                     </div>
                     <div class="mt-4 grid gap-3 xl:grid-cols-2">
-                        <div v-for="taxonomy in group.items" :key="taxonomy.id" class="rounded-2xl border border-white/7 bg-black/15 p-4">
+                        <div
+                            v-for="taxonomy in group.items"
+                            :key="taxonomy.id"
+                            class="rounded-2xl border border-white/7 bg-black/15 p-4"
+                        >
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <p class="font-black">{{ taxonomy.label }}</p>
-                                    <p class="mt-1 font-mono text-[0.68rem] text-cyan-200/55">{{ taxonomy.code }}</p>
+                                    <p class="mt-1 font-mono text-[0.68rem] text-cyan-200/55">
+                                        {{ taxonomy.code }}
+                                    </p>
                                 </div>
-                                <span class="rounded-full bg-white/7 px-2 py-1 text-[0.62rem] font-black text-white/45">{{ signalLabel(taxonomy.signalKind) }}</span>
+                                <span
+                                    class="rounded-full bg-white/7 px-2 py-1 text-[0.62rem] font-black text-white/45"
+                                    >{{ signalLabel(taxonomy.signalKind) }}</span
+                                >
                             </div>
-                            <p class="mt-3 text-sm leading-6 text-white/40">{{ taxonomy.question ?? 'Question non publiée' }}</p>
+                            <p class="mt-3 text-sm leading-6 text-white/40">
+                                {{ taxonomy.question ?? 'Question non publiée' }}
+                            </p>
                             <div class="mt-3 flex flex-wrap gap-2 text-[0.62rem] font-black">
-                                <span class="rounded-full bg-emerald-300/10 px-2 py-1 text-emerald-200">{{ taxonomy.status }}</span>
-                                <span class="rounded-full bg-cyan-300/10 px-2 py-1 text-cyan-200">{{ taxonomy.freshnessDays ?? '∞' }} jours</span>
-                                <span class="rounded-full bg-wasplex-gold/10 px-2 py-1 text-wasplex-gold">{{ taxonomy.countryCodes.length ? taxonomy.countryCodes.join(', ') : 'International' }}</span>
-                                <span class="rounded-full bg-white/7 px-2 py-1 text-white/45">IA : {{ taxonomy.aiUsageMode }}</span>
+                                <span
+                                    class="rounded-full bg-emerald-300/10 px-2 py-1 text-emerald-200"
+                                    >{{ taxonomy.status }}</span
+                                >
+                                <span class="rounded-full bg-cyan-300/10 px-2 py-1 text-cyan-200"
+                                    >{{ taxonomy.freshnessDays ?? '∞' }} jours</span
+                                >
+                                <span
+                                    class="rounded-full bg-wasplex-gold/10 px-2 py-1 text-wasplex-gold"
+                                    >{{
+                                        taxonomy.countryCodes.length
+                                            ? taxonomy.countryCodes.join(', ')
+                                            : 'International'
+                                    }}</span
+                                >
+                                <span class="rounded-full bg-white/7 px-2 py-1 text-white/45"
+                                    >IA : {{ taxonomy.aiUsageMode }}</span
+                                >
                             </div>
                         </div>
                     </div>
