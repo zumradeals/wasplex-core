@@ -105,10 +105,13 @@ final readonly class CampaignService
 
             if ($isCorrection) {
                 $funding = $locked->funding()->with('budgetReservation.walletReservation')->first();
+                $budgetReservation = $funding?->budgetReservation;
+
                 if (
                     ! $funding instanceof CampaignFunding
-                    || $funding->budgetReservation?->status !== 'active'
-                    || $funding->budgetReservation?->walletReservation?->status !== ReservationStatus::Active
+                    || ! $budgetReservation instanceof CampaignBudgetReservation
+                    || $budgetReservation->status !== 'active'
+                    || $budgetReservation->walletReservation?->status !== ReservationStatus::Active
                 ) {
                     throw ValidationException::withMessages([
                         'campaign' => 'La réservation budgétaire de cette correction est introuvable.',
@@ -279,12 +282,15 @@ final readonly class CampaignService
             }
 
             $funding = $locked->funding()->with('budgetReservation.walletReservation')->first();
+            $budgetReservation = $funding?->budgetReservation;
             $allowedFundingStatuses = $previousStatus === 'funded' ? ['reserved'] : ['submitted'];
+
             if (
                 ! $funding instanceof CampaignFunding
+                || ! $budgetReservation instanceof CampaignBudgetReservation
                 || ! in_array($funding->status, $allowedFundingStatuses, true)
-                || $funding->budgetReservation?->status !== 'active'
-                || $funding->budgetReservation?->walletReservation?->status !== ReservationStatus::Active
+                || $budgetReservation->status !== 'active'
+                || $budgetReservation->walletReservation?->status !== ReservationStatus::Active
             ) {
                 throw ValidationException::withMessages([
                     'campaign' => 'La réservation budgétaire active est introuvable.',
