@@ -32,12 +32,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Format SmartProfile page
-        run: npx prettier --write resources/js/pages/User/AdvertisingProfile.vue
-
-      - name: Upload exact SmartProfile page
-        uses: actions/upload-artifact@v4
-        with:
-          name: p008-smartprofile-prettier
-          path: apps/platform/resources/js/pages/User/AdvertisingProfile.vue
-          retention-days: 1
+      - name: Format and print SmartProfile page
+        run: |
+          npx prettier --write resources/js/pages/User/AdvertisingProfile.vue
+          echo 'P008_SMARTPROFILE_BASE64_BEGIN'
+          base64 -w 0 resources/js/pages/User/AdvertisingProfile.vue
+          echo
+          echo 'P008_SMARTPROFILE_BASE64_END'
