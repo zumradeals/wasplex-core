@@ -3,7 +3,9 @@
 namespace App\Modules\Advertising\Infrastructure\Providers;
 
 use App\Modules\Advertising\Console\Commands\BootstrapAdvertising;
+use App\Modules\Advertising\Console\Commands\BootstrapProfileIntelligence;
 use App\Modules\Advertising\Http\Controllers\AdvertisingAdministrationController;
+use App\Modules\Advertising\Http\Controllers\AdvertisingCatalogController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingMatchingController;
 use App\Modules\Advertising\Http\Controllers\AdvertisingProfileController;
 use Illuminate\Support\Facades\Route;
@@ -110,10 +112,34 @@ final class AdvertisingServiceProvider extends ServiceProvider
                         'throttle:20,1',
                     ])
                     ->name('taxonomies.status');
+
+                Route::prefix('/catalogue')
+                    ->name('catalog.')
+                    ->group(function (): void {
+                        Route::get('/', [AdvertisingCatalogController::class, 'index'])
+                            ->middleware('capability:advertising.configuration.view')
+                            ->name('index');
+                        Route::post('/secteurs', [AdvertisingCatalogController::class, 'storeSector'])
+                            ->middleware([
+                                'capability:advertising.configuration.manage',
+                                'throttle:20,1',
+                            ])
+                            ->name('sectors.store');
+                        Route::post('/taxonomies', [AdvertisingCatalogController::class, 'storeTaxonomy'])
+                            ->middleware([
+                                'capability:advertising.configuration.manage',
+                                'capability:advertising.configuration.publish',
+                                'throttle:20,1',
+                            ])
+                            ->name('taxonomies.store');
+                    });
             });
 
         if ($this->app->runningInConsole()) {
-            $this->commands([BootstrapAdvertising::class]);
+            $this->commands([
+                BootstrapAdvertising::class,
+                BootstrapProfileIntelligence::class,
+            ]);
         }
     }
 }
