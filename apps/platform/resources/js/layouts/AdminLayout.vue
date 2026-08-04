@@ -15,13 +15,7 @@ const props = defineProps<{
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
     active:
-        | 'dashboard'
-        | 'campaigns'
-        | 'wallet'
-        | 'payments'
-        | 'economy'
-        | 'advertising'
-        | 'catalog';
+        'dashboard' | 'campaigns' | 'wallet' | 'payments' | 'economy' | 'advertising' | 'catalog';
 }>();
 
 const navigation = [
