@@ -39,15 +39,27 @@ final readonly class AdvertisingSegmentService
                         && $candidate->currentVersion !== null
                         && $candidate->currentVersion->state === 'published',
                 );
-                $version = $question?->currentVersion;
+
+                if (! $question instanceof AdvertisingProfileQuestion || $question->currentVersion === null) {
+                    return [
+                        'code' => $taxonomy->code,
+                        'category' => $taxonomy->category,
+                        'label' => $taxonomy->label,
+                        'valueType' => $taxonomy->value_type,
+                        'options' => [],
+                        'purposeCodes' => [],
+                    ];
+                }
+
+                $version = $question->currentVersion;
 
                 return [
                     'code' => $taxonomy->code,
                     'category' => $taxonomy->category,
                     'label' => $taxonomy->label,
                     'valueType' => $taxonomy->value_type,
-                    'options' => $version?->options ?? [],
-                    'purposeCodes' => $version?->purpose_codes ?? [],
+                    'options' => $version->options ?? [],
+                    'purposeCodes' => $version->purpose_codes ?? [],
                 ];
             })
             ->filter(static fn (array $taxonomy): bool => $taxonomy['options'] !== [])
@@ -184,7 +196,7 @@ final readonly class AdvertisingSegmentService
             ->lazyById(200);
 
         foreach ($accounts as $account) {
-            if ($account instanceof Account && $this->matchesAccount($account, $segment)) {
+            if ($this->matchesAccount($account, $segment)) {
                 $rawCount++;
             }
         }
@@ -197,10 +209,10 @@ final readonly class AdvertisingSegmentService
         $step = max(1, (int) config('advertising.estimate_rounding_step', 10));
         $available = $rawCount >= $threshold;
         $rounded = $available ? (int) (round($rawCount / $step) * $step) : null;
-        $protectedMin = $available && is_int($rounded)
-            ? max($threshold, max(0, $rounded - $step))
-            : null;
-        $protectedMax = $available && is_int($rounded) ? $rounded + $step : null;
+        $protectedMin = $rounded === null
+            ? null
+            : max($threshold, max(0, $rounded - $step));
+        $protectedMax = $rounded === null ? null : $rounded + $step;
 
         $estimate = AdvertisingSegmentEstimate::query()->create([
             'advertising_segment_id' => $segment->id,
@@ -211,7 +223,7 @@ final readonly class AdvertisingSegmentService
             'protected_max' => $protectedMax,
             'rounded_count' => $rounded,
             'threshold' => $threshold,
-            'bucket' => $available ? $this->bucket($rounded ?? $rawCount) : 'below_threshold',
+            'bucket' => $rounded === null ? 'below_threshold' : $this->bucket($rounded),
             'reason_code' => $available ? null : 'segment_below_privacy_threshold',
             'queried_by_account_id' => $actor?->id,
             'estimated_at' => now(),
@@ -290,7 +302,7 @@ final readonly class AdvertisingSegmentService
         $seen = [];
 
         foreach ($rules as $input) {
-            $taxonomyCode = trim((string) ($input['taxonomy_code'] ?? ''));
+            $taxonomyCode = trim($input['taxonomy_code']);
 
             if ($taxonomyCode === '' || isset($seen[$taxonomyCode])) {
                 throw ValidationException::withMessages([
@@ -335,7 +347,7 @@ final readonly class AdvertisingSegmentService
 
             $values = array_values(array_unique(array_filter(array_map(
                 static fn (mixed $value): string => trim((string) $value),
-                $input['values'] ?? [],
+                $input['values'],
             ), static fn (string $value): bool => $value !== '')));
             $allowedValues = array_values(array_map(
                 static fn (array $option): string => (string) $option['value'],
