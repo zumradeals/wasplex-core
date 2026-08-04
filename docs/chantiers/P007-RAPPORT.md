@@ -1,14 +1,16 @@
 # P007 — RAPPORT DE LIVRAISON
 
 **Chantier :** Revue administrative et activation de campagne  
-**Statut :** `merged`  
+**Statut :** `deployed`  
 **Branche :** `codex/p007-campaign-admin-review`  
 **Pull Request :** `#10`  
 **Commit de base :** `63d355409b30cac77340f59243322d611e59e18e`  
 **Commit technique validé :** `e1c34522d5f035e8ed30a4ffc3d95b49c483f274`  
 **Commit de fusion :** `b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e`  
+**Commit déployé :** `7a7d42e55de333a65e313756044a4faef91aa202`  
 **Date d’acceptation et de fusion :** 4 août 2026  
-**Autorité d’acceptation :** fondateur Wasplex
+**Date de déploiement en production :** 4 août 2026  
+**Autorité d’acceptation et de déploiement :** fondateur Wasplex
 
 ## 1. Résultat livré
 
@@ -159,7 +161,7 @@ Elle :
 - états administratifs dans la liste annonceur ;
 - écran annonceur de correction/resoumission.
 
-Les captures de recette sur le VPS seront produites après déploiement, lors de l’acceptation fonctionnelle du fondateur.
+La recette fonctionnelle approfondie sera poursuivie avec les campagnes réelles et les futurs chantiers P008 et P009.
 
 ## 9. Tests P007
 
@@ -236,4 +238,44 @@ La PR #10 a ensuite été fusionnée sur `main` au commit :
 b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e
 ```
 
-P007 est donc intégré au dépôt principal. Aucun déploiement sur le VPS n’a été effectué dans cette opération.
+## 14. Déploiement en production
+
+Le fondateur Wasplex a autorisé le déploiement de P007 sur le VPS de production le 4 août 2026.
+
+Le serveur a récupéré le `main` au commit :
+
+```text
+7a7d42e55de333a65e313756044a4faef91aa202
+```
+
+Résultats constatés :
+
+```text
+Build Vite                         597 modules — succès
+Migration revue administrative    Ran
+Migration statuts PostgreSQL      Ran
+Bootstrap administration          1 espace initialisé
+Dossiers historiques repris       0
+Routes administratives            6
+Maintenance                       OFF
+Environnement                     production
+Debug                             OFF
+Base de données                   PostgreSQL
+Cache et sessions                 Redis
+Santé HTTP                        200
+Connexion HTTP                    200
+Administration invitée            302 vers /connexion
+```
+
+Les variables suivantes ont été ajoutées à la configuration de production :
+
+```text
+CAMPAIGN_REVIEW_REQUIRE_DISTINCT_DECIDER=false
+CAMPAIGN_REVIEW_DEFAULT_DUE_HOURS=24
+```
+
+Le déploiement a été réalisé sans capture de budget, sans modification directe du Ledger et sans reprise de dossier de campagne déjà soumise.
+
+## 15. Conclusion
+
+P007 est accepté, fusionné et déployé en production. La phase « Annonceur et campagne » est techniquement fermée. La prochaine dépendance fonctionnelle est P008 — SmartProfile, consentements et Matching.
