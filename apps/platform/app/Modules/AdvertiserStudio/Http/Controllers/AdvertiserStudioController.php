@@ -17,7 +17,6 @@ use App\Modules\Wallet\Application\Services\WalletPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,7 +30,8 @@ final readonly class AdvertiserStudioController
         private AdvertiserStudioPresenter $presenter,
         private WalletCatalog $wallets,
         private WalletPresenter $walletPresenter,
-    ) {}
+    ) {
+    }
 
     public function dashboard(Request $request): Response
     {
