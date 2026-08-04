@@ -249,7 +249,7 @@ final readonly class CampaignEligibilityService
 
         foreach ($segment->rules as $rule) {
             foreach ($rule->purpose_codes as $purpose) {
-                if (is_string($purpose) && $purpose !== '') {
+                if ($purpose !== '') {
                     $purposes[] = $purpose;
                 }
             }
@@ -271,15 +271,24 @@ final readonly class CampaignEligibilityService
             ->latest('window_start')
             ->first();
 
+        if ($counter instanceof AdvertisingFrequencyCounter) {
+            return [
+                'impressions' => $counter->impressions,
+                'limit' => max(1, (int) config('advertising.frequency_limit', 3)),
+                'fatigueScore' => $counter->fatigue_score,
+                'fatigueLimit' => max(1, (int) config('advertising.fatigue_limit', 100)),
+                'windowStart' => $counter->window_start->toIso8601String(),
+                'windowEnd' => $counter->window_end->toIso8601String(),
+            ];
+        }
+
         return [
-            'impressions' => $counter?->impressions ?? 0,
+            'impressions' => 0,
             'limit' => max(1, (int) config('advertising.frequency_limit', 3)),
-            'fatigueScore' => $counter?->fatigue_score ?? 0,
+            'fatigueScore' => 0,
             'fatigueLimit' => max(1, (int) config('advertising.fatigue_limit', 100)),
-            'windowStart' => $counter?->window_start->toIso8601String()
-                ?? $now->copy()->subHours($hours)->toIso8601String(),
-            'windowEnd' => $counter?->window_end->toIso8601String()
-                ?? $now->copy()->addHours($hours)->toIso8601String(),
+            'windowStart' => $now->copy()->subHours($hours)->toIso8601String(),
+            'windowEnd' => $now->copy()->addHours($hours)->toIso8601String(),
         ];
     }
 
