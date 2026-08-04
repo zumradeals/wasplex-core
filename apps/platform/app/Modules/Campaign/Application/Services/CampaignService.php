@@ -19,6 +19,7 @@ use App\Modules\Identity\Infrastructure\Models\UserSpace;
 use App\Modules\Wallet\Application\Contracts\WalletReservationContract;
 use App\Modules\Wallet\Application\Data\ReservationRequest;
 use App\Modules\Wallet\Application\Services\WalletCatalog;
+use App\Modules\Wallet\Domain\Enums\ReservationStatus;
 use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -32,6 +33,7 @@ final readonly class CampaignService
     public function __construct(
         private WalletCatalog $wallets,
         private WalletReservationContract $reservations,
+        private CampaignReviewService $reviews,
     ) {}
 
     public function ensurePriceCatalog(?Account $actor = null): CampaignPriceCatalog
@@ -90,32 +92,62 @@ final readonly class CampaignService
     public function save(Campaign $campaign, UserSpace $space, Account $actor, array $data): Campaign
     {
         $this->guardOwnership($campaign, $space);
-        if (! in_array($campaign->status, ['draft', 'quoted'], true)) {
+        if (! in_array($campaign->status, ['draft', 'quoted', 'changes_requested'], true)) {
             throw ValidationException::withMessages([
-                'campaign' => 'Une campagne financée ou soumise ne peut plus être modifiée.',
+                'campaign' => 'Une campagne financée, soumise ou décidée ne peut plus être modifiée.',
             ]);
         }
 
         return DB::transaction(function () use ($campaign, $space, $actor, $data): Campaign {
             $locked = Campaign::query()->whereKey($campaign->id)->lockForUpdate()->firstOrFail();
+            $isCorrection = $locked->status === 'changes_requested';
             $brand = $this->brand($space, (string) $data['brand_id']);
+
+            if ($isCorrection) {
+                $funding = $locked->funding()->with('budgetReservation.walletReservation')->first();
+                $budgetReservation = $funding?->budgetReservation;
+
+                if (
+                    ! $funding instanceof CampaignFunding
+                    || ! $budgetReservation instanceof CampaignBudgetReservation
+                    || $budgetReservation->status !== 'active'
+                    || $budgetReservation->walletReservation?->status !== ReservationStatus::Active
+                ) {
+                    throw ValidationException::withMessages([
+                        'campaign' => 'La réservation budgétaire de cette correction est introuvable.',
+                    ]);
+                }
+                if ((int) ($data['budget_minor'] ?? 0) !== $funding->amount_minor) {
+                    throw ValidationException::withMessages([
+                        'budget_minor' => 'Le budget financé ne peut pas être modifié pendant une correction administrative.',
+                    ]);
+                }
+            }
+
             $nextVersion = (int) CampaignVersion::query()->where('campaign_id', $locked->id)->max('version') + 1;
             $version = $this->createVersion($locked, $space, $actor, $data, $nextVersion);
 
-            CampaignQuote::query()
-                ->where('campaign_id', $locked->id)
-                ->where('status', 'issued')
-                ->update(['status' => 'void', 'updated_at' => now()]);
+            if (! $isCorrection) {
+                CampaignQuote::query()
+                    ->where('campaign_id', $locked->id)
+                    ->where('status', 'issued')
+                    ->update(['status' => 'void', 'updated_at' => now()]);
+            }
 
             $locked->forceFill([
                 'brand_id' => $brand->id,
                 'name' => trim((string) $data['name']),
                 'active_version_id' => $version->id,
-                'status' => 'draft',
-                'current_step' => max(1, min(7, (int) ($data['current_step'] ?? $locked->current_step))),
+                'status' => $isCorrection ? 'changes_requested' : 'draft',
+                'current_step' => $isCorrection
+                    ? 7
+                    : max(1, min(7, (int) ($data['current_step'] ?? $locked->current_step))),
             ])->save();
 
-            DB::afterCommit(static fn () => event('campaign.updated', [$locked->id, $version->id]));
+            DB::afterCommit(static fn () => event(
+                $isCorrection ? 'campaign.correction_saved' : 'campaign.updated',
+                [$locked->id, $version->id],
+            ));
 
             return $this->load($locked);
         });
@@ -232,26 +264,42 @@ final readonly class CampaignService
         });
     }
 
-    public function submit(Campaign $campaign, UserSpace $space): Campaign
+    public function submit(Campaign $campaign, UserSpace $space, Account $actor): Campaign
     {
         $this->guardOwnership($campaign, $space);
 
-        return DB::transaction(function () use ($campaign): Campaign {
+        return DB::transaction(function () use ($campaign, $actor): Campaign {
             $locked = Campaign::query()->whereKey($campaign->id)->lockForUpdate()->firstOrFail();
             if ($locked->status === 'submitted') {
                 return $this->load($locked);
             }
-            if ($locked->status !== 'funded') {
-                throw ValidationException::withMessages(['campaign' => 'La campagne doit être financée avant sa soumission.']);
+
+            $previousStatus = $locked->status;
+            if (! in_array($previousStatus, ['funded', 'changes_requested'], true)) {
+                throw ValidationException::withMessages([
+                    'campaign' => 'La campagne doit être financée ou corrigée avant sa soumission.',
+                ]);
             }
 
             $funding = $locked->funding()->with('budgetReservation.walletReservation')->first();
-            if (! $funding instanceof CampaignFunding || $funding->status !== 'reserved' || $funding->budgetReservation?->status !== 'active') {
-                throw ValidationException::withMessages(['campaign' => 'La réservation budgétaire active est introuvable.']);
+            $budgetReservation = $funding?->budgetReservation;
+            $allowedFundingStatuses = $previousStatus === 'funded' ? ['reserved'] : ['submitted'];
+
+            if (
+                ! $funding instanceof CampaignFunding
+                || ! $budgetReservation instanceof CampaignBudgetReservation
+                || ! in_array($funding->status, $allowedFundingStatuses, true)
+                || $budgetReservation->status !== 'active'
+                || $budgetReservation->walletReservation?->status !== ReservationStatus::Active
+            ) {
+                throw ValidationException::withMessages([
+                    'campaign' => 'La réservation budgétaire active est introuvable.',
+                ]);
             }
 
             $funding->forceFill(['status' => 'submitted', 'submitted_at' => now()])->save();
             $locked->forceFill(['status' => 'submitted', 'submitted_at' => now(), 'current_step' => 7])->save();
+            $this->reviews->openForSubmission($locked, $actor, $previousStatus);
             DB::afterCommit(static fn () => event('campaign.submitted', [$locked->id]));
 
             return $this->load($locked);
@@ -261,8 +309,10 @@ final readonly class CampaignService
     public function cancel(Campaign $campaign, UserSpace $space, Account $actor, ?string $traceId = null): Campaign
     {
         $this->guardOwnership($campaign, $space);
-        if ($campaign->status === 'submitted') {
-            throw ValidationException::withMessages(['campaign' => 'Une campagne soumise doit être traitée par la revue administrative.']);
+        if (in_array($campaign->status, ['submitted', 'changes_requested', 'approved', 'suspended', 'rejected'], true)) {
+            throw ValidationException::withMessages([
+                'campaign' => 'Cette campagne est sous contrôle administratif et ne peut plus être annulée par l’annonceur.',
+            ]);
         }
 
         return DB::transaction(function () use ($campaign, $actor, $traceId): Campaign {
@@ -465,6 +515,11 @@ final readonly class CampaignService
             'quotes.priceCatalog',
             'funding.budgetReservation.walletReservation',
             'funding.wallet.projection',
+            'reviewCases.submitter.profile',
+            'reviewCases.decider.profile',
+            'reviewCases.task',
+            'reviewCases.events.actor.profile',
+            'statusEvents.actor.profile',
         ]);
     }
 }

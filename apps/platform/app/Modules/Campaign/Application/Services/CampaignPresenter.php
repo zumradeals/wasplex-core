@@ -8,6 +8,7 @@ use App\Modules\Campaign\Infrastructure\Models\Campaign;
 use App\Modules\Campaign\Infrastructure\Models\CampaignAudience;
 use App\Modules\Campaign\Infrastructure\Models\CampaignFunding;
 use App\Modules\Campaign\Infrastructure\Models\CampaignQuote;
+use App\Modules\Campaign\Infrastructure\Models\CampaignReviewCase;
 use App\Modules\Campaign\Infrastructure\Models\CampaignVersion;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -21,6 +22,7 @@ final class CampaignPresenter
         $quote = $campaign->quotes->first();
         $audience = $campaign->audiences->first();
         $funding = $campaign->funding;
+        $review = $campaign->reviewCases->first();
 
         return [
             'id' => $campaign->id,
@@ -37,6 +39,14 @@ final class CampaignPresenter
             'audience' => $audience instanceof CampaignAudience ? $this->audience($audience) : null,
             'quote' => $quote instanceof CampaignQuote ? $this->quote($quote) : null,
             'funding' => $funding instanceof CampaignFunding ? $this->funding($funding) : null,
+            'review' => $review instanceof CampaignReviewCase ? [
+                'id' => $review->id,
+                'submissionNumber' => $review->submission_number,
+                'status' => $review->status,
+                'reason' => $review->decision_reason,
+                'openedAt' => $review->opened_at->toIso8601String(),
+                'decidedAt' => $review->decided_at?->toIso8601String(),
+            ] : null,
             'submittedAt' => $campaign->submitted_at?->toIso8601String(),
             'createdAt' => $campaign->created_at?->toIso8601String(),
             'updatedAt' => $campaign->updated_at?->toIso8601String(),

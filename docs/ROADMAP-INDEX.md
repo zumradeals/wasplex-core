@@ -10,8 +10,8 @@
 | P003 | Wallet, projections et réservations | P002 | Noyau | Déployé |
 | P004 | Configurations, plans et classes | P001, P003 | Noyau | Déployé |
 | P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | Déployé |
-| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | En cours |
-| P007 | Revue administrative | P006 | Annonceur | En attente |
+| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | Déployé |
+| P007 | Revue administrative | P006 | Annonceur | Prêt pour revue |
 | P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En attente |
 | P009 | Feed et livraison publicitaire | P005, P007, P008 | Distribution | En attente |
 | P010 | Attention et moteur de valeur | P003, P006, P009 | Valeur | En attente |

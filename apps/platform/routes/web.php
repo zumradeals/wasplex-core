@@ -2,6 +2,7 @@
 
 use App\Modules\AdvertiserStudio\Http\Controllers\AdvertiserStudioController;
 use App\Modules\Campaign\Http\Controllers\CampaignController;
+use App\Modules\Campaign\Http\Controllers\CampaignReviewAdminController;
 use App\Modules\EconomicConfiguration\Http\Controllers\EconomicConfigurationAdminController;
 use App\Modules\Identity\Http\Controllers\LoginController;
 use App\Modules\Identity\Http\Controllers\MfaController;
@@ -87,6 +88,16 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             Route::get('/campagnes/{campaign}/modifier', [CampaignController::class, 'edit'])
                 ->middleware('capability:advertiser.campaign.manage')
                 ->name('campaigns.edit');
+            Route::get('/campagnes/{campaign}/correction', [CampaignController::class, 'correctionPage'])
+                ->middleware('capability:advertiser.campaign.manage')
+                ->name('campaigns.correction');
+            Route::patch('/campagnes/{campaign}/correction', [CampaignController::class, 'resubmitCorrection'])
+                ->middleware([
+                    'capability:advertiser.campaign.manage',
+                    'capability:advertiser.campaign.submit',
+                    'throttle:10,1',
+                ])
+                ->name('campaigns.correction.resubmit');
             Route::patch('/campagnes/{campaign}', [CampaignController::class, 'update'])
                 ->middleware(['capability:advertiser.campaign.manage', 'throttle:60,1'])
                 ->name('campaigns.update');
@@ -113,6 +124,30 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
 
     Route::get('/administration', [ShellController::class, 'admin'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:admin.dashboard.view'])->name('admin.dashboard');
     Route::get('/administration/wallet', [WalletAdminController::class, 'page'])->middleware(['space.kind:administration', 'mfa.recent', 'capability:wallet.deposit.review'])->name('admin.wallet');
+
+    Route::prefix('/administration/campagnes')
+        ->name('admin.campaigns.')
+        ->middleware(['space.kind:administration', 'mfa.recent'])
+        ->group(function (): void {
+            Route::get('/', [CampaignReviewAdminController::class, 'index'])
+                ->middleware('capability:campaign.review.view')
+                ->name('index');
+            Route::get('/{campaign}', [CampaignReviewAdminController::class, 'show'])
+                ->middleware('capability:campaign.review.view')
+                ->name('show');
+            Route::post('/{campaign}/corrections', [CampaignReviewAdminController::class, 'requestChanges'])
+                ->middleware(['capability:campaign.review.request_changes', 'throttle:20,1'])
+                ->name('request-changes');
+            Route::post('/{campaign}/approuver', [CampaignReviewAdminController::class, 'approve'])
+                ->middleware(['capability:campaign.review.approve', 'throttle:20,1'])
+                ->name('approve');
+            Route::post('/{campaign}/rejeter', [CampaignReviewAdminController::class, 'reject'])
+                ->middleware(['capability:campaign.review.reject', 'throttle:20,1'])
+                ->name('reject');
+            Route::post('/{campaign}/suspendre', [CampaignReviewAdminController::class, 'suspend'])
+                ->middleware(['capability:campaign.suspend', 'throttle:20,1'])
+                ->name('suspend');
+        });
 
     Route::prefix('/administration/economie')
         ->name('admin.economy.')

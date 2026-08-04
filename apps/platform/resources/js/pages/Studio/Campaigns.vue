@@ -9,10 +9,21 @@ type Space = {
     active: boolean;
 };
 
+type CampaignStatus =
+    | 'draft'
+    | 'quoted'
+    | 'funded'
+    | 'submitted'
+    | 'changes_requested'
+    | 'approved'
+    | 'rejected'
+    | 'suspended'
+    | 'cancelled';
+
 type Campaign = {
     id: string;
     name: string;
-    status: 'draft' | 'quoted' | 'funded' | 'submitted' | 'cancelled';
+    status: CampaignStatus;
     currentStep: number;
     brand: { id: string; name: string; primaryColor: string | null; secondaryColor: string | null };
     version: {
@@ -24,6 +35,13 @@ type Campaign = {
     } | null;
     audience: { estimatedMin: number; estimatedMax: number } | null;
     quote: { grossAmountMinor: number; currency: string; expiresAt: string } | null;
+    review: {
+        submissionNumber: number;
+        status: string;
+        reason: string | null;
+        openedAt: string;
+        decidedAt: string | null;
+    } | null;
     submittedAt: string | null;
     updatedAt: string | null;
 };
@@ -36,20 +54,28 @@ defineProps<{
     flash: { success: string | null };
 }>();
 
-const statusLabel: Record<Campaign['status'], string> = {
+const statusLabel: Record<CampaignStatus, string> = {
     draft: 'Brouillon',
     quoted: 'Devis prêt',
     funded: 'Budget réservé',
-    submitted: 'Soumise',
+    submitted: 'En revue',
+    changes_requested: 'À corriger',
+    approved: 'Approuvée',
+    rejected: 'Rejetée',
+    suspended: 'Suspendue',
     cancelled: 'Annulée',
 };
 
-const statusClass: Record<Campaign['status'], string> = {
+const statusClass: Record<CampaignStatus, string> = {
     draft: 'bg-white/6 text-white/45',
     quoted: 'bg-amber-300/10 text-amber-200',
     funded: 'bg-cyan-300/10 text-cyan-200',
-    submitted: 'bg-emerald-300/10 text-emerald-200',
-    cancelled: 'bg-rose-300/10 text-rose-200',
+    submitted: 'bg-amber-300/10 text-amber-200',
+    changes_requested: 'bg-orange-300/10 text-orange-200',
+    approved: 'bg-emerald-300/10 text-emerald-200',
+    rejected: 'bg-rose-300/10 text-rose-200',
+    suspended: 'bg-violet-300/10 text-violet-200',
+    cancelled: 'bg-white/6 text-white/30',
 };
 
 const money = (value: number, currency = 'XOF') =>
@@ -65,6 +91,22 @@ const cancel = (campaign: Campaign) => {
     if (!window.confirm(`Annuler la campagne « ${campaign.name} » ?`)) return;
     router.delete(`/studio/campagnes/${campaign.id}`);
 };
+
+const canCancel = (status: CampaignStatus) => ['draft', 'quoted', 'funded'].includes(status);
+
+const actionLabel = (status: CampaignStatus) => {
+    if (status === 'changes_requested') return 'Corriger';
+    if (['submitted', 'approved', 'rejected', 'suspended', 'cancelled'].includes(status)) {
+        return 'Consulter';
+    }
+
+    return 'Continuer';
+};
+
+const actionHref = (campaign: Campaign) =>
+    campaign.status === 'changes_requested'
+        ? `/studio/campagnes/${campaign.id}/correction`
+        : `/studio/campagnes/${campaign.id}/modifier`;
 </script>
 
 <template>
@@ -131,6 +173,41 @@ const cancel = (campaign: Campaign) => {
                         </span>
                     </div>
 
+                    <div
+                        v-if="campaign.status === 'changes_requested' && campaign.review?.reason"
+                        class="mt-5 rounded-2xl border border-orange-300/20 bg-orange-300/8 p-4"
+                    >
+                        <p class="text-xs font-black text-orange-200">Corrections demandées</p>
+                        <p class="mt-2 text-sm leading-6 text-white/55">
+                            {{ campaign.review.reason }}
+                        </p>
+                        <p class="mt-2 text-xs text-white/28">
+                            Le budget reste réservé. Corrigez puis resoumettez sans nouveau
+                            paiement.
+                        </p>
+                    </div>
+
+                    <div
+                        v-else-if="campaign.status === 'approved'"
+                        class="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-300/8 p-4 text-sm text-emerald-100"
+                    >
+                        La campagne est administrativement approuvée. Elle attend le Matching P008
+                        et le Feed P009.
+                    </div>
+
+                    <div
+                        v-else-if="campaign.status === 'rejected' && campaign.review?.reason"
+                        class="mt-5 rounded-2xl border border-rose-300/20 bg-rose-300/8 p-4"
+                    >
+                        <p class="text-xs font-black text-rose-200">Campagne rejetée</p>
+                        <p class="mt-2 text-sm leading-6 text-white/55">
+                            {{ campaign.review.reason }}
+                        </p>
+                        <p class="mt-2 text-xs text-white/28">
+                            La réservation budgétaire a été libérée.
+                        </p>
+                    </div>
+
                     <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div class="rounded-2xl bg-black/15 p-3">
                             <p class="text-[10px] font-bold text-white/28 uppercase">Étape</p>
@@ -172,17 +249,17 @@ const cancel = (campaign: Campaign) => {
                         </p>
                         <div class="flex gap-2">
                             <button
-                                v-if="!['submitted', 'cancelled'].includes(campaign.status)"
+                                v-if="canCancel(campaign.status)"
                                 class="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/45 hover:text-white"
                                 @click="cancel(campaign)"
                             >
                                 Annuler
                             </button>
                             <Link
-                                :href="`/studio/campagnes/${campaign.id}/modifier`"
+                                :href="actionHref(campaign)"
                                 class="rounded-xl bg-white px-4 py-2 text-xs font-black text-[#04111e]"
                             >
-                                {{ campaign.status === 'submitted' ? 'Consulter' : 'Continuer' }}
+                                {{ actionLabel(campaign.status) }}
                             </Link>
                         </div>
                     </div>

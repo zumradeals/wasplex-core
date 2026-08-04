@@ -36,6 +36,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, CampaignAudience> $audiences
  * @property-read Collection<int, CampaignQuote> $quotes
  * @property-read CampaignFunding|null $funding
+ * @property-read Collection<int, CampaignReviewCase> $reviewCases
+ * @property-read Collection<int, CampaignStatusEvent> $statusEvents
  */
 final class Campaign extends Model
 {
@@ -113,5 +115,17 @@ final class Campaign extends Model
     public function funding(): HasOne
     {
         return $this->hasOne(CampaignFunding::class)->latestOfMany();
+    }
+
+    /** @return HasMany<CampaignReviewCase, $this> */
+    public function reviewCases(): HasMany
+    {
+        return $this->hasMany(CampaignReviewCase::class)->latest('submission_number');
+    }
+
+    /** @return HasMany<CampaignStatusEvent, $this> */
+    public function statusEvents(): HasMany
+    {
+        return $this->hasMany(CampaignStatusEvent::class)->latest('occurred_at');
     }
 }
