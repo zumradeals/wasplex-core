@@ -81,10 +81,7 @@ const removeAnswer = (question: Question) => {
     });
 };
 
-const decideConsent = (
-    consent: Consent,
-    status: 'granted' | 'denied' | 'withdrawn',
-) => {
+const decideConsent = (consent: Consent, status: 'granted' | 'denied' | 'withdrawn') => {
     const confirmation =
         status === 'withdrawn'
             ? 'Retirer ce consentement pour tous les nouveaux usages ?'
@@ -197,7 +194,9 @@ const categoryLabel = (category: string) =>
                             <p class="text-xs font-black tracking-widest text-white/35 uppercase">
                                 Questions intelligentes
                             </p>
-                            <h2 class="mt-2 text-xl font-black">Ce que vous choisissez de déclarer</h2>
+                            <h2 class="mt-2 text-xl font-black">
+                                Ce que vous choisissez de déclarer
+                            </h2>
                         </div>
                     </div>
 
@@ -214,7 +213,7 @@ const categoryLabel = (category: string) =>
                                     >
                                         {{ categoryLabel(question.category) }} · Facultatif
                                     </p>
-                                    <h3 class="mt-2 text-lg font-black leading-6">
+                                    <h3 class="mt-2 text-lg leading-6 font-black">
                                         {{ question.prompt }}
                                     </h3>
                                 </div>
@@ -367,8 +366,7 @@ const categoryLabel = (category: string) =>
                 class="sticky bottom-0 mt-6 grid grid-cols-4 border-t border-white/10 bg-wasplex-night/95 px-3 py-3 text-center text-[0.68rem] font-bold text-white/40 backdrop-blur-xl"
             >
                 <Link href="/mon-espace">Espace</Link><span>Feed</span
-                ><Link href="/wallet">Wallet</Link
-                ><span class="text-wasplex-cyan">Profil</span>
+                ><Link href="/wallet">Wallet</Link><span class="text-wasplex-cyan">Profil</span>
             </nav>
         </div>
     </main>
