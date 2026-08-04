@@ -14,12 +14,13 @@ const props = defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
-    active: 'dashboard' | 'campaigns' | 'wallet' | 'payments' | 'economy';
+    active: 'dashboard' | 'campaigns' | 'wallet' | 'payments' | 'economy' | 'advertising';
 }>();
 
 const navigation = [
     { key: 'dashboard', label: 'Centre de pilotage', href: '/administration' },
     { key: 'campaigns', label: 'Revue des campagnes', href: '/administration/campagnes' },
+    { key: 'advertising', label: 'Matching & confidentialité', href: '/administration/publicite' },
     { key: 'wallet', label: 'Wallet & dépôts', href: '/administration/wallet' },
     {
         key: 'payments',
