@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\AdvertiserStudio\Infrastructure\Providers\AdvertiserStudioServiceProvider;
+use App\Modules\Advertising\Infrastructure\Providers\AdvertisingServiceProvider;
 use App\Modules\Campaign\Infrastructure\Providers\CampaignServiceProvider;
 use App\Modules\EconomicConfiguration\Infrastructure\Providers\EconomicConfigurationServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
@@ -17,5 +18,6 @@ return [
     EconomicConfigurationServiceProvider::class,
     AdvertiserStudioServiceProvider::class,
     CampaignServiceProvider::class,
+    AdvertisingServiceProvider::class,
     PlatformServiceProvider::class,
 ];

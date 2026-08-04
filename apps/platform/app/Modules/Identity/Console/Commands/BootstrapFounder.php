@@ -45,6 +45,8 @@ final class BootstrapFounder extends Command
             'economic.configuration.view', 'economic.configuration.manage',
             'economic.configuration.approve', 'economic.configuration.publish',
             'economic.configuration.suspend', 'economic.configuration.audit.view',
+            'advertising.configuration.view', 'advertising.configuration.manage',
+            'advertising.configuration.publish', 'advertising.match.audit.view',
         ] as $name) {
             $alreadyGranted = $account->capabilityGrants()->where('space_id', $space->id)->where('capability', $name)->whereNull('revoked_at')->exists();
 

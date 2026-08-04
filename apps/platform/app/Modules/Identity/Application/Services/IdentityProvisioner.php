@@ -50,6 +50,11 @@ final class IdentityProvisioner
                 'wallet.view.self',
                 'wallet.deposit.create.self',
                 'wallet.history.view.self',
+                'advertising.profile.view.self',
+                'advertising.profile.manage.self',
+                'advertising.consent.view.self',
+                'advertising.consent.manage.self',
+                'advertising.explanation.view.self',
             ] as $capability) {
                 $account->capabilityGrants()->create([
                     'space_id' => $space->id,
