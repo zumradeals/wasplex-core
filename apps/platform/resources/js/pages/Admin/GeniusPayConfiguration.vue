@@ -123,12 +123,7 @@ const date = (value: string | null) =>
 
 <template>
     <Head title="Paiements et GeniusPay" />
-    <AdminLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="payments"
-    >
+    <AdminLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="payments">
         <header class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <p class="text-xs font-black tracking-[0.22em] text-cyan-300 uppercase">
@@ -144,7 +139,7 @@ const date = (value: string | null) =>
             </div>
             <div class="rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.055] px-5 py-4">
                 <p class="text-xs font-bold text-white/35">Environnement actif</p>
-                <p class="mt-1 text-xl font-black capitalize text-emerald-200">
+                <p class="mt-1 text-xl font-black text-emerald-200 capitalize">
                     {{ activeEnvironment }}
                 </p>
             </div>
@@ -158,7 +153,11 @@ const date = (value: string | null) =>
         </div>
 
         <div
-            v-if="errors.connection?.length || errors.credentials?.length || errors.environment?.length"
+            v-if="
+                errors.connection?.length ||
+                errors.credentials?.length ||
+                errors.environment?.length
+            "
             class="mt-6 rounded-2xl border border-rose-400/20 bg-rose-400/8 px-5 py-4 text-sm font-bold text-rose-200"
         >
             {{ errors.connection?.[0] || errors.credentials?.[0] || errors.environment?.[0] }}
@@ -169,7 +168,7 @@ const date = (value: string | null) =>
                 <p class="text-xs font-black tracking-[0.16em] text-cyan-200 uppercase">
                     Adresse du webhook
                 </p>
-                <p class="mt-4 break-all text-sm leading-6 text-white/60">{{ webhookUrl }}</p>
+                <p class="mt-4 text-sm leading-6 break-all text-white/60">{{ webhookUrl }}</p>
                 <button
                     class="mt-4 rounded-xl border border-cyan-300/20 px-4 py-2 text-xs font-black text-cyan-200"
                     @click="copyWebhook"
@@ -188,7 +187,10 @@ const date = (value: string | null) =>
                         {{ webhookHealth.lastAcceptedEvent.status }} ·
                         {{ date(webhookHealth.lastAcceptedEvent.occurredAt) }}
                     </p>
-                    <p v-if="webhookHealth.lastAcceptedEvent.lastError" class="mt-2 text-xs text-rose-300">
+                    <p
+                        v-if="webhookHealth.lastAcceptedEvent.lastError"
+                        class="mt-2 text-xs text-rose-300"
+                    >
                         {{ webhookHealth.lastAcceptedEvent.lastError }}
                     </p>
                 </template>
@@ -276,8 +278,9 @@ const date = (value: string | null) =>
                     v-if="environment.environment === 'production' && !productionActivationAllowed"
                     class="mt-5 rounded-2xl border border-violet-300/15 bg-violet-300/[0.055] px-4 py-3 text-sm leading-6 text-violet-100/75"
                 >
-                    Tu peux enregistrer et tester les clés Production dès maintenant. Leur activation
-                    reste verrouillée jusqu’à l’autorisation officielle de mise en production.
+                    Tu peux enregistrer et tester les clés Production dès maintenant. Leur
+                    activation reste verrouillée jusqu’à l’autorisation officielle de mise en
+                    production.
                 </div>
 
                 <div class="mt-6 space-y-4">
@@ -309,7 +312,9 @@ const date = (value: string | null) =>
                             v-model="formFor(environment.environment).webhook_secret"
                             type="password"
                             autocomplete="new-password"
-                            :placeholder="environment.webhookSecretMask || 'Coller le secret webhook'"
+                            :placeholder="
+                                environment.webhookSecretMask || 'Coller le secret webhook'
+                            "
                             class="mt-2 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3.5 text-sm outline-none focus:border-cyan-300/50"
                         />
                     </label>
@@ -351,7 +356,9 @@ const date = (value: string | null) =>
                     </button>
                     <button
                         class="rounded-xl border border-cyan-300/20 bg-cyan-300/8 px-4 py-3 text-xs font-black text-cyan-200 disabled:opacity-40"
-                        :disabled="!environment.apiKeyConfigured || !environment.apiSecretConfigured"
+                        :disabled="
+                            !environment.apiKeyConfigured || !environment.apiSecretConfigured
+                        "
                         @click="testConnection(environment.environment)"
                     >
                         Tester
