@@ -44,6 +44,14 @@ final class GeniusPayConfigurationService
             ->where('provider', self::PROVIDER)
             ->where('environment', $environment)
             ->first();
+        $activeStoredEnvironment = PaymentProviderConfiguration::query()
+            ->where('provider', self::PROVIDER)
+            ->where('is_active', true)
+            ->value('environment');
+        $fallbackEnvironment = strtolower((string) config('services.geniuspay.mode', 'sandbox'));
+        $isActive = is_string($activeStoredEnvironment)
+            ? $activeStoredEnvironment === $environment
+            : $fallbackEnvironment === $environment;
         $effective = $this->effectiveConfiguration($environment, $configuration);
 
         return [
@@ -59,8 +67,7 @@ final class GeniusPayConfigurationService
             'apiSecretMask' => $this->mask((string) $effective['api_secret']),
             'webhookSecretMask' => $this->mask((string) $effective['webhook_secret']),
             'baseUrl' => $effective['base_url'],
-            'isActive' => $configuration?->is_active ?? ($configuration === null
-                && strtolower((string) config('services.geniuspay.mode', 'sandbox')) === $environment),
+            'isActive' => $isActive,
             'storedInDatabase' => $configuration !== null,
             'lastTestStatus' => $configuration?->last_test_status,
             'lastTestMessage' => $configuration?->last_test_message,
