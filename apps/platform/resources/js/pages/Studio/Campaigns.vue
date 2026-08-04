@@ -191,8 +191,8 @@ const actionHref = (campaign: Campaign) =>
                         v-else-if="campaign.status === 'approved'"
                         class="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-300/8 p-4 text-sm text-emerald-100"
                     >
-                        La campagne est administrativement approuvée. Elle attend le Matching P008
-                        et le Feed P009.
+                        La campagne est administrativement approuvée et peut être évaluée par le
+                        Matching P008. Sa diffusion attend toujours le Feed P009.
                     </div>
 
                     <div
@@ -247,7 +247,7 @@ const actionHref = (campaign: Campaign) =>
                         <p class="text-xs text-white/28">
                             {{ campaign.version?.creatives.length ?? 0 }} contenu(s) sélectionné(s)
                         </p>
-                        <div class="flex gap-2">
+                        <div class="flex flex-wrap justify-end gap-2">
                             <button
                                 v-if="canCancel(campaign.status)"
                                 class="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/45 hover:text-white"
@@ -255,6 +255,12 @@ const actionHref = (campaign: Campaign) =>
                             >
                                 Annuler
                             </button>
+                            <Link
+                                :href="`/studio/campagnes/${campaign.id}/ciblage`"
+                                class="rounded-xl border border-cyan-300/20 px-4 py-2 text-xs font-black text-cyan-200"
+                            >
+                                Ciblage protégé
+                            </Link>
                             <Link
                                 :href="actionHref(campaign)"
                                 class="rounded-xl bg-white px-4 py-2 text-xs font-black text-[#04111e]"
