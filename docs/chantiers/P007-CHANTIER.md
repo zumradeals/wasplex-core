@@ -1,9 +1,12 @@
 # P007 — REVUE ADMINISTRATIVE ET ACTIVATION DE CAMPAGNE
 
-**Statut :** `ready_for_review`  
+**Statut :** `merged`  
 **Branche :** `codex/p007-campaign-admin-review`  
+**Pull Request :** `#10`  
 **Commit de base :** `63d355409b30cac77340f59243322d611e59e18e`  
+**Commit fusionné :** `b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e`  
 **Date d’ouverture :** 4 août 2026  
+**Date d’acceptation et de fusion :** 4 août 2026  
 **Autorité :** fondateur Wasplex
 
 ## 1. Objectif
@@ -127,6 +130,8 @@ Les écritures d’historique sont persistées avant l’émission après commit
 8. Chaque décision conserve acteur, motif, ancienne valeur, nouvelle valeur et horodatage.
 9. La console fondateur affiche le nombre de revues en attente.
 10. Pint, Larastan, Pest SQLite/PostgreSQL, Prettier, ESLint, TypeScript et Vite sont verts.
+
+Tous les critères techniques ont été validés avant fusion de la PR #10.
 
 ## 12. Rollback
 
