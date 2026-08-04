@@ -56,7 +56,7 @@ final readonly class AdvertisingSegmentService
     }
 
     /**
-     * @param array<int, array{taxonomy_code:string,operator?:string,values:array<int, string>,required?:bool}> $rules
+     * @param  array<int, array{taxonomy_code:string,operator?:string,values:array<int, string>,required?:bool}>  $rules
      */
     public function configure(Campaign $campaign, Account $actor, array $rules): AdvertisingSegment
     {
@@ -274,7 +274,7 @@ final readonly class AdvertisingSegmentService
     }
 
     /**
-     * @param array<int, array{taxonomy_code:string,operator?:string,values:array<int, string>,required?:bool}> $rules
+     * @param  array<int, array{taxonomy_code:string,operator?:string,values:array<int, string>,required?:bool}>  $rules
      * @return array<int, array{
      *     taxonomy_id:string,
      *     taxonomy_code:string,

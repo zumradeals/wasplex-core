@@ -13,7 +13,6 @@ use App\Modules\Advertising\Application\Services\AdvertisingSegmentService;
 use App\Modules\Advertising\Application\Services\CampaignEligibilityService;
 use App\Modules\Advertising\Domain\Enums\AdvertisingConsentStatus;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingFrequencyCounter;
-use App\Modules\Advertising\Infrastructure\Models\AdvertisingMatch;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingMatchAudit;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingSegment;
 use App\Modules\Campaign\Application\Services\CampaignReviewService;

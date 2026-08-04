@@ -210,7 +210,7 @@ final readonly class CampaignEligibilityService
     }
 
     /**
-     * @param array<string, string> $facts
+     * @param  array<string, string>  $facts
      * @return array{0:bool,1:int,2:array<int, string>,3:array<int, string>}
      */
     private function evaluateRules(AdvertisingSegment $segment, array $facts): array
