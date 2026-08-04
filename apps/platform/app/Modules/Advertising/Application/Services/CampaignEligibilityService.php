@@ -41,10 +41,21 @@ final readonly class CampaignEligibilityService
         $economicClass = $this->economicClasses->code($account);
         $controls = $this->configuration->runtime();
         $frequency = $this->frequencyState($account, $campaign, $controls);
+        $taxonomyState = $segment->rules
+            ->map(static fn (AdvertisingSegmentRule $rule): array => [
+                'code' => $rule->taxonomy->code,
+                'status' => $rule->taxonomy->status,
+                'allowed' => $rule->taxonomy->allowed_for_targeting,
+                'sensitive' => $rule->taxonomy->sensitive,
+            ])
+            ->sortBy('code')
+            ->values()
+            ->all();
         $stateHash = hash('sha256', $this->encode([
             'campaign_status' => $campaign->status,
             'campaign_version' => $version->id,
             'segment_rule_version' => $segment->rule_version,
+            'taxonomy_state' => $taxonomyState,
             'configuration' => $controls,
             'facts' => $facts,
             'economic_class' => $economicClass,
