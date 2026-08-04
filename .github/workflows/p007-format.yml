@@ -1,0 +1,45 @@
+name: p007-format
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'codex/p007-campaign-admin-review'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout P007 head branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: codex/p007-campaign-admin-review
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Apply Prettier
+        working-directory: apps/platform
+        run: |
+          npm ci
+          npm run format
+
+      - name: Commit exact formatting
+        run: |
+          if git diff --quiet -- apps/platform/resources; then
+            echo 'No formatting changes required.'
+            exit 0
+          fi
+          git config user.name 'wasplex-ci'
+          git config user.email 'wasplex-ci@users.noreply.github.com'
+          git add apps/platform/resources
+          git commit -m 'style(p007): apply exact frontend formatting'
+          git push origin HEAD:codex/p007-campaign-admin-review
