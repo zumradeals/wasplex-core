@@ -190,7 +190,7 @@ final readonly class AdvertiserStudioController
         $file = $request->file('file');
         abort_unless($file instanceof UploadedFile, 422);
         $this->validateMediaSize($file);
-        $brand = isset($data['brand_id']) && $data['brand_id'] !== null
+        $brand = isset($data['brand_id'])
             ? Brand::query()->where('advertiser_space_id', $space->id)->findOrFail((string) $data['brand_id'])
             : null;
         $this->assets->store($space, $account, $file, $brand, $data);
