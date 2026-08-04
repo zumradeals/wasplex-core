@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\AdvertiserStudio\Http\Controllers\AdvertiserStudioController;
+use App\Modules\Campaign\Http\Controllers\CampaignController;
 use App\Modules\EconomicConfiguration\Http\Controllers\EconomicConfigurationAdminController;
 use App\Modules\Identity\Http\Controllers\LoginController;
 use App\Modules\Identity\Http\Controllers\MfaController;
@@ -73,6 +74,35 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             Route::delete('/medias/{asset}', [AdvertiserStudioController::class, 'archiveMedia'])
                 ->middleware('capability:advertiser.media.manage')
                 ->name('media.archive');
+
+            Route::get('/campagnes', [CampaignController::class, 'index'])
+                ->middleware('capability:advertiser.campaign.view')
+                ->name('campaigns.index');
+            Route::get('/campagnes/nouvelle', [CampaignController::class, 'createPage'])
+                ->middleware('capability:advertiser.campaign.create')
+                ->name('campaigns.create');
+            Route::post('/campagnes', [CampaignController::class, 'store'])
+                ->middleware(['capability:advertiser.campaign.create', 'throttle:30,1'])
+                ->name('campaigns.store');
+            Route::get('/campagnes/{campaign}/modifier', [CampaignController::class, 'edit'])
+                ->middleware('capability:advertiser.campaign.manage')
+                ->name('campaigns.edit');
+            Route::patch('/campagnes/{campaign}', [CampaignController::class, 'update'])
+                ->middleware(['capability:advertiser.campaign.manage', 'throttle:60,1'])
+                ->name('campaigns.update');
+            Route::post('/campagnes/{campaign}/devis', [CampaignController::class, 'quote'])
+                ->middleware(['capability:advertiser.campaign.quote', 'throttle:20,1'])
+                ->name('campaigns.quote');
+            Route::post('/campagnes/{campaign}/devis/{quote}/financer', [CampaignController::class, 'fund'])
+                ->middleware(['capability:advertiser.campaign.fund', 'capability:advertiser.wallet.view', 'throttle:10,1'])
+                ->name('campaigns.fund');
+            Route::post('/campagnes/{campaign}/soumettre', [CampaignController::class, 'submit'])
+                ->middleware(['capability:advertiser.campaign.submit', 'throttle:10,1'])
+                ->name('campaigns.submit');
+            Route::delete('/campagnes/{campaign}', [CampaignController::class, 'cancel'])
+                ->middleware('capability:advertiser.campaign.manage')
+                ->name('campaigns.cancel');
+
             Route::get('/wallet', [WalletController::class, 'show'])
                 ->middleware('capability:advertiser.wallet.view')
                 ->name('wallet');

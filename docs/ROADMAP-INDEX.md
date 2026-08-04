@@ -9,8 +9,8 @@
 | P002 | Grand Livre minimal | P001 | Noyau | Déployé |
 | P003 | Wallet, projections et réservations | P002 | Noyau | Déployé |
 | P004 | Configurations, plans et classes | P001, P003 | Noyau | Déployé |
-| P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | En cours |
-| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | En attente |
+| P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | Déployé |
+| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | En cours |
 | P007 | Revue administrative | P006 | Annonceur | En attente |
 | P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En attente |
 | P009 | Feed et livraison publicitaire | P005, P007, P008 | Distribution | En attente |

@@ -1,9 +1,11 @@
 # P005 — STUDIO ANNONCEUR, MARQUES ET FINANCEMENT
 
-**Statut :** `in_progress`  
+**Statut :** `deployed`  
 **Branche :** `codex/p005-advertiser-studio-brand-wallet`  
 **Commit de base :** `38c8593f68fc3f05f02be768f021bb4b8fd2bebe`  
+**Commit fusionné :** `370dc7dcfcc439c6f08638d131edd43781211c45`  
 **Autorisation fondatrice :** 3 août 2026  
+**Déploiement confirmé :** 4 août 2026  
 **Dépendances :** P001, P003 et P004 déployés
 
 ## 1. Objectif
@@ -82,9 +84,9 @@ La commande `studio:bootstrap` initialise les profils et capacités des espaces 
 - aucune URL ou donnée d’une autre organisation n’est exposée ;
 - aucune écriture financière nouvelle n’est implémentée dans P005.
 
-## 7. Acceptation
+## 7. Acceptation réalisée
 
-Le chantier est acceptable lorsque le scénario suivant fonctionne :
+Le scénario suivant est livré, fusionné et déployé :
 
 1. un compte active son Studio Annonceur ;
 2. il complète le profil de son organisation ;
@@ -95,13 +97,12 @@ Le chantier est acceptable lorsque le scénario suivant fonctionne :
 7. aucune marque ni média d’un autre annonceur n’est accessible ;
 8. Pint, Larastan, Pest SQLite/PostgreSQL, Prettier, ESLint, TypeScript et Vite sont verts.
 
-## 8. Déploiement prévu
+## 8. Déploiement réalisé
 
-- sauvegarde PostgreSQL ;
-- récupération de `main` ;
-- installation Composer et npm ;
-- build Vite ;
-- `php8.4 artisan migrate --force` ;
-- `php8.4 artisan studio:bootstrap` ;
+- récupération de `main` au commit `370dc7d` ;
+- installation Composer sous PHP 8.4 ;
+- installation npm et build Vite sous Node.js 24 ;
+- migration `2026_08_03_230000_create_advertiser_studio_tables` ;
+- exécution de `php8.4 artisan studio:bootstrap` ;
 - reconstruction des caches ;
-- contrôle visuel desktop/mobile.
+- visite du dashboard annonceur confirmée par le fondateur.

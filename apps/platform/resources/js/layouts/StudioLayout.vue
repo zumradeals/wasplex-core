@@ -14,7 +14,7 @@ defineProps<{
     account: { id: string; displayName: string };
     activeSpace: { id: string; kind: string; label: string };
     spaces: Space[];
-    active: 'dashboard' | 'profile' | 'brands' | 'media' | 'wallet';
+    active: 'dashboard' | 'profile' | 'brands' | 'media' | 'campaigns' | 'wallet';
 }>();
 
 const navigation = [
@@ -22,6 +22,12 @@ const navigation = [
     { key: 'profile', label: 'Profil annonceur', href: '/studio/profil', caption: 'Organisation' },
     { key: 'brands', label: 'Marques', href: '/studio/marques', caption: 'Identités' },
     { key: 'media', label: 'Médiathèque', href: '/studio/medias', caption: 'Images & vidéos' },
+    {
+        key: 'campaigns',
+        label: 'Campagnes',
+        href: '/studio/campagnes',
+        caption: 'Création & devis',
+    },
     { key: 'wallet', label: 'Budget', href: '/studio/wallet', caption: 'Wallet annonceur' },
 ] as const;
 </script>
