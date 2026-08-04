@@ -8,6 +8,7 @@ use App\Modules\Campaign\Infrastructure\Models\Campaign;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -30,16 +31,16 @@ final readonly class CampaignReviewAdminController
             ->with($this->relations())
             ->whereIn('status', ['submitted', 'approved', 'rejected', 'suspended', 'changes_requested']);
 
-        match ($filter) {
-            'pending' => $query->where('status', 'submitted')->whereHas(
-                'reviewCases',
-                fn ($reviewQuery) => $reviewQuery->where('status', 'pending'),
-            ),
-            'approved' => $query->where('status', 'approved'),
-            'rejected' => $query->where('status', 'rejected'),
-            'suspended' => $query->where('status', 'suspended'),
-            default => null,
-        };
+        if ($filter === 'pending') {
+            $query
+                ->where('status', 'submitted')
+                ->whereHas(
+                    'reviewCases',
+                    static fn (Builder $reviewQuery): Builder => $reviewQuery->where('status', 'pending'),
+                );
+        } elseif ($filter !== 'all') {
+            $query->where('status', $filter);
+        }
 
         $campaigns = $query
             ->orderByRaw("CASE WHEN status = 'submitted' THEN 0 ELSE 1 END")
@@ -65,6 +66,7 @@ final readonly class CampaignReviewAdminController
     public function show(Request $request, Campaign $campaign): Response
     {
         [$account, $space] = $this->context($request);
+        abort_unless(in_array($campaign->status, ['submitted', 'changes_requested', 'approved', 'rejected', 'suspended'], true), 404);
         $campaign->load($this->relations());
 
         return Inertia::render('Admin/CampaignReviewShow', [
