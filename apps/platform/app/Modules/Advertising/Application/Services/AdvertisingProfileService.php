@@ -58,14 +58,20 @@ final class AdvertisingProfileService
             $version = $question->currentVersion;
             $answer = $latest->get($question->id);
             $sector = $question->taxonomy->sector;
+            $sectorCode = $question->taxonomy->advertising_sector_id === null
+                ? 'general'
+                : $sector->code;
+            $sectorLabel = $question->taxonomy->advertising_sector_id === null
+                ? 'Profil général'
+                : $sector->translatedName($locale);
 
             if ($version === null) {
                 return [
                     'code' => $question->code,
                     'category' => $question->taxonomy->category,
                     'signalKind' => $question->taxonomy->signal_kind,
-                    'sectorCode' => $sector?->code ?? 'general',
-                    'sectorLabel' => $sector?->translatedName($locale) ?? 'Profil général',
+                    'sectorCode' => $sectorCode,
+                    'sectorLabel' => $sectorLabel,
                     'taxonomyCode' => $question->taxonomy->code,
                     'taxonomyLabel' => $question->taxonomy->label,
                     'prompt' => '',
@@ -94,8 +100,8 @@ final class AdvertisingProfileService
                 'code' => $question->code,
                 'category' => $question->taxonomy->category,
                 'signalKind' => $question->taxonomy->signal_kind,
-                'sectorCode' => $sector?->code ?? 'general',
-                'sectorLabel' => $sector?->translatedName($locale) ?? 'Profil général',
+                'sectorCode' => $sectorCode,
+                'sectorLabel' => $sectorLabel,
                 'taxonomyCode' => $question->taxonomy->code,
                 'taxonomyLabel' => $question->taxonomy->label,
                 'prompt' => $version->prompt,
