@@ -6,6 +6,7 @@ use App\Modules\Wallet\Application\Contracts\PaymentGatewayContract;
 use App\Modules\Wallet\Application\Data\CreateGatewayPayment;
 use App\Modules\Wallet\Application\Data\GatewayPayment;
 use App\Modules\Wallet\Application\Data\GatewayWebhook;
+use App\Modules\Wallet\Application\Services\GeniusPayConfigurationService;
 use App\Modules\Wallet\Domain\Exceptions\PaymentGatewayException;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -19,9 +20,12 @@ use JsonException;
 
 final class GeniusPayGateway implements PaymentGatewayContract
 {
+    public function __construct(private readonly GeniusPayConfigurationService $settings) {}
+
     public function createPayment(CreateGatewayPayment $request): GatewayPayment
     {
-        $response = $this->client()->post($this->baseUrl().'/payments', [
+        $runtime = $this->settings->runtime();
+        $response = $this->client($runtime)->post($this->baseUrl($runtime).'/payments', [
             'amount' => $request->amountMinor,
             'currency' => strtoupper($request->currency),
             'description' => $request->description,
@@ -30,25 +34,29 @@ final class GeniusPayGateway implements PaymentGatewayContract
             'metadata' => $request->metadata,
         ]);
 
-        return $this->paymentFromResponse($response);
+        return $this->paymentFromResponse($response, $runtime);
     }
 
     public function fetchPayment(string $reference): GatewayPayment
     {
+        $runtime = $this->settings->runtime();
+
         try {
-            $response = $this->client()
+            $response = $this->client($runtime)
                 ->retry(2, 250, throw: false)
-                ->get($this->baseUrl().'/payments/'.rawurlencode($reference));
+                ->get($this->baseUrl($runtime).'/payments/'.rawurlencode($reference));
         } catch (ConnectionException $exception) {
             throw new PaymentGatewayException('GeniusPay est temporairement injoignable.', previous: $exception);
         }
 
-        return $this->paymentFromResponse($response);
+        return $this->paymentFromResponse($response, $runtime);
     }
 
     public function parseWebhook(string $payload, array $headers): GatewayWebhook
     {
-        $secret = (string) config('services.geniuspay.webhook_secret', '');
+        $runtime = $this->settings->runtime();
+        $secret = (string) $runtime['webhook_secret'];
+        $activeEnvironment = strtolower((string) $runtime['environment']);
         $signature = trim((string) ($headers['signature'] ?? ''));
         $timestamp = trim((string) ($headers['timestamp'] ?? ''));
         $headerEvent = trim((string) ($headers['event'] ?? ''));
@@ -69,7 +77,7 @@ final class GeniusPayGateway implements PaymentGatewayContract
             throw new PaymentGatewayException('La signature du webhook GeniusPay est invalide.');
         }
 
-        $tolerance = max(30, (int) config('services.geniuspay.webhook_tolerance_seconds', 300));
+        $tolerance = max(30, (int) $runtime['webhook_tolerance_seconds']);
         if (abs((int) now()->timestamp - (int) $timestamp) > $tolerance) {
             throw new PaymentGatewayException('Le webhook GeniusPay est expiré.');
         }
@@ -95,8 +103,8 @@ final class GeniusPayGateway implements PaymentGatewayContract
             throw new PaymentGatewayException('L’environnement du webhook GeniusPay est incohérent.');
         }
 
-        if ($reference === '' || $status === '' || $amount === null || $environment !== 'sandbox') {
-            throw new PaymentGatewayException('Le webhook GeniusPay ne correspond pas à un paiement sandbox exploitable.');
+        if ($reference === '' || $status === '' || $amount === null || $environment !== $activeEnvironment) {
+            throw new PaymentGatewayException('Le webhook GeniusPay ne correspond pas à l’environnement actif.');
         }
 
         $occurred = $this->webhookOccurredAt($decoded, $timestamp);
@@ -132,36 +140,43 @@ final class GeniusPayGateway implements PaymentGatewayContract
         );
     }
 
-    private function client(): PendingRequest
+    /** @param array<string, mixed> $runtime */
+    private function client(array $runtime): PendingRequest
     {
-        $this->assertSandboxConfiguration();
+        $this->assertConfiguration($runtime);
 
         return Http::acceptJson()
             ->asJson()
             ->withHeaders([
-                'X-API-Key' => (string) config('services.geniuspay.api_key'),
-                'X-API-Secret' => (string) config('services.geniuspay.api_secret'),
+                'X-API-Key' => (string) $runtime['api_key'],
+                'X-API-Secret' => (string) $runtime['api_secret'],
             ])
             ->connectTimeout(5)
             ->timeout(12);
     }
 
-    private function baseUrl(): string
+    /** @param array<string, mixed> $runtime */
+    private function baseUrl(array $runtime): string
     {
-        return rtrim((string) config('services.geniuspay.base_url'), '/');
+        return rtrim((string) $runtime['base_url'], '/');
     }
 
-    private function assertSandboxConfiguration(): void
+    /** @param array<string, mixed> $runtime */
+    private function assertConfiguration(array $runtime): void
     {
-        $mode = strtolower((string) config('services.geniuspay.mode', 'sandbox'));
-        $baseUrl = $this->baseUrl();
-        $key = (string) config('services.geniuspay.api_key', '');
-        $secret = (string) config('services.geniuspay.api_secret', '');
+        $mode = strtolower((string) $runtime['environment']);
+        $baseUrl = $this->baseUrl($runtime);
+        $key = (string) $runtime['api_key'];
+        $secret = (string) $runtime['api_secret'];
         $host = strtolower((string) parse_url($baseUrl, PHP_URL_HOST));
         $path = rtrim((string) parse_url($baseUrl, PHP_URL_PATH), '/');
 
-        if ($mode !== 'sandbox') {
-            throw new PaymentGatewayException('P003 interdit toute activation GeniusPay en production.');
+        if (! in_array($mode, ['sandbox', 'production'], true)) {
+            throw new PaymentGatewayException('L’environnement GeniusPay actif est invalide.');
+        }
+
+        if ($mode === 'production' && ! $this->settings->productionActivationAllowed()) {
+            throw new PaymentGatewayException('L’activation GeniusPay Production est verrouillée par la gouvernance Wasplex.');
         }
 
         if (parse_url($baseUrl, PHP_URL_SCHEME) !== 'https') {
@@ -173,19 +188,20 @@ final class GeniusPayGateway implements PaymentGatewayContract
         }
 
         if ($key === '' || $secret === '') {
-            throw new PaymentGatewayException('Les identifiants GeniusPay sandbox ne sont pas configurés sur le serveur.');
+            throw new PaymentGatewayException("Les identifiants GeniusPay {$mode} ne sont pas configurés.");
         }
 
-        if (str_contains(strtolower($key), 'live') || str_contains(strtolower($secret), 'live')) {
-            throw new PaymentGatewayException('Une clé GeniusPay live a été refusée par le verrou P003.');
+        if ($mode === 'sandbox' && (str_contains(strtolower($key), 'live') || str_contains(strtolower($secret), 'live'))) {
+            throw new PaymentGatewayException('Une clé GeniusPay live a été refusée dans l’environnement Sandbox.');
         }
     }
 
-    private function paymentFromResponse(Response $response): GatewayPayment
+    /** @param array<string, mixed> $runtime */
+    private function paymentFromResponse(Response $response, array $runtime): GatewayPayment
     {
         if (! $response->successful() || $response->json('success') !== true) {
             $providerMessage = trim((string) ($response->json('error.message') ?? $response->json('message') ?? ''));
-            $message = 'GeniusPay n’a pas accepté la demande de paiement sandbox.';
+            $message = 'GeniusPay n’a pas accepté la demande de paiement.';
 
             if ($providerMessage !== '') {
                 $message .= ' '.$providerMessage;
@@ -243,15 +259,20 @@ final class GeniusPayGateway implements PaymentGatewayContract
             throw new PaymentGatewayException('Le montant GeniusPay est invalide.');
         }
 
-        if ($environment !== 'sandbox') {
-            throw new PaymentGatewayException('GeniusPay a retourné un paiement hors sandbox.');
+        $activeEnvironment = strtolower((string) $runtime['environment']);
+        $allowedProviderEnvironments = $activeEnvironment === 'production'
+            ? ['production', 'live']
+            : ['sandbox'];
+
+        if (! in_array($environment, $allowedProviderEnvironments, true)) {
+            throw new PaymentGatewayException('GeniusPay a retourné un paiement hors de l’environnement actif.');
         }
 
         if ($checkoutUrl !== null) {
             $checkoutHost = strtolower((string) parse_url($checkoutUrl, PHP_URL_HOST));
             $allowedHosts = array_map(
                 static fn (mixed $host): string => strtolower(trim((string) $host)),
-                (array) config('services.geniuspay.checkout_hosts', ['geniuspay.ci', 'pay.genius.ci']),
+                (array) $runtime['checkout_hosts'],
             );
 
             if (parse_url($checkoutUrl, PHP_URL_SCHEME) !== 'https' || ! in_array($checkoutHost, $allowedHosts, true)) {
@@ -337,7 +358,7 @@ final class GeniusPayGateway implements PaymentGatewayContract
     }
 
     /**
-     * @param  array<string, mixed>  $metadata
+     * @param array<string, mixed> $metadata
      * @return array<string, scalar|null>
      */
     private function safeMetadata(array $metadata): array
