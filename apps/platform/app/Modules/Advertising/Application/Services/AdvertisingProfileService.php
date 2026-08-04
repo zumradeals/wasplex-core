@@ -58,12 +58,10 @@ final class AdvertisingProfileService
             $version = $question->currentVersion;
             $answer = $latest->get($question->id);
             $sector = $question->taxonomy->sector;
-            $sectorCode = $question->taxonomy->advertising_sector_id === null
-                ? 'general'
-                : $sector->code;
-            $sectorLabel = $question->taxonomy->advertising_sector_id === null
-                ? 'Profil général'
-                : $sector->translatedName($locale);
+            $sectorCode = $sector instanceof AdvertisingSector ? $sector->code : 'general';
+            $sectorLabel = $sector instanceof AdvertisingSector
+                ? $sector->translatedName($locale)
+                : 'Profil général';
 
             if ($version === null) {
                 return [
