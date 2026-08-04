@@ -86,12 +86,7 @@ const date = (value: string | null) =>
 
 <template>
     <Head title="Revue des campagnes" />
-    <AdminLayout
-        :account="account"
-        :active-space="activeSpace"
-        :spaces="spaces"
-        active="campaigns"
-    >
+    <AdminLayout :account="account" :active-space="activeSpace" :spaces="spaces" active="campaigns">
         <header class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <p class="text-xs font-black tracking-[0.24em] text-wasplex-orange uppercase">
@@ -147,7 +142,9 @@ const date = (value: string | null) =>
                         background: `linear-gradient(90deg, ${campaign.brand.primaryColor ?? '#22D3EE'}, ${campaign.brand.secondaryColor ?? '#38BDF8'})`,
                     }"
                 />
-                <div class="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div
+                    class="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+                >
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                             <span
@@ -169,7 +166,9 @@ const date = (value: string | null) =>
                             <div class="rounded-2xl bg-black/15 p-3">
                                 <p class="text-[10px] font-bold text-white/28 uppercase">Budget</p>
                                 <p class="mt-1 font-black">
-                                    {{ money(campaign.budget.amountMinor, campaign.budget.currency) }}
+                                    {{
+                                        money(campaign.budget.amountMinor, campaign.budget.currency)
+                                    }}
                                 </p>
                             </div>
                             <div class="rounded-2xl bg-black/15 p-3">
@@ -210,7 +209,9 @@ const date = (value: string | null) =>
             v-else
             class="mt-6 rounded-[2rem] border border-dashed border-white/12 bg-white/[0.025] px-6 py-16 text-center"
         >
-            <div class="mx-auto grid size-16 place-items-center rounded-3xl bg-emerald-300/10 text-2xl">
+            <div
+                class="mx-auto grid size-16 place-items-center rounded-3xl bg-emerald-300/10 text-2xl"
+            >
                 ✓
             </div>
             <h2 class="mt-5 text-2xl font-black">Aucune campagne dans cette vue</h2>
