@@ -9,6 +9,7 @@ use App\Modules\Advertising\Infrastructure\Models\AdvertisingProfileSignal;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingSector;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -115,7 +116,7 @@ final class AdvertisingProfileService
                 'status' => $answer?->status,
             ];
         })->all();
-        $presentedCollection = collect($presented);
+        $presentedCollection = new SupportCollection($presented);
         $latestSignals = $this->signals->latestSignals($account);
         $activeSignalCount = $latestSignals->filter(
             static fn (AdvertisingProfileSignal $signal): bool => $signal->status === 'active'
@@ -146,7 +147,10 @@ final class AdvertisingProfileService
             ->values()
             ->all();
         $total = $questions->count();
-        $sectorsExplored = collect($sectors)->where('explored', true)->count();
+        $sectorsExplored = count(array_filter(
+            $sectors,
+            static fn (array $sector): bool => $sector['explored'],
+        ));
 
         return [
             'market' => [
