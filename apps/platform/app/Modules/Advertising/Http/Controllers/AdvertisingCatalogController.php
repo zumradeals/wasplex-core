@@ -4,6 +4,7 @@ namespace App\Modules\Advertising\Http\Controllers;
 
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingMarket;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingProfileQuestion;
+use App\Modules\Advertising\Infrastructure\Models\AdvertisingProfileQuestionVersion;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingSector;
 use App\Modules\Advertising\Infrastructure\Models\AdvertisingTaxonomy;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
@@ -66,6 +67,10 @@ final class AdvertisingCatalogController
                 $question = $taxonomy->questions->first(
                     static fn (AdvertisingProfileQuestion $candidate): bool => $candidate->currentVersion !== null,
                 );
+                $version = $question instanceof AdvertisingProfileQuestion
+                    && $question->currentVersion instanceof AdvertisingProfileQuestionVersion
+                        ? $question->currentVersion
+                        : null;
 
                 return [
                     'id' => $taxonomy->id,
@@ -82,8 +87,12 @@ final class AdvertisingCatalogController
                     'userVisible' => $taxonomy->user_visible,
                     'aiUsageMode' => $taxonomy->ai_usage_mode,
                     'freshnessDays' => $taxonomy->default_freshness_days,
-                    'question' => $question === null ? null : $question->currentVersion->prompt,
-                    'options' => $question === null ? [] : ($question->currentVersion->options ?? []),
+                    'question' => $version instanceof AdvertisingProfileQuestionVersion
+                        ? $version->prompt
+                        : null,
+                    'options' => $version instanceof AdvertisingProfileQuestionVersion
+                        ? ($version->options ?? [])
+                        : [],
                 ];
             })
             ->values();
