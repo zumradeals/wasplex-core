@@ -255,7 +255,9 @@ const eventLabel = (value: string) =>
                             matchings restent reproductibles avec leur version historique.
                         </p>
                     </div>
-                    <span class="rounded-full bg-white/7 px-3 py-2 text-xs font-black text-white/45">
+                    <span
+                        class="rounded-full bg-white/7 px-3 py-2 text-xs font-black text-white/45"
+                    >
                         MFA récente obligatoire
                     </span>
                 </div>
@@ -274,7 +276,10 @@ const eventLabel = (value: string) =>
                         <span class="mt-2 block text-xs leading-5 text-white/30">
                             En dessous, le volume et le Matching sont masqués.
                         </span>
-                        <span v-if="form.errors.minimum_segment_size" class="mt-2 block text-xs text-rose-300">
+                        <span
+                            v-if="form.errors.minimum_segment_size"
+                            class="mt-2 block text-xs text-rose-300"
+                        >
                             {{ form.errors.minimum_segment_size }}
                         </span>
                     </label>
@@ -292,7 +297,10 @@ const eventLabel = (value: string) =>
                         <span class="mt-2 block text-xs leading-5 text-white/30">
                             Aucun compte exact n’est présenté à l’annonceur.
                         </span>
-                        <span v-if="form.errors.estimate_rounding_step" class="mt-2 block text-xs text-rose-300">
+                        <span
+                            v-if="form.errors.estimate_rounding_step"
+                            class="mt-2 block text-xs text-rose-300"
+                        >
                             {{ form.errors.estimate_rounding_step }}
                         </span>
                     </label>
@@ -332,11 +340,14 @@ const eventLabel = (value: string) =>
                             class="mt-2 w-full rounded-xl border border-white/10 bg-[#07111d] px-4 py-3 font-black outline-none focus:border-cyan-300/55"
                         />
                         <span class="mt-2 block text-xs leading-5 text-white/30">
-                            Au seuil, le moteur produit <code>withheld</code> sans consommer de quota.
+                            Au seuil, le moteur produit <code>withheld</code> sans consommer de
+                            quota.
                         </span>
                     </label>
 
-                    <div class="flex flex-wrap justify-end gap-3 border-t border-white/8 pt-5 sm:col-span-2">
+                    <div
+                        class="flex flex-wrap justify-end gap-3 border-t border-white/8 pt-5 sm:col-span-2"
+                    >
                         <button
                             type="button"
                             class="rounded-xl border border-white/10 px-5 py-3 text-sm font-black text-white/55 disabled:opacity-30"
@@ -371,8 +382,11 @@ const eventLabel = (value: string) =>
                             <p class="text-xs text-white/30">{{ date(item.effectiveFrom) }}</p>
                         </div>
                         <p class="mt-2 text-xs leading-5 text-white/38">
-                            Seuil {{ item.minimumSegmentSize }} · arrondi {{ item.estimateRoundingStep }} ·
-                            fréquence {{ item.frequencyLimit }}/{{ item.frequencyWindowHours }} h · fatigue
+                            Seuil {{ item.minimumSegmentSize }} · arrondi
+                            {{ item.estimateRoundingStep }} · fréquence {{ item.frequencyLimit }}/{{
+                                item.frequencyWindowHours
+                            }}
+                            h · fatigue
                             {{ item.fatigueLimit }}
                         </p>
                     </div>
@@ -398,7 +412,9 @@ const eventLabel = (value: string) =>
                         :key="purpose.id"
                         class="rounded-2xl border border-white/7 bg-black/15 p-5"
                     >
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div
+                            class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                        >
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-black">{{ purpose.title }}</p>
@@ -443,11 +459,15 @@ const eventLabel = (value: string) =>
                         :key="taxonomy.id"
                         class="rounded-2xl border border-white/7 bg-black/15 p-5"
                     >
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div
+                            class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                        >
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-black">{{ taxonomy.label }}</p>
-                                    <span class="rounded-full bg-white/7 px-2.5 py-1 text-[0.65rem] font-black text-white/45">
+                                    <span
+                                        class="rounded-full bg-white/7 px-2.5 py-1 text-[0.65rem] font-black text-white/45"
+                                    >
                                         {{ category(taxonomy.category) }}
                                     </span>
                                     <span
@@ -461,11 +481,16 @@ const eventLabel = (value: string) =>
                                         {{ taxonomy.status }}
                                     </span>
                                 </div>
-                                <p class="mt-1 text-xs font-bold text-white/30">{{ taxonomy.code }}</p>
+                                <p class="mt-1 text-xs font-bold text-white/30">
+                                    {{ taxonomy.code }}
+                                </p>
                                 <p class="mt-3 text-sm leading-6 text-white/42">
                                     {{ taxonomy.question || 'Aucune question publiée.' }}
                                 </p>
-                                <p v-if="taxonomy.sensitive || !taxonomy.allowedForTargeting" class="mt-2 text-xs font-black text-rose-300">
+                                <p
+                                    v-if="taxonomy.sensitive || !taxonomy.allowedForTargeting"
+                                    class="mt-2 text-xs font-black text-rose-300"
+                                >
                                     Taxonomie non activable pour le ciblage.
                                 </p>
                             </div>
@@ -496,15 +521,21 @@ const eventLabel = (value: string) =>
                     </div>
                     <div class="rounded-2xl bg-black/15 p-4">
                         <p class="text-xs text-white/35">Scores moyens</p>
-                        <p class="mt-2 text-2xl font-black">{{ number(audit.scoreBands.medium) }}</p>
+                        <p class="mt-2 text-2xl font-black">
+                            {{ number(audit.scoreBands.medium) }}
+                        </p>
                     </div>
                     <div class="rounded-2xl bg-black/15 p-4">
                         <p class="text-xs text-white/35">Estimations visibles</p>
-                        <p class="mt-2 text-2xl font-black">{{ number(audit.estimates.available) }}</p>
+                        <p class="mt-2 text-2xl font-black">
+                            {{ number(audit.estimates.available) }}
+                        </p>
                     </div>
                     <div class="rounded-2xl bg-black/15 p-4">
                         <p class="text-xs text-white/35">Estimations masquées</p>
-                        <p class="mt-2 text-2xl font-black">{{ number(audit.estimates.withheld) }}</p>
+                        <p class="mt-2 text-2xl font-black">
+                            {{ number(audit.estimates.withheld) }}
+                        </p>
                     </div>
                 </div>
 
@@ -540,7 +571,8 @@ const eventLabel = (value: string) =>
                             <p class="text-xs text-white/30">{{ date(event.occurredAt) }}</p>
                         </div>
                         <p class="mt-2 text-xs text-white/40">
-                            {{ event.resourceType }} · {{ event.resourceCode || 'ressource interne' }} ·
+                            {{ event.resourceType }} ·
+                            {{ event.resourceCode || 'ressource interne' }} ·
                             {{ event.beforeState || '—' }} → {{ event.afterState || '—' }}
                         </p>
                         <p class="mt-1 text-[0.68rem] text-white/25">
