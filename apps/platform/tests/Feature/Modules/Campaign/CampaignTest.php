@@ -12,7 +12,6 @@ use App\Modules\Campaign\Infrastructure\Models\CampaignAudience;
 use App\Modules\Campaign\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaign\Infrastructure\Models\CampaignFunding;
 use App\Modules\Campaign\Infrastructure\Models\CampaignPriceCatalog;
-use App\Modules\Campaign\Infrastructure\Models\CampaignQuote;
 use App\Modules\Campaign\Infrastructure\Models\CampaignVersion;
 use App\Modules\Identity\Domain\Enums\AccountStatus;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
