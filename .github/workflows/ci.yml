@@ -70,16 +70,7 @@ jobs:
         run: composer test
 
       - name: Run PHP tests on PostgreSQL 17
-        run: |
-          set +e
-          composer test > storage/logs/postgres-tests.log 2>&1
-          status=$?
-          if [ "$status" -ne 0 ]; then
-            echo "PostgreSQL test failure summary:"
-            tail -n 160 storage/logs/postgres-tests.log
-            exit "$status"
-          fi
-          grep -E "Tests:|Duration:" storage/logs/postgres-tests.log | tail -n 2
+        run: composer test
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
@@ -88,42 +79,8 @@ jobs:
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
 
-      - name: Preserve PostgreSQL failure report
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: postgres-test-failure
-          path: apps/platform/storage/logs/postgres-tests.log
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Check frontend formatting
-        id: prettier
-        run: |
-          set +e
-          npm run format:check
-          status=$?
-          if [ "$status" -ne 0 ]; then
-            npm run format
-            mkdir -p storage/prettier-formatted
-            git diff --name-only -- resources/ > storage/prettier-formatted/files.txt
-            while IFS= read -r file; do
-              [ -n "$file" ] || continue
-              relative="${file#apps/platform/}"
-              mkdir -p "storage/prettier-formatted/$(dirname "$relative")"
-              cp "$GITHUB_WORKSPACE/$file" "storage/prettier-formatted/$relative"
-            done < storage/prettier-formatted/files.txt
-            exit "$status"
-          fi
-
-      - name: Preserve exact Prettier corrections
-        if: failure() && steps.prettier.outcome == 'failure'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: prettier-formatted-files
-          path: apps/platform/storage/prettier-formatted
-          if-no-files-found: error
-          retention-days: 7
+        run: npm run format:check
 
       - name: Run frontend lint
         run: npm run lint:check
