@@ -53,7 +53,7 @@ final readonly class AdvertiserStudioController
         $wallet = $this->wallets->forSpace($space);
 
         return Inertia::render('Studio/Dashboard', [
-            ...$this->baseProps($account, $space),
+            ...$this->baseProps($request, $account, $space),
             'profile' => $this->presenter->profile($profile),
             'wallet' => $this->walletPresenter->wallet($wallet),
             'metrics' => [
@@ -73,7 +73,7 @@ final readonly class AdvertiserStudioController
         $profile = $this->profiles->ensure($space, $account);
 
         return Inertia::render('Studio/Profile', [
-            ...$this->baseProps($account, $space),
+            ...$this->baseProps($request, $account, $space),
             'profile' => $this->presenter->profile($profile),
         ]);
     }
@@ -114,7 +114,7 @@ final readonly class AdvertiserStudioController
             ->get();
 
         return Inertia::render('Studio/Brands', [
-            ...$this->baseProps($account, $space),
+            ...$this->baseProps($request, $account, $space),
             'brands' => $brands->map(fn (Brand $brand): array => $this->presenter->brand($brand))->values(),
             'logoChoices' => $logos->map(fn (CreativeAsset $asset): array => $this->presenter->asset($asset))->values(),
         ]);
@@ -166,7 +166,7 @@ final readonly class AdvertiserStudioController
             ->get();
 
         return Inertia::render('Studio/Media', [
-            ...$this->baseProps($account, $space),
+            ...$this->baseProps($request, $account, $space),
             'assets' => $assets->map(fn (CreativeAsset $asset): array => $this->presenter->asset($asset))->values(),
             'brands' => $brands->map(fn (Brand $brand): array => $this->presenter->brand($brand))->values(),
             'limits' => [
@@ -247,7 +247,7 @@ final readonly class AdvertiserStudioController
     }
 
     /** @return array<string, mixed> */
-    private function baseProps(Account $account, UserSpace $activeSpace): array
+    private function baseProps(Request $request, Account $account, UserSpace $activeSpace): array
     {
         $account->loadMissing(['profile', 'spaces.organization']);
 
@@ -268,7 +268,7 @@ final readonly class AdvertiserStudioController
                 'active' => $activeSpace->id === $space->id,
             ])->values(),
             'flash' => [
-                'success' => session('success'),
+                'success' => $request->session()->get('success'),
             ],
         ];
     }
