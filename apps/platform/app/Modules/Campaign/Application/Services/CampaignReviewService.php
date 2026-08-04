@@ -11,6 +11,7 @@ use App\Modules\Campaign\Infrastructure\Models\CampaignReviewTask;
 use App\Modules\Campaign\Infrastructure\Models\CampaignStatusEvent;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Wallet\Application\Contracts\WalletReservationContract;
+use App\Modules\Wallet\Domain\Enums\ReservationStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -293,7 +294,7 @@ final readonly class CampaignReviewService
             ! $funding instanceof CampaignFunding
             || ! $budgetReservation instanceof CampaignBudgetReservation
             || $budgetReservation->status !== 'active'
-            || $budgetReservation->walletReservation?->status !== 'active'
+            || $budgetReservation->walletReservation?->status !== ReservationStatus::Active
         ) {
             throw ValidationException::withMessages([
                 'campaign' => 'La réservation budgétaire active est introuvable.',
