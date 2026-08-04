@@ -88,6 +88,16 @@ Route::middleware(['auth', 'identity.session'])->group(function (): void {
             Route::get('/campagnes/{campaign}/modifier', [CampaignController::class, 'edit'])
                 ->middleware('capability:advertiser.campaign.manage')
                 ->name('campaigns.edit');
+            Route::get('/campagnes/{campaign}/correction', [CampaignController::class, 'correctionPage'])
+                ->middleware('capability:advertiser.campaign.manage')
+                ->name('campaigns.correction');
+            Route::patch('/campagnes/{campaign}/correction', [CampaignController::class, 'resubmitCorrection'])
+                ->middleware([
+                    'capability:advertiser.campaign.manage',
+                    'capability:advertiser.campaign.submit',
+                    'throttle:10,1',
+                ])
+                ->name('campaigns.correction.resubmit');
             Route::patch('/campagnes/{campaign}', [CampaignController::class, 'update'])
                 ->middleware(['capability:advertiser.campaign.manage', 'throttle:60,1'])
                 ->name('campaigns.update');
