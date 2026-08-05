@@ -9,6 +9,16 @@ it('protects the user feed page behind authentication', function (): void {
     $this->get('/mon-espace/pour-toi')->assertRedirect('/connexion');
 });
 
+it('refuses the user feed while an advertiser space is active', function (): void {
+    registerAccount($this, 'feed-advertiser-context@example.com');
+    $spaceId = $this->postJson('/api/me/spaces/advertiser', [
+        'organization_name' => 'Studio Feed Isolation',
+    ])->assertCreated()->json('data.space_id');
+
+    $this->postJson("/api/me/spaces/{$spaceId}/switch")->assertOk();
+    $this->get('/mon-espace/pour-toi')->assertForbidden();
+});
+
 it('renders the P009-C feed with server-owned wallet and endpoint contracts', function (): void {
     $account = registerAccount($this, 'feed-p009c@example.com');
     $this->withoutVite();

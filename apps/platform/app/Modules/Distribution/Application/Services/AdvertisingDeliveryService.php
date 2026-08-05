@@ -462,6 +462,9 @@ final readonly class AdvertisingDeliveryService
         $remaining = $counter === null
             ? 0
             : max(0, (int) $counter->quota_limit - (int) $counter->consumed);
+        $campaign = Campaign::query()->with('brand')->find($delivery->campaign_id);
+        $version = CampaignVersion::query()->find($delivery->campaign_version_id);
+        $brandName = $campaign instanceof Campaign ? $campaign->brand->name : null;
 
         return [
             'delivery_id' => $delivery->id,
@@ -470,6 +473,11 @@ final readonly class AdvertisingDeliveryService
             'campaign_id' => $delivery->campaign_id,
             'campaign_version_id' => $delivery->campaign_version_id,
             'creative_id' => $delivery->creative_asset_id,
+            'campaign_name' => $campaign?->name,
+            'brand_name' => $brandName,
+            'headline' => $version?->headline,
+            'body' => $version?->body,
+            'cta_label' => $version?->call_to_action,
             'creative_type' => $delivery->creative_type,
             'media_reference' => $delivery->media_reference,
             'cta_reference' => $delivery->cta_reference,

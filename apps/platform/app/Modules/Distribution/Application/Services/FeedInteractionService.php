@@ -11,6 +11,12 @@ use Illuminate\Support\Str;
 
 final readonly class FeedInteractionService
 {
+    private const ALLOWED_REASONS = [
+        'skipped',
+        'not_relevant',
+        'technical_issue',
+    ];
+
     public function __construct(
         private AdvertisingDeliveryOutbox $outbox,
     ) {}
@@ -21,6 +27,10 @@ final readonly class FeedInteractionService
         string $idempotencyKey,
         string $reason,
     ): AdvertisingDelivery {
+        if (! in_array($reason, self::ALLOWED_REASONS, true)) {
+            throw new DistributionException('Le motif de masquage publicitaire est invalide.');
+        }
+
         return DB::transaction(function () use ($account, $delivery, $idempotencyKey, $reason): AdvertisingDelivery {
             $locked = AdvertisingDelivery::query()->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
 
@@ -33,7 +43,7 @@ final readonly class FeedInteractionService
             }
 
             $eventKey = 'feed-item-dismissed:'.$locked->id;
-            DB::table('advertising_delivery_events')->insertOrIgnore([
+            $inserted = DB::table('advertising_delivery_events')->insertOrIgnore([
                 'id' => (string) Str::ulid(),
                 'advertising_delivery_id' => $locked->id,
                 'event_type' => 'FeedItemDismissed',
@@ -48,23 +58,26 @@ final readonly class FeedInteractionService
                 ], JSON_THROW_ON_ERROR),
                 'created_at' => now(),
             ]);
-            $this->outbox->record(
-                'advertising_delivery',
-                $locked->id,
-                'FEED_ITEM_DISMISSED',
-                $eventKey,
-                [
-                    'delivery_id' => $locked->id,
-                    'feed_session_id' => $locked->feed_session_id,
-                    'campaign_id' => $locked->campaign_id,
-                    'reason' => $reason,
-                    'quota_restored' => false,
-                    'financial_operation_created' => false,
-                    'wallet_operation_created' => false,
-                ],
-            );
 
-            DB::afterCommit(static fn () => event('distribution.feed-item-dismissed', [$locked->id]));
+            if ($inserted === 1) {
+                $this->outbox->record(
+                    'advertising_delivery',
+                    $locked->id,
+                    'FEED_ITEM_DISMISSED',
+                    $eventKey,
+                    [
+                        'delivery_id' => $locked->id,
+                        'feed_session_id' => $locked->feed_session_id,
+                        'campaign_id' => $locked->campaign_id,
+                        'reason' => $reason,
+                        'quota_restored' => false,
+                        'financial_operation_created' => false,
+                        'wallet_operation_created' => false,
+                    ],
+                );
+
+                DB::afterCommit(static fn () => event('distribution.feed-item-dismissed', [$locked->id]));
+            }
 
             return $locked->refresh();
         }, 5);

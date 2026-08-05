@@ -46,6 +46,11 @@ type Delivery = {
     campaign_id: string;
     campaign_version_id: string;
     creative_id: string;
+    campaign_name: string | null;
+    brand_name: string | null;
+    headline: string | null;
+    body: string | null;
+    cta_label: string | null;
     creative_type: 'image' | 'video';
     media_reference: string;
     cta_reference: string | null;
@@ -107,6 +112,7 @@ const online = ref(true);
 const muted = ref(true);
 const autoplayBlocked = ref(false);
 const dataSaver = ref(false);
+const advancingDelivery = ref(false);
 const video = ref<HTMLVideoElement | null>(null);
 let mediaTimer: number | null = null;
 let confirmingDelivery = false;
@@ -245,8 +251,17 @@ const releasePrepared = async () => {
 
 const mediaFailure = async (message: string) => {
     clearMediaTimer();
-    errorMessage.value = message;
-    await releasePrepared();
+    const current = delivery.value;
+
+    if (current?.status === 'prepared') {
+        await releasePrepared();
+        errorMessage.value = `${message} Aucun quota n’a été consommé.`;
+    } else if (current?.status === 'delivered') {
+        errorMessage.value = `${message} La livraison était déjà confirmée ; aucun second quota ne sera consommé.`;
+    } else {
+        errorMessage.value = message;
+    }
+
     delivery.value = null;
     state.value = online.value ? 'failed' : 'offline';
 };
@@ -326,9 +341,7 @@ const prepareNext = async (retrySession = true) => {
         delivery.value = prepared;
         state.value = 'media_loading';
         mediaTimer = window.setTimeout(() => {
-            void mediaFailure(
-                'Le média met trop de temps à répondre. Aucun quota n’a été consommé.',
-            );
+            void mediaFailure('Le média met trop de temps à répondre.');
         }, props.feedConfig.mediaLoadTimeoutMs);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Le Feed ne peut pas être chargé.';
@@ -354,17 +367,22 @@ const prepareNext = async (retrySession = true) => {
 };
 
 const dismissCurrent = async (reason: 'skipped' | 'not_relevant' | 'technical_issue') => {
-    const current = delivery.value;
-
-    if (!current) {
-        await prepareNext();
+    if (advancingDelivery.value) {
         return;
     }
 
-    clearMediaTimer();
-    video.value?.pause();
+    advancingDelivery.value = true;
+    const current = delivery.value;
 
     try {
+        if (!current) {
+            await prepareNext();
+            return;
+        }
+
+        clearMediaTimer();
+        video.value?.pause();
+
         if (current.status === 'prepared') {
             await releasePrepared();
         } else if (current.status === 'delivered') {
@@ -375,9 +393,11 @@ const dismissCurrent = async (reason: 'skipped' | 'not_relevant' | 'technical_is
                 { reason },
             );
         }
-    } finally {
+
         delivery.value = null;
         await prepareNext();
+    } finally {
+        advancingDelivery.value = false;
     }
 };
 
@@ -533,11 +553,7 @@ onBeforeUnmount(() => {
                             class="h-full max-h-[calc(100dvh-8.8rem)] w-full object-contain"
                             alt="Création publicitaire"
                             @load="mediaReady"
-                            @error="
-                                mediaFailure(
-                                    'Cette image ne peut pas être affichée. Aucun quota n’a été consommé.',
-                                )
-                            "
+                            @error="mediaFailure('Cette image ne peut pas être affichée.')"
                         />
                         <video
                             v-else
@@ -549,11 +565,7 @@ onBeforeUnmount(() => {
                             :preload="dataSaver ? 'metadata' : 'auto'"
                             aria-label="Vidéo publicitaire"
                             @canplay="mediaReady"
-                            @error="
-                                mediaFailure(
-                                    'Cette vidéo ne peut pas être lue. Aucun quota n’a été consommé.',
-                                )
-                            "
+                            @error="mediaFailure('Cette vidéo ne peut pas être lue.')"
                         />
                     </template>
 
@@ -635,6 +647,27 @@ onBeforeUnmount(() => {
                                     >{{ gainLabel }} potentiel</span
                                 >
                             </div>
+                            <p
+                                class="mt-3 text-xs font-black tracking-[0.16em] text-wasplex-cyan uppercase"
+                            >
+                                {{
+                                    delivery.brand_name ||
+                                    delivery.campaign_name ||
+                                    'Annonceur Wasplex'
+                                }}
+                            </p>
+                            <h2
+                                v-if="delivery.headline"
+                                class="mt-2 text-lg leading-tight font-black"
+                            >
+                                {{ delivery.headline }}
+                            </h2>
+                            <p
+                                v-if="delivery.body"
+                                class="mt-1 line-clamp-3 text-xs leading-5 text-white/60"
+                            >
+                                {{ delivery.body }}
+                            </p>
                             <p class="mt-3 text-sm font-black">
                                 Quota restant : {{ delivery.quota_remaining }}
                             </p>
@@ -649,7 +682,7 @@ onBeforeUnmount(() => {
                                     rel="noopener noreferrer"
                                     class="rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-wasplex-night"
                                 >
-                                    Découvrir
+                                    {{ delivery.cta_label || 'Découvrir' }}
                                 </a>
                                 <Link
                                     :href="delivery.explanation_reference"
@@ -671,16 +704,18 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="grid size-11 place-items-center rounded-full border border-white/15 bg-black/45 text-xs font-black backdrop-blur-lg"
+                                class="grid size-11 place-items-center rounded-full border border-white/15 bg-black/45 text-xs font-black backdrop-blur-lg disabled:cursor-wait disabled:opacity-40"
                                 aria-label="Passer cette publicité"
+                                :disabled="advancingDelivery"
                                 @click="dismissCurrent('skipped')"
                             >
                                 Suiv.
                             </button>
                             <button
                                 type="button"
-                                class="grid size-11 place-items-center rounded-full border border-white/15 bg-black/45 text-[0.6rem] font-black backdrop-blur-lg"
+                                class="grid size-11 place-items-center rounded-full border border-white/15 bg-black/45 text-[0.6rem] font-black backdrop-blur-lg disabled:cursor-wait disabled:opacity-40"
                                 aria-label="Voir moins de contenus similaires"
+                                :disabled="advancingDelivery"
                                 @click="dismissCurrent('not_relevant')"
                             >
                                 Moins

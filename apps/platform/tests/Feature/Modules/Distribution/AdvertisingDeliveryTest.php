@@ -17,6 +17,7 @@ use App\Modules\Campaign\Application\Services\CampaignReviewService;
 use App\Modules\Campaign\Application\Services\CampaignService;
 use App\Modules\Campaign\Infrastructure\Models\Campaign;
 use App\Modules\Distribution\Application\Services\AdvertisingDeliveryService;
+use App\Modules\Distribution\Application\Services\FeedInteractionService;
 use App\Modules\Distribution\Domain\Enums\AdvertisingDeliveryStatus;
 use App\Modules\Distribution\Domain\Exceptions\DistributionException;
 use App\Modules\EconomicConfiguration\Infrastructure\Models\EconomicClass;
@@ -121,6 +122,64 @@ final class AdvertisingDeliveryTest extends TestCase
                 ->where('account_id', $user->id)
                 ->where('campaign_id', $delivered->campaign_id)
                 ->value('impressions'),
+        );
+        self::assertSame($ledgerBefore, LedgerTransaction::query()->count());
+        self::assertSame($walletOperationsBefore, WalletOperation::query()->count());
+        self::assertSame($attemptsBefore, ValueAttempt::query()->count());
+    }
+
+    public function test_dismiss_is_idempotent_without_restoring_quota_or_creating_value(): void
+    {
+        [$user] = $this->readyDelivery();
+        $deliveries = app(AdvertisingDeliveryService::class);
+        $interactions = app(FeedInteractionService::class);
+        $session = $deliveries->startSession($user, 'feed-session-p009c-dismiss');
+        $prepared = $deliveries->reserveNext($user, $session, 'delivery-p009c-dismiss');
+        $delivered = $deliveries->deliver($user, $prepared, 'confirm-p009c-dismiss');
+        $ledgerBefore = LedgerTransaction::query()->count();
+        $walletOperationsBefore = WalletOperation::query()->count();
+        $attemptsBefore = ValueAttempt::query()->count();
+
+        $dismissed = $interactions->dismiss(
+            $user,
+            $delivered,
+            'dismiss-p009c-first',
+            'not_relevant',
+        );
+        $replayed = $interactions->dismiss(
+            $user,
+            $delivered,
+            'dismiss-p009c-replay',
+            'not_relevant',
+        );
+
+        self::assertSame($dismissed->id, $replayed->id);
+        self::assertSame(AdvertisingDeliveryStatus::Delivered, $replayed->status);
+        self::assertSame(
+            1,
+            DB::table('advertising_delivery_events')
+                ->where('advertising_delivery_id', $delivered->id)
+                ->where('event_type', 'FeedItemDismissed')
+                ->count(),
+        );
+        self::assertSame(
+            1,
+            DB::table('advertising_delivery_outbox_events')
+                ->where('aggregate_id', $delivered->id)
+                ->where('event_code', 'FEED_ITEM_DISMISSED')
+                ->count(),
+        );
+        self::assertSame(
+            1,
+            (int) DB::table('subscription_quota_counters')
+                ->where('id', $delivered->subscription_quota_counter_id)
+                ->value('consumed'),
+        );
+        self::assertSame(
+            1,
+            DB::table('advertising_quota_consumptions')
+                ->where('advertising_delivery_id', $delivered->id)
+                ->count(),
         );
         self::assertSame($ledgerBefore, LedgerTransaction::query()->count());
         self::assertSame($walletOperationsBefore, WalletOperation::query()->count());
