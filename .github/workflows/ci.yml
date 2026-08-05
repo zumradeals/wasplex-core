@@ -79,8 +79,11 @@ jobs:
           DB_USERNAME: wasplex
           DB_PASSWORD: wasplex_ci_only
 
-      - name: Check frontend formatting
-        run: npm run format:check
+      - name: Produce exact frontend formatting diff
+        run: |
+          npm run format
+          git diff -- resources/js/pages/Spaces/AdminDashboard.vue
+          exit 1
 
       - name: Run frontend lint
         run: npm run lint:check
