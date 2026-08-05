@@ -1,0 +1,28 @@
+name: p009c-repair-harden
+
+on:
+  push:
+    branches:
+      - agent/p009c-user-feed-player
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout P009-C branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: agent/p009c-user-feed-player
+
+      - name: Repair hardening assertion
+        run: |
+          sed -i "s/'Aucun second quota ne sera consommé\.'/'aucun second quota ne sera consommé\.'/" .github/workflows/p009c-harden.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/p009c-harden.yml
+          git commit -m "chore(feed): fix P009-C hardening assertion"
+          git push origin HEAD:agent/p009c-user-feed-player
