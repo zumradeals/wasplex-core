@@ -71,6 +71,18 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Check frontend formatting
+        run: npm run format:check
+
+      - name: Run ESLint
+        run: npm run lint:check
+
+      - name: Check Vue/TypeScript types
+        run: npm run types:check
+
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Check PHP formatting
         run: composer lint:check
 
@@ -85,18 +97,6 @@ jobs:
           DB_PASSWORD: wasplex_ci_only
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-
-      - name: Check frontend formatting
-        run: npm run format:check
-
-      - name: Run ESLint
-        run: npm run lint:check
-
-      - name: Check Vue/TypeScript types
-        run: npm run types:check
-
-      - name: Build frontend assets
-        run: npm run build
 
       # TODO(P001+): réactiver "composer types:check" (Larastan/PHPStan)
       # dès que le paquet larastan/larastan est ajouté à composer.json depuis
