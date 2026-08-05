@@ -34,6 +34,10 @@ final readonly class AdvertisingSettlementService
         string $idempotencyKey,
         ?string $traceId = null,
     ): ValueAttempt {
+        if (trim($idempotencyKey) === '') {
+            throw new ValueEngineException('La clé d’idempotence du règlement est obligatoire.');
+        }
+
         return DB::transaction(function () use ($attempt, $account, $idempotencyKey, $traceId): ValueAttempt {
             $locked = ValueAttempt::query()
                 ->whereKey($attempt->id)
@@ -77,6 +81,7 @@ final readonly class AdvertisingSettlementService
             if (
                 $advertiserWallet->reserved_ledger_account_id === null
                 || $userWallet->available_ledger_account_id === null
+                || $counter->reserved_amount_minor < $locked->gross_amount_minor
                 || $advertiserProjection->reserved_minor < $locked->gross_amount_minor
             ) {
                 throw new ValueEngineException('La valeur réservée de la campagne n’est plus disponible.');
