@@ -24,50 +24,51 @@ async function logout(): Promise<void> {
 </script>
 
 <template>
-    <div class="bg-wasplex-surface flex min-h-screen justify-center">
-        <div class="bg-wasplex-surface flex w-full max-w-md flex-col">
-            <header class="flex items-center justify-between border-b border-black/5 bg-white px-4 py-3">
-                <span class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold px-3 py-1 text-sm font-semibold">
+    <div class="bg-wpx-navy-950 flex min-h-screen justify-center">
+        <div class="bg-wpx-navy-950 flex w-full max-w-md flex-col">
+            <header class="border-wpx-border-dark bg-wpx-navy-850 flex items-center justify-between border-b px-4 py-3">
+                <span class="rounded-wpx-md bg-wpx-navy-750 text-wpx-gold px-3 py-1 text-sm font-semibold">
                     Wasplex
                 </span>
                 <div class="flex items-center gap-2">
                     <SpaceSwitcher
+                        variant="dark"
                         :spaces="page.props.auth.spaces"
                         :active-space-id="page.props.auth.active_space_id"
                     />
-                    <button class="text-wasplex-black/60 text-xs hover:underline" @click="logout">Déconnexion</button>
+                    <button class="text-wpx-muted-dark text-xs hover:underline" @click="logout">Déconnexion</button>
                 </div>
             </header>
 
             <main class="flex-1 px-4 py-6">
                 <div v-if="activeTab === 'espace'" class="flex flex-col gap-4">
-                    <h1 class="text-wasplex-black text-lg font-semibold">Mon Espace</h1>
-                    <section class="rounded-wasplex-lg shadow-wasplex-card bg-white p-4">
-                        <p class="text-wasplex-black/60 text-sm">Compte</p>
-                        <p class="text-wasplex-black font-mono text-xs">{{ page.props.auth.account.id }}</p>
-                        <p class="text-wasplex-black/60 mt-2 text-sm">
+                    <h1 class="text-wpx-white-soft text-lg font-semibold">Mon Espace</h1>
+                    <section class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 p-4">
+                        <p class="text-wpx-muted-dark text-sm">Compte</p>
+                        <p class="text-wpx-white-soft font-mono text-xs">{{ page.props.auth.account.id }}</p>
+                        <p class="text-wpx-muted-dark mt-2 text-sm">
                             MFA : {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }}
                         </p>
                     </section>
-                    <p class="text-wasplex-black/50 text-xs">
+                    <p class="text-wpx-muted-dark text-xs">
                         Le profil intelligent, les consentements et le score de complétude arrivent avec les chantiers
                         suivants (P004+).
                     </p>
                 </div>
                 <div
                     v-else
-                    class="rounded-wasplex-lg text-wasplex-black/50 shadow-wasplex-card flex h-64 items-center justify-center bg-white text-sm"
+                    class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 text-wpx-muted-dark flex h-64 items-center justify-center text-sm"
                 >
                     {{ tabs.find((t) => t.key === activeTab)?.label }} — bientôt disponible
                 </div>
             </main>
 
-            <nav class="grid grid-cols-5 border-t border-black/5 bg-white">
+            <nav class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-5 border-t">
                 <button
                     v-for="tab in tabs"
                     :key="tab.key"
                     class="flex flex-col items-center gap-1 py-2 text-xs"
-                    :class="activeTab === tab.key ? 'text-wasplex-gold' : 'text-wasplex-black/50'"
+                    :class="activeTab === tab.key ? 'text-wpx-gold' : 'text-wpx-muted-dark'"
                     @click="activeTab = tab.key"
                 >
                     <span class="text-lg">{{ tab.icon }}</span>

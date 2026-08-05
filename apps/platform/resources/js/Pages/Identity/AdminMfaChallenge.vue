@@ -50,17 +50,17 @@ async function verify(): Promise<void> {
 </script>
 
 <template>
-    <main class="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
-        <h1 class="text-wasplex-black text-center text-lg font-semibold">Vérification MFA — Administration</h1>
+    <main class="bg-wpx-canvas mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
+        <h1 class="text-wpx-text text-center text-lg font-semibold">Vérification MFA — Administration</h1>
 
-        <div v-if="!page.props.auth.account.mfa_enabled" class="rounded-wasplex-lg shadow-wasplex-card bg-white p-6">
-            <p class="text-wasplex-black/70 mb-4 text-sm">
+        <div v-if="!page.props.auth.account.mfa_enabled" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-6">
+            <p class="text-wpx-text-muted mb-4 text-sm">
                 L'accès à la console fondateur exige une double authentification (TOTP).
             </p>
 
             <button
                 v-if="!enrollment"
-                class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold w-full px-4 py-2 font-semibold"
+                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 w-full bg-gradient-to-br px-4 py-2 font-semibold"
                 :disabled="busy"
                 @click="beginEnrollment"
             >
@@ -68,19 +68,21 @@ async function verify(): Promise<void> {
             </button>
 
             <div v-else class="flex flex-col gap-3">
-                <p class="text-wasplex-black/60 text-xs">
+                <p class="text-wpx-text-muted text-xs">
                     Ajoutez ce secret dans votre application d'authentification (Google Authenticator, etc.) :
                 </p>
-                <code class="rounded-wasplex-sm bg-wasplex-surface p-2 text-xs break-all">{{ enrollment.secret }}</code>
+                <code class="rounded-wpx-sm bg-wpx-raised border-wpx-border border p-2 text-xs break-all">{{
+                    enrollment.secret
+                }}</code>
                 <input
                     v-model="code"
                     type="text"
                     inputmode="numeric"
                     placeholder="Code à 6 chiffres"
-                    class="rounded-wasplex-sm border border-black/10 px-3 py-2"
+                    class="rounded-wpx-sm border-wpx-border border px-3 py-2"
                 />
                 <button
-                    class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold px-4 py-2 font-semibold disabled:opacity-50"
+                    class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-4 py-2 font-semibold disabled:opacity-50"
                     :disabled="busy || code.length < 6"
                     @click="confirmEnrollment"
                 >
@@ -89,17 +91,17 @@ async function verify(): Promise<void> {
             </div>
         </div>
 
-        <div v-else class="rounded-wasplex-lg shadow-wasplex-card flex flex-col gap-3 bg-white p-6">
-            <p class="text-wasplex-black/70 text-sm">Saisissez le code de votre application d'authentification.</p>
+        <div v-else class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex flex-col gap-3 p-6">
+            <p class="text-wpx-text-muted text-sm">Saisissez le code de votre application d'authentification.</p>
             <input
                 v-model="code"
                 type="text"
                 inputmode="numeric"
                 placeholder="Code à 6 chiffres"
-                class="rounded-wasplex-sm border border-black/10 px-3 py-2"
+                class="rounded-wpx-sm border-wpx-border border px-3 py-2"
             />
             <button
-                class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold px-4 py-2 font-semibold disabled:opacity-50"
+                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-4 py-2 font-semibold disabled:opacity-50"
                 :disabled="busy || code.length < 6"
                 @click="verify"
             >
@@ -107,6 +109,6 @@ async function verify(): Promise<void> {
             </button>
         </div>
 
-        <p v-if="error" class="text-wasplex-danger text-center text-sm">{{ error }}</p>
+        <p v-if="error" class="text-wpx-danger-light text-center text-sm">{{ error }}</p>
     </main>
 </template>

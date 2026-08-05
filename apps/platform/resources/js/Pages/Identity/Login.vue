@@ -28,46 +28,47 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-    <main class="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
+    <main class="bg-wpx-navy-950 mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
         <div class="text-center">
-            <span class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold px-3 py-1 text-sm font-semibold">
-                Wasplex
-            </span>
-            <h1 class="text-wasplex-black mt-4 text-xl font-semibold">Connexion</h1>
+            <span class="rounded-wpx-md bg-wpx-navy-750 text-wpx-gold px-3 py-1 text-sm font-semibold"> Wasplex </span>
+            <h1 class="text-wpx-white-soft mt-4 text-xl font-semibold">Connexion</h1>
         </div>
 
-        <form class="rounded-wasplex-lg shadow-wasplex-card flex flex-col gap-4 bg-white p-6" @submit.prevent="submit">
+        <form
+            class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 flex flex-col gap-4 p-6"
+            @submit.prevent="submit"
+        >
             <label class="flex flex-col gap-1 text-sm">
-                <span class="text-wasplex-black font-medium">Téléphone ou email</span>
+                <span class="text-wpx-white-soft font-medium">Téléphone ou email</span>
                 <input
                     v-model="identifierValue"
                     type="text"
                     required
-                    class="rounded-wasplex-sm focus:ring-wasplex-gold border border-black/10 px-3 py-2 focus:ring-2 focus:outline-none"
+                    class="rounded-wpx-sm border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft focus:ring-wpx-blue border px-3 py-2 focus:ring-2 focus:outline-none"
                 />
             </label>
 
             <label class="flex flex-col gap-1 text-sm">
-                <span class="text-wasplex-black font-medium">Mot de passe</span>
+                <span class="text-wpx-white-soft font-medium">Mot de passe</span>
                 <input
                     v-model="password"
                     type="password"
                     required
-                    class="rounded-wasplex-sm focus:ring-wasplex-gold border border-black/10 px-3 py-2 focus:ring-2 focus:outline-none"
+                    class="rounded-wpx-sm border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft focus:ring-wpx-blue border px-3 py-2 focus:ring-2 focus:outline-none"
                 />
             </label>
 
-            <p v-if="error" class="text-wasplex-danger text-sm">{{ error }}</p>
+            <p v-if="error" class="text-wpx-danger text-sm">{{ error }}</p>
 
             <button
                 type="submit"
                 :disabled="submitting"
-                class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold px-4 py-2 font-semibold transition disabled:opacity-50"
+                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 ease-wpx-standard bg-gradient-to-br px-4 py-2 font-semibold transition duration-200 disabled:opacity-50"
             >
                 Se connecter
             </button>
 
-            <a href="/register" class="text-wasplex-black/60 text-center text-sm hover:underline">Créer un compte</a>
+            <a href="/register" class="text-wpx-muted-dark text-center text-sm hover:underline">Créer un compte</a>
         </form>
     </main>
 </template>

@@ -1,0 +1,11 @@
+/*
+ * Police Inter auto-hébergée (docs/00-identite-visuelle-wasplex.md §10.1) :
+ * fichiers woff2 fournis par le paquet npm @fontsource-variable/inter, donc
+ * aucun appel réseau au runtime (contrainte d'indépendance réseau actée en
+ * P000, cf. docs/chantiers/P000-RAPPORT.md).
+ */
+@import '@fontsource-variable/inter';
+
+body {
+    font-family: var(--font-sans);
+}
