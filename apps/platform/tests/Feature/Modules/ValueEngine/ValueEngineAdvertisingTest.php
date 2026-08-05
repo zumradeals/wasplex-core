@@ -11,6 +11,7 @@ use App\Modules\Advertising\Application\Services\AdvertisingProfileService;
 use App\Modules\Advertising\Application\Services\AdvertisingSegmentService;
 use App\Modules\Advertising\Application\Services\CampaignEligibilityService;
 use App\Modules\Advertising\Domain\Enums\AdvertisingConsentStatus;
+use App\Modules\Advertising\Infrastructure\Models\AdvertisingMatch;
 use App\Modules\Campaign\Application\Services\CampaignReviewService;
 use App\Modules\Campaign\Application\Services\CampaignService;
 use App\Modules\Campaign\Infrastructure\Models\Campaign;
@@ -203,7 +204,7 @@ final class ValueEngineAdvertisingTest extends TestCase
         self::assertSame($ledgerBefore, LedgerTransaction::query()->count());
     }
 
-    /** @return array{0:Account,1:Campaign,2:\App\Modules\Advertising\Infrastructure\Models\AdvertisingMatch} */
+    /** @return array{0:Account,1:Campaign,2:AdvertisingMatch} */
     private function readyDelivery(): array
     {
         $user = $this->readyGoldUser();
