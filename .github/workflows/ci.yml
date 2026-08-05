@@ -64,7 +64,9 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare test environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
 
       - name: Install frontend dependencies
         run: npm ci
