@@ -1,0 +1,52 @@
+name: p009c-apply-script
+
+on:
+  push:
+    branches:
+      - agent/p009c-user-feed-player
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout P009-C branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: agent/p009c-user-feed-player
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Apply deterministic hardening
+        run: python3 scripts/p009c_apply_final.py
+
+      - name: Install frontend dependencies
+        working-directory: apps/platform
+        run: npm ci
+
+      - name: Format frontend
+        working-directory: apps/platform
+        run: npm run format
+
+      - name: Check PHP syntax
+        run: |
+          php -l apps/platform/app/Modules/Distribution/Application/Services/FeedInteractionService.php
+          php -l apps/platform/app/Modules/Distribution/Application/Services/AdvertisingDeliveryService.php
+          php -l apps/platform/tests/Feature/Modules/Distribution/AdvertisingDeliveryTest.php
+          php -l apps/platform/tests/Feature/Modules/Distribution/UserFeedPageTest.php
+
+      - name: Commit application hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/platform
+          git commit -m "fix(feed): harden P009-C delivery interactions"
+          git push origin HEAD:agent/p009c-user-feed-player
