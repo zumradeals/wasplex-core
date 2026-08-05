@@ -1,5 +1,10 @@
 <?php
 
+use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Identity\Infrastructure\Models\CapabilityGrant;
+use App\Modules\Identity\Infrastructure\Models\SpaceMembership;
+use App\Modules\Identity\Infrastructure\Models\UserSpace;
+use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -45,4 +50,46 @@ function registerAndLogin(string $identifierValue, string $password = 'Password1
             test()->withUnencryptedCookie($sessionCookieName, $cookie->getValue());
         }
     }
+}
+
+/**
+ * Grants an admin-space membership plus the given capabilities to $account,
+ * self-granted the same way SeedFounderCommand bootstraps the real founder
+ * (documented bootstrap exception). Shared across Identity's and Ledger's
+ * admin-console tests since both gate on EnsureRecentMfa + EnsureCapability.
+ *
+ * @param  array<int, string>  $capabilities
+ */
+function grantFounderAccessForTests(Account $account, array $capabilities = ['admin.dashboard.view', 'admin.audit.view']): void
+{
+    $adminSpace = UserSpace::create(['space_type' => UserSpace::TYPE_ADMIN, 'status' => 'active']);
+
+    SpaceMembership::create([
+        'user_space_id' => $adminSpace->id,
+        'account_id' => $account->id,
+        'status' => 'active',
+        'is_default' => false,
+        'joined_at' => now(),
+    ]);
+
+    foreach ($capabilities as $capability) {
+        CapabilityGrant::create([
+            'account_id' => $account->id,
+            'capability_code' => $capability,
+            'status' => 'active',
+            'starts_at' => now(),
+            'granted_by' => $account->id,
+        ]);
+    }
+}
+
+/** Shared across Ledger tests (docs/chantiers/P002-CHANTIER.md): the two system/owned accounts most tests post between. */
+function ledgerSuspense(): LedgerAccountReference
+{
+    return LedgerAccountReference::system('wasplex.suspense', 'CLEARING', 'WP');
+}
+
+function ledgerUserAvailable(string $identityAccountId = 'user-1'): LedgerAccountReference
+{
+    return LedgerAccountReference::forIdentityAccount('user.available.wp', $identityAccountId, 'LIABILITY_USER', 'WP');
 }
