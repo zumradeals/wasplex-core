@@ -98,10 +98,9 @@ final class AdvertisingDeliveryController extends Controller
 
     private function idempotencyKey(Request $request): string
     {
-        $key = trim((string) $request->header(
-            'Idempotency-Key',
-            $request->input('idempotency_key', ''),
-        ));
+        $header = $request->header('Idempotency-Key');
+        $input = $request->input('idempotency_key');
+        $key = trim(is_string($header) ? $header : (is_string($input) ? $input : ''));
 
         if ($key === '') {
             throw ValidationException::withMessages([

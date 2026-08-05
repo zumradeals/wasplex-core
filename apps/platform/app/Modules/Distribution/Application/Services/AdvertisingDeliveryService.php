@@ -598,7 +598,7 @@ final readonly class AdvertisingDeliveryService
         $now = CarbonImmutable::now();
         $hours = max(1, $controls['frequencyWindowHours']);
         $windowSeconds = $hours * 3600;
-        $windowStartTimestamp = intdiv($now->timestamp, $windowSeconds) * $windowSeconds;
+        $windowStartTimestamp = intdiv((int) $now->timestamp, $windowSeconds) * $windowSeconds;
         $windowStart = $now->setTimestamp($windowStartTimestamp)->utc();
         $windowEnd = $windowStart->addSeconds($windowSeconds);
 
