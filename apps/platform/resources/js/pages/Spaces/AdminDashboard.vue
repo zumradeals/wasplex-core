@@ -20,6 +20,12 @@ defineProps<{
 const navigation = [
     { label: 'Centre de pilotage', href: '/administration', active: true },
     { label: 'Revue des campagnes', href: '/administration/campagnes', active: false },
+    { label: 'Profil intelligent', href: '/administration/publicite', active: false },
+    {
+        label: 'Catalogue du profil',
+        href: '/administration/publicite/catalogue',
+        active: false,
+    },
     { label: 'Comptes & espaces', href: '#', active: false },
     { label: 'Capacités', href: '#', active: false },
     { label: 'Organisations', href: '#', active: false },
@@ -129,6 +135,7 @@ const navigation = [
                                     'MFA administration',
                                     'Réservations Wallet',
                                     'Revue administrative',
+                                    'Profil intelligent administrable',
                                 ]"
                                 :key="item"
                                 class="flex items-center justify-between py-4"
@@ -165,6 +172,23 @@ const navigation = [
                             </p>
                             <span class="mt-6 inline-flex text-sm font-black text-wasplex-orange">
                                 Ouvrir la file →
+                            </span>
+                        </Link>
+
+                        <Link
+                            href="/administration/publicite/catalogue"
+                            class="block rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.055] p-7 transition hover:border-emerald-400/40 hover:bg-emerald-400/[0.08]"
+                        >
+                            <p class="text-xs font-bold tracking-widest text-emerald-300 uppercase">
+                                P008-R · Profil intelligent
+                            </p>
+                            <h2 class="mt-4 text-2xl font-black">Piloter le catalogue du profil</h2>
+                            <p class="mt-4 text-sm leading-6 text-white/45">
+                                Administrer les secteurs, centres d’intérêt, questions, marchés,
+                                durées de fraîcheur et règles d’assistance IA.
+                            </p>
+                            <span class="mt-6 inline-flex text-sm font-black text-emerald-300">
+                                Ouvrir le catalogue →
                             </span>
                         </Link>
 
@@ -211,6 +235,16 @@ const navigation = [
                 <p class="mt-3 text-4xl font-black">{{ metrics.campaignReviews }}</p>
                 <p class="mt-3 text-sm leading-6 text-white/42">
                     Ouvrir la file P007 pour examiner ou suspendre une campagne.
+                </p>
+            </Link>
+            <Link
+                href="/administration/publicite/catalogue"
+                class="mt-4 block rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.055] p-6"
+            >
+                <p class="text-sm font-black text-emerald-300">Profil intelligent P008-R</p>
+                <p class="mt-3 text-xl font-black">Catalogue administrateur</p>
+                <p class="mt-3 text-sm leading-6 text-white/42">
+                    Gérer les secteurs, questions, marchés, durées de fraîcheur et règles IA.
                 </p>
             </Link>
         </section>
