@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#071627">
-        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="csrf-token" content="{{ csrf_token() }}" />
 
-        @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
-        <x-inertia::head>
-            <title>{{ config('app.name', 'Wasplex') }}</title>
-        </x-inertia::head>
+        <title inertia>{{ config('app.name', 'Wasplex') }}</title>
+
+        @vite(['resources/css/app.css', 'resources/js/app.ts'])
+        @inertiaHead
     </head>
-    <body class="antialiased">
-        <x-inertia::app />
+    <body class="bg-wasplex-surface font-sans antialiased">
+        @inertia
     </body>
 </html>

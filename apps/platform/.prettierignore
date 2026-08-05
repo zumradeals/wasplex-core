@@ -1,3 +1,7 @@
+vendor
+node_modules
 public/build
 storage
-vendor
+bootstrap/cache
+package-lock.json
+composer.lock

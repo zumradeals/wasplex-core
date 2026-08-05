@@ -2,83 +2,30 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
-@source '../js/**/*.vue';
 
 @theme {
+    /*
+     * Pile de polices système : aucune police distante n'est chargée au
+     * build ni au runtime (docs/00-identite-visuelle-wasplex.md n'impose
+     * pas de police propriétaire pour P000).
+     */
     --font-sans:
-        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --color-wasplex-night: #071627;
-    --color-wasplex-blue: #1769ff;
-    --color-wasplex-cyan: #19c7ff;
-    --color-wasplex-orange: #ff7a1a;
-    --color-wasplex-gold: #f7c948;
-    --shadow-glow: 0 0 34px rgb(25 199 255 / 0.28);
-}
+        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
 
-:root {
-    color-scheme: dark;
-    background: var(--color-wasplex-night);
-    font-synthesis: none;
-}
+    /* Tokens visuels Wasplex — docs/00-identite-visuelle-wasplex.md */
+    --color-wasplex-gold: #d4a017;
+    --color-wasplex-black: #0b0b0c;
+    --color-wasplex-white: #ffffff;
+    --color-wasplex-surface: #f7f6f3;
+    --color-wasplex-success: #1a7f4b;
+    --color-wasplex-warning: #b8791f;
+    --color-wasplex-danger: #c22a2a;
+    --color-wasplex-info: #1f6fb8;
 
-body {
-    margin: 0;
-    min-width: 320px;
-}
+    --radius-wasplex-sm: 0.5rem;
+    --radius-wasplex-md: 0.75rem;
+    --radius-wasplex-lg: 1rem;
 
-button,
-input {
-    font: inherit;
-}
-
-button:not(:disabled) {
-    cursor: pointer;
-}
-
-button:disabled {
-    cursor: wait;
-    opacity: 0.6;
-}
-
-@utility wasplex-input {
-    width: 100%;
-    border: 1px solid rgb(255 255 255 / 0.1);
-    border-radius: 1rem;
-    background: rgb(255 255 255 / 0.055);
-    padding: 0.9rem 1rem;
-    color: white;
-    outline: none;
-    transition:
-        border-color 150ms ease,
-        box-shadow 150ms ease;
-
-    &::placeholder {
-        color: rgb(255 255 255 / 0.25);
-    }
-
-    &:focus {
-        border-color: rgb(25 199 255 / 0.55);
-        box-shadow: 0 0 0 3px rgb(25 199 255 / 0.1);
-    }
-}
-
-@utility wasplex-button-primary {
-    border-radius: 1rem;
-    background: linear-gradient(135deg, var(--color-wasplex-cyan), var(--color-wasplex-blue));
-    padding: 0.9rem 1.25rem;
-    font-size: 0.875rem;
-    font-weight: 900;
-    color: var(--color-wasplex-night);
-    box-shadow: 0 16px 34px rgb(23 105 255 / 0.22);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        scroll-behavior: auto !important;
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-    }
+    --shadow-wasplex-card: 0 1px 2px rgba(11, 11, 12, 0.06), 0 8px 24px rgba(11, 11, 12, 0.08);
 }

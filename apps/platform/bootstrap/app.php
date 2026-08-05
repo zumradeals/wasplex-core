@@ -1,21 +1,16 @@
 <?php
 
+use App\Http\Middleware\AssignTraceId;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
-use App\Http\Middleware\TraceRequest;
-use App\Modules\Identity\Http\Middleware\EnsureAccountSessionActive;
-use App\Modules\Identity\Http\Middleware\RequireCapability;
-use App\Modules\Identity\Http\Middleware\RequireRecentMfa;
-use App\Modules\Identity\Http\Middleware\RequireSpaceKind;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
-use Illuminate\Cookie\Middleware\EncryptCookies;
+use App\Shared\Http\ApiErrorResponse;
+use App\Shared\Http\AppException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
-use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,29 +20,42 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->validateCsrfTokens(except: ['api/webhooks/geniuspay']);
-        $middleware->alias([
-            'identity.session' => EnsureAccountSessionActive::class,
-            'capability' => RequireCapability::class,
-            'mfa.recent' => RequireRecentMfa::class,
-            'space.kind' => RequireSpaceKind::class,
-        ]);
-        $middleware->append(TraceRequest::class);
+        $middleware->append(AssignTraceId::class);
         $middleware->append(SecurityHeaders::class);
-        $middleware->api(prepend: [
-            EncryptCookies::class,
-            AddQueuedCookiesToResponse::class,
-            StartSession::class,
-            ValidateCsrfToken::class,
-        ]);
-        $middleware->web(append: [
-            HandleInertiaRequests::class,
-            AddLinkHeadersForPreloadedAssets::class,
-        ]);
+        $middleware->web(append: [HandleInertiaRequests::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request): bool => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*'),
         );
-    })
-    ->create();
+
+        $exceptions->render(function (AppException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiErrorResponse::make($request, $e->errorCode, $e->getMessage(), $e->details, $e->status);
+            }
+        });
+
+        $exceptions->render(function (ValidationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiErrorResponse::make(
+                    $request,
+                    'VALIDATION_FAILED',
+                    'La requête contient des données invalides.',
+                    ['errors' => $e->errors()],
+                    $e->status,
+                );
+            }
+        });
+
+        $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiErrorResponse::make(
+                    $request,
+                    'HTTP_'.$e->getStatusCode(),
+                    $e->getMessage() ?: 'Erreur inattendue.',
+                    [],
+                    $e->getStatusCode(),
+                );
+            }
+        });
+    })->create();

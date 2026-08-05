@@ -1,82 +1,25 @@
 <?php
 
-arch('application code uses strict domain namespaces')
-    ->expect('App\Modules')
-    ->toOnlyUse([
-        'App\Modules',
-        'Illuminate',
-        'Inertia',
-        'Psr',
-        'Carbon',
-        'Symfony',
-        'Symfony\Component\HttpFoundation\Response',
-        'Closure',
-        'DateTimeInterface',
-        'DateTimeImmutable',
-        'Exception',
-        'InvalidArgumentException',
-        'JsonException',
-        'LogicException',
-        'RuntimeException',
-        'Throwable',
-        'abs',
-        'array_filter',
-        'array_is_list',
-        'array_keys',
-        'array_map',
-        'array_unique',
-        'array_values',
-        'abort',
-        'abort_if',
-        'abort_unless',
-        'app',
-        'back',
-        'bindec',
-        'chr',
-        'config',
-        'count',
-        'ctype_digit',
-        'decbin',
-        'event',
-        'filter_var',
-        'hash',
-        'hash_equals',
-        'hash_hmac',
-        'intdiv',
-        'implode',
-        'in_array',
-        'intval',
-        'is_array',
-        'is_scalar',
-        'is_string',
-        'json_decode',
-        'json_encode',
-        'ksort',
-        'max',
-        'min',
-        'now',
-        'ord',
-        'pack',
-        'parse_url',
-        'preg_match',
-        'random_bytes',
-        'rawurlencode',
-        'redirect',
-        'response',
-        'rtrim',
-        'route',
-        'str_contains',
-        'str_pad',
-        'str_split',
-        'strtoupper',
-        'strlen',
-        'strpos',
-        'strtolower',
-        'time',
-        'trim',
-        'usort',
-    ]);
+declare(strict_types=1);
 
-arch('module infrastructure is not a model namespace')
-    ->expect('App\Modules\Platform\Infrastructure')
-    ->not->toHaveSuffix('Model');
+/*
+ * NOTE: arch expectations target App\Http and App\Shared explicitly rather
+ * than the whole "App" namespace. vendor/laravel/pint's own source code
+ * happens to live under the same "App" namespace (Kernel, Providers,
+ * Fixers, ...), and pestphp/pest-plugin-arch crashes (uninitialized
+ * ObjectDescriptionBase::$path) when a violation must be reported against
+ * one of those vendor-sourced "App" classes. Scoping to our real
+ * sub-namespaces avoids the collision entirely.
+ */
+
+arch('app HTTP and shared kernel code declare strict types')
+    ->expect(['App\Http', 'App\Shared'])
+    ->toUseStrictTypes();
+
+arch('app HTTP and shared kernel code never leave debugging statements behind')
+    ->expect(['App\Http', 'App\Shared'])
+    ->not->toUse(['dd', 'dump', 'ray', 'var_dump']);
+
+arch('app HTTP and shared kernel code do not depend on test helpers')
+    ->expect(['App\Http', 'App\Shared'])
+    ->not->toUse('Tests');

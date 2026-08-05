@@ -1,39 +1,36 @@
-import eslint from '@eslint/js';
-import stylistic from '@stylistic/eslint-plugin';
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript';
-import prettier from 'eslint-config-prettier/flat';
-import importPlugin from 'eslint-plugin-import';
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
 import vue from 'eslint-plugin-vue';
+import vueParser from 'vue-eslint-parser';
+import prettier from 'eslint-config-prettier';
+import globals from 'globals';
 
-export default defineConfigWithVueTs(
-    eslint.configs.recommended,
-    vue.configs['flat/essential'],
-    vueTsConfigs.recommended,
+export default tseslint.config(
+    { ignores: ['vendor/**', 'node_modules/**', 'public/build/**', 'bootstrap/cache/**', 'storage/**'] },
+    js.configs.recommended,
+    ...tseslint.configs.recommended,
+    ...vue.configs['flat/recommended'],
     {
-        plugins: {
-            '@stylistic': stylistic,
-            import: importPlugin,
-        },
-        settings: {
-            'import/resolver': {
-                typescript: { project: './tsconfig.json' },
-                node: true,
+        files: ['**/*.vue'],
+        languageOptions: {
+            parser: vueParser,
+            parserOptions: {
+                parser: tseslint.parser,
+                extraFileExtensions: ['.vue'],
             },
-        },
-        rules: {
-            '@typescript-eslint/consistent-type-imports': 'error',
-            'import/order': [
-                'error',
-                {
-                    alphabetize: { order: 'asc', caseInsensitive: true },
-                    groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-                },
-            ],
-            'vue/multi-word-component-names': 'off',
         },
     },
     {
-        ignores: ['node_modules', 'public', 'vendor', 'resources/js/actions/**', 'resources/js/routes/**'],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                route: 'readonly',
+            },
+        },
+        rules: {
+            'vue/multi-word-component-names': 'off',
+        },
     },
     prettier,
 );

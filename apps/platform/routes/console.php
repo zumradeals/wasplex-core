@@ -1,13 +1,8 @@
 <?php
 
+use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('wasplex:about', function (): void {
-    $this->info('Wasplex platform foundation is ready.');
-})->purpose('Display the Wasplex platform foundation status');
-
-Schedule::command('wallet:expire-reservations')
-    ->everyMinute()
-    ->withoutOverlapping()
-    ->onOneServer();
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');

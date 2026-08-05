@@ -1,23 +1,15 @@
 {
+    "extends": "@vue/tsconfig/tsconfig.dom.json",
     "compilerOptions": {
-        "allowJs": false,
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "isolatedModules": true,
-        "jsx": "preserve",
-        "jsxImportSource": "vue",
-        "lib": ["ESNext", "DOM", "DOM.Iterable"],
-        "module": "ESNext",
-        "moduleResolution": "bundler",
-        "noEmit": true,
+        "baseUrl": ".",
         "paths": {
-            "@/*": ["./resources/js/*"]
+            "@/*": ["resources/js/*"]
         },
-        "resolveJsonModule": true,
-        "skipLibCheck": true,
+        "types": ["vite/client"],
         "strict": true,
-        "target": "ESNext",
-        "types": ["vite/client"]
+        "noUnusedLocals": true,
+        "noUnusedParameters": true
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.vue", "vite.config.ts"]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.vue"],
+    "exclude": ["node_modules", "public", "vendor"]
 }

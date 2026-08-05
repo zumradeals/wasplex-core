@@ -2,18 +2,20 @@
 
 **Roadmap :** [IMPLEMENTATION-ROADMAP-WASPLEX.md](./IMPLEMENTATION-ROADMAP-WASPLEX.md)
 
+**Réinitialisation du 2026-08-05 :** le code applicatif précédent (`apps/platform`, CI, infra) a été retiré du dépôt sur décision du fondateur pour une reconstruction intégrale à partir du corpus `docs/`, traité comme jamais codé. L'historique complet reste consultable au commit `aa6cb1a60c2e43308066fb267cad76b38d689e1c` de la branche `claude/wasplex-reconstruction-7ujym7`. Les statuts ci-dessous sont réinitialisés en conséquence ; les rapports historiques dans `docs/chantiers/` restent conservés comme trace d'audit mais ne décrivent plus l'état réel du dépôt.
+
 | Chantier | Titre | Dépendances | Phase | Statut actuel |
 |---|---|---|---|---|
-| P000 | Socle du dépôt et stack | — | Noyau | Déployé |
-| P001 | Compte, espaces, capacités et shells | P000 | Noyau | Déployé |
-| P002 | Grand Livre minimal | P001 | Noyau | Déployé |
-| P003 | Wallet, projections et réservations | P002 | Noyau | Déployé |
-| P004 | Configurations, plans et classes | P001, P003 | Noyau | Déployé |
-| P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | Déployé |
-| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | Déployé |
-| P007 | Revue administrative | P006 | Annonceur | Déployé |
-| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | Déployé |
-| P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | En cours |
+| P000 | Socle du dépôt et stack | — | Noyau | ready_for_review |
+| P001 | Compte, espaces, capacités et shells | P000 | Noyau | En attente (réinitialisé) |
+| P002 | Grand Livre minimal | P001 | Noyau | En attente (réinitialisé) |
+| P003 | Wallet, projections et réservations | P002 | Noyau | En attente (réinitialisé) |
+| P004 | Configurations, plans et classes | P001, P003 | Noyau | En attente (réinitialisé) |
+| P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | En attente (réinitialisé) |
+| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | En attente (réinitialisé) |
+| P007 | Revue administrative | P006 | Annonceur | En attente (réinitialisé) |
+| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En attente (réinitialisé) |
+| P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | En attente (réinitialisé) |
 | P010 | Antifraude, preuves renforcées et reprise | P009 | Valeur et confiance | En attente |
 | P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | En attente |
 | P012 | Reporting et dashboards | P007, P009, P011 | Pilotage | En attente |
