@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    /*
+     * Pile de polices système : aucune police distante n'est chargée au
+     * build ni au runtime (docs/00-identite-visuelle-wasplex.md n'impose
+     * pas de police propriétaire pour P000).
+     */
+    --font-sans:
+        ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    /* Tokens visuels Wasplex — docs/00-identite-visuelle-wasplex.md */
+    --color-wasplex-gold: #d4a017;
+    --color-wasplex-black: #0b0b0c;
+    --color-wasplex-white: #ffffff;
+    --color-wasplex-surface: #f7f6f3;
+    --color-wasplex-success: #1a7f4b;
+    --color-wasplex-warning: #b8791f;
+    --color-wasplex-danger: #c22a2a;
+    --color-wasplex-info: #1f6fb8;
+
+    --radius-wasplex-sm: 0.5rem;
+    --radius-wasplex-md: 0.75rem;
+    --radius-wasplex-lg: 1rem;
+
+    --shadow-wasplex-card: 0 1px 2px rgba(11, 11, 12, 0.06), 0 8px 24px rgba(11, 11, 12, 0.08);
+}

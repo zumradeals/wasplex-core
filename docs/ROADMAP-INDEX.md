@@ -6,7 +6,7 @@
 
 | Chantier | Titre | Dépendances | Phase | Statut actuel |
 |---|---|---|---|---|
-| P000 | Socle du dépôt et stack | — | Noyau | En attente (réinitialisé) |
+| P000 | Socle du dépôt et stack | — | Noyau | ready_for_review |
 | P001 | Compte, espaces, capacités et shells | P000 | Noyau | En attente (réinitialisé) |
 | P002 | Grand Livre minimal | P001 | Noyau | En attente (réinitialisé) |
 | P003 | Wallet, projections et réservations | P002 | Noyau | En attente (réinitialisé) |
