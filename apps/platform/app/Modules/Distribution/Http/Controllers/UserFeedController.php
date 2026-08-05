@@ -12,11 +12,11 @@ use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
 
-final readonly class UserFeedController extends Controller
+final class UserFeedController extends Controller
 {
     public function __construct(
-        private WalletCatalog $wallets,
-        private WalletPresenter $walletPresenter,
+        private readonly WalletCatalog $wallets,
+        private readonly WalletPresenter $walletPresenter,
     ) {}
 
     public function __invoke(Request $request): Response
