@@ -476,7 +476,7 @@ jobs:
           required = [
               'campaign_name: string | null;',
               'const advancingDelivery = ref(false);',
-              'Aucun second quota ne sera consommé.',
+              'aucun second quota ne sera consommé.',
               "delivery.brand_name || delivery.campaign_name",
               "delivery.cta_label || 'Découvrir'",
               ':disabled="advancingDelivery"',
