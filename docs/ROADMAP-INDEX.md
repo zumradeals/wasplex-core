@@ -12,10 +12,10 @@
 | P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | Déployé |
 | P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | Déployé |
 | P007 | Revue administrative | P006 | Annonceur | Déployé |
-| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En cours |
-| P009 | Feed et livraison publicitaire | P005, P007, P008 | Distribution | En attente |
-| P010 | Attention et moteur de valeur | P003, P006, P009 | Valeur | En attente |
-| P011 | Crédit Wallet et temps réel | P002, P003, P010 | Valeur | En attente |
+| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | Déployé |
+| P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | En cours |
+| P010 | Antifraude, preuves renforcées et reprise | P009 | Valeur et confiance | En attente |
+| P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | En attente |
 | P012 | Reporting et dashboards | P007, P009, P011 | Pilotage | En attente |
 | P013 | Stabilisation première verticale | P000-P012 | Stabilisation | En attente |
 | P014 | Fonds | P003, P004, P011, P012 | Extension | En attente |
@@ -26,6 +26,21 @@
 | P019 | Espaces professionnels/institutionnels | P001, P012 | Extension | En attente |
 | P020 | Communication, modération et risques | P001, P011, P012 | Extension | En attente |
 | P021 | Intégrations et production | modules stabilisés | Production | En attente |
+
+## Décision fondatrice P009
+
+La première verticale publicitaire ne sépare plus artificiellement le Feed, l’attention et le premier crédit Wallet en trois produits indépendants. P009 est livré par sous-phases, mais doit démontrer un seul parcours cohérent :
+
+```text
+Matching éligible
+→ livraison Feed
+→ gain annoncé et réservé
+→ attention validée côté serveur
+→ transaction Grand Livre
+→ Wallet utilisateur crédité automatiquement
+```
+
+Le navigateur ne crée jamais de WP. P010 renforce ensuite l’antifraude et la reprise ; P011 industrialise le temps réel, le rapprochement et les sorties de valeur.
 
 ## Statuts autorisés
 
