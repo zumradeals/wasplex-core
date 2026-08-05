@@ -43,6 +43,17 @@
         <env name="REDIS_HOST" value="127.0.0.1"/>
         <env name="REDIS_PORT" value="6379"/>
         <env name="FILESYSTEM_DISK" value="local"/>
+        <!--
+            GeniusPay is always mocked via Http::fake() in tests
+            (docs/chantiers/P003-CHANTIER.md) — these values only need to
+            satisfy GeniusPayAdapter's own boot-time safety checks (HTTPS
+            base URL, sandbox environment, no "live" in the key).
+        -->
+        <env name="GENIUSPAY_ENVIRONMENT" value="sandbox"/>
+        <env name="GENIUSPAY_BASE_URL" value="https://geniuspay.ci/api/v1/merchant"/>
+        <env name="GENIUSPAY_MERCHANT_KEY" value="sandbox_test_key"/>
+        <env name="GENIUSPAY_WEBHOOK_SECRET" value="sandbox_test_secret"/>
+        <env name="GENIUSPAY_CHECKOUT_HOSTS" value="geniuspay.ci,pay.genius.ci"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

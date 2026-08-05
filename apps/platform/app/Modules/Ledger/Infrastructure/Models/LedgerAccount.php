@@ -18,6 +18,8 @@ final class LedgerAccount extends Model
 
     public const OWNER_TYPE_IDENTITY_ACCOUNT = 'identity_account';
 
+    public const OWNER_TYPE_ORGANIZATION = 'organization';
+
     /** Fixed owner_id sentinel for system-wide accounts (docs/CLAUDE.md #6: no cross-module FK). */
     public const SYSTEM_OWNER_ID = 'wasplex';
 

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
+import AdvertiserWalletPanel from '@/Components/AdvertiserWalletPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
 
@@ -108,7 +109,10 @@ async function logout(): Promise<void> {
             </header>
 
             <main class="flex-1 p-6">
-                <section v-if="activeSection === 'team'" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
+                <section v-if="activeSection === 'wallet'">
+                    <AdvertiserWalletPanel />
+                </section>
+                <section v-else-if="activeSection === 'team'" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
                     <h2 class="text-wpx-text mb-3 text-sm font-semibold">Membres de l'organisation</h2>
                     <p v-if="loadingMembers" class="text-wpx-text-muted text-sm">Chargement…</p>
                     <ul v-else class="flex flex-col gap-2 text-sm">

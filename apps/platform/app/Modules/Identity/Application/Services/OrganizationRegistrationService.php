@@ -52,15 +52,21 @@ final class OrganizationRegistrationService
                 'joined_at' => now(),
             ]);
 
-            CapabilityGrant::create([
-                'account_id' => $creator->id,
-                'capability_code' => 'organization.manage.self',
-                'scope_type' => CapabilityGrant::SCOPE_ORGANIZATION,
-                'scope_id' => $organization->id,
-                'status' => 'active',
-                'starts_at' => now(),
-                'granted_by' => $creator->id,
-            ]);
+            // wallet.* codes belong to docs/chantiers/P003-CHANTIER.md;
+            // Identity only knows them as opaque strings, granted to the
+            // owner the same way organization.manage.self is (the
+            // capability system stays domain-agnostic, docs/CLAUDE.md #6).
+            foreach (['organization.manage.self', 'advertiser.wallet.view', 'advertiser.wallet.deposit.create'] as $capability) {
+                CapabilityGrant::create([
+                    'account_id' => $creator->id,
+                    'capability_code' => $capability,
+                    'scope_type' => CapabilityGrant::SCOPE_ORGANIZATION,
+                    'scope_id' => $organization->id,
+                    'status' => 'active',
+                    'starts_at' => now(),
+                    'granted_by' => $creator->id,
+                ]);
+            }
 
             return $organization->refresh();
         });
