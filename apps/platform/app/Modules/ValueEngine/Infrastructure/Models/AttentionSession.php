@@ -34,6 +34,8 @@ final class AttentionSession extends Model
 {
     use HasUlids;
 
+    protected $table = 'value_attention_sessions';
+
     protected $fillable = [
         'value_attempt_id',
         'account_id',
