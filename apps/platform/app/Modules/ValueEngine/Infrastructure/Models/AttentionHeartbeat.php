@@ -24,6 +24,8 @@ final class AttentionHeartbeat extends Model
 {
     use HasUlids;
 
+    protected $table = 'value_attention_heartbeats';
+
     protected $fillable = [
         'value_attention_session_id',
         'sequence',
