@@ -179,14 +179,10 @@ const navigation = [
                             href="/administration/publicite/catalogue"
                             class="block rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.055] p-7 transition hover:border-emerald-400/40 hover:bg-emerald-400/[0.08]"
                         >
-                            <p
-                                class="text-xs font-bold tracking-widest text-emerald-300 uppercase"
-                            >
+                            <p class="text-xs font-bold tracking-widest text-emerald-300 uppercase">
                                 P008-R · Profil intelligent
                             </p>
-                            <h2 class="mt-4 text-2xl font-black">
-                                Piloter le catalogue du profil
-                            </h2>
+                            <h2 class="mt-4 text-2xl font-black">Piloter le catalogue du profil</h2>
                             <p class="mt-4 text-sm leading-6 text-white/45">
                                 Administrer les secteurs, centres d’intérêt, questions, marchés,
                                 durées de fraîcheur et règles d’assistance IA.
