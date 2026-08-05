@@ -5,6 +5,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use App\Shared\Http\ApiErrorResponse;
 use App\Shared\Http\AppException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -32,6 +33,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AppException $e, Request $request) {
             if ($request->is('api/*')) {
                 return ApiErrorResponse::make($request, $e->errorCode, $e->getMessage(), $e->details, $e->status);
+            }
+        });
+
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return ApiErrorResponse::make($request, 'UNAUTHENTICATED', 'Authentification requise.', status: 401);
             }
         });
 
