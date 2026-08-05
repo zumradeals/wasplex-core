@@ -123,7 +123,7 @@ const identifier = (prefix: string) => {
 const endpoint = (template: string, marker: string, value: string) =>
     template.replace(marker, encodeURIComponent(value));
 
-const api = async <T>(
+const api = async <T,>(
     url: string,
     method: 'POST' | 'GET',
     idempotencyKey?: string,
@@ -152,7 +152,10 @@ const api = async <T>(
     };
 
     if (!response.ok || payload.data === undefined) {
-        throw new FeedApiError(payload.message ?? 'Le Feed est momentanément indisponible.', response.status);
+        throw new FeedApiError(
+            payload.message ?? 'Le Feed est momentanément indisponible.',
+            response.status,
+        );
     }
 
     return payload.data;
@@ -289,6 +292,12 @@ const confirmCurrent = async () => {
 
 const mediaReady = async () => {
     clearMediaTimer();
+
+    if (document.hidden) {
+        state.value = 'paused';
+        return;
+    }
+
     await confirmCurrent();
 };
 
@@ -317,7 +326,9 @@ const prepareNext = async (retrySession = true) => {
         delivery.value = prepared;
         state.value = 'media_loading';
         mediaTimer = window.setTimeout(() => {
-            void mediaFailure('Le média met trop de temps à répondre. Aucun quota n’a été consommé.');
+            void mediaFailure(
+                'Le média met trop de temps à répondre. Aucun quota n’a été consommé.',
+            );
         }, props.feedConfig.mediaLoadTimeoutMs);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Le Feed ne peut pas être chargé.';
@@ -394,16 +405,20 @@ const toggleDataSaver = () => {
 };
 
 const onVisibilityChange = () => {
-    if (!video.value || delivery.value?.creative_type !== 'video') {
+    if (document.hidden) {
+        video.value?.pause();
+        if (delivery.value && ['prepared', 'delivered'].includes(delivery.value.status)) {
+            state.value = 'paused';
+        }
         return;
     }
 
-    if (document.hidden) {
-        video.value.pause();
-        if (state.value === 'active') {
-            state.value = 'paused';
-        }
-    } else if (state.value === 'paused') {
+    if (delivery.value?.status === 'prepared' && state.value === 'paused') {
+        void confirmCurrent();
+        return;
+    }
+
+    if (delivery.value?.creative_type === 'video' && video.value && state.value === 'paused') {
         state.value = 'active';
         void video.value.play().catch(() => {
             autoplayBlocked.value = true;
@@ -459,26 +474,44 @@ onBeforeUnmount(() => {
         active="feed"
         :immersive="true"
     >
-        <section class="grid min-h-[calc(100dvh-8.8rem)] lg:grid-cols-[16rem_minmax(22rem,30rem)_16rem] lg:justify-center lg:gap-5 lg:p-5">
-            <aside class="hidden rounded-[2rem] border border-white/8 bg-white/[0.035] p-5 lg:block">
-                <p class="text-xs font-black tracking-[0.2em] text-wasplex-cyan uppercase">Pour toi</p>
+        <section
+            class="grid min-h-[calc(100dvh-8.8rem)] lg:grid-cols-[16rem_minmax(22rem,30rem)_16rem] lg:justify-center lg:gap-5 lg:p-5"
+        >
+            <aside
+                class="hidden rounded-[2rem] border border-white/8 bg-white/[0.035] p-5 lg:block"
+            >
+                <p class="text-xs font-black tracking-[0.2em] text-wasplex-cyan uppercase">
+                    Pour toi
+                </p>
                 <h1 class="mt-3 text-2xl font-black">Bonjour {{ account.displayName }}</h1>
                 <p class="mt-3 text-sm leading-6 text-white/42">
-                    Des publicités compatibles avec vos choix, sans transmettre votre identité aux annonceurs.
+                    Des publicités compatibles avec vos choix, sans transmettre votre identité aux
+                    annonceurs.
                 </p>
-                <div class="mt-6 rounded-2xl border border-wasplex-gold/15 bg-wasplex-gold/[0.055] p-4">
+                <div
+                    class="mt-6 rounded-2xl border border-wasplex-gold/15 bg-wasplex-gold/[0.055] p-4"
+                >
                     <p class="text-xs font-black text-wasplex-gold">Gain potentiel</p>
                     <p class="mt-2 text-xl font-black">{{ gainLabel }}</p>
                     <p class="mt-2 text-xs leading-5 text-white/38">
-                        Ce montant n’est pas acquis. La validation d’attention et le crédit Wallet restent côté serveur.
+                        Ce montant n’est pas acquis. La validation d’attention et le crédit Wallet
+                        restent côté serveur.
                     </p>
                 </div>
             </aside>
 
-            <div class="relative flex min-h-0 flex-col overflow-hidden bg-black lg:rounded-[2rem] lg:border lg:border-white/10">
-                <div class="absolute top-0 right-0 left-0 z-20 flex items-center justify-between bg-gradient-to-b from-black/75 to-transparent px-4 pt-4 pb-10">
-                    <div class="flex gap-2 rounded-full bg-black/35 p-1 text-xs font-black backdrop-blur-lg">
-                        <span class="rounded-full bg-white px-3 py-1.5 text-wasplex-night">Pour toi</span>
+            <div
+                class="relative flex min-h-0 flex-col overflow-hidden bg-black lg:rounded-[2rem] lg:border lg:border-white/10"
+            >
+                <div
+                    class="absolute top-0 right-0 left-0 z-20 flex items-center justify-between bg-gradient-to-b from-black/75 to-transparent px-4 pt-4 pb-10"
+                >
+                    <div
+                        class="flex gap-2 rounded-full bg-black/35 p-1 text-xs font-black backdrop-blur-lg"
+                    >
+                        <span class="rounded-full bg-white px-3 py-1.5 text-wasplex-night"
+                            >Pour toi</span
+                        >
                         <span class="px-3 py-1.5 text-white/45">Alertes</span>
                         <span class="px-3 py-1.5 text-white/45">Explorer</span>
                     </div>
@@ -500,7 +533,11 @@ onBeforeUnmount(() => {
                             class="h-full max-h-[calc(100dvh-8.8rem)] w-full object-contain"
                             alt="Création publicitaire"
                             @load="mediaReady"
-                            @error="mediaFailure('Cette image ne peut pas être affichée. Aucun quota n’a été consommé.')"
+                            @error="
+                                mediaFailure(
+                                    'Cette image ne peut pas être affichée. Aucun quota n’a été consommé.',
+                                )
+                            "
                         />
                         <video
                             v-else
@@ -512,7 +549,11 @@ onBeforeUnmount(() => {
                             :preload="dataSaver ? 'metadata' : 'auto'"
                             aria-label="Vidéo publicitaire"
                             @canplay="mediaReady"
-                            @error="mediaFailure('Cette vidéo ne peut pas être lue. Aucun quota n’a été consommé.')"
+                            @error="
+                                mediaFailure(
+                                    'Cette vidéo ne peut pas être lue. Aucun quota n’a été consommé.',
+                                )
+                            "
                         />
                     </template>
 
@@ -522,8 +563,12 @@ onBeforeUnmount(() => {
                         role="status"
                         aria-live="polite"
                     >
-                        <div class="mx-auto grid size-16 place-items-center rounded-full border border-wasplex-cyan/20 bg-wasplex-cyan/[0.07] text-2xl text-wasplex-cyan">
-                            {{ state === 'offline' ? '⌁' : state === 'quota_exhausted' ? '✓' : '▶' }}
+                        <div
+                            class="mx-auto grid size-16 place-items-center rounded-full border border-wasplex-cyan/20 bg-wasplex-cyan/[0.07] text-2xl text-wasplex-cyan"
+                        >
+                            {{
+                                state === 'offline' ? '⌁' : state === 'quota_exhausted' ? '✓' : '▶'
+                            }}
                         </div>
                         <h2 class="mt-5 text-xl font-black">{{ stateLabel }}</h2>
                         <p class="mt-3 text-sm leading-6 text-white/45">
@@ -541,7 +586,7 @@ onBeforeUnmount(() => {
                         <button
                             v-if="['failed', 'empty', 'offline'].includes(state)"
                             type="button"
-                            class="wasplex-button-primary mt-6"
+                            class="mt-6 wasplex-button-primary"
                             @click="prepareNext()"
                         >
                             Réessayer
@@ -554,9 +599,13 @@ onBeforeUnmount(() => {
                         role="status"
                     >
                         <div class="text-center">
-                            <div class="mx-auto size-10 animate-spin rounded-full border-2 border-white/15 border-t-wasplex-cyan motion-reduce:animate-none" />
+                            <div
+                                class="mx-auto size-10 animate-spin rounded-full border-2 border-white/15 border-t-wasplex-cyan motion-reduce:animate-none"
+                            />
                             <p class="mt-4 text-sm font-black">{{ stateLabel }}</p>
-                            <p class="mt-2 text-xs text-white/45">Le préchargement seul ne consomme aucun quota.</p>
+                            <p class="mt-2 text-xs text-white/45">
+                                Le préchargement seul ne consomme aucun quota.
+                            </p>
                         </div>
                     </div>
 
@@ -570,15 +619,28 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
 
-                <div v-if="delivery" class="pointer-events-none absolute right-0 bottom-0 left-0 z-20 bg-gradient-to-t from-black via-black/72 to-transparent px-4 pt-28 pb-4">
+                <div
+                    v-if="delivery"
+                    class="pointer-events-none absolute right-0 bottom-0 left-0 z-20 bg-gradient-to-t from-black via-black/72 to-transparent px-4 pt-28 pb-4"
+                >
                     <div class="pointer-events-auto flex items-end justify-between gap-4">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="rounded-full bg-wasplex-gold px-2.5 py-1 text-[0.62rem] font-black text-wasplex-night">PUBLICITÉ</span>
-                                <span class="rounded-full bg-white/10 px-2.5 py-1 text-[0.62rem] font-black text-white/70">{{ gainLabel }} potentiel</span>
+                                <span
+                                    class="rounded-full bg-wasplex-gold px-2.5 py-1 text-[0.62rem] font-black text-wasplex-night"
+                                    >PUBLICITÉ</span
+                                >
+                                <span
+                                    class="rounded-full bg-white/10 px-2.5 py-1 text-[0.62rem] font-black text-white/70"
+                                    >{{ gainLabel }} potentiel</span
+                                >
                             </div>
-                            <p class="mt-3 text-sm font-black">Quota restant : {{ delivery.quota_remaining }}</p>
-                            <p class="mt-1 text-xs text-white/48">La preuve d’attention sera traitée dans la phase suivante.</p>
+                            <p class="mt-3 text-sm font-black">
+                                Quota restant : {{ delivery.quota_remaining }}
+                            </p>
+                            <p class="mt-1 text-xs text-white/48">
+                                La preuve d’attention sera traitée dans la phase suivante.
+                            </p>
                             <div class="mt-4 flex flex-wrap gap-2">
                                 <a
                                     v-if="delivery.cta_reference"
@@ -635,16 +697,25 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <aside class="hidden rounded-[2rem] border border-white/8 bg-white/[0.035] p-5 lg:block">
-                <p class="text-xs font-black tracking-[0.2em] text-white/35 uppercase">Transparence</p>
+            <aside
+                class="hidden rounded-[2rem] border border-white/8 bg-white/[0.035] p-5 lg:block"
+            >
+                <p class="text-xs font-black tracking-[0.2em] text-white/35 uppercase">
+                    Transparence
+                </p>
                 <p class="mt-4 text-sm font-black">Votre identité reste privée</p>
                 <p class="mt-2 text-xs leading-5 text-white/40">
-                    Le Feed reçoit une décision de Matching et une explication autorisée, jamais vos réponses complètes.
+                    Le Feed reçoit une décision de Matching et une explication autorisée, jamais vos
+                    réponses complètes.
                 </p>
                 <div class="mt-6 space-y-3 text-xs text-white/45">
                     <p class="rounded-2xl border border-white/8 p-3">Préchargement : zéro quota</p>
-                    <p class="rounded-2xl border border-white/8 p-3">Affichage réel : une unité maximum</p>
-                    <p class="rounded-2xl border border-white/8 p-3">Crédit Wallet : serveur uniquement</p>
+                    <p class="rounded-2xl border border-white/8 p-3">
+                        Affichage réel : une unité maximum
+                    </p>
+                    <p class="rounded-2xl border border-white/8 p-3">
+                        Crédit Wallet : serveur uniquement
+                    </p>
                 </div>
             </aside>
         </section>
