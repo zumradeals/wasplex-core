@@ -3,12 +3,14 @@
 namespace App\Modules\Distribution\Http\Controllers;
 
 use App\Modules\Distribution\Application\Services\AdvertisingDeliveryService;
+use App\Modules\Distribution\Application\Services\FeedInteractionService;
 use App\Modules\Distribution\Infrastructure\Models\AdvertisingDelivery;
 use App\Modules\Distribution\Infrastructure\Models\FeedSession;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 final class AdvertisingDeliveryController extends Controller
@@ -39,6 +41,40 @@ final class AdvertisingDeliveryController extends Controller
                 'expires_at' => $session->expires_at->toIso8601String(),
             ],
         ], 201);
+    }
+
+    public function prepare(
+        Request $request,
+        FeedSession $session,
+        AdvertisingDeliveryService $deliveries,
+    ): JsonResponse {
+        $account = $this->account($request);
+        $prepared = $deliveries->reserveNext(
+            $account,
+            $session,
+            $this->idempotencyKey($request),
+        );
+
+        return response()->json([
+            'data' => $deliveries->present($account, $prepared),
+        ], 201);
+    }
+
+    public function confirm(
+        Request $request,
+        AdvertisingDelivery $delivery,
+        AdvertisingDeliveryService $deliveries,
+    ): JsonResponse {
+        $account = $this->account($request);
+        $delivered = $deliveries->deliver(
+            $account,
+            $delivery,
+            $this->idempotencyKey($request),
+        );
+
+        return response()->json([
+            'data' => $deliveries->present($account, $delivered),
+        ]);
     }
 
     public function next(
@@ -82,6 +118,32 @@ final class AdvertisingDeliveryController extends Controller
 
         return response()->json([
             'data' => $deliveries->present($account, $released),
+        ]);
+    }
+
+    public function dismiss(
+        Request $request,
+        AdvertisingDelivery $delivery,
+        AdvertisingDeliveryService $deliveries,
+        FeedInteractionService $interactions,
+    ): JsonResponse {
+        $account = $this->account($request);
+        $validated = $request->validate([
+            'reason' => [
+                'nullable',
+                'string',
+                Rule::in(['skipped', 'not_relevant', 'technical_issue']),
+            ],
+        ]);
+        $dismissed = $interactions->dismiss(
+            $account,
+            $delivery,
+            $this->idempotencyKey($request),
+            $validated['reason'] ?? 'skipped',
+        );
+
+        return response()->json([
+            'data' => $deliveries->present($account, $dismissed),
         ]);
     }
 
