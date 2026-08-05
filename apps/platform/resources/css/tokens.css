@@ -1,0 +1,72 @@
+/*
+ * Tokens de marque Wasplex — source unique : docs/00-identite-visuelle-wasplex.md §21.
+ * Aucune valeur ici ne doit être dupliquée en dur dans les composants Vue ;
+ * toute couleur/rayon/ombre de marque doit passer par une classe Tailwind
+ * générée à partir de ce bloc @theme (ex. bg-wpx-navy-950, rounded-wpx-lg).
+ */
+@theme {
+    --font-sans: 'InterVariable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+
+    /* Thème sombre — identité principale de l'application utilisateur (§6) */
+    --color-wpx-navy-950: #07182d;
+    --color-wpx-navy-850: #0e2542;
+    --color-wpx-navy-750: #173251;
+    --color-wpx-border-dark: #35506d;
+    --color-wpx-white-soft: #f5f8fc;
+    --color-wpx-muted-dark: #a9b7c8;
+
+    /* Accents de marque — valeurs vives pour fond sombre (§6.1) */
+    --color-wpx-blue: #4fa3ff;
+    --color-wpx-cyan: #2bc4de;
+    --color-wpx-orange: #ff9a3d;
+    --color-wpx-gold: #f2c14e;
+
+    /* Thème clair — surfaces professionnelles (§7) */
+    --color-wpx-canvas: #f5f7fa;
+    --color-wpx-surface: #ffffff;
+    --color-wpx-raised: #f8fafc;
+    --color-wpx-text: #10233f;
+    --color-wpx-text-muted: #53657d;
+    --color-wpx-border: #cbd5e1;
+
+    /* Accents de marque — variantes assombries pour contraste sur fond clair (§7.1) */
+    --color-wpx-blue-light: #075ccf;
+    --color-wpx-cyan-light: #007f9f;
+    --color-wpx-orange-light: #c75100;
+    --color-wpx-gold-light: #936800;
+
+    /* Couleurs sémantiques (§8) */
+    --color-wpx-success: #42d392;
+    --color-wpx-success-light: #137a50;
+    --color-wpx-warning: #f4b942;
+    --color-wpx-warning-light: #9a5b00;
+    --color-wpx-danger: #ff6b61;
+    --color-wpx-danger-light: #b42318;
+    --color-wpx-info: #70b7ff;
+    --color-wpx-info-light: #075ccf;
+    --color-wpx-pending: #e7cf61;
+    --color-wpx-pending-light: #6b5b00;
+
+    /*
+     * Espacements : la grille officielle (§11, base 4px) correspond déjà
+     * exactement à l'échelle native de Tailwind (spacing-N = N × 4px) —
+     * aucun token supplémentaire n'est nécessaire ici.
+     */
+
+    /* Rayons (§12) */
+    --radius-wpx-xs: 8px;
+    --radius-wpx-sm: 10px;
+    --radius-wpx-md: 14px;
+    --radius-wpx-lg: 18px;
+    --radius-wpx-xl: 24px;
+    --radius-wpx-full: 999px;
+
+    /* Ombres (§13.2) */
+    --shadow-wpx-card: 0 8px 24px rgba(16, 35, 63, 0.08);
+    --shadow-wpx-card-dark: 0 12px 32px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+    /* Courbes de mouvement (§15.2) */
+    --ease-wpx-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-wpx-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-wpx-reward: cubic-bezier(0.16, 1, 0.3, 1);
+}

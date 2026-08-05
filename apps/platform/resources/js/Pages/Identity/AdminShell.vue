@@ -70,10 +70,10 @@ async function logout(): Promise<void> {
 </script>
 
 <template>
-    <div class="bg-wasplex-surface flex min-h-screen">
-        <aside class="flex w-60 flex-col border-r border-black/5 bg-white">
-            <div class="border-b border-black/5 p-4">
-                <span class="rounded-wasplex-md bg-wasplex-black text-wasplex-gold px-3 py-1 text-sm font-semibold">
+    <div class="bg-wpx-canvas flex min-h-screen">
+        <aside class="bg-wpx-navy-950 border-wpx-border-dark flex w-60 flex-col border-r">
+            <div class="border-wpx-border-dark border-b p-4">
+                <span class="rounded-wpx-md bg-wpx-navy-750 text-wpx-gold px-3 py-1 text-sm font-semibold">
                     Administration
                 </span>
             </div>
@@ -81,11 +81,11 @@ async function logout(): Promise<void> {
                 <button
                     v-for="item in nav"
                     :key="item.key"
-                    class="rounded-wasplex-sm px-3 py-2 text-left text-sm"
+                    class="rounded-wpx-sm px-3 py-2 text-left text-sm"
                     :class="
                         activeSection === item.key
-                            ? 'bg-wasplex-gold/10 text-wasplex-black font-semibold'
-                            : 'text-wasplex-black/60'
+                            ? 'bg-wpx-navy-850 text-wpx-gold font-semibold'
+                            : 'text-wpx-muted-dark'
                     "
                     @click="selectSection(item.key)"
                 >
@@ -95,8 +95,8 @@ async function logout(): Promise<void> {
         </aside>
 
         <div class="flex flex-1 flex-col">
-            <header class="flex items-center justify-between border-b border-black/5 bg-white px-6 py-3">
-                <span class="text-wasplex-black text-sm font-medium">
+            <header class="bg-wpx-surface border-wpx-border flex items-center justify-between border-b px-6 py-3">
+                <span class="text-wpx-text text-sm font-medium">
                     {{ nav.find((n) => n.key === activeSection)?.label }}
                 </span>
                 <div class="flex items-center gap-2">
@@ -104,43 +104,43 @@ async function logout(): Promise<void> {
                         :spaces="page.props.auth.spaces"
                         :active-space-id="page.props.auth.active_space_id"
                     />
-                    <button class="text-wasplex-black/60 text-xs hover:underline" @click="logout">Déconnexion</button>
+                    <button class="text-wpx-text-muted text-xs hover:underline" @click="logout">Déconnexion</button>
                 </div>
             </header>
 
             <main class="flex-1 p-6">
                 <section v-if="activeSection === 'capabilities'" class="flex flex-col gap-4">
                     <form
-                        class="rounded-wasplex-lg shadow-wasplex-card flex flex-wrap items-end gap-3 bg-white p-4"
+                        class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex flex-wrap items-end gap-3 p-4"
                         @submit.prevent="grantCapability"
                     >
-                        <label class="flex flex-col gap-1 text-xs">
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
                             <span>Compte (id)</span>
                             <input
                                 v-model="newGrant.account_id"
-                                class="rounded-wasplex-sm border border-black/10 px-2 py-1"
+                                class="rounded-wpx-sm border-wpx-border border px-2 py-1"
                             />
                         </label>
-                        <label class="flex flex-col gap-1 text-xs">
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
                             <span>Capacité</span>
                             <input
                                 v-model="newGrant.capability_code"
                                 placeholder="admin.audit.view"
-                                class="rounded-wasplex-sm border border-black/10 px-2 py-1"
+                                class="rounded-wpx-sm border-wpx-border border px-2 py-1"
                             />
                         </label>
                         <button
                             type="submit"
-                            class="rounded-wasplex-sm bg-wasplex-black text-wasplex-gold px-3 py-1.5 text-sm font-semibold"
+                            class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-3 py-1.5 text-sm font-semibold"
                         >
                             Accorder
                         </button>
-                        <p v-if="error" class="text-wasplex-danger text-xs">{{ error }}</p>
+                        <p v-if="error" class="text-wpx-danger-light text-xs">{{ error }}</p>
                     </form>
 
-                    <table class="rounded-wasplex-lg shadow-wasplex-card w-full bg-white text-sm">
+                    <table class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface w-full text-sm">
                         <thead>
-                            <tr class="text-wasplex-black/50 border-b border-black/5 text-left text-xs">
+                            <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
                                 <th class="p-3">Compte</th>
                                 <th class="p-3">Capacité</th>
                                 <th class="p-3">Périmètre</th>
@@ -149,15 +149,15 @@ async function logout(): Promise<void> {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="g in grants" :key="g.id" class="border-b border-black/5">
+                            <tr v-for="g in grants" :key="g.id" class="border-wpx-border text-wpx-text border-b">
                                 <td class="p-3 font-mono text-xs">{{ g.account_id }}</td>
                                 <td class="p-3">{{ g.capability_code }}</td>
-                                <td class="text-wasplex-black/50 p-3 text-xs">
+                                <td class="text-wpx-text-muted p-3 text-xs">
                                     {{ g.scope_type ? `${g.scope_type}:${g.scope_id}` : 'global' }}
                                 </td>
-                                <td class="text-wasplex-black/50 p-3 text-xs">{{ g.expires_at ?? '—' }}</td>
+                                <td class="text-wpx-text-muted p-3 text-xs">{{ g.expires_at ?? '—' }}</td>
                                 <td class="p-3 text-right">
-                                    <button class="text-wasplex-danger text-xs hover:underline" @click="revoke(g)">
+                                    <button class="text-wpx-danger-light text-xs hover:underline" @click="revoke(g)">
                                         Révoquer
                                     </button>
                                 </td>
@@ -168,7 +168,7 @@ async function logout(): Promise<void> {
 
                 <section
                     v-else
-                    class="rounded-wasplex-lg text-wasplex-black/50 shadow-wasplex-card flex h-64 items-center justify-center bg-white text-sm"
+                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex h-64 items-center justify-center text-sm"
                 >
                     {{ nav.find((n) => n.key === activeSection)?.label }} — bientôt disponible
                 </section>

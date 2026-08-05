@@ -3,10 +3,14 @@ import { router } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import { shellPathForSpaceType, type SpaceSummary } from '@/types/identity';
 
-const props = defineProps<{
-    spaces: SpaceSummary[];
-    activeSpaceId: string | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        spaces: SpaceSummary[];
+        activeSpaceId: string | null;
+        variant?: 'light' | 'dark';
+    }>(),
+    { variant: 'light' },
+);
 
 async function onChange(event: Event): Promise<void> {
     const userSpaceId = (event.target as HTMLSelectElement).value;
@@ -32,7 +36,12 @@ function label(space: SpaceSummary): string {
 <template>
     <select
         :value="activeSpaceId ?? ''"
-        class="rounded-wasplex-sm border border-black/10 bg-white px-2 py-1 text-sm"
+        class="rounded-wpx-sm border px-2 py-1 text-sm"
+        :class="
+            variant === 'dark'
+                ? 'border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft'
+                : 'border-wpx-border bg-wpx-surface text-wpx-text'
+        "
         @change="onChange"
     >
         <option v-for="space in spaces" :key="space.user_space_id" :value="space.user_space_id">
