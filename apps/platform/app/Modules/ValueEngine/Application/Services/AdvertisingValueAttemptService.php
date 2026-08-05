@@ -350,7 +350,7 @@ final readonly class AdvertisingValueAttemptService
     {
         $budget = $funding->budgetReservation;
         if (
-            ! in_array($funding->status, ['reserved', 'submitted'], true)
+            $funding->status !== 'approved'
             || ! $budget instanceof CampaignBudgetReservation
             || $budget->status !== 'active'
             || $budget->walletReservation === null
