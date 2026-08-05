@@ -16,9 +16,9 @@ final readonly class ValueEngineCatalog
     {
         $this->ledger->createAccountType(
             'REVENUE',
-            'Produit',
+            'Revenu',
             EntryDirection::Credit,
-            'Produits reconnus par Wasplex.',
+            'Revenus reconnus par Wasplex.',
         );
         $this->ledger->createJournal('VALUE_ENGINE', 'Super Moteur unifié de valeur');
         $this->revenueAccountId();
