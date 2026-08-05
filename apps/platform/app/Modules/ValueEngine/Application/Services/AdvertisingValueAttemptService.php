@@ -7,7 +7,6 @@ use App\Modules\Advertising\Infrastructure\Models\AdvertisingMatch;
 use App\Modules\Campaign\Infrastructure\Models\Campaign;
 use App\Modules\Campaign\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaign\Infrastructure\Models\CampaignFunding;
-use App\Modules\Campaign\Infrastructure\Models\CampaignQuote;
 use App\Modules\Identity\Domain\Enums\SpaceKind;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\UserSpace;
@@ -21,7 +20,6 @@ use App\Modules\ValueEngine\Infrastructure\Models\ValueAttempt;
 use App\Modules\ValueEngine\Infrastructure\Models\ValueCampaignBudgetCounter;
 use App\Modules\Wallet\Application\Services\WalletCatalog;
 use App\Modules\Wallet\Domain\Enums\ReservationStatus;
-use App\Modules\Wallet\Infrastructure\Models\Wallet;
 use Illuminate\Support\Facades\DB;
 
 final readonly class AdvertisingValueAttemptService
@@ -72,7 +70,7 @@ final readonly class AdvertisingValueAttemptService
             'funding.budgetReservation.walletReservation',
         ]);
         $funding = $campaign->funding;
-        if (! $funding instanceof CampaignFunding || ! $funding->quote instanceof CampaignQuote) {
+        if (! $funding instanceof CampaignFunding) {
             throw new ValueEngineException('La campagne ne possède pas de financement et de devis utilisables.');
         }
 
@@ -141,9 +139,6 @@ final readonly class AdvertisingValueAttemptService
             }
 
             $advertiserWallet = $lockedFunding->wallet;
-            if (! $advertiserWallet instanceof Wallet) {
-                throw new ValueEngineException('Le Wallet annonceur du financement est absent.');
-            }
 
             $attempt = ValueAttempt::query()->create([
                 'value_event_definition_id' => $this->catalog->advertisingEvent()->id,
