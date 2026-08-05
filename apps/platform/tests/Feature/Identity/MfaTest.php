@@ -3,33 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Infrastructure\Models\Account;
-use App\Modules\Identity\Infrastructure\Models\CapabilityGrant;
-use App\Modules\Identity\Infrastructure\Models\SpaceMembership;
-use App\Modules\Identity\Infrastructure\Models\UserSpace;
 use PragmaRX\Google2FA\Google2FA;
-
-function grantFounderAccessForTests(Account $account): void
-{
-    $adminSpace = UserSpace::create(['space_type' => UserSpace::TYPE_ADMIN, 'status' => 'active']);
-
-    SpaceMembership::create([
-        'user_space_id' => $adminSpace->id,
-        'account_id' => $account->id,
-        'status' => 'active',
-        'is_default' => false,
-        'joined_at' => now(),
-    ]);
-
-    foreach (['admin.dashboard.view', 'admin.audit.view'] as $capability) {
-        CapabilityGrant::create([
-            'account_id' => $account->id,
-            'capability_code' => $capability,
-            'status' => 'active',
-            'starts_at' => now(),
-            'granted_by' => $account->id,
-        ]);
-    }
-}
 
 test('the admin space is unreachable without a recent MFA verification', function (): void {
     registerAndLogin('founder@wasplex.test');
