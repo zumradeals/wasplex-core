@@ -10,19 +10,21 @@ on:
       - ".github/workflows/p009b-pint-preview.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  preview:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/platform
     steps:
-      - name: Checkout code
+      - name: Checkout branch head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: true
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -34,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Apply Pint in preview workspace
+      - name: Apply Pint
         run: >-
           vendor/bin/pint
           app/Modules/Distribution
@@ -42,8 +44,14 @@ jobs:
           config/distribution.php
           bootstrap/providers.php
 
-      - name: Print formatted patch
+      - name: Commit canonical formatting
         working-directory: .
         run: |
-          git diff -- apps/platform/app/Modules/Distribution apps/platform/tests/Feature/Modules/Distribution apps/platform/config/distribution.php apps/platform/bootstrap/providers.php
-          test -z "$(git diff --name-only -- apps/platform/app/Modules/Distribution apps/platform/tests/Feature/Modules/Distribution apps/platform/config/distribution.php apps/platform/bootstrap/providers.php)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/platform/app/Modules/Distribution apps/platform/tests/Feature/Modules/Distribution apps/platform/config/distribution.php apps/platform/bootstrap/providers.php
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "style(distribution): apply canonical Pint formatting"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
