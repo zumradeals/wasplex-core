@@ -2,8 +2,8 @@
 
 namespace App\Modules\Distribution\Infrastructure\Models;
 
-use App\Modules\Advertising\Infrastructure\Models\AdvertisingMatch;
 use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeAsset;
+use App\Modules\Advertising\Infrastructure\Models\AdvertisingMatch;
 use App\Modules\Campaign\Infrastructure\Models\Campaign;
 use App\Modules\Campaign\Infrastructure\Models\CampaignVersion;
 use App\Modules\Distribution\Domain\Enums\AdvertisingDeliveryStatus;
