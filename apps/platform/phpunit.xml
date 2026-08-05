@@ -32,7 +32,16 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
+        <!--
+            The "array" session driver (Laravel's stock testing default)
+            never survives across separate simulated HTTP calls within a
+            test, which makes it unusable for asserting on account_sessions
+            revocation (docs/chantiers/P001-CHANTIER.md invariant). Redis
+            matches the real runtime target and is provisioned in CI.
+        -->
+        <env name="SESSION_DRIVER" value="redis"/>
+        <env name="REDIS_HOST" value="127.0.0.1"/>
+        <env name="REDIS_PORT" value="6379"/>
         <env name="FILESYSTEM_DISK" value="local"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
