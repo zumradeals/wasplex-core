@@ -75,8 +75,8 @@ it('rolls the P002 migration back cleanly on PostgreSQL', function (): void {
         ->and(Schema::hasTable('value_attempts'))->toBeTrue()
         ->and(Schema::hasTable('value_attention_sessions'))->toBeTrue();
 
-    // P003 à P009-A, GeniusPay et les migrations P008/P008-R dépendent du Ledger ou de l’identité.
-    $this->artisan('migrate:rollback', ['--step' => 15, '--force' => true])
+    // P003 à P009-A, GeniusPay, le correctif Wallet et les migrations P008/P008-R dépendent du Ledger ou de l’identité.
+    $this->artisan('migrate:rollback', ['--step' => 16, '--force' => true])
         ->assertSuccessful();
 
     expect(Schema::hasTable('ledger_transactions'))->toBeFalse()
