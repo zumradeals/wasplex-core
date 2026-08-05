@@ -70,10 +70,13 @@ it('rolls the P002 migration back cleanly on PostgreSQL', function (): void {
         ->and(Schema::hasTable('advertising_configuration_versions'))->toBeTrue()
         ->and(Schema::hasTable('advertising_markets'))->toBeTrue()
         ->and(Schema::hasTable('advertising_sectors'))->toBeTrue()
-        ->and(Schema::hasTable('advertising_profile_signals'))->toBeTrue();
+        ->and(Schema::hasTable('advertising_profile_signals'))->toBeTrue()
+        ->and(Schema::hasTable('value_event_definitions'))->toBeTrue()
+        ->and(Schema::hasTable('value_attempts'))->toBeTrue()
+        ->and(Schema::hasTable('value_attention_sessions'))->toBeTrue();
 
-    // P003 à P007, GeniusPay et les cinq migrations P008/P008-R dépendent du Ledger ou de l’identité.
-    $this->artisan('migrate:rollback', ['--step' => 14, '--force' => true])
+    // P003 à P009-A, GeniusPay, le correctif Wallet et les migrations P008/P008-R dépendent du Ledger ou de l’identité.
+    $this->artisan('migrate:rollback', ['--step' => 16, '--force' => true])
         ->assertSuccessful();
 
     expect(Schema::hasTable('ledger_transactions'))->toBeFalse()
@@ -84,5 +87,8 @@ it('rolls the P002 migration back cleanly on PostgreSQL', function (): void {
         ->and(Schema::hasTable('advertising_configuration_versions'))->toBeFalse()
         ->and(Schema::hasTable('advertising_markets'))->toBeFalse()
         ->and(Schema::hasTable('advertising_sectors'))->toBeFalse()
-        ->and(Schema::hasTable('advertising_profile_signals'))->toBeFalse();
+        ->and(Schema::hasTable('advertising_profile_signals'))->toBeFalse()
+        ->and(Schema::hasTable('value_event_definitions'))->toBeFalse()
+        ->and(Schema::hasTable('value_attempts'))->toBeFalse()
+        ->and(Schema::hasTable('value_attention_sessions'))->toBeFalse();
 });
