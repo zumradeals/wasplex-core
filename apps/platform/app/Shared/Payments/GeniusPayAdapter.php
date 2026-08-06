@@ -147,6 +147,8 @@ final class GeniusPayAdapter implements PaymentProviderContract
             providerStatusRaw: $providerStatusRaw,
             normalizedStatus: $this->normalizeStatus($providerStatusRaw, hasCheckoutUrl: $checkoutUrl !== null && $checkoutUrl !== ''),
             environment: (string) ($payload['environment'] ?? 'unknown'),
+            amountMinor: isset($payload['amount']) ? (int) $payload['amount'] : null,
+            currency: isset($payload['currency']) ? (string) $payload['currency'] : null,
         );
     }
 

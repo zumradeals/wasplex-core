@@ -8,6 +8,7 @@ import AdminCampaignReviewsPanel from '@/Components/AdminCampaignReviewsPanel.vu
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
+import AdminReconciliationPanel from '@/Components/AdminReconciliationPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
@@ -58,6 +59,7 @@ const nav = [
     { key: 'smartprofile', label: 'Profil intelligent', icon: '🧩' },
     { key: 'matching', label: 'Matching', icon: '🔗' },
     { key: 'feed', label: 'Feed', icon: '🎬' },
+    { key: 'reconciliation', label: 'Rapprochement', icon: '🧮' },
     { key: 'organizations', label: 'Organisations', icon: '🏢' },
     { key: 'audit', label: 'Audit', icon: '📜' },
 ] as const;
@@ -333,6 +335,10 @@ async function logout(): Promise<void> {
                 <section v-else-if="activeSection === 'feed'" class="flex flex-col gap-4">
                     <AdminFeedPanel ref="feedPanel" />
                     <AdminFeedRiskPanel @resolved="onFeedHoldResolved" />
+                </section>
+
+                <section v-else-if="activeSection === 'reconciliation'">
+                    <AdminReconciliationPanel />
                 </section>
 
                 <section

@@ -121,6 +121,8 @@ final class SeedFounderCommand extends Command
             // docs/chantiers/P009-CHANTIER.md: Feed et attention.
             'admin.feed.dashboard.view',
             'admin.feed.risk.review',
+            // docs/chantiers/P011-B-RAPPROCHEMENT.md: rapprochement GeniusPay.
+            'admin.reconciliation.review',
         ];
     }
 }
