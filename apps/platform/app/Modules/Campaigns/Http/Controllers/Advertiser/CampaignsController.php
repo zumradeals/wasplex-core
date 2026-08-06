@@ -144,8 +144,29 @@ final class CampaignsController extends Controller
     {
         $organizationId = $request->attributes->get('advertiser_organization_id');
 
+        /** @var Account $account */
+        $account = $request->user();
+
         try {
-            $updated = $this->campaigns->submit($organizationId, $campaign);
+            $updated = $this->campaigns->submit($organizationId, $campaign, $account->id);
+        } catch (CampaignNotFoundException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 404);
+        } catch (InvalidCampaignStateException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['campaign' => $updated]);
+    }
+
+    public function resubmit(Request $request, string $campaign): JsonResponse
+    {
+        $organizationId = $request->attributes->get('advertiser_organization_id');
+
+        /** @var Account $account */
+        $account = $request->user();
+
+        try {
+            $updated = $this->campaigns->resubmit($organizationId, $campaign, $account->id);
         } catch (CampaignNotFoundException $exception) {
             return response()->json(['message' => $exception->getMessage()], 404);
         } catch (InvalidCampaignStateException $exception) {

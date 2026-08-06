@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Campaigns\Http\Controllers\Admin\CampaignReviewsController;
 use App\Modules\Campaigns\Http\Controllers\Admin\PricingController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\CampaignsController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\TargetingController;
@@ -35,10 +36,11 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
             ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
         Route::post('/campaigns/{campaign}/submit', [CampaignsController::class, 'submit'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.submit,organization:advertiser_organization_id');
+        Route::post('/campaigns/{campaign}/resubmit', [CampaignsController::class, 'resubmit'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.submit,organization:advertiser_organization_id');
     });
 
-// docs/05-modele-economique-publicitaire-wasplex.md §30 (catalogue de prix
-// uniquement — la revue de campagne appartient à P007).
+// docs/05-modele-economique-publicitaire-wasplex.md §30 : catalogue de prix.
 Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::class])
     ->prefix('admin/advertising')
     ->group(function (): void {
@@ -50,4 +52,25 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
             ->middleware(EnsureCapability::class.':admin.advertising.pricing.manage');
         Route::post('/pricing/{priceVersion}/publish', [PricingController::class, 'publish'])
             ->middleware(EnsureCapability::class.':admin.advertising.pricing.manage');
+    });
+
+// docs/13-studio-annonceur-wasplex.md §93 : revue administrative des
+// campagnes (P007).
+Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::class])
+    ->prefix('admin')
+    ->group(function (): void {
+        Route::get('/campaign-reviews', [CampaignReviewsController::class, 'index'])
+            ->middleware(EnsureCapability::class.':admin.campaign-reviews.view');
+        Route::get('/campaign-reviews/{campaignReview}', [CampaignReviewsController::class, 'show'])
+            ->middleware(EnsureCapability::class.':admin.campaign-reviews.view');
+        Route::post('/campaign-reviews/{campaignReview}/approve', [CampaignReviewsController::class, 'approve'])
+            ->middleware(EnsureCapability::class.':admin.campaign-reviews.decide');
+        Route::post('/campaign-reviews/{campaignReview}/request-changes', [CampaignReviewsController::class, 'requestChanges'])
+            ->middleware(EnsureCapability::class.':admin.campaign-reviews.decide');
+        Route::post('/campaign-reviews/{campaignReview}/reject', [CampaignReviewsController::class, 'reject'])
+            ->middleware(EnsureCapability::class.':admin.campaign-reviews.decide');
+        Route::get('/campaigns/approved', [CampaignReviewsController::class, 'approved'])
+            ->middleware(EnsureCapability::class.':admin.campaigns.suspend');
+        Route::post('/campaigns/{campaign}/suspend', [CampaignReviewsController::class, 'suspend'])
+            ->middleware(EnsureCapability::class.':admin.campaigns.suspend');
     });

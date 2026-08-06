@@ -1,281 +1,195 @@
-# P007 — RAPPORT DE LIVRAISON
+# RAPPORT — P007 : Revue administrative et activation de campagne
 
-**Chantier :** Revue administrative et activation de campagne  
-**Statut :** `deployed`  
-**Branche :** `codex/p007-campaign-admin-review`  
-**Pull Request :** `#10`  
-**Commit de base :** `63d355409b30cac77340f59243322d611e59e18e`  
-**Commit technique validé :** `e1c34522d5f035e8ed30a4ffc3d95b49c483f274`  
-**Commit de fusion :** `b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e`  
-**Commit déployé :** `7a7d42e55de333a65e313756044a4faef91aa202`  
-**Date d’acceptation et de fusion :** 4 août 2026  
-**Date de déploiement en production :** 4 août 2026  
-**Autorité d’acceptation et de déploiement :** fondateur Wasplex
+**Branche :** `claude/wasplex-reconstruction-7ujym7`
+**Commit de base :** `d92d1ae` (P006 fusionné)
+**Chantier :** `docs/chantiers/P007-CHANTIER.md`
+**Spécifications :** `docs/13-studio-annonceur-wasplex.md` §53-60, §93-100 ; `docs/12`, `docs/16`, `docs/18` (généralités)
+**Statut :** ready_for_review
 
-## 1. Résultat livré
+Ce rapport remplace l'ancienne version pré-réinitialisation (branche `codex/p007-campaign-admin-review`,
+conservée dans l'historique Git à titre d'audit mais ne décrivant plus l'état réel du dépôt
+reconstruit). Sa politique financière par décision et l'option de séparation demandeur/décideur
+ont été reprises (cohérentes et déjà correctement raisonnées) mais adaptées aux conventions
+actuelles du dépôt.
 
-P007 ferme la phase « Annonceur et campagne » en ajoutant une décision administrative explicite entre la soumission P006 et le futur Matching P008.
+---
 
-Le parcours obtenu est :
+## 1. Objectif
+
+Donner à l'administration une file de revue pour les campagnes soumises (P006) : approuver,
+demander une correction, rejeter, ou suspendre une campagne déjà approuvée — sans jamais capturer
+le budget ni activer le Feed (P008/P009, non construits).
+
+## 2. Réalisé
+
+### 2.1. Dossier de revue et historique append-only
+
+`campaign_review_cases` (un dossier par cycle de soumission) et `campaign_review_events`
+(append-only : `submitted`/`changes_requested`/`resubmitted`/`approved`/`rejected`/`suspended`).
+Chaque soumission ou resoumission ouvre un nouveau dossier — l'historique complet d'une campagne
+qui a été corrigée plusieurs fois reste traçable.
+
+### 2.2. Extension du cycle de vie de campagne
+
+`campaigns.status` accepte désormais `changes_requested`, `approved`, `rejected`, `suspended` en
+plus des statuts P006. `campaign_versions.status` n'a pas été étendu (décision §3.5 du chantier) —
+rien ne le lit au-delà de ce que P006 vérifiait déjà.
+
+### 2.3. Politique financière par décision
+
+| Décision | Réservation |
+|---|---|
+| Soumission / correction / resoumission / approbation / suspension | conservée |
+| Rejet | **libérée** |
+
+`AdvertiserWalletReservationContract` a été étendu avec `release()` (nouvelle méthode, même
+discipline que `reserve()` : poste au Grand Livre via `LedgerPostingContract`, jamais de mutation
+directe de solde). Une suspension conserve la réservation — contrairement à un rejet, elle reste
+réactivable sans nouveau financement (décision §3.4, reprise de l'analyse pré-réinitialisation,
+cohérente et documentée plutôt que réinventée).
+
+### 2.4. Correction et resoumission sans second financement
+
+`PATCH /campaigns/{id}` reste utilisable quand le statut est `changes_requested` — contrairement à
+une édition en `quoted`/`funded` (qui invalide le devis et repasse en `draft`), l'édition pendant
+`changes_requested` **ne** repasse **pas** en `draft` : l'annonceur doit explicitement appeler
+`POST /campaigns/{id}/resubmit`, qui rouvre un dossier de revue sans jamais retoucher le Wallet —
+le budget déjà réservé reste verrouillé (vérifié par test : le nombre de
+`campaign_budget_reservations` ne change jamais entre soumission et resoumission).
+
+### 2.5. Séparation optionnelle demandeur/décideur
+
+`config('campaigns.review_require_distinct_decider')` (défaut `false`,
+`CAMPAIGNS_REVIEW_REQUIRE_DISTINCT_DECIDER`) : si activée, l'administrateur qui a demandé une
+correction ne peut pas décider (approuver/rejeter) la resoumission correspondante
+(`SameAdminCannotDecideException`, 403).
+
+**Bug trouvé et corrigé pendant les tests** : `opened_at`/`decided_at` sont des colonnes
+`timestamp` à précision de la seconde — deux dossiers ouverts dans la même seconde (soumission
+puis resoumission immédiate, cas fréquent en test automatisé) pouvaient être départagés dans le
+mauvais ordre par un tri uniquement sur le timestamp. Corrigé en ajoutant l'id ULID (monotone à la
+création) comme critère de tri secondaire dans `Campaign::latestReviewCase()` et
+`CampaignReviewService::assertDistinctDecider()`.
+
+### 2.6. API et permissions
+
+Routes admin (`docs/13` §93) : `GET/POST /api/admin/campaign-reviews[/{id}]`, decide
+(`approve`/`request-changes`/`reject`), plus `POST /api/admin/campaigns/{id}/suspend`. Une route
+supplémentaire non listée par `docs/13` §93 a été ajoutée par nécessité :
+`GET /api/admin/campaigns/approved` — sans elle, l'administration n'aurait aucun moyen de
+retrouver une campagne approuvée à suspendre (documenté explicitement plutôt qu'ajouté en
+silence). Côté annonceur : `POST /api/advertiser/campaigns/{id}/resubmit` (`docs/13` §90).
+
+Capacités : `admin.campaign-reviews.view`, `admin.campaign-reviews.decide`,
+`admin.campaigns.suspend` — accordées explicitement au fondateur, aucune autorité dérivée du seul
+rôle (même discipline que tous les autres domaines admin de ce dépôt).
+
+### 2.7. UI
+
+- `AdminCampaignReviewsPanel.vue` (nouvel onglet "Revue de campagnes" d'`AdminShell`) : file
+  d'attente, fiche de dossier (objectif, média, audience, devis), boutons de décision, liste des
+  campagnes approuvées avec suspension.
+- `CampaignsPanel.vue` (Studio Annonceur) étendu : bannière de correction avec motif affiché,
+  bouton "Resoumettre la campagne", états terminaux (approuvée/rejetée/suspendue) affichés
+  distinctement à l'étape Soumission de l'assistant P006.
+
+## 3. Décisions explicites (résumé, voir aussi `docs/chantiers/P007-CHANTIER.md` §3)
+
+1. Pas de table `campaign_review_tasks` séparée — le dossier de revue sert déjà de file d'attente.
+2. Pas de table `campaign_status_events` séparée — `campaign_review_events` couvre déjà toutes les
+   transitions pertinentes.
+3. Pas de commande de bootstrap — aucune campagne héritée dans le dépôt reconstruit.
+4. Suspension conserve la réservation (réactivable), rejet la libère (terminal).
+5. `campaign_versions.status` non étendu.
+6. Widget "dashboard fondateur" simplifié en un compteur dans le panneau de revue lui-même, plutôt
+   que le cadre générique `admin_dashboards` de `docs/12` §69 (hors périmètre).
+7. Route `GET /api/admin/campaigns/approved` ajoutée par nécessité, au-delà de la liste exacte de
+   `docs/13` §93.
+
+## 4. Tests exécutés
+
+- `php artisan test` (Pest 4) — **152 tests, 1220 assertions, aucune régression** (142 avant ce
+  chantier + 10 nouveaux).
+- Couverture explicite des tests obligatoires (§10) : campagne soumise visible dans la file ;
+  refus sans capacité (403) ; demande de correction exige un motif et conserve la réservation ;
+  correction et resoumission sans second financement (une seule réservation avant/après) ;
+  approbation conserve la réservation ; aucune décision rejouée sur un dossier déjà décidé (409) ;
+  rejet libère la réservation exactement une fois et bloque toute édition ultérieure (422) ;
+  suspension d'une campagne approuvée conserve la réservation ; refus de suspendre une campagne
+  non approuvée (422) ; séparation demandeur/décideur appliquée uniquement si configurée.
+- `./vendor/bin/pint --test` — vert.
+- `npm run format` / `lint` / `types:check` / `build` — tous verts.
+- `migrate:rollback --step=3` → `migrate` — aller-retour propre sur les 3 nouvelles migrations.
+- Parcours navigateur (Playwright/Chromium) : campagne soumise avec 27 abonnés GOLD synthétiques
+  (devis réel, 74 événements estimés) → admin ouvre le dossier → demande une correction avec motif
+  → annonceur voit la bannière de correction et le motif dans le Studio → corrige le titre →
+  resoumet sans nouveau financement → admin approuve → campagne visible dans "Campagnes
+  approuvées" → admin suspend avec motif → campagne disparaît de la liste des approuvées.
+
+## 5. Captures
+
+- Administration, onglet Revue de campagnes : fiche de dossier avec objectif, audience, devis, et
+  les trois boutons de décision (`p007-admin-review-fiche.png`).
+- Studio Annonceur, étape Soumission : bannière "Correction demandée par l'administration" avec le
+  motif et le bouton de resoumission (`p007-studio-changes-requested.png`).
+- Administration : file vide, campagne approuvée listée avec bouton Suspendre
+  (`p007-admin-approved-list.png`).
+- Administration : campagne suspendue, disparue de la liste des approuvées
+  (`p007-admin-suspended.png`).
+
+## 6. Fichiers modifiés/ajoutés
 
 ```text
-Campagne financée
-→ soumission
-→ dossier de revue
-→ correction et resoumission, approbation ou rejet
-→ suspension possible après approbation
+app/Modules/Campaigns/Database/Migrations/
+  2026_08_06_120000_extend_campaigns_status_for_review.php   (nouveau)
+  2026_08_06_120001_create_campaign_review_cases_table.php   (nouveau)
+  2026_08_06_120002_create_campaign_review_events_table.php  (nouveau)
+app/Modules/Campaigns/Infrastructure/Models/
+  CampaignReviewCase.php, CampaignReviewEvent.php            (nouveau)
+  Campaign.php                                                (modifié — statuts, latestReviewCase)
+app/Modules/Campaigns/Application/Services/
+  CampaignReviewService.php                                   (nouveau)
+  CampaignService.php                                         (modifié — submit/resubmit/updateVersion)
+  CampaignReviewCaseNotFoundException.php, CampaignReviewCaseAlreadyDecidedException.php,
+  SameAdminCannotDecideException.php, CampaignNotApprovedException.php (nouveau)
+app/Modules/Campaigns/Http/Controllers/
+  Admin/CampaignReviewsController.php                         (nouveau)
+  Advertiser/CampaignsController.php                          (modifié — submit/resubmit)
+app/Modules/Campaigns/Http/routes/api.php                     (modifié)
+app/Modules/AdvertiserWallet/Application/Contracts/AdvertiserWalletReservationContract.php (modifié)
+app/Modules/AdvertiserWallet/Application/Services/AdvertiserWalletReservationService.php (modifié)
+app/Modules/Identity/Console/SeedFounderCommand.php            (modifié — capacités)
+config/campaigns.php                                           (modifié — review_require_distinct_decider)
+resources/js/Components/AdminCampaignReviewsPanel.vue          (nouveau)
+resources/js/Components/CampaignsPanel.vue                     (modifié — correction/resoumission)
+resources/js/Pages/Identity/AdminShell.vue                     (modifié)
+tests/Feature/Campaigns/CampaignReviewTest.php                 (nouveau, 10 tests)
+docs/chantiers/P007-CHANTIER.md, P007-RAPPORT.md               (réécrits)
 ```
 
-Une approbation rend la campagne administrativement éligible au futur Matching. Elle ne déclenche ni sélection d’utilisateur, ni Feed, ni capture du budget.
+## 7. Migrations, API, événements, permissions
 
-## 2. Domaine et données
+- **Migrations** : 3 nouvelles (extension du CHECK constraint + 2 tables).
+- **API** : voir §2.6.
+- **Événements** : `campaign_review_events` (append-only, docs/18 : "action sensible → événement
+  d'audit append-only → consultation").
+- **Permissions** : `admin.campaign-reviews.view`, `admin.campaign-reviews.decide`,
+  `admin.campaigns.suspend` (nouvelles).
 
-Deux migrations P007 ont été ajoutées :
+## 8. Limites restantes
 
-1. création des données de revue ;
-2. extension réversible des contraintes PostgreSQL de statut P006.
+- Aucune modification créant une nouvelle version après approbation (`docs/13` §58) — non
+  spécifié avec assez de détail pour être codé sans inventer de règle ; une campagne approuvée
+  n'est plus éditable dans ce chantier.
+- Aucun widget de dashboard générique — compteur simplifié dans le panneau de revue lui-même.
+- Aucune automatisation antifraude (`docs/16`) — décisions exclusivement humaines.
+- Approbation ne déclenche aucune programmation/Matching/Feed réels (P008/P009, non construits).
 
-Tables propriétaires :
+## 9. État Git
 
-- `campaign_review_cases` ;
-- `campaign_review_tasks` ;
-- `campaign_review_events` ;
-- `campaign_status_events`.
+`php artisan test` : 152/152. `pint --test` : vert. Frontend : format/lint/types/build verts.
+Migration round-trip vérifié. Prêt pour commit, push et PR.
 
-La contrainte PostgreSQL `campaign_status_allowed` accepte désormais :
+## 10. Chantier suivant recommandé
 
-```text
-draft
-quoted
-funded
-submitted
-changes_requested
-approved
-rejected
-suspended
-cancelled
-```
-
-Une contrainte explicite protège également les statuts de financement P007.
-
-## 3. Workflow administratif
-
-### File de revue
-
-La console administration fournit :
-
-- file des campagnes en attente ;
-- filtres approuvées, rejetées, suspendues et historique ;
-- compteur de file active ;
-- fiche détaillée par campagne.
-
-### Fiche de décision
-
-L’administrateur voit :
-
-- annonceur et marque ;
-- version active ;
-- texte, CTA et destination ;
-- images et vidéos ;
-- territoire, rayon et classes ;
-- estimation de planification ;
-- devis figé et partage 50/50 ;
-- état de la réservation Wallet ;
-- dossiers de revue et historique des statuts.
-
-### Décisions
-
-- **Demande de correction :** motif obligatoire, réservation conservée.
-- **Approbation :** réservation conservée, campagne `approved`.
-- **Rejet :** motif obligatoire, libération idempotente, campagne `rejected`.
-- **Suspension :** motif obligatoire, réservation conservée, campagne `suspended`.
-
-## 4. Parcours annonceur corrigé
-
-Une demande de correction ouvre un écran dédié dans le Studio :
-
-- affichage du motif administratif ;
-- modification de la marque, du message, du média, de la destination, de l’audience et du calendrier ;
-- budget financé verrouillé ;
-- création d’une nouvelle version immuable ;
-- bouton unique « Enregistrer et resoumettre » ;
-- nouveau dossier de revue sans second financement.
-
-L’assistant P006 n’est pas détourné pour ce parcours, ce qui évite toute autosauvegarde ou resoumission prématurée.
-
-## 5. Sécurité et capacités
-
-Capacités P007 :
-
-- `campaign.review.view` ;
-- `campaign.review.request_changes` ;
-- `campaign.review.approve` ;
-- `campaign.review.reject` ;
-- `campaign.suspend`.
-
-Toutes les routes administratives exigent :
-
-```text
-authentification
-+ session d’identité active
-+ espace administration
-+ MFA récente
-+ capacité explicite
-```
-
-La politique optionnelle `CAMPAIGN_REVIEW_REQUIRE_DISTINCT_DECIDER` permet d’interdire au demandeur de décider sa propre campagne.
-
-## 6. Politique financière prouvée
-
-| Transition | Disponible Wallet | Réservé Wallet | Capture |
-|---|---:|---:|---|
-| Soumission | inchangé | conservé | non |
-| Correction | inchangé | conservé | non |
-| Resoumission | inchangé | conservé | non |
-| Approbation | inchangé | conservé | non |
-| Rejet | restauré | libéré | non |
-| Suspension | inchangé | conservé | non |
-
-Le rejet utilise une clé d’idempotence liée au dossier de revue. Une répétition de la décision ne libère jamais deux fois la même valeur.
-
-## 7. Bootstrap
-
-Commande ajoutée :
-
-```bash
-php8.4 artisan campaign-review:bootstrap
-```
-
-Elle :
-
-- attribue les capacités P007 aux espaces administration existants ;
-- crée les dossiers manquants pour les campagnes déjà soumises ;
-- peut être rejouée sans dupliquer les dossiers en attente.
-
-## 8. Interfaces livrées
-
-- layout administration responsive ;
-- file de revue ;
-- fiche de décision ;
-- widget P007 du dashboard fondateur ;
-- états administratifs dans la liste annonceur ;
-- écran annonceur de correction/resoumission.
-
-La recette fonctionnelle approfondie sera poursuivie avec les campagnes réelles et les futurs chantiers P008 et P009.
-
-## 9. Tests P007
-
-Six scénarios métier dédiés couvrent :
-
-1. correction, réservation conservée et resoumission ;
-2. approbation sans capture ;
-3. rejet, libération et idempotence ;
-4. suspension sans libération ;
-5. séparation optionnelle demandeur/décideur ;
-6. bootstrap des capacités et reprise d’une campagne soumise.
-
-Les tests P006 ont également été adaptés pour vérifier l’ouverture automatique d’un dossier à la soumission.
-
-## 10. Validation CI finale
-
-**Workflow :** `ci`  
-**Run :** `30901618819`  
-**Job :** `91967007354`  
-**Commit validé :** `e1c34522d5f035e8ed30a4ffc3d95b49c483f274`  
-**Conclusion :** `success`
-
-Validations réussies :
-
-- PHP 8.4 ;
-- Pint ;
-- Larastan niveau 8 ;
-- Pest SQLite ;
-- Pest PostgreSQL 17 ;
-- contraintes et rollback PostgreSQL ;
-- Prettier ;
-- ESLint ;
-- TypeScript/Vue ;
-- build Vite.
-
-Le passage PostgreSQL a révélé puis fait corriger la contrainte P006 qui refusait initialement les nouveaux états P007. La correction a été apportée par une migration séparée, sans réécriture de la migration déjà déployée.
-
-## 11. Rollback
-
-Ordre de rollback :
-
-1. retirer la contrainte étendue P007 ;
-2. normaliser les statuts P007 vers les états P006 compatibles ;
-3. supprimer les tables de revue ;
-4. conserver les opérations Wallet déjà auditées.
-
-Aucune écriture Ledger nouvelle et aucune capture ne sont générées par P007. Un rejet déjà exécuté ne doit jamais être « annulé » par modification directe ; toute correction financière passe par les contrats Wallet/Ledger.
-
-## 12. Frontières confirmées
-
-P007 ne contient pas :
-
-- SmartProfile ;
-- consentement publicitaire ;
-- Matching ;
-- sélection d’utilisateurs ;
-- Feed ;
-- diffusion ;
-- preuve d’attention ;
-- capture du budget ;
-- crédit utilisateur.
-
-Ces responsabilités restent respectivement à P008, P009, P010 et P011.
-
-## 13. Acceptation et fusion
-
-Le fondateur Wasplex a explicitement autorisé l’acceptation et la fusion de P007 le 4 août 2026.
-
-GitHub interdisant l’auto-approbation formelle d’une Pull Request créée par le même compte, la décision fondatrice a été enregistrée comme revue de type commentaire avant la fusion.
-
-La PR #10 a ensuite été fusionnée sur `main` au commit :
-
-```text
-b66f97c1aa60d1f1c042a4d13fb5fdc62a36978e
-```
-
-## 14. Déploiement en production
-
-Le fondateur Wasplex a autorisé le déploiement de P007 sur le VPS de production le 4 août 2026.
-
-Le serveur a récupéré le `main` au commit :
-
-```text
-7a7d42e55de333a65e313756044a4faef91aa202
-```
-
-Résultats constatés :
-
-```text
-Build Vite                         597 modules — succès
-Migration revue administrative    Ran
-Migration statuts PostgreSQL      Ran
-Bootstrap administration          1 espace initialisé
-Dossiers historiques repris       0
-Routes administratives            6
-Maintenance                       OFF
-Environnement                     production
-Debug                             OFF
-Base de données                   PostgreSQL
-Cache et sessions                 Redis
-Santé HTTP                        200
-Connexion HTTP                    200
-Administration invitée            302 vers /connexion
-```
-
-Les variables suivantes ont été ajoutées à la configuration de production :
-
-```text
-CAMPAIGN_REVIEW_REQUIRE_DISTINCT_DECIDER=false
-CAMPAIGN_REVIEW_DEFAULT_DUE_HOURS=24
-```
-
-Le déploiement a été réalisé sans capture de budget, sans modification directe du Ledger et sans reprise de dossier de campagne déjà soumise.
-
-## 15. Conclusion
-
-P007 est accepté, fusionné et déployé en production. La phase « Annonceur et campagne » est techniquement fermée. La prochaine dépendance fonctionnelle est P008 — SmartProfile, consentements et Matching.
+P008 — SmartProfile, consentements et Matching minimal.

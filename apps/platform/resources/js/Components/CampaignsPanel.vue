@@ -48,12 +48,20 @@ interface CampaignVersion {
     quotes?: Quote[];
 }
 
+interface ReviewCase {
+    status: string;
+    decision: string | null;
+    reason: string | null;
+    opened_at: string;
+}
+
 interface Campaign {
     id: string;
     brand_id: string;
     objective_code: string | null;
     status: string;
     versions: CampaignVersion[];
+    review_cases?: ReviewCase[];
 }
 
 const OBJECTIVES: Record<string, string> = {
@@ -83,6 +91,7 @@ const estimate = ref<{ estimated_min: number; estimated_max: number; too_small: 
 const quoting = ref(false);
 const funding = ref(false);
 const submitting = ref(false);
+const resubmitting = ref(false);
 
 const form = reactive({
     brand_id: '',
@@ -108,6 +117,10 @@ const latestQuote = computed<Quote | null>(() => {
         return null;
     }
     return version.quotes[version.quotes.length - 1];
+});
+const latestReviewCase = computed<ReviewCase | null>(() => {
+    const cases = selectedCampaign.value?.review_cases ?? [];
+    return cases.length > 0 ? cases[0] : null;
 });
 const selectedAsset = computed(() => assets.value.find((a) => a.id === form.asset_id) ?? null);
 const ctaLabel = computed(() => (form.objective_code ? OBJECTIVES[form.objective_code] : null));
@@ -321,8 +334,36 @@ async function runSubmit(): Promise<void> {
     }
 }
 
+async function runResubmit(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    resubmitting.value = true;
+    actionError.value = null;
+    try {
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/resubmit`);
+        await refreshSelected();
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Resoumission impossible.';
+    } finally {
+        resubmitting.value = false;
+    }
+}
+
 function statusLabel(status: string): string {
-    return { draft: 'Brouillon', quoted: 'Devisée', funded: 'Financée', submitted: 'Soumise' }[status] ?? status;
+    return (
+        {
+            draft: 'Brouillon',
+            quoted: 'Devisée',
+            funded: 'Financée',
+            submitted: 'Soumise',
+            changes_requested: 'Correction demandée',
+            approved: 'Approuvée',
+            rejected: 'Rejetée',
+            suspended: 'Suspendue',
+        }[status] ?? status
+    );
 }
 
 void loadAll();
@@ -548,6 +589,39 @@ void loadAll();
                             <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-success-light">
                                 Campagne soumise — en attente de revue administrative.
                             </p>
+                            <p v-else-if="selectedCampaign.status === 'approved'" class="text-wpx-success-light">
+                                Campagne approuvée.
+                            </p>
+                            <p v-else-if="selectedCampaign.status === 'suspended'" class="text-wpx-warning-light">
+                                Campagne suspendue par l'administration.
+                            </p>
+                            <template v-else-if="selectedCampaign.status === 'rejected'">
+                                <p class="text-wpx-danger-light">Campagne rejetée.</p>
+                                <p v-if="latestReviewCase?.reason" class="text-wpx-text-muted">
+                                    Motif : {{ latestReviewCase.reason }}
+                                </p>
+                            </template>
+                            <template v-else-if="selectedCampaign.status === 'changes_requested'">
+                                <p class="text-wpx-warning-light">Correction demandée par l'administration.</p>
+                                <p
+                                    v-if="latestReviewCase?.reason"
+                                    class="bg-wpx-canvas rounded-wpx-sm text-wpx-text p-2"
+                                >
+                                    {{ latestReviewCase.reason }}
+                                </p>
+                                <p class="text-wpx-text-muted text-xs">
+                                    Corrigez le contenu, l'audience ou le budget ci-dessus puis resoumettez — le budget
+                                    déjà réservé reste verrouillé, aucun nouveau financement n'est nécessaire.
+                                </p>
+                                <button
+                                    type="button"
+                                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
+                                    :disabled="resubmitting"
+                                    @click="runResubmit"
+                                >
+                                    Resoumettre la campagne
+                                </button>
+                            </template>
                             <template v-else>
                                 <p class="text-wpx-text-muted">Budget réservé. Prête à être soumise pour revue.</p>
                                 <button

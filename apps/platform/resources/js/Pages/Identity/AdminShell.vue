@@ -4,6 +4,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
 import AdminAdvertisingPricingPanel from '@/Components/AdminAdvertisingPricingPanel.vue';
+import AdminCampaignReviewsPanel from '@/Components/AdminCampaignReviewsPanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
@@ -49,6 +50,7 @@ const nav = [
     { key: 'ledger', label: 'Grand Livre', icon: '📒' },
     { key: 'subscriptions', label: 'Abonnements', icon: '🏷️' },
     { key: 'advertisers', label: 'Annonceurs', icon: '🏬' },
+    { key: 'campaign-reviews', label: 'Revue de campagnes', icon: '🎯' },
     { key: 'organizations', label: 'Organisations', icon: '🏢' },
     { key: 'audit', label: 'Audit', icon: '📜' },
 ] as const;
@@ -302,6 +304,10 @@ async function logout(): Promise<void> {
                 <section v-else-if="activeSection === 'advertisers'" class="flex flex-col gap-4">
                     <AdminAdvertisersPanel />
                     <AdminAdvertisingPricingPanel />
+                </section>
+
+                <section v-else-if="activeSection === 'campaign-reviews'">
+                    <AdminCampaignReviewsPanel />
                 </section>
 
                 <section
