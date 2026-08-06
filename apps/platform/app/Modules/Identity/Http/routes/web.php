@@ -12,6 +12,7 @@ use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use App\Modules\Identity\Http\Middleware\EnsureSpaceMembership;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/', [GuestPagesController::class, 'landing'])->name('landing');
 Route::get('/login', [GuestPagesController::class, 'login'])->name('login');
 Route::get('/register', [GuestPagesController::class, 'register'])->name('register');
 

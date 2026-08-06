@@ -93,3 +93,55 @@ function ledgerUserAvailable(string $identityAccountId = 'user-1'): LedgerAccoun
 {
     return LedgerAccountReference::forIdentityAccount('user.available.wp', $identityAccountId, 'LIABILITY_USER', 'WP');
 }
+
+/**
+ * Registers an advertiser organization for the already-logged-in account
+ * (call after registerAndLogin()) and switches the active space to it, so
+ * EnsureActiveAdvertiserOrganization resolves it on the next request
+ * (docs/chantiers/P003-CHANTIER.md). Returns the organization id.
+ */
+function createAdvertiserOrganization(string $orgName = 'Demo Org', string $countryCode = 'CI'): string
+{
+    $organizationId = test()->postJson('/api/organizations', [
+        'name' => $orgName,
+        'type' => 'advertiser',
+        'country_code' => $countryCode,
+    ])->assertCreated()->json('id');
+
+    $spaces = test()->getJson('/api/me/spaces')->assertOk()->json('spaces');
+    $advertiserSpace = collect($spaces)->firstWhere('organization_id', $organizationId);
+
+    test()->postJson("/api/me/spaces/{$advertiserSpace['user_space_id']}/switch")->assertOk();
+
+    return $organizationId;
+}
+
+/**
+ * Builds a GeniusPay webhook body + signed headers matching the real
+ * contract documented in docs/chantiers/HOTFIX-P003-GENIUSPAY-SANDBOX.md:
+ * environment at the payload root, business fields under data.*, signature
+ * HMAC-SHA256 over "timestamp.payload".
+ *
+ * @param  array<string, mixed>  $data
+ * @return array{payload: string, headers: array<string, string>}
+ */
+function geniusPaySignedWebhook(array $data, string $eventType = 'payment.succeeded', string $environment = 'sandbox', ?int $timestamp = null): array
+{
+    $timestamp ??= time();
+    $payload = json_encode([
+        'environment' => $environment,
+        'event_type' => $eventType,
+        'timestamp' => $timestamp,
+        'data' => $data,
+    ], JSON_THROW_ON_ERROR);
+
+    $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", (string) config('services.geniuspay.webhook_secret'));
+
+    return [
+        'payload' => $payload,
+        'headers' => [
+            'X-Webhook-Signature' => $signature,
+            'X-Webhook-Timestamp' => (string) $timestamp,
+        ],
+    ];
+}

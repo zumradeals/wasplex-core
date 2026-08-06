@@ -15,7 +15,7 @@ const tabs = [
     { key: 'espace', label: 'Mon Espace', icon: '👤' },
 ] as const;
 
-const activeTab = ref<(typeof tabs)[number]['key']>('espace');
+const activeTab = ref<(typeof tabs)[number]['key']>('feed');
 
 async function logout(): Promise<void> {
     await http.post('/logout');
@@ -27,9 +27,12 @@ async function logout(): Promise<void> {
     <div class="bg-wpx-navy-950 flex min-h-screen justify-center">
         <div class="bg-wpx-navy-950 flex w-full max-w-md flex-col">
             <header class="border-wpx-border-dark bg-wpx-navy-850 flex items-center justify-between border-b px-4 py-3">
-                <span class="rounded-wpx-md bg-wpx-navy-750 text-wpx-gold px-3 py-1 text-sm font-semibold">
-                    Wasplex
-                </span>
+                <div class="flex items-center gap-2">
+                    <div class="rounded-wpx-sm bg-white p-1">
+                        <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-6 w-6 object-contain" />
+                    </div>
+                    <span class="text-wpx-white-soft text-sm font-semibold">Wasplex</span>
+                </div>
                 <div class="flex items-center gap-2">
                     <SpaceSwitcher
                         variant="dark"
@@ -41,7 +44,20 @@ async function logout(): Promise<void> {
             </header>
 
             <main class="flex-1 px-4 py-6">
-                <div v-if="activeTab === 'espace'" class="flex flex-col gap-4">
+                <div
+                    v-if="activeTab === 'feed'"
+                    class="rounded-wpx-lg from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 shadow-wpx-card-dark flex h-[28rem] flex-col items-center justify-center gap-4 bg-gradient-to-b p-6 text-center"
+                >
+                    <div class="rounded-wpx-lg bg-white p-3 shadow">
+                        <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-16 w-16 object-contain" />
+                    </div>
+                    <p class="text-wpx-white-soft text-sm font-semibold">Le Feed arrive bientôt</p>
+                    <p class="text-wpx-muted-dark max-w-[16rem] text-xs">
+                        Les publicités qualifiées et le crédit automatique de WP seront livrés avec le Super Moteur
+                        (P008-P009). Ton compte est prêt à les recevoir dès leur mise en service.
+                    </p>
+                </div>
+                <div v-else-if="activeTab === 'espace'" class="flex flex-col gap-4">
                     <h1 class="text-wpx-white-soft text-lg font-semibold">Mon Espace</h1>
                     <section class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 p-4">
                         <p class="text-wpx-muted-dark text-sm">Compte</p>

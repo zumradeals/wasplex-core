@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
+import AdvertiserWalletPanel from '@/Components/AdvertiserWalletPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
 
@@ -65,10 +66,11 @@ async function logout(): Promise<void> {
 <template>
     <div class="bg-wpx-canvas flex min-h-screen">
         <aside class="bg-wpx-navy-950 border-wpx-border-dark hidden w-56 flex-col border-r md:flex">
-            <div class="border-wpx-border-dark border-b p-4">
-                <span class="rounded-wpx-md bg-wpx-navy-750 text-wpx-gold px-3 py-1 text-sm font-semibold">
-                    Studio Annonceur
-                </span>
+            <div class="border-wpx-border-dark flex items-center gap-2 border-b p-4">
+                <div class="rounded-wpx-sm bg-white p-1">
+                    <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-6 w-6 object-contain" />
+                </div>
+                <span class="text-wpx-gold text-sm font-semibold">Studio Annonceur</span>
             </div>
             <nav class="flex flex-1 flex-col gap-1 p-2">
                 <button
@@ -108,7 +110,10 @@ async function logout(): Promise<void> {
             </header>
 
             <main class="flex-1 p-6">
-                <section v-if="activeSection === 'team'" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
+                <section v-if="activeSection === 'wallet'">
+                    <AdvertiserWalletPanel />
+                </section>
+                <section v-else-if="activeSection === 'team'" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
                     <h2 class="text-wpx-text mb-3 text-sm font-semibold">Membres de l'organisation</h2>
                     <p v-if="loadingMembers" class="text-wpx-text-muted text-sm">Chargement…</p>
                     <ul v-else class="flex flex-col gap-2 text-sm">

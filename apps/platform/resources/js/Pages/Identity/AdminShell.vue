@@ -122,10 +122,11 @@ async function logout(): Promise<void> {
 <template>
     <div class="bg-wpx-canvas flex min-h-screen">
         <aside class="bg-wpx-navy-950 border-wpx-border-dark flex w-60 flex-col border-r">
-            <div class="border-wpx-border-dark border-b p-4">
-                <span class="rounded-wpx-md bg-wpx-navy-750 text-wpx-gold px-3 py-1 text-sm font-semibold">
-                    Administration
-                </span>
+            <div class="border-wpx-border-dark flex items-center gap-2 border-b p-4">
+                <div class="rounded-wpx-sm bg-white p-1">
+                    <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-6 w-6 object-contain" />
+                </div>
+                <span class="text-wpx-gold text-sm font-semibold">Administration</span>
             </div>
             <nav class="flex flex-1 flex-col gap-1 p-2">
                 <button

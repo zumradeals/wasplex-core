@@ -35,4 +35,13 @@ final class LedgerAccountReference
     ): self {
         return new self($code, LedgerAccount::OWNER_TYPE_IDENTITY_ACCOUNT, $identityAccountId, $accountTypeCode, $currency);
     }
+
+    public static function forOrganization(
+        string $code,
+        string $organizationId,
+        string $accountTypeCode,
+        string $currency,
+    ): self {
+        return new self($code, LedgerAccount::OWNER_TYPE_ORGANIZATION, $organizationId, $accountTypeCode, $currency);
+    }
 }

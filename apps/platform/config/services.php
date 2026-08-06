@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+     * Docs/chantiers/HOTFIX-P003-GENIUSPAY-SANDBOX.md: real Merchant API
+     * contract. Sandbox only in P003 — GeniusPayAdapter refuses to boot
+     * with environment != "sandbox" or a merchant key containing "live".
+     */
+    'geniuspay' => [
+        'environment' => env('GENIUSPAY_ENVIRONMENT', 'sandbox'),
+        'base_url' => env('GENIUSPAY_BASE_URL', 'https://geniuspay.ci/api/v1/merchant'),
+        'merchant_key' => env('GENIUSPAY_MERCHANT_KEY'),
+        'webhook_secret' => env('GENIUSPAY_WEBHOOK_SECRET'),
+        'checkout_hosts' => array_filter(explode(',', (string) env('GENIUSPAY_CHECKOUT_HOSTS', 'geniuspay.ci,pay.genius.ci'))),
+    ],
+
 ];
