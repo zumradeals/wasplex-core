@@ -100,6 +100,9 @@ final class SeedFounderCommand extends Command
             'wallet.correction.propose',
             'wallet.correction.approve',
             'wallet.audit.view',
+            // docs/chantiers/P004-CHANTIER.md: capacités Abonnements/Classes.
+            'admin.subscriptions.plans.manage',
+            'admin.subscriptions.classes.manage',
         ];
     }
 }

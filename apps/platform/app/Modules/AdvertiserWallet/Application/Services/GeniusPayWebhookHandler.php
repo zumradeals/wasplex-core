@@ -11,6 +11,7 @@ use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerEntryInput;
 use App\Modules\Ledger\Domain\ValueObjects\PostLedgerTransaction;
 use App\Shared\Money\Money;
+use App\Shared\Payments\PaymentProviderContract;
 
 /**
  * docs/chantiers/HOTFIX-P003-GENIUSPAY-SANDBOX.md §4: "crédit uniquement
@@ -69,7 +70,7 @@ final class GeniusPayWebhookHandler
         }
 
         // Server-side re-verification: never trust the webhook body alone.
-        $verified = $this->provider->fetchDepositStatus($deposit->provider_reference);
+        $verified = $this->provider->fetchPaymentStatus($deposit->provider_reference);
 
         AdvertiserWalletDepositEvent::query()->create([
             'deposit_id' => $deposit->id,

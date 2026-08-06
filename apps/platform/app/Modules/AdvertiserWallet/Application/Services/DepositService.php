@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\AdvertiserWallet\Application\Services;
 
-use App\Modules\AdvertiserWallet\Domain\ValueObjects\CreateDepositRequest;
 use App\Modules\AdvertiserWallet\Infrastructure\Models\AdvertiserWalletDeposit;
+use App\Shared\Payments\PaymentProviderContract;
+use App\Shared\Payments\ValueObjects\CreatePaymentRequest;
 use Illuminate\Support\Str;
 
 /**
@@ -36,7 +37,7 @@ final class DepositService
         // an open PostgreSQL transaction). If this throws, the deposit row
         // stays 'created' with no checkout URL — visible in history as a
         // failed initiation, safely retryable via a new deposit.
-        $result = $this->provider->createDeposit(new CreateDepositRequest(
+        $result = $this->provider->createPayment(new CreatePaymentRequest(
             amountMinor: $amountMinor,
             currency: $currency,
             internalReference: $deposit->id,

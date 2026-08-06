@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\AdvertiserWallet\Application\Services;
+namespace App\Shared\Payments;
 
 use RuntimeException;
 
