@@ -17,4 +17,11 @@ interface AccountCountryLookupContract
      * @param  string[]  $accountIds
      */
     public function countInCountry(array $accountIds, string $countryCode): int;
+
+    /**
+     * The declared country of a single account, or null if unknown. Used
+     * by Matching (P008) to check territory eligibility for one candidate
+     * rather than counting a whole segment.
+     */
+    public function countryForAccount(string $accountId): ?string;
 }

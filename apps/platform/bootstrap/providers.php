@@ -5,6 +5,8 @@ use App\Modules\AdvertiserWallet\Infrastructure\Providers\AdvertiserWalletServic
 use App\Modules\Campaigns\Infrastructure\Providers\CampaignsServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
 use App\Modules\Ledger\Infrastructure\Providers\LedgerServiceProvider;
+use App\Modules\Matching\Infrastructure\Providers\MatchingServiceProvider;
+use App\Modules\SmartProfile\Infrastructure\Providers\SmartProfileServiceProvider;
 use App\Modules\Subscriptions\Infrastructure\Providers\SubscriptionsServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Shared\Payments\PaymentsServiceProvider;
@@ -18,4 +20,6 @@ return [
     SubscriptionsServiceProvider::class,
     AdvertiserStudioServiceProvider::class,
     CampaignsServiceProvider::class,
+    SmartProfileServiceProvider::class,
+    MatchingServiceProvider::class,
 ];

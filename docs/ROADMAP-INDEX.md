@@ -14,7 +14,7 @@
 | P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | ready_for_review |
 | P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | ready_for_review |
 | P007 | Revue administrative | P006 | Annonceur | ready_for_review |
-| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En attente (réinitialisé) |
+| P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | ready_for_review |
 | P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | En attente (réinitialisé) |
 | P010 | Antifraude, preuves renforcées et reprise | P009 | Valeur et confiance | En attente |
 | P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | En attente |

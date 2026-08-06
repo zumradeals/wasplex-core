@@ -1,415 +1,215 @@
-# P008 — SMARTPROFILE, CONSENTEMENTS ET MATCHING
+# P008 — SmartProfile, consentements et Matching minimal
 
-**Statut :** `in_progress`  
-**Phase :** Distribution  
-**Branche :** `codex/p008-smart-profile-matching`  
-**Commit de base :** `e82d8f2521fd8c6f196d14fc9d8d57255737efae`  
-**Dépendances :** P004 — Configurations économiques ; P007 — Revue administrative  
-**Date d’ouverture :** 4 août 2026
+**Branche :** `claude/wasplex-reconstruction-7ujym7`
+**Commit de base :** `2a8bc6d` (P007 fusionné)
+**Dépendances :** P004 (classes économiques), P006/P007 (campagnes approuvées)
+**Spécifications :** `docs/04-moteur-matching-et-distribution-publicitaire-wasplex.md`,
+`docs/09-compte-universel-et-mon-espace-intelligent-wasplex.md` (Phases 4, 5, partie 7),
+`docs/17-donnees-permissions-consentements-techniques-wasplex.md` (§12-19, registre des
+finalités et consentements), `docs/MASTER-WASPLEX.md`.
 
-## 1. Finalité
+Ce chantier réutilise le raisonnement du plan pré-réinitialisation
+(`docs/chantiers/P008-CHANTIER.md` sur la branche archivée `codex/p008-smart-profile-matching`,
+conservée dans l'historique Git) : chaîne de décision, invariants de confidentialité, contrat de
+sortie vers P009. Il en réduit délibérément le périmètre pour rester au niveau de granularité des
+chantiers déjà livrés (P004-P007) et retient une leçon explicite du chantier de refonte
+`P008-R-REFONTE-PROFIL-INTELLIGENT.md` (également archivé) : **aucun score de complétude n'est
+affiché** — ce chantier y avait identifié un faux objectif de 100 % comme une erreur de conception.
 
-P008 construit le cœur intelligent de la première verticale Wasplex :
+---
 
-```text
-réponses volontaires de l’utilisateur
-→ faits publicitaires minimaux et versionnés
-→ consentements actifs
-→ règles de campagne approuvée
-→ décision d’éligibilité protégée
-→ explication « Pourquoi cette publicité ? »
-```
-
-Le système doit déterminer qui peut recevoir une campagne, à quel moment et pour quelle raison, sans révéler l’identité de la personne à l’annonceur et sans utiliser de données sensibles ou provenant de domaines interdits.
-
-P008 ne diffuse encore aucune publicité et ne produit aucune valeur financière. Il prépare uniquement les candidats autorisés pour P009.
-
-## 2. Sources canoniques
-
-- `docs/MASTER-WASPLEX.md` ;
-- `docs/04-moteur-matching-et-distribution-publicitaire-wasplex.md` ;
-- `docs/09-compte-universel-et-mon-espace-intelligent-wasplex.md` ;
-- `docs/16-moderation-securite-antifraude-globale-wasplex.md` ;
-- `docs/17-donnees-permissions-consentements-techniques-wasplex.md` ;
-- `docs/IMPLEMENTATION-ROADMAP-WASPLEX.md`.
-
-Ordre d’autorité : décision explicite du fondateur → note métier concernée → document maître → chantier → code.
-
-## 3. Périmètre inclus
-
-### 3.1. SmartProfile utilisateur
-
-- centre « Mon profil intelligent » dans l’espace utilisateur ;
-- questions courtes, facultatives et administrées ;
-- réponses structurées issues de taxonomies ;
-- catégories initiales : possessions, usages, intérêts, projets, besoins, activité professionnelle et territoires approximatifs ;
-- provenance de chaque fait ;
-- fraîcheur, expiration, confirmation, correction et contestation ;
-- versionnement append-only des réponses et faits ;
-- score de complétude informatif, sans score social et sans garantie de gain.
-
-### 3.2. Consentements publicitaires
-
-- registre de finalités versionnées ;
-- finalités initiales :
-  - `advertising_personalization` ;
-  - `smart_profile_usage` ;
-  - `approximate_location_targeting` ;
-- décision explicite : accord, refus ou retrait ;
-- preuve de la version du texte présentée ;
-- historique immuable ;
-- retrait immédiatement opposable aux nouveaux matchings ;
-- propagation interne du changement ;
-- écran utilisateur simple expliquant les conséquences de chaque choix.
-
-### 3.3. Taxonomies et règles autorisées
-
-- taxonomies publicitaires administrées et versionnées ;
-- questions liées à des clés techniques stables ;
-- distinction stricte entre possession, usage, intérêt, intention d’achat, résidence, travail et zone d’intérêt ;
-- critères activables, suspendables et classés par finalité ;
-- liste technique de sources et domaines interdits.
-
-### 3.4. Segments et estimation protégée
-
-- lecture des règles d’audience déjà attachées aux campagnes P006 ;
-- normalisation vers les taxonomies P008 ;
-- estimation agrégée ;
-- seuil minimal de segment ;
-- arrondis et masquage anti-réidentification ;
-- aucune exportation de membres ;
-- aucune liste nominative ;
-- audit des estimations inhabituelles.
-
-### 3.5. Matching minimal
-
-- seules les campagnes P007 approuvées peuvent être évaluées ;
-- contrôle de période, territoire, classe économique, consentements et profil ;
-- fréquence et fatigue minimales préparatoires à la livraison ;
-- décision explicite : `eligible`, `ineligible` ou `withheld` ;
-- score de pertinence explicable ;
-- raisons positives et causes d’exclusion structurées ;
-- idempotence d’une même évaluation ;
-- aucun accès de l’annonceur à l’utilisateur évalué.
-
-### 3.6. Explication utilisateur
-
-- endpoint et vue « Pourquoi cette publicité ? » ;
-- explication fondée uniquement sur des éléments compréhensibles : classe, zone approximative, intérêt ou usage déclaré, projet volontaire et consentement ;
-- aucune révélation de règles antifraude sensibles ;
-- possibilité de corriger la réponse concernée ou de retirer le consentement.
-
-### 3.7. Administration minimale
-
-- consultation des finalités, taxonomies et questions ;
-- activation/suspension contrôlée ;
-- seuil minimal de segment ;
-- limites de fréquence et fatigue ;
-- audit sans données nominatives inutiles ;
-- capacités explicites et MFA récente pour les actions critiques.
-
-## 4. Périmètre explicitement exclu
-
-P008 ne doit pas contenir :
-
-- le Feed ou la livraison réelle d’une publicité — P009 ;
-- la consommation définitive du quota sur affichage — P009 ;
-- la preuve d’attention, les heartbeats et la qualification — P010 ;
-- la réservation ou capture de valeur publicitaire — P010 ;
-- le crédit du Wallet utilisateur ou le partage 50/50 — P011 ;
-- les animations de récompense ;
-- le reporting complet annonceur ou fondateur — P012 ;
-- un moteur général d’intelligence artificielle ;
-- un profil public nominatif ;
-- un score social ;
-- des décisions sensibles hors publicité ;
-- l’utilisation commerciale des données Santé, Alertes, Fonds, KYC, dette, vulnérabilité, religion, politique, orientation sexuelle, grossesse supposée, historique judiciaire ou données de mineurs non autorisées.
-
-## 5. Invariants de sécurité et de confidentialité
-
-1. L’annonceur achète une capacité de ciblage, jamais une identité.
-2. Une campagne rejetée, suspendue ou non approuvée ne peut jamais produire de match éligible.
-3. Un consentement absent, refusé, retiré, expiré ou remplacé bloque la finalité concernée.
-4. Le retrait bloque les nouveaux usages sans réécrire l’historique.
-5. Aucun module ne lit directement les tables Santé, Alertes, Fonds ou KYC.
-6. Les projections inter-domaines sont minimales, contractuelles et auditées.
-7. Les textes libres ne deviennent jamais des règles exécutables de ciblage.
-8. Une donnée déduite reste identifiable comme déduite, explicable et contestable.
-9. Un segment trop petit est masqué, arrondi, élargi ou refusé.
-10. Les logs et audits ne contiennent aucun secret ni profil publicitaire complet.
-11. Le matching n’effectue aucun débit, réservation, capture ou crédit financier.
-12. Les décisions sont reproductibles à partir des versions de règles enregistrées.
-
-## 6. Modèle de données proposé
-
-### SmartProfile
-
-- `advertising_profile_questions` ;
-- `advertising_profile_question_versions` ;
-- `advertising_profile_answers` ;
-- `advertising_profile_answer_versions` ;
-- `advertising_profile_facts` ;
-- `advertising_profile_fact_versions`.
-
-### Consentements et finalités
-
-- `data_purposes` ;
-- `data_purpose_versions` ;
-- `advertising_consents` ;
-- `advertising_consent_events`.
-
-### Taxonomies et segments
-
-- `advertising_taxonomies` ;
-- `advertising_taxonomy_versions` ;
-- `advertising_segments` ;
-- `advertising_segment_rules` ;
-- `advertising_segment_estimates`.
-
-### Matching
-
-- `advertising_matches` ;
-- `advertising_match_reasons` ;
-- `advertising_frequency_counters` ;
-- `advertising_fatigue_scores` ;
-- `advertising_match_audits`.
-
-Le schéma définitif pourra regrouper certaines tables si cela réduit la complexité sans perdre le versionnement, l’audit ou la séparation des responsabilités.
-
-## 7. Contrats applicatifs
-
-### Projections entrantes
-
-- `AdvertisingProfileProjection` ;
-- `ActiveAdvertisingConsentProjection` ;
-- `EconomicClassEligibilityProjection` ;
-- `ApprovedCampaignTargetingProjection`.
-
-### Services
-
-- `AdvertisingProfileService` ;
-- `AdvertisingConsentService` ;
-- `AdvertisingTaxonomyService` ;
-- `SegmentEstimationService` ;
-- `CampaignEligibilityService` ;
-- `AdvertisingExplanationService`.
-
-### Sortie minimale vers P009
+## 1. Objectif
 
 ```text
-eligible
-campaign_id
-match_id
-score_band
-explanation_tokens
-frequency_state
-rule_version
+réponses volontaires de l'utilisateur (taxonomies, catégories distinctes)
+→ consentements publicitaires actifs, versionnés et retirables
+→ campagne P007 approuvée et non suspendue
+→ décision d'éligibilité protégée (eligible / ineligible / withheld)
+→ explication compréhensible, sans révéler l'identité à l'annonceur
 ```
 
-Le contrat ne transmet jamais l’intégralité du SmartProfile.
+P008 ne diffuse aucune publicité, ne consomme aucun quota et ne crée aucune valeur financière —
+il prépare uniquement des candidats autorisés et explicables pour P009 (Feed, non construit).
 
-## 8. API et écrans
+## 2. Périmètre inclus
 
-### Espace utilisateur
+1. **SmartProfile volontaire** : catalogue de taxonomies administrées (possession / usage /
+   intérêt / projet / situation / territoire approximatif), déclaration et retrait par
+   l'utilisateur, historique append-only, provenance toujours `declared_by_user`.
+2. **Consentements publicitaires** : registre de finalités versionnées, décision explicite
+   (accord/refus/retrait), preuve de version présentée, historique immuable, retrait
+   immédiatement opposable.
+3. **Matching minimal** : évalue une campagne P007 approuvée et non suspendue pour un compte —
+   territoire déclaré (P006/Identity), classe économique (P006/Subscriptions), consentement
+   `advertising_personalization` actif — et produit `eligible` / `ineligible` / `withheld` avec
+   des raisons explicables.
+4. **Explication utilisateur** : liste « Campagnes qui vous correspondent » dans Mon Espace,
+   avec explication en langage clair par campagne éligible.
+5. **Administration minimale** : gestion des taxonomies, des finalités de consentement et de la
+   configuration Matching — écrans simples, en langage clair, sans éditeur JSON ni jargon
+   technique (exigence explicite du fondateur, non-technicien).
 
-- `GET /mon-espace/profil-intelligent` ;
-- réponses, correction et suppression des données facultatives ;
-- centre de consentements publicitaires ;
-- historique compréhensible ;
-- explication « Pourquoi cette publicité ? ».
+## 3. Périmètre explicitement exclu — décisions
 
-### Studio annonceur
+1. **Aucun ciblage de campagne par taxonomie dans ce chantier.** `AudienceConfigurationValidator`
+   (P006) reste limité à `territory` + `economic_classes`. Étendre le Studio Annonceur (assistant,
+   estimation, devis) aux taxonomies SmartProfile suppose une refonte de l'UI et du moteur de
+   devis déjà livrés et testés (P006/P007) ; ce n'est pas spécifié avec assez de précision dans
+   `docs/13` pour être codé sans inventer une UX. Le SmartProfile est donc collecté, gouverné et
+   consentement-protégé dès ce chantier, mais ne devient un axe de ciblage réel qu'à un chantier
+   ultérieur explicitement validé par le fondateur.
+2. **Aucune fréquence/fatigue appliquée.** `matching_configurations` expose des seuils
+   administrables (fenêtre de fréquence, plafond, seuil de fatigue) pour que l'écran admin soit
+   complet dès maintenant, mais aucun compteur réel n'existe avant le Feed (P009) — appliquer une
+   règle non vérifiable serait une fausse protection (même discipline que
+   `SubscriptionQuotaContract` en P004, resté sans appelant réel jusqu'à un chantier ultérieur).
+3. **Vérification de période au mieux.** `campaigns.scheduled_start`/`scheduled_end` existent dans
+   le schéma P006 mais ne sont jamais renseignés par l'assistant annonceur (champs réservés, non
+   câblés) — le Matching les vérifie s'ils sont présents (gratuit, sans risque, direct depuis
+   `docs/04`) mais, tant qu'aucun écran ne les alimente, une campagne approuvée et non suspendue
+   reste active en continu jusqu'à sa prochaine décision de revue.
+4. **Un seul consentement a un effet réel sur la décision : `advertising_personalization`.**
+   `smart_profile_usage` et `approximate_location_targeting` sont enregistrables et retirables dès
+   ce chantier (le centre de consentements est complet), mais n'influencent pas encore la décision
+   — aucun axe de ciblage actuel ne consomme le SmartProfile ou une localisation approximative
+   (décision §3.1). Documenté explicitement plutôt qu'une fausse application.
+5. **Pas de score de complétude.** Leçon retenue de `P008-R-REFONTE-PROFIL-INTELLIGENT.md` §1 :
+   l'écran affiche le nombre d'informations actives et les catégories explorées, jamais un
+   pourcentage.
+6. **Taxonomies indépendantes, sans groupe à choix unique.** Chaque taxonomie est un fait
+   déclaratif booléen autonome (déclaré / retiré). Un utilisateur peut déclarer deux taxonomies
+   normalement exclusives (ex. deux réseaux mobiles « principaux ») ; imposer l'exclusivité au sein
+   d'une catégorie est une amélioration future non demandée ici.
+7. **Le registre de consentements suit les conventions `docs/17`** (tables et routes) mais n'est
+   pas construit comme le module transversal complet (Santé, Alertes, Fonds, Carte, Live) — il vit
+   dans le module SmartProfile, seul consommateur actuel. Les noms de colonnes restent génériques
+   (`purpose_code`, pas `advertising_purpose_code`) pour permettre une extraction future sans
+   renommage.
+8. **`user_consents` ne capture ni IP ni empreinte d'appareil** — seuls `channel`, la version de
+   texte présentée et les horodatages sont conservés ; `docs/17` §15 les liste en preuve
+   optionnelle, aucune décision produit n'a été prise sur leur rétention.
+9. **Pas de table d'audit séparée pour le Matching.** `matching_decisions` conserve la dernière
+   décision par (campagne, compte) avec ses raisons et la version de règles utilisée — recalculée
+   (upsert) à chaque évaluation plutôt qu'accumulée en historique complet, puisqu'il ne s'agit pas
+   d'une écriture financière (le Grand Livre reste la seule source append-only obligatoire).
 
-- taxonomies autorisées en lecture seule ;
-- estimation agrégée de l’audience ;
-- aucune identité et aucun membre du segment.
+## 4. Invariants de confidentialité (repris de `docs/04`/`docs/17`, non négociables)
 
-### Administration
+1. Aucune lecture directe des tables Santé, Alertes, Fonds ou KYC — structurellement impossible
+   ici : aucun contrat vers ces modules n'existe, et les taxonomies ne peuvent être créées que par
+   un administrateur via un catalogue fermé.
+2. Une campagne rejetée, suspendue ou non approuvée ne produit jamais de match éligible.
+3. Un consentement absent, refusé, retiré ou expiré bloque la finalité concernée.
+4. L'annonceur ne reçoit jamais l'identité d'un compte évalué — le contrat de sortie
+   (`MatchingContract`) ne transmet que des identifiants techniques et des jetons d'explication.
+5. Les catégories de taxonomies (possession/usage/intérêt/projet/situation/territoire) ne sont
+   jamais fusionnées : chaque taxonomie porte sa catégorie de façon immuable.
 
-- configuration des finalités, taxonomies, questions, seuils, fréquence et fatigue ;
-- activation/suspension versionnée ;
-- journal d’audit agrégé.
+## 5. Modèle de données
 
-## 9. Événements métier
+### Module `SmartProfile`
 
-- `AdvertisingProfileUpdated` ;
-- `AdvertisingProfileFactExpired` ;
-- `AdvertisingConsentGranted` ;
-- `AdvertisingConsentDenied` ;
-- `AdvertisingConsentWithdrawn` ;
-- `AdvertisingPurposeVersionPublished` ;
-- `AdvertisingTaxonomyPublished` ;
-- `SegmentEstimated` ;
-- `CampaignMatched` ;
-- `CampaignMatchWithheld`.
+- `profile_taxonomies` (code unique, catégorie, libellé, statut draft/active/suspended,
+  fraîcheur en jours nullable) — catalogue plat administrable, pas de versionnage JSON (les
+  champs sont modifiables individuellement pendant `draft`, activables/suspendables ensuite —
+  pattern le plus simple pour un administrateur non technicien).
+- `profile_answers` (compte, taxonomie, `source` = `declared_by_user`, `declared_at`,
+  `withdrawn_at` nullable) — append-only : une correction retire une ligne et en déclare une
+  nouvelle, l'historique reste lisible.
+- `consent_purposes` (code unique, statut draft/active/suspended) + `consent_purpose_versions`
+  (texte, `requires_new_decision`, statut draft/published, `published_at`) — même pattern
+  draft→publish que `AdvertisingPriceCatalog`/`Version` (P006).
+- `user_consents` (compte, finalité, version de texte présentée, statut
+  granted/denied/withdrawn/expired/superseded, `channel`, `granted_at`, `withdrawn_at`) — état
+  courant, une ligne par (compte, finalité).
+- `consent_events` (append-only, un événement par décision).
 
-Les événements ne contiennent que les identifiants techniques et données minimales nécessaires.
+### Module `Matching`
 
-## 10. Capacités
+- `matching_configurations` (statut draft/published, fenêtre de fréquence en heures, plafond de
+  fréquence, seuil de fatigue, `published_at`) — une seule version publiée à la fois.
+- `matching_decisions` (campagne, version de campagne, compte, décision
+  eligible/ineligible/withheld, `reason_codes` JSON, `rule_version_id`, `decided_at`, unique sur
+  campagne+compte).
 
-### Utilisateur
+## 6. Contrats internes
 
-- `advertising.profile.view.self` ;
-- `advertising.profile.manage.self` ;
-- `advertising.consent.view.self` ;
-- `advertising.consent.manage.self` ;
-- `advertising.explanation.view.self`.
+- `App\Modules\Subscriptions\...\EconomicClassCatalogContract` étendu :
+  `classForAccount(string $accountId): ?string` (réutilise la table déjà possédée par
+  Subscriptions, aucune nouvelle table).
+- `App\Modules\Identity\...\AccountCountryLookupContract` étendu :
+  `countryForAccount(string $accountId): ?string`.
+- `App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract` (nouveau) :
+  `find(string $campaignId): ?ApprovedCampaignAudience`, `listApproved(): ApprovedCampaignAudience[]`
+  — campagnes au statut `approved` uniquement, avec leur `audience_configuration` normalisée.
+- `App\Modules\SmartProfile\Application\Contracts\AdvertisingConsentContract` (nouveau) :
+  `isActive(string $accountId, string $purposeCode): ConsentState` (`active`, `refused`,
+  `not_decided`) — la seule façon dont Matching lit l'état de consentement.
+- `App\Modules\Matching\Application\Contracts\MatchingContract` (nouveau, exposé pour P009) :
+  `checkEligibility(string $campaignId, string $accountId): MatchingDecisionResult`,
+  `explain(string $campaignId, string $accountId): array` (jetons en langage clair).
 
-### Annonceur
+## 7. API et capacités
 
-- `advertiser.targeting.taxonomy.view` ;
-- `advertiser.segment.estimate`.
+### Utilisateur (self-service, `auth` + session non révoquée, aucune capacité — même discipline
+que `docs/03` §24 pour les abonnements)
 
-### Administration
+```text
+GET    /api/me/smart-profile
+POST   /api/me/smart-profile/{taxonomy}
+DELETE /api/me/smart-profile/{taxonomy}
+GET    /api/me/consents
+POST   /api/me/consents/{purpose}/grant
+POST   /api/me/consents/{purpose}/withdraw
+GET    /api/me/consents/history
+GET    /api/me/eligible-campaigns
+```
 
-- `advertising.configuration.view` ;
-- `advertising.configuration.manage` ;
-- `advertising.configuration.publish` ;
-- `advertising.match.audit.view`.
+### Administration (MFA récente + capacité dédiée)
 
-Aucune autorité ne découle du seul nom d’un rôle.
+```text
+GET/POST/PATCH  /api/admin/smartprofile/taxonomies[/{id}[/activate|suspend]]
+                 admin.smartprofile.taxonomies.manage
+GET/POST/PATCH  /api/admin/smartprofile/consent-purposes[/{id}[/publish]]
+                 admin.smartprofile.consents.manage
+GET/PATCH/POST publish /api/admin/matching/configuration
+                 admin.matching.configuration.manage
+GET             /api/admin/matching/audit (agrégats, aucune identité)
+                 admin.matching.audit.view
+```
 
-## 11. Décision de Matching minimale
-
-Ordre obligatoire :
+## 8. Décision de Matching
 
 ```text
 campagne approuvée et non suspendue
-→ campagne dans sa période
-→ territoire et classe compatibles
-→ consentements requis actifs
-→ faits volontaires correspondants et suffisamment frais
-→ seuils de fréquence et fatigue respectés
-→ segment non interdit et non réidentifiant
-→ score explicable
-→ décision
+→ territoire du compte ∈ territoire ciblé
+→ classe économique du compte ∈ classes ciblées
+→ consentement advertising_personalization
+   - actif  → poursuite
+   - refusé/retiré/expiré → ineligible (raison : consent_denied)
+   - jamais décidé → withheld (raison : consent_not_decided — un doute de confidentialité,
+     pas un refus)
+→ eligible
 ```
 
-Les critères durs échoués rendent la décision `ineligible`. Un doute de sécurité ou de confidentialité produit `withheld`, sans révéler la règle précise au client.
+## 9. Événements
 
-## 12. Jeux de démonstration
+`ConsentGranted`, `ConsentWithdrawn`, `ProfileAnswerDeclared`, `ProfileAnswerWithdrawn` (journal
+applicatif via `consent_events` / append-only de `profile_answers`) ; aucun événement Ledger —
+aucune opération financière.
 
-### Utilisateur de référence
+## 10. Tests obligatoires
 
-```text
-Classe : Gold
-Pays : Côte d’Ivoire
-Ville : Abidjan
-Commune approximative : Cocody
-Réseau principal déclaré : Orange
-Intérêt déclaré : offres Internet mobile
-Consentements : personnalisation + profil volontaire + localisation approximative
-```
+Retrait de consentement → inéligibilité immédiate ; consentement jamais décidé → `withheld` (pas
+`ineligible`) ; catégories Santé/Alertes/Fonds/KYC impossibles à injecter (aucune route ne les
+accepte) ; anonymat annonceur (le contrat de sortie ne contient aucun identifiant de compte) ;
+correction d'une réponse conserve l'historique ; isolation pays et classe (un compte hors
+territoire/classe ciblé est `ineligible`) ; campagne non approuvée/suspendue toujours exclue ;
+idempotence du Matching (rejouer la même évaluation ne duplique pas `matching_decisions`) ;
+capacités admin requises + MFA récente ; cas de référence Gold/Côte d'Ivoire positif.
 
-### Campagne de référence
+## 11. Critères de fin
 
-```text
-Annonceur : Orange
-Territoire : Côte d’Ivoire / Abidjan / Cocody
-Classes : Gold et Platine
-Critères : utilise Orange + intérêt Internet mobile
-Statut P007 : approuvée
-```
-
-### Résultat attendu
-
-- l’utilisateur est éligible ;
-- l’explication mentionne sa zone approximative, sa classe et ses réponses volontaires ;
-- l’annonceur ne reçoit aucun identifiant utilisateur ;
-- le retrait de `smart_profile_usage` rend immédiatement les prochains matchings inéligibles.
-
-## 13. Tests obligatoires
-
-- profil vide et profil volontaire ;
-- réponse corrigée avec conservation de l’historique ;
-- provenance et fraîcheur ;
-- consentement accordé, refusé, retiré, expiré et remplacé ;
-- propagation du retrait ;
-- campagne non approuvée ou suspendue exclue ;
-- Orange / Cocody / Gold positif ;
-- isolation pays et classe ;
-- distinction possession / intérêt / usage / projet ;
-- segment trop petit masqué ;
-- absence de liste nominative ;
-- requêtes répétées et anti-réidentification ;
-- fréquence et fatigue ;
-- explication compréhensible ;
-- données Santé, Alertes, Fonds et KYC impossibles à injecter ;
-- capacités et isolation des espaces ;
-- idempotence du matching ;
-- migrations PostgreSQL et rollback ;
-- frontend mobile et desktop ;
-- analyse statique, lint, TypeScript et build.
-
-## 14. Critères d’acceptation
-
-P008 est acceptable lorsque :
-
-1. l’utilisateur peut compléter et corriger un profil publicitaire volontaire ;
-2. chaque question explique sa finalité, son caractère facultatif et son influence ;
-3. les consentements sont explicites, versionnés et retirables ;
-4. le retrait bloque immédiatement les nouveaux matchings ;
-5. une campagne P007 approuvée peut être évaluée ;
-6. le cas Gold / Cocody / Orange produit une éligibilité explicable ;
-7. une campagne non approuvée ou suspendue est toujours exclue ;
-8. Santé, Alertes, Fonds, KYC et autres catégories interdites ne peuvent jamais participer ;
-9. l’annonceur ne reçoit que des estimations agrégées ;
-10. le contrat de sortie vers P009 ne contient aucun profil complet ;
-11. aucune opération financière n’est créée ;
-12. les tests SQLite et PostgreSQL, la sécurité et le frontend sont verts ;
-13. le rapport, les captures et le rollback sont fournis.
-
-## 15. Plan de réalisation
-
-### P008-A — Registre des finalités et consentements
-
-- finalités versionnées ;
-- décisions et historique ;
-- centre utilisateur ;
-- propagation du retrait.
-
-### P008-B — SmartProfile volontaire
-
-- taxonomies et questions ;
-- réponses, faits, provenance et fraîcheur ;
-- écran Mon Espace intelligent.
-
-### P008-C — Segments et estimation protégée
-
-- normalisation des audiences P006 ;
-- estimation agrégée ;
-- seuil et anti-réidentification.
-
-### P008-D — Matching et explication
-
-- éligibilité ;
-- fréquence/fatigue minimale ;
-- décision, audit et explication ;
-- contrat P009.
-
-### P008-E — Administration, preuves et stabilisation
-
-- configuration minimale ;
-- démonstration Orange/Cocody/Gold ;
-- captures ;
-- rapport et rollback.
-
-## 16. Rollback
-
-- désactiver les routes P008 ;
-- arrêter les consommateurs d’événements P008 ;
-- retirer les capacités P008 ;
-- revenir aux migrations dans l’ordre inverse ;
-- aucune écriture Ledger n’est concernée ;
-- aucune campagne P007 n’est modifiée ou supprimée ;
-- les données de consentement déjà recueillies ne doivent pas être effacées sans décision explicite.
-
-## 17. Interdictions de chantier
-
-- aucun merge sans autorisation explicite du fondateur ;
-- aucun déploiement sans autorisation explicite ;
-- aucune modification du Wallet ou du Grand Livre ;
-- aucun contournement des statuts P007 ;
-- aucun début anticipé de P009, P010 ou P011 ;
-- aucune donnée sensible ajoutée « pour plus tard » ;
-- aucune règle cachée dans le frontend.
+Migrations + rollback propre, tests Pest verts, Pint vert, qualité frontend verte, captures
+Playwright, rapport, `docs/ROADMAP-INDEX.md` mis à jour, PR créée en brouillon, CI verte, merge,
+resynchronisation de branche.

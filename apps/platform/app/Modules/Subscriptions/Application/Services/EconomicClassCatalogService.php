@@ -69,6 +69,18 @@ final class EconomicClassCatalogService implements EconomicClassCatalogContract
         );
     }
 
+    public function classForAccount(string $accountId): ?string
+    {
+        return UserSubscription::query()
+            ->where('account_id', $accountId)
+            ->whereIn('status', [UserSubscription::STATUS_ACTIVE, UserSubscription::STATUS_SCHEDULED_DOWNGRADE])
+            ->with('economicClass')
+            ->latest('started_at')
+            ->first()
+            ?->economicClass
+            ?->code;
+    }
+
     /**
      * Rounds to a band of 5 so the advertiser never sees an exact
      * headcount (docs/13 §39: "Il ne fournit jamais une liste nominative").

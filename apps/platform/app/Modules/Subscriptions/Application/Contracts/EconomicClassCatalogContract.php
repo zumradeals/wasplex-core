@@ -25,4 +25,11 @@ interface EconomicClassCatalogContract
      * @param  string[]  $classCodes
      */
     public function estimateAudience(array $classCodes, ?string $countryCode, int $minimumSegmentSize): AudienceEstimate;
+
+    /**
+     * The economic class code of a single account's active subscription,
+     * or null if it has none. Used by Matching (P008) to check class
+     * eligibility for one candidate.
+     */
+    public function classForAccount(string $accountId): ?string;
 }
