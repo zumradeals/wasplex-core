@@ -13,6 +13,8 @@ const STATUS_LABELS: Record<string, string> = {
     completed: 'Complétées (gain versé)',
     abandoned: 'Abandonnées',
     expired: 'Expirées',
+    held: 'En attente de revue (antifraude)',
+    rejected: 'Rejetées (aucun gain)',
 };
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
@@ -30,6 +32,8 @@ async function load(): Promise<void> {
         loading.value = false;
     }
 }
+
+defineExpose({ load });
 
 onMounted(load);
 </script>

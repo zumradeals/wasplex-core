@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Feed\Http\Controllers\Admin\FeedDashboardController;
+use App\Modules\Feed\Http\Controllers\Admin\FeedRiskReviewController;
 use App\Modules\Feed\Http\Controllers\User\FeedDeliveriesController;
 use App\Modules\Feed\Http\Controllers\User\FeedSessionsController;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
@@ -38,4 +39,10 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
     ->group(function (): void {
         Route::get('/dashboard', [FeedDashboardController::class, 'index'])
             ->middleware(EnsureCapability::class.':admin.feed.dashboard.view');
+
+        Route::middleware(EnsureCapability::class.':admin.feed.risk.review')->group(function (): void {
+            Route::get('/holds', [FeedRiskReviewController::class, 'index']);
+            Route::post('/holds/{hold}/release', [FeedRiskReviewController::class, 'release']);
+            Route::post('/holds/{hold}/reject', [FeedRiskReviewController::class, 'reject']);
+        });
     });

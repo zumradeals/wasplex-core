@@ -120,6 +120,7 @@ final class SeedFounderCommand extends Command
             'admin.matching.audit.view',
             // docs/chantiers/P009-CHANTIER.md: Feed et attention.
             'admin.feed.dashboard.view',
+            'admin.feed.risk.review',
         ];
     }
 }
