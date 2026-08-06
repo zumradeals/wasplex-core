@@ -118,6 +118,8 @@ final class SeedFounderCommand extends Command
             'admin.smartprofile.consents.manage',
             'admin.matching.configuration.manage',
             'admin.matching.audit.view',
+            // docs/chantiers/P009-CHANTIER.md: Feed et attention.
+            'admin.feed.dashboard.view',
         ];
     }
 }

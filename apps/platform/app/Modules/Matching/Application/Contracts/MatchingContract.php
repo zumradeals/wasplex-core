@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Matching\Application\Contracts;
 
+use App\Modules\Matching\Application\ValueObjects\FrequencyPolicy;
 use App\Modules\Matching\Application\ValueObjects\MatchingDecisionResult;
 
 /**
@@ -25,4 +26,12 @@ interface MatchingContract
      * @return string[]
      */
     public function explain(string $campaignId, string $accountId): array;
+
+    /**
+     * The published frequency/fatigue thresholds (docs/chantiers/
+     * P008-CHANTIER.md §3.2 — configurable since P008, applied for real
+     * starting P009's Feed composition). Falls back to the schema's
+     * documented defaults when no configuration has been published yet.
+     */
+    public function activeFrequencyPolicy(): FrequencyPolicy;
 }

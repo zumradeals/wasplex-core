@@ -15,7 +15,7 @@
 | P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | ready_for_review |
 | P007 | Revue administrative | P006 | Annonceur | ready_for_review |
 | P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | ready_for_review |
-| P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | En attente (réinitialisé) |
+| P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | ready_for_review |
 | P010 | Antifraude, preuves renforcées et reprise | P009 | Valeur et confiance | En attente |
 | P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | En attente |
 | P012 | Reporting et dashboards | P007, P009, P011 | Pilotage | En attente |
