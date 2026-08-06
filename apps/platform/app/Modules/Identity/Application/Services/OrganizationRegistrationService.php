@@ -56,7 +56,18 @@ final class OrganizationRegistrationService
             // Identity only knows them as opaque strings, granted to the
             // owner the same way organization.manage.self is (the
             // capability system stays domain-agnostic, docs/CLAUDE.md #6).
-            foreach (['organization.manage.self', 'advertiser.wallet.view', 'advertiser.wallet.deposit.create'] as $capability) {
+            // advertiser.brand.*/advertiser.media.* belong to
+            // docs/chantiers/P005-CHANTIER.md — same domain-agnostic grant
+            // pattern as the wallet capabilities above.
+            foreach ([
+                'organization.manage.self',
+                'advertiser.wallet.view',
+                'advertiser.wallet.deposit.create',
+                'advertiser.profile.manage',
+                'advertiser.brand.manage',
+                'advertiser.media.upload',
+                'advertiser.media.manage',
+            ] as $capability) {
                 CapabilityGrant::create([
                     'account_id' => $creator->id,
                     'capability_code' => $capability,

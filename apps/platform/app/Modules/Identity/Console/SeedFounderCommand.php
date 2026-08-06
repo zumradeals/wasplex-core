@@ -100,6 +100,10 @@ final class SeedFounderCommand extends Command
             'wallet.correction.propose',
             'wallet.correction.approve',
             'wallet.audit.view',
+            // docs/chantiers/P005-CHANTIER.md: capacités Studio Annonceur.
+            'admin.advertisers.manage',
+            'admin.brands.moderate',
+            'admin.advertiser-wallet.supervised-deposit',
             // docs/chantiers/P004-CHANTIER.md: capacités Abonnements/Classes.
             'admin.subscriptions.plans.manage',
             'admin.subscriptions.classes.manage',

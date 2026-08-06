@@ -68,7 +68,7 @@ final class EnsureCapability
         // Falls back to a request attribute of the same name when there is
         // no literal route parameter — e.g. an organization_id resolved
         // from the account's active space by an earlier middleware
-        // (App\Modules\AdvertiserWallet\Http\Middleware\
+        // (App\Modules\Identity\Http\Middleware\
         // EnsureActiveAdvertiserOrganization) rather than from the URL.
         $parameter = $routeParam !== null
             ? ($request->route($routeParam) ?? $request->attributes->get($routeParam))

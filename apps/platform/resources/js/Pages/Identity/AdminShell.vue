@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
+import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
@@ -46,6 +47,7 @@ const nav = [
     { key: 'capabilities', label: 'Capacités', icon: '🔑' },
     { key: 'ledger', label: 'Grand Livre', icon: '📒' },
     { key: 'subscriptions', label: 'Abonnements', icon: '🏷️' },
+    { key: 'advertisers', label: 'Annonceurs', icon: '🏬' },
     { key: 'organizations', label: 'Organisations', icon: '🏢' },
     { key: 'audit', label: 'Audit', icon: '📜' },
 ] as const;
@@ -294,6 +296,10 @@ async function logout(): Promise<void> {
 
                 <section v-else-if="activeSection === 'subscriptions'">
                     <AdminSubscriptionsPanel />
+                </section>
+
+                <section v-else-if="activeSection === 'advertisers'">
+                    <AdminAdvertisersPanel />
                 </section>
 
                 <section

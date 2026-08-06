@@ -1,108 +1,121 @@
-# P005 — STUDIO ANNONCEUR, MARQUES ET FINANCEMENT
+# P005 — Studio Annonceur : marques, bibliothèque créative et financement
 
-**Statut :** `deployed`  
-**Branche :** `codex/p005-advertiser-studio-brand-wallet`  
-**Commit de base :** `38c8593f68fc3f05f02be768f021bb4b8fd2bebe`  
-**Commit fusionné :** `370dc7dcfcc439c6f08638d131edd43781211c45`  
-**Autorisation fondatrice :** 3 août 2026  
-**Déploiement confirmé :** 4 août 2026  
-**Dépendances :** P001, P003 et P004 déployés
+**Branche :** `claude/wasplex-reconstruction-7ujym7`
+**Commit de base :** `0b0d1f6` (P004 fusionné)
+**Dépendances déclarées (roadmap) :** P001 (comptes/espaces/organisations), P003 (Wallet annonceur), P004 (classes/plans)
+**Spécification :** `docs/13-studio-annonceur-wasplex.md` (109 sections — chantier volontairement borné, voir §3)
+**Statut :** proposed
+
+Ce chantier remplace l'ancienne version pré-réinitialisation (branche
+`codex/p005-advertiser-studio-brand-wallet`, déployée avant le 2026-08-05, conservée dans
+l'historique Git à titre d'audit mais ne décrivant plus l'état réel du dépôt reconstruit).
+
+---
 
 ## 1. Objectif
 
-Donner à un annonceur non technicien un Studio cohérent, responsive et réellement exploitable pour :
+Livrer les phases 1 à 3 de `docs/13` §106 (Espace annonceur, Marques, Bibliothèque créative) plus
+l'extension "financement" de son titre : le dépôt supervisé (§28). Le Wallet annonceur lui-même
+(phase 4) existe déjà intégralement depuis P003 et n'est pas reconstruit.
 
-1. compléter son identité professionnelle ;
-2. créer et versionner une ou plusieurs marques ;
-3. importer des images et vidéos dans une médiathèque isolée ;
-4. associer les médias aux marques ;
-5. consulter et financer le Wallet annonceur livré par P003 ;
-6. arriver à P006 avec une base annonceur prête, sans créer de campagne prématurément.
+Ce chantier ne construit **aucune campagne** (P006), aucune revue administrative de campagne
+(P007), aucun Feed (P008/P009+), aucun Live (P018). `docs/13` couvre ces sujets dans le même
+fichier ; ce chantier s'arrête délibérément avant.
 
-## 2. Inclus
+## 2. Périmètre inclus
 
-- module Laravel `AdvertiserStudio` autonome ;
-- profil annonceur séparé du profil personnel ;
-- mise à jour du nom affiché de l’espace et de l’organisation ;
-- marques isolées par espace annonceur ;
-- versions publiées immuables de l’identité de marque ;
-- nom, slogan, description, deux couleurs et logo ;
-- médiathèque image/vidéo avec stockage local public ou S3 compatible ;
-- empreinte SHA-256, type MIME, taille et dimensions image lorsque disponibles ;
-- métadonnées média versionnées ;
-- association média-marque et protection d’un logo actif ;
-- dashboard Studio avec état de préparation ;
-- intégration du Wallet P003 sans dupliquer sa logique financière ;
-- capacités explicites, commande de rattrapage et isolation organisationnelle ;
-- vues desktop et mobile ;
-- tests SQLite et PostgreSQL 17.
+- **Profil annonceur** (`advertiser_profiles`) : sous-type (`individual`/`business`/`agency`/
+  `institutional_advertiser`, §9), identité légale, cycle de vérification
+  (`draft`→`pending_verification`→`verified`→`active`→`restricted`/`suspended`/`closed`, §11).
+- **Marques** : `brands` (champs exacts §84), `brand_colors` (§15), `brand_typographies` (§16),
+  `brand_guidelines` (charte §14 : ton, mentions obligatoires/interdites, règles d'usage).
+- **Bibliothèque créative** : `creative_assets` (métadonnées exactes §19, statuts §20), modération
+  (`creative_moderation_cases`).
+- **Dépôt supervisé** (§28) : un administrateur peut créer et approuver un dépôt Wallet annonceur
+  sans passer par GeniusPay (preuve, référence, motif, idempotence, Grand Livre, audit) — réutilise
+  le cycle de vie déjà existant d'`advertiser_wallet_deposits` (P003), pas une nouvelle table.
+- API utilisateur et admin correspondantes (§88, §93, sous-ensemble pertinent).
+- Tableau de bord Studio simplifié (§12) : solde Wallet, marques, statut de vérification — sans les
+  métriques de campagne qui n'existent pas encore.
+- UI : gestion des marques + charte, bibliothèque, dépôt supervisé côté admin, intégrées dans
+  `AdvertiserShell`/`AdminShell` existants.
 
-## 3. Exclus
+## 3. Décisions explicites de réduction de périmètre
 
-- campagne, objectif, audience ou territoire ;
-- estimation de segment ;
-- catalogue de prix et devis ;
-- réservation de budget de campagne ;
-- revue administrative publicitaire ;
-- traitement vidéo avancé, transcodage ou modération automatique ;
-- paiement réel hors GeniusPay sandbox déjà délimité par P003 ;
-- partage 50/50 et crédit utilisateur.
+`docs/13` §83 liste un modèle de données bien plus large que ce qu'un premier chantier peut
+livrer sérieusement. Chaque réduction ci-dessous est documentée plutôt que silencieuse :
 
-Ces éléments appartiennent à P006 et aux chantiers suivants.
+1. **Pas de tables `advertiser_spaces`/`advertiser_organizations` séparées.** Identity (P001)
+   possède déjà `organizations` (nom, type, pays, statut) et `user_spaces` (espace annonceur
+   rattaché à l'organisation). Dupliquer ces primitives violerait CLAUDE.md §6 (un module ne
+   possède qu'une fois chaque donnée). `advertiser_profiles` référence `organization_id` par
+   valeur et ne porte que ce qu'Identity ne connaît pas : sous-type commercial et cycle de
+   vérification Studio.
+2. **Pas de `brand_versions` ni `brand_assets` séparées.** Le logo/les visuels d'une marque sont
+   des `creative_assets` référencés par `brand_id` — une table `brand_assets` parallèle
+   dupliquerait la bibliothèque. La charte graphique (`brand_guidelines`) est mise à jour en place
+   (`updated_at`), pas historisée en V1 : aucun historique de charte n'est demandé explicitement
+   par les critères d'acceptation §105.
+3. **Pas de `creative_asset_versions` ni `creative_processing_jobs`.** Aucun pipeline de
+   traitement asynchrone réel (encodage vidéo, génération de vignette) n'existe dans ce dépôt ; une
+   table de jobs sans jobs réels serait un stub. Un nouvel upload crée un nouvel asset. Le statut
+   passe directement `uploading`→`ready` (validation technique synchrone, §21, limitée aux
+   vérifications faisables sans traitement lourd : format, taille, dimensions déclarées) ou
+   `needs_changes`/`rejected` si la validation échoue.
+4. **Aucun transfert Wallet personnel → annonceur (§29).** Explicitement documenté comme
+   optionnel ("si activée") et aucun Wallet personnel utilisateur n'existe encore avec un solde
+   réel (P011). Prématuré et hors périmètre.
+5. **Aucune notion d'équipe/agence multi-client (§69-72) dans ce chantier.** Le Studio reste
+   mono-organisation pour l'instant (le créateur = seul membre actif, comme en P001/P003).
+   Équipes et agences sont un chantier ultérieur si le fondateur le priorise.
+6. **Stockage des médias : disque local du disque applicatif (`storage/app/public`), pas S3.**
+   `docs/CLAUDE.md` §4 mentionne un stockage S3-compatible dans la stack officielle, mais aucune
+   configuration MinIO/S3 fonctionnelle n'existe dans ce bac à sable (limite réseau). Le disque
+   `public` de Laravel est utilisé comme implémentation immédiate, derrière la même interface
+   `Illuminate\Filesystem` qu'un futur disque S3 — migrer plus tard ne change qu'une ligne de
+   configuration, pas le code applicatif.
 
-## 4. Données détenues par P005
+## 4. Périmètre exclu
 
-- `advertiser_profiles` ;
-- `brands` ;
-- `brand_versions` ;
-- `creative_assets` ;
-- `creative_asset_versions` ;
-- `brand_assets`.
+- Campagnes, audiences, devis, budgets (P006).
+- Revue administrative de campagne (P007).
+- Feed, Matching, Live (P008+, P018).
+- Équipes et agences multi-client (§69-72).
+- Transfert Wallet personnel → annonceur (§29).
+- Outils créatifs assistés par IA (§23) — explicitement hors V1 par §108.12.
 
-P005 ne devient pas propriétaire des tables Wallet, Ledger, comptes, organisations ou capacités.
+## 5. Modèle de données (résumé)
 
-## 5. Capacités
+```text
+advertiser_profiles       organization_id, advertiser_type, legal_name, registration_number,
+                           address, representative_account_id, status, verified_at
+brands                     advertiser_profile_id, name, legal_name, sector, description, status,
+                           country_code, website, primary_logo_asset_id, secondary_logo_asset_id,
+                           slogan, verified_at
+brand_colors               brand_id, name, hex, rgb, cmyk, usage, priority
+brand_typographies         brand_id, role (principale/secondaire/remplacement), family, usages
+brand_guidelines           brand_id, tone, custom_instructions, mandatory_mentions,
+                           forbidden_mentions, usage_rules
+creative_assets            brand_id, type, filename, format, size, width, height, duration,
+                           language, rights_status, moderation_status, storage_path, created_by
+creative_moderation_cases  creative_asset_id, decision, reason, decided_by, decided_at
+```
 
-- `advertiser.profile.view` ;
-- `advertiser.profile.manage` ;
-- `advertiser.brand.view` ;
-- `advertiser.brand.manage` ;
-- `advertiser.media.view` ;
-- `advertiser.media.upload` ;
-- `advertiser.media.manage` ;
-- capacités Wallet P003 conservées.
+## 6. Capacités
 
-La commande `studio:bootstrap` initialise les profils et capacités des espaces annonceurs déjà présents avant P005.
+`advertiser.profile.view`, `advertiser.profile.manage`, `advertiser.brand.view`,
+`advertiser.brand.manage`, `advertiser.media.view`, `advertiser.media.upload`,
+`advertiser.media.manage` — accordées au créateur de l'organisation, comme
+`advertiser.wallet.*` en P003. Admin : `admin.advertisers.manage`, `admin.brands.moderate`,
+`admin.advertiser-wallet.supervised-deposit`.
 
-## 6. Règles de sécurité
+## 7. Tests obligatoires (docs/13 §97-103, sous-ensemble pertinent à ce périmètre)
 
-- toutes les lectures et écritures sont limitées à l’espace annonceur actif ;
-- un identifiant de marque ou de média d’un autre espace retourne 404 ou une erreur de validation ;
-- un logo actif ne peut pas être archivé avant son remplacement ;
-- les fichiers sont validés par MIME et taille ;
-- le chemin de stockage contient l’ULID de l’espace ;
-- aucune URL ou donnée d’une autre organisation n’est exposée ;
-- aucune écriture financière nouvelle n’est implémentée dans P005.
+Activation profil annonceur ; création marque ; charte ; upload et validation technique ;
+statuts de modération ; dépôt supervisé (idempotence, approbation, Grand Livre, audit) ; aucune
+fuite entre organisations ; confidentialité (aucune donnée sensible exposée) ; responsive de base
+(captures mobile/desktop).
 
-## 7. Acceptation réalisée
+## 8. Chantier suivant recommandé
 
-Le scénario suivant est livré, fusionné et déployé :
-
-1. un compte active son Studio Annonceur ;
-2. il complète le profil de son organisation ;
-3. il importe une image et une vidéo ;
-4. il crée la marque GamaDeals avec logo, slogan et couleurs ;
-5. il modifie la marque et une seconde version est conservée ;
-6. il ouvre son Wallet annonceur et voit le budget disponible ;
-7. aucune marque ni média d’un autre annonceur n’est accessible ;
-8. Pint, Larastan, Pest SQLite/PostgreSQL, Prettier, ESLint, TypeScript et Vite sont verts.
-
-## 8. Déploiement réalisé
-
-- récupération de `main` au commit `370dc7d` ;
-- installation Composer sous PHP 8.4 ;
-- installation npm et build Vite sous Node.js 24 ;
-- migration `2026_08_03_230000_create_advertiser_studio_tables` ;
-- exécution de `php8.4 artisan studio:bootstrap` ;
-- reconstruction des caches ;
-- visite du dashboard annonceur confirmée par le fondateur.
+P006 — Campagne, audience, devis et budget.
