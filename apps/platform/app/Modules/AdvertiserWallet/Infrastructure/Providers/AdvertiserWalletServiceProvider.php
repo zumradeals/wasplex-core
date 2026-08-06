@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\AdvertiserWallet\Infrastructure\Providers;
 
+use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
+use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReservationService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,6 +14,11 @@ use Illuminate\Support\ServiceProvider;
 
 final class AdvertiserWalletServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        $this->app->bind(AdvertiserWalletReservationContract::class, AdvertiserWalletReservationService::class);
+    }
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../../Database/Migrations');

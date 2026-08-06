@@ -2,6 +2,7 @@
 
 use App\Modules\AdvertiserStudio\Infrastructure\Providers\AdvertiserStudioServiceProvider;
 use App\Modules\AdvertiserWallet\Infrastructure\Providers\AdvertiserWalletServiceProvider;
+use App\Modules\Campaigns\Infrastructure\Providers\CampaignsServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
 use App\Modules\Ledger\Infrastructure\Providers\LedgerServiceProvider;
 use App\Modules\Subscriptions\Infrastructure\Providers\SubscriptionsServiceProvider;
@@ -16,4 +17,5 @@ return [
     AdvertiserWalletServiceProvider::class,
     SubscriptionsServiceProvider::class,
     AdvertiserStudioServiceProvider::class,
+    CampaignsServiceProvider::class,
 ];

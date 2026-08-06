@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
+import AdminAdvertisingPricingPanel from '@/Components/AdminAdvertisingPricingPanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
@@ -298,8 +299,9 @@ async function logout(): Promise<void> {
                     <AdminSubscriptionsPanel />
                 </section>
 
-                <section v-else-if="activeSection === 'advertisers'">
+                <section v-else-if="activeSection === 'advertisers'" class="flex flex-col gap-4">
                     <AdminAdvertisersPanel />
+                    <AdminAdvertisingPricingPanel />
                 </section>
 
                 <section

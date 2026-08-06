@@ -1,0 +1,605 @@
+<script setup lang="ts">
+import { computed, reactive, ref, watch } from 'vue';
+import http from '@/lib/http';
+import CampaignPreviewPhone from '@/Components/CampaignPreviewPhone.vue';
+
+interface Brand {
+    id: string;
+    name: string;
+    status: string;
+}
+
+interface Asset {
+    id: string;
+    type: string;
+    filename: string;
+    url?: string;
+}
+
+interface EconomicClass {
+    code: string;
+    weight_percent: number;
+}
+
+interface QuoteClassBreakdown {
+    envelope_minor: number;
+    events: number;
+    gain_unitaire_minor: number;
+}
+
+interface Quote {
+    id: string;
+    gross_amount_minor: number;
+    net_distributable_amount_minor: number;
+    estimated_events: number;
+    estimated_reach_min: number;
+    estimated_reach_max: number;
+    class_breakdown: Record<string, QuoteClassBreakdown>;
+    expires_at: string;
+    status: string;
+}
+
+interface CampaignVersion {
+    version_number: number;
+    creative_configuration: Record<string, unknown> | null;
+    audience_configuration: { territory?: { country_code?: string }; economic_classes?: string[] } | null;
+    budget_configuration: { budget_amount_minor?: number } | null;
+    status: string;
+    quotes?: Quote[];
+}
+
+interface Campaign {
+    id: string;
+    brand_id: string;
+    objective_code: string | null;
+    status: string;
+    versions: CampaignVersion[];
+}
+
+const OBJECTIVES: Record<string, string> = {
+    faire_connaitre: 'En savoir plus',
+    obtenir_appels: 'Appeler',
+    recevoir_messages: 'Envoyer un message',
+    visiter_site: 'Visiter le site',
+    promouvoir_produit: 'Découvrir',
+    promouvoir_evenement: "Voir l'événement",
+    obtenir_inscriptions: "S'inscrire",
+    inviter_live: 'Rejoindre le Live',
+};
+
+const STEPS = ['Marque', 'Objectif', 'Contenu', 'Audience', 'Budget', 'Vérification', 'Soumission'] as const;
+
+const campaigns = ref<Campaign[]>([]);
+const brands = ref<Brand[]>([]);
+const assets = ref<Asset[]>([]);
+const economicClasses = ref<EconomicClass[]>([]);
+const selectedCampaignId = ref<string | null>(null);
+const step = ref(0);
+const loading = ref(true);
+const loadError = ref<string | null>(null);
+const actionError = ref<string | null>(null);
+const estimating = ref(false);
+const estimate = ref<{ estimated_min: number; estimated_max: number; too_small: boolean } | null>(null);
+const quoting = ref(false);
+const funding = ref(false);
+const submitting = ref(false);
+
+const form = reactive({
+    brand_id: '',
+    objective_code: '' as string | null,
+    asset_id: '' as string | null,
+    title: '',
+    country_code: '',
+    economic_classes: [] as string[],
+    budget_amount_minor: null as number | null,
+});
+
+const selectedCampaign = computed(() => campaigns.value.find((c) => c.id === selectedCampaignId.value) ?? null);
+const currentVersion = computed<CampaignVersion | null>(() => {
+    const campaign = selectedCampaign.value;
+    if (!campaign || campaign.versions.length === 0) {
+        return null;
+    }
+    return [...campaign.versions].sort((a, b) => b.version_number - a.version_number)[0];
+});
+const latestQuote = computed<Quote | null>(() => {
+    const version = currentVersion.value;
+    if (!version?.quotes || version.quotes.length === 0) {
+        return null;
+    }
+    return version.quotes[version.quotes.length - 1];
+});
+const selectedAsset = computed(() => assets.value.find((a) => a.id === form.asset_id) ?? null);
+const ctaLabel = computed(() => (form.objective_code ? OBJECTIVES[form.objective_code] : null));
+const gainLabel = computed(() => {
+    const quote = latestQuote.value;
+    if (!quote || form.economic_classes.length === 0) {
+        return null;
+    }
+    const gains = form.economic_classes
+        .map((code) => quote.class_breakdown[code]?.gain_unitaire_minor)
+        .filter((v): v is number => typeof v === 'number');
+    if (gains.length === 0) {
+        return null;
+    }
+    return `+${Math.min(...gains)} WP`;
+});
+
+async function loadAll(): Promise<void> {
+    loading.value = true;
+    loadError.value = null;
+    try {
+        const [campaignsRes, brandsRes, classesRes] = await Promise.all([
+            http.get('/advertiser/campaigns'),
+            http.get('/advertiser/brands'),
+            http.get('/advertiser/economic-classes'),
+        ]);
+        campaigns.value = campaignsRes.data.campaigns;
+        brands.value = brandsRes.data.brands;
+        economicClasses.value = classesRes.data.economic_classes;
+    } catch (e) {
+        const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
+        loadError.value = message ?? 'Les campagnes sont momentanément indisponibles.';
+    } finally {
+        loading.value = false;
+    }
+}
+
+function hydrateFormFromCampaign(campaign: Campaign): void {
+    const version = [...campaign.versions].sort((a, b) => b.version_number - a.version_number)[0];
+    form.brand_id = campaign.brand_id;
+    form.objective_code = campaign.objective_code;
+    form.asset_id = (version?.creative_configuration?.asset_id as string) ?? null;
+    form.title = (version?.creative_configuration?.title as string) ?? '';
+    form.country_code = version?.audience_configuration?.territory?.country_code ?? '';
+    form.economic_classes = version?.audience_configuration?.economic_classes ?? [];
+    form.budget_amount_minor = version?.budget_configuration?.budget_amount_minor ?? null;
+    estimate.value = null;
+}
+
+async function selectCampaign(campaign: Campaign): Promise<void> {
+    selectedCampaignId.value = campaign.id;
+    step.value = 0;
+    hydrateFormFromCampaign(campaign);
+    if (campaign.brand_id) {
+        const { data } = await http.get(`/advertiser/assets?brand_id=${campaign.brand_id}`);
+        assets.value = data.assets;
+    }
+}
+
+async function createCampaign(brandId: string): Promise<void> {
+    actionError.value = null;
+    const { data } = await http.post('/advertiser/campaigns', { brand_id: brandId });
+    campaigns.value = [data.campaign, ...campaigns.value];
+    await selectCampaign(data.campaign);
+}
+
+async function refreshSelected(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    const { data } = await http.get(`/advertiser/campaigns/${selectedCampaignId.value}`);
+    const index = campaigns.value.findIndex((c) => c.id === data.campaign.id);
+    if (index !== -1) {
+        campaigns.value[index] = data.campaign;
+    }
+}
+
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleAutosave(): void {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+    }
+    autosaveTimer = setTimeout(() => void autosave(), 500);
+}
+
+async function autosave(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    actionError.value = null;
+    try {
+        await http.patch(`/advertiser/campaigns/${selectedCampaignId.value}`, {
+            objective_code: form.objective_code || null,
+            creative_configuration: form.asset_id ? { asset_id: form.asset_id, title: form.title } : undefined,
+            audience_configuration:
+                form.economic_classes.length > 0
+                    ? {
+                          economic_classes: form.economic_classes,
+                          ...(form.country_code
+                              ? { territory: { country_code: form.country_code.toUpperCase() } }
+                              : {}),
+                      }
+                    : undefined,
+            budget_configuration: form.budget_amount_minor
+                ? { budget_amount_minor: form.budget_amount_minor }
+                : undefined,
+        });
+        await refreshSelected();
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            "Échec de l'enregistrement automatique.";
+    }
+}
+
+watch(
+    () => [
+        form.objective_code,
+        form.asset_id,
+        form.title,
+        form.country_code,
+        [...form.economic_classes],
+        form.budget_amount_minor,
+    ],
+    () => scheduleAutosave(),
+);
+
+function toggleClass(code: string): void {
+    const index = form.economic_classes.indexOf(code);
+    if (index === -1) {
+        form.economic_classes.push(code);
+    } else {
+        form.economic_classes.splice(index, 1);
+    }
+    estimate.value = null;
+}
+
+async function runEstimate(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    estimating.value = true;
+    actionError.value = null;
+    try {
+        await autosave();
+        const { data } = await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/estimate-audience`);
+        estimate.value = data.estimate;
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Estimation impossible.';
+    } finally {
+        estimating.value = false;
+    }
+}
+
+async function runQuote(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    quoting.value = true;
+    actionError.value = null;
+    try {
+        await autosave();
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/quote`);
+        await refreshSelected();
+        step.value = 5;
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Devis impossible.';
+    } finally {
+        quoting.value = false;
+    }
+}
+
+async function runFund(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    funding.value = true;
+    actionError.value = null;
+    try {
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/fund`);
+        await refreshSelected();
+        step.value = 6;
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Financement impossible.';
+    } finally {
+        funding.value = false;
+    }
+}
+
+async function runSubmit(): Promise<void> {
+    if (!selectedCampaignId.value) {
+        return;
+    }
+    submitting.value = true;
+    actionError.value = null;
+    try {
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/submit`);
+        await refreshSelected();
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Soumission impossible.';
+    } finally {
+        submitting.value = false;
+    }
+}
+
+function statusLabel(status: string): string {
+    return { draft: 'Brouillon', quoted: 'Devisée', funded: 'Financée', submitted: 'Soumise' }[status] ?? status;
+}
+
+void loadAll();
+</script>
+
+<template>
+    <div class="flex flex-col gap-6">
+        <div v-if="loadError" class="rounded-wpx-lg bg-wpx-danger/10 text-wpx-danger-light p-4 text-sm">
+            {{ loadError }}
+        </div>
+
+        <template v-else>
+            <div class="flex flex-col gap-4 lg:flex-row">
+                <!-- Liste des campagnes -->
+                <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex w-full flex-col gap-3 p-4 lg:w-64">
+                    <h2 class="text-wpx-text text-sm font-semibold">Mes campagnes</h2>
+                    <div class="flex flex-col gap-1">
+                        <label v-if="brands.length > 0" class="text-wpx-text-muted text-xs"
+                            >Créer une campagne pour :</label
+                        >
+                        <select
+                            v-if="brands.length > 0"
+                            class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1.5 text-sm"
+                            @change="(e) => createCampaign((e.target as HTMLSelectElement).value)"
+                        >
+                            <option value="" disabled selected>Choisir une marque…</option>
+                            <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
+                        </select>
+                        <p v-else class="text-wpx-text-muted text-xs">
+                            Créez d'abord une marque dans l'onglet Marques.
+                        </p>
+                    </div>
+                    <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
+                    <ul v-else class="flex flex-col gap-1">
+                        <li v-for="campaign in campaigns" :key="campaign.id">
+                            <button
+                                type="button"
+                                class="rounded-wpx-sm flex w-full items-center justify-between px-2 py-1.5 text-left text-sm"
+                                :class="
+                                    selectedCampaignId === campaign.id ? 'bg-wpx-canvas font-semibold' : 'text-wpx-text'
+                                "
+                                @click="selectCampaign(campaign)"
+                            >
+                                <span>{{
+                                    campaign.objective_code ? OBJECTIVES[campaign.objective_code] : 'Campagne'
+                                }}</span>
+                                <span class="text-wpx-text-muted text-[10px]">{{ statusLabel(campaign.status) }}</span>
+                            </button>
+                        </li>
+                        <li v-if="!loading && campaigns.length === 0" class="text-wpx-text-muted text-sm">
+                            Aucune campagne encore.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Assistant -->
+                <div v-if="selectedCampaign" class="flex flex-1 flex-col gap-4 lg:flex-row">
+                    <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex-1 p-4">
+                        <div class="mb-4 flex flex-wrap gap-1 text-[11px]">
+                            <span
+                                v-for="(label, i) in STEPS"
+                                :key="label"
+                                class="rounded-wpx-sm px-2 py-1"
+                                :class="
+                                    i === step
+                                        ? 'bg-wpx-navy-950 font-semibold text-white'
+                                        : 'bg-wpx-canvas text-wpx-text-muted'
+                                "
+                            >
+                                {{ i + 1 }}. {{ label }}
+                            </span>
+                        </div>
+
+                        <p
+                            v-if="actionError"
+                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-sm mb-3 p-2 text-xs"
+                        >
+                            {{ actionError }}
+                        </p>
+
+                        <!-- 1. Marque -->
+                        <div v-if="step === 0" class="flex flex-col gap-2">
+                            <p class="text-wpx-text-muted text-sm">
+                                Marque : <strong>{{ brands.find((b) => b.id === form.brand_id)?.name }}</strong>
+                            </p>
+                        </div>
+
+                        <!-- 2. Objectif -->
+                        <div v-else-if="step === 1" class="grid grid-cols-2 gap-2">
+                            <button
+                                v-for="(label, code) in OBJECTIVES"
+                                :key="code"
+                                type="button"
+                                class="rounded-wpx-sm border-wpx-border border p-2 text-left text-xs"
+                                :class="form.objective_code === code ? 'border-wpx-blue bg-wpx-blue/10' : ''"
+                                @click="form.objective_code = code"
+                            >
+                                {{ label }}
+                            </button>
+                        </div>
+
+                        <!-- 3. Contenu -->
+                        <div v-else-if="step === 2" class="flex flex-col gap-3">
+                            <label class="flex flex-col gap-1 text-xs">
+                                <span class="text-wpx-text-muted">Média (bibliothèque créative)</span>
+                                <select
+                                    v-model="form.asset_id"
+                                    class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
+                                >
+                                    <option :value="null" disabled>Choisir…</option>
+                                    <option v-for="asset in assets" :key="asset.id" :value="asset.id">
+                                        {{ asset.filename }}
+                                    </option>
+                                </select>
+                            </label>
+                            <label class="flex flex-col gap-1 text-xs">
+                                <span class="text-wpx-text-muted">Titre</span>
+                                <input
+                                    v-model="form.title"
+                                    class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
+                                />
+                            </label>
+                        </div>
+
+                        <!-- 4. Audience -->
+                        <div v-else-if="step === 3" class="flex flex-col gap-3">
+                            <div>
+                                <span class="text-wpx-text-muted text-xs">Classes économiques ciblées</span>
+                                <div class="mt-1 flex flex-wrap gap-2">
+                                    <button
+                                        v-for="ec in economicClasses"
+                                        :key="ec.code"
+                                        type="button"
+                                        class="rounded-wpx-sm border-wpx-border border px-2 py-1 text-xs"
+                                        :class="
+                                            form.economic_classes.includes(ec.code)
+                                                ? 'border-wpx-blue bg-wpx-blue/10'
+                                                : ''
+                                        "
+                                        @click="toggleClass(ec.code)"
+                                    >
+                                        {{ ec.code }}
+                                    </button>
+                                </div>
+                            </div>
+                            <label class="flex flex-col gap-1 text-xs">
+                                <span class="text-wpx-text-muted">Pays ciblé (optionnel)</span>
+                                <input
+                                    v-model="form.country_code"
+                                    maxlength="2"
+                                    placeholder="CI"
+                                    class="rounded-wpx-sm border-wpx-border w-24 border px-2 py-1.5 text-sm uppercase"
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                class="rounded-wpx-sm bg-wpx-navy-950 self-start px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                                :disabled="estimating || form.economic_classes.length === 0"
+                                @click="runEstimate"
+                            >
+                                Estimer l'audience
+                            </button>
+                            <p v-if="estimate" class="text-wpx-text text-sm">
+                                Audience estimée :
+                                <strong>{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong> comptes.
+                                <span v-if="estimate.too_small" class="text-wpx-danger-light">Segment trop petit.</span>
+                            </p>
+                        </div>
+
+                        <!-- 5. Budget -->
+                        <div v-else-if="step === 4" class="flex flex-col gap-3">
+                            <label class="flex flex-col gap-1 text-xs">
+                                <span class="text-wpx-text-muted">Budget total (FCFA)</span>
+                                <input
+                                    v-model.number="form.budget_amount_minor"
+                                    type="number"
+                                    min="1"
+                                    class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
+                                />
+                            </label>
+                        </div>
+
+                        <!-- 6. Vérification -->
+                        <div v-else-if="step === 5" class="flex flex-col gap-3 text-sm">
+                            <button
+                                type="button"
+                                class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
+                                :disabled="quoting"
+                                @click="runQuote"
+                            >
+                                Générer le devis
+                            </button>
+                            <div v-if="latestQuote" class="rounded-wpx-sm bg-wpx-canvas flex flex-col gap-1 p-3">
+                                <p>
+                                    Budget : <strong>{{ latestQuote.gross_amount_minor }} FCFA</strong>
+                                </p>
+                                <p>
+                                    Événements estimés : <strong>{{ latestQuote.estimated_events }}</strong>
+                                </p>
+                                <p>
+                                    Portée estimée :
+                                    <strong
+                                        >{{ latestQuote.estimated_reach_min }} –
+                                        {{ latestQuote.estimated_reach_max }}</strong
+                                    >
+                                </p>
+                                <p class="text-wpx-text-muted text-xs">
+                                    Expire le {{ new Date(latestQuote.expires_at).toLocaleString() }}
+                                </p>
+                                <button
+                                    type="button"
+                                    class="rounded-wpx-sm bg-wpx-navy-950 mt-2 self-start px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                                    :disabled="funding"
+                                    @click="runFund"
+                                >
+                                    Financer la campagne
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 7. Soumission -->
+                        <div v-else-if="step === 6" class="flex flex-col gap-3 text-sm">
+                            <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-success-light">
+                                Campagne soumise — en attente de revue administrative.
+                            </p>
+                            <template v-else>
+                                <p class="text-wpx-text-muted">Budget réservé. Prête à être soumise pour revue.</p>
+                                <button
+                                    type="button"
+                                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
+                                    :disabled="submitting || selectedCampaign.status !== 'funded'"
+                                    @click="runSubmit"
+                                >
+                                    Soumettre la campagne
+                                </button>
+                            </template>
+                        </div>
+
+                        <div class="mt-4 flex justify-between">
+                            <button
+                                type="button"
+                                class="text-wpx-text-muted text-xs disabled:opacity-30"
+                                :disabled="step === 0"
+                                @click="step--"
+                            >
+                                ← Précédent
+                            </button>
+                            <button
+                                type="button"
+                                class="text-wpx-blue-light text-xs font-semibold disabled:opacity-30"
+                                :disabled="step === STEPS.length - 1"
+                                @click="step++"
+                            >
+                                Suivant →
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="lg:w-56">
+                        <CampaignPreviewPhone
+                            :brand-name="brands.find((b) => b.id === form.brand_id)?.name ?? null"
+                            :title="form.title || null"
+                            :cta-label="ctaLabel"
+                            :asset-url="selectedAsset?.url ?? null"
+                            :asset-type="selectedAsset?.type ?? null"
+                            :gain-label="gainLabel"
+                        />
+                    </div>
+                </div>
+
+                <div
+                    v-else
+                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex flex-1 items-center justify-center p-4 text-sm"
+                >
+                    Choisissez une marque pour créer une campagne.
+                </div>
+            </div>
+        </template>
+    </div>
+</template>
