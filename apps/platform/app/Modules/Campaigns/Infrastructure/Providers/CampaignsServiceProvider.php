@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Campaigns\Infrastructure\Providers;
 
 use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract;
+use App\Modules\Campaigns\Application\Contracts\CampaignEnvelopeContract;
 use App\Modules\Campaigns\Application\Services\ApprovedCampaignAudienceService;
+use App\Modules\Campaigns\Application\Services\CampaignEnvelopeService;
 use App\Modules\Campaigns\Console\SeedPriceCatalogCommand;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -15,6 +17,7 @@ final class CampaignsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ApprovedCampaignAudienceContract::class, ApprovedCampaignAudienceService::class);
+        $this->app->bind(CampaignEnvelopeContract::class, CampaignEnvelopeService::class);
     }
 
     public function boot(): void

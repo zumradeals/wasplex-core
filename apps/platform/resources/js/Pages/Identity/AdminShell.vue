@@ -5,6 +5,7 @@ import http from '@/lib/http';
 import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
 import AdminAdvertisingPricingPanel from '@/Components/AdminAdvertisingPricingPanel.vue';
 import AdminCampaignReviewsPanel from '@/Components/AdminCampaignReviewsPanel.vue';
+import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
@@ -55,6 +56,7 @@ const nav = [
     { key: 'campaign-reviews', label: 'Revue de campagnes', icon: '🎯' },
     { key: 'smartprofile', label: 'Profil intelligent', icon: '🧩' },
     { key: 'matching', label: 'Matching', icon: '🔗' },
+    { key: 'feed', label: 'Feed', icon: '🎬' },
     { key: 'organizations', label: 'Organisations', icon: '🏢' },
     { key: 'audit', label: 'Audit', icon: '📜' },
 ] as const;
@@ -320,6 +322,10 @@ async function logout(): Promise<void> {
 
                 <section v-else-if="activeSection === 'matching'">
                     <AdminMatchingPanel />
+                </section>
+
+                <section v-else-if="activeSection === 'feed'">
+                    <AdminFeedPanel />
                 </section>
 
                 <section

@@ -90,4 +90,32 @@ final class AdvertiserWalletReservationService implements AdvertiserWalletReserv
 
         return $transaction->id;
     }
+
+    public function capture(
+        string $organizationId,
+        string $campaignId,
+        int $amountMinor,
+        LedgerAccountReference $destination,
+        string $idempotencyKey,
+    ): string {
+        $reservedAccount = LedgerAccountReference::forOrganization(
+            self::RESERVED_ACCOUNT_CODE,
+            $organizationId,
+            'LIABILITY_ADVERTISER',
+            'WP',
+        );
+
+        $transaction = $this->posting->post(new PostLedgerTransaction(
+            type: 'CAMPAIGN_EVENT_CAPTURED',
+            sourceModule: 'feed',
+            idempotencyKey: $idempotencyKey,
+            entries: [
+                LedgerEntryInput::debit($reservedAccount, Money::of($amountMinor, 'WP'), 'Publicité livrée et validée'),
+                LedgerEntryInput::credit($destination, Money::of($amountMinor, 'WP'), 'Gain publicitaire'),
+            ],
+            businessReference: $campaignId,
+        ));
+
+        return $transaction->id;
+    }
 }

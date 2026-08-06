@@ -8,6 +8,7 @@ use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract
 use App\Modules\Campaigns\Application\ValueObjects\ApprovedCampaignAudience;
 use App\Modules\Identity\Application\Contracts\AccountCountryLookupContract;
 use App\Modules\Matching\Application\Contracts\MatchingContract;
+use App\Modules\Matching\Application\ValueObjects\FrequencyPolicy;
 use App\Modules\Matching\Application\ValueObjects\MatchingDecisionResult;
 use App\Modules\Matching\Infrastructure\Models\MatchingConfiguration;
 use App\Modules\Matching\Infrastructure\Models\MatchingDecision;
@@ -92,6 +93,20 @@ final class MatchingService implements MatchingContract
         ];
 
         return array_values(array_filter(array_map(fn (string $code) => $labels[$code] ?? null, $result->reasonCodes)));
+    }
+
+    public function activeFrequencyPolicy(): FrequencyPolicy
+    {
+        $published = MatchingConfiguration::query()
+            ->where('status', MatchingConfiguration::STATUS_PUBLISHED)
+            ->orderByDesc('published_at')
+            ->first();
+
+        return new FrequencyPolicy(
+            windowHours: $published->frequency_window_hours ?? 24,
+            maxPerWindow: $published->frequency_max_per_window ?? 3,
+            fatigueThreshold: $published->fatigue_threshold ?? 10,
+        );
     }
 
     private function territoryMismatch(ApprovedCampaignAudience $campaign, string $accountId): ?string

@@ -44,4 +44,30 @@ return [
 
     'review_require_distinct_decider' => filter_var(env('CAMPAIGNS_REVIEW_REQUIRE_DISTINCT_DECIDER', false), FILTER_VALIDATE_BOOLEAN),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Livraison — durée requise par défaut
+    |--------------------------------------------------------------------------
+    |
+    | docs/08-feed-principal-wasplex.md §20 : "Durée : 30 secondes" est un
+    | exemple, pas une règle chiffrée. L'assistant campagne (P006) ne
+    | collecte pas encore de durée créative — valeur de départ ajustable,
+    | utilisée tant qu'aucune durée n'est fournie par la campagne.
+    |
+    */
+
+    'default_ad_duration_ms' => (int) env('CAMPAIGNS_DEFAULT_AD_DURATION_MS', 15000),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Livraison — validité d'une réservation d'enveloppe
+    |--------------------------------------------------------------------------
+    |
+    | docs/07 §15 : la réservation doit expirer si la publicité n'est jamais
+    | démarrée ni complétée (docs/chantiers/P009-CHANTIER.md §2.8).
+    |
+    */
+
+    'envelope_reservation_ttl_seconds' => (int) env('CAMPAIGNS_ENVELOPE_RESERVATION_TTL_SECONDS', 120),
+
 ];
