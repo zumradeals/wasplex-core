@@ -4,6 +4,9 @@ import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import SubscriptionPanel from '@/Components/SubscriptionPanel.vue';
+import SmartProfilePanel from '@/Components/SmartProfilePanel.vue';
+import ConsentsPanel from '@/Components/ConsentsPanel.vue';
+import EligibleCampaignsPanel from '@/Components/EligibleCampaignsPanel.vue';
 import type { AuthShared } from '@/types/identity';
 
 const page = usePage<{ auth: AuthShared }>();
@@ -67,10 +70,10 @@ async function logout(): Promise<void> {
                             MFA : {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }}
                         </p>
                     </section>
+                    <EligibleCampaignsPanel />
+                    <SmartProfilePanel />
+                    <ConsentsPanel />
                     <SubscriptionPanel />
-                    <p class="text-wpx-muted-dark text-xs">
-                        Le profil intelligent et les consentements arrivent avec les chantiers suivants.
-                    </p>
                 </div>
                 <div
                     v-else

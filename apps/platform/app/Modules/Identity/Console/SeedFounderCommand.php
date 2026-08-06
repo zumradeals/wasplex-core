@@ -113,6 +113,11 @@ final class SeedFounderCommand extends Command
             'admin.campaign-reviews.view',
             'admin.campaign-reviews.decide',
             'admin.campaigns.suspend',
+            // docs/chantiers/P008-CHANTIER.md: SmartProfile et Matching.
+            'admin.smartprofile.taxonomies.manage',
+            'admin.smartprofile.consents.manage',
+            'admin.matching.configuration.manage',
+            'admin.matching.audit.view',
         ];
     }
 }

@@ -20,4 +20,9 @@ final class AccountCountryLookupService implements AccountCountryLookupContract
             ->where('country_code', $countryCode)
             ->count();
     }
+
+    public function countryForAccount(string $accountId): ?string
+    {
+        return Account::query()->whereKey($accountId)->value('country_code');
+    }
 }
