@@ -43,10 +43,32 @@ effectivement posée reste bloqué par la politique d'autoplay du navigateur. Co
 explicitement `:muted="true"` (binding de propriété plutôt qu'attribut statique), un contournement
 documenté pour les éléments média sous Vue 3.
 
+### 1.4. Correction en cours de revue : lecture automatique sans geste
+
+Retour explicite du fondateur pendant la revue : « la vidéo doit démarrer automatiquement,
+l'utilisateur ne devrait pas cliquer sur le bouton démarrer pour regarder la pub, c'est fatiguant ».
+`docs/07` §1429 et `docs/08` §1710 n'exigent que « le gain est connu avant lecture » — aucun texte
+n'impose un geste de démarrage manuel ; c'était un choix d'interface ajouté en P009, pas une
+exigence produit. Corrigé :
+
+- `loadNext()` déclenche automatiquement `beginPlayback()` dès qu'une livraison `reserved` est
+  chargée — plus de bannière bloquante avec bouton « Démarrer ».
+- Le gain reste visible en permanence (bandeau non bloquant sous l'en-tête, `+675 WP · 8 s`)
+  pendant `reserved` et `started`, satisfaisant « gain connu avant lecture » sans geste requis.
+- **Bug de course corrigé** : appeler `beginPlayback()` dans le même tick que la mise à jour de
+  `delivery` signifiait que `videoRef` pointait encore vers l'élément `<video>` précédent (ou
+  `null`) au moment de l'appel à `.play()` — la vidéo restait chargée mais jamais lancée
+  (`paused: true`, `readyState: 0`) malgré l'absence d'erreur. Corrigé en attendant `nextTick()`
+  avant d'appeler `videoRef.value?.play()`.
+- Revérifié en conditions réelles : zéro clic, vidéo effectivement en lecture après 1,2 s
+  (`paused: false`, `currentTime` progressant, `readyState: 4`).
+
 ## 2. Décisions explicites (voir `docs/chantiers/P010-B-FEED-VIDEO-DEFILEMENT.md` §2)
 
-1. Le bouton « Démarrer » et la bannière de gain avant lecture sont conservés (décision P009 déjà
-   validée) — le défilement ne s'applique qu'après démarrage ou sur un état sans publicité.
+1. ~~Le bouton « Démarrer » et la bannière de gain avant lecture sont conservés~~ — **révisé en
+   cours de revue** (§1.4) : le fondateur a explicitement demandé la suppression du geste de
+   démarrage manuel. La lecture démarre désormais automatiquement ; seul « le gain est connu avant
+   lecture » (`docs/07`/`docs/08`) est une exigence réelle, pas le bouton lui-même.
 2. `required_duration_ms` reste gouverné par `creative_configuration.duration_seconds` (P006/P009),
    pas par la durée technique du fichier vidéo — pas de changement de règle financière.
 3. Pas de nouveau contrat cross-module — réutilisation de `CreativeAssetDirectoryContract`
@@ -80,12 +102,13 @@ désormais `creative` (`url`, `type`, `duration`) ou `null`.
   fichier vidéo synthétique réel (généré via `ffmpeg`, encodage VP9/Opus dans un conteneur WebM —
   le build Chromium open-source utilisé par ce sandbox ne décode pas H.264/AAC, contrainte
   d'environnement documentée ci-dessous, sans rapport avec le code applicatif) attaché à une
-  campagne approuvée et financée via les mêmes services que la suite de tests. Résultat : bannière
-  de gain affichée sur la vraie vidéo immersive avant lecture ; clic sur « Démarrer » → vidéo
-  réellement en cours de lecture (`readyState: 4`, `currentTime` progressant, confirmé par
-  inspection directe de l'élément `<video>`) ; geste de défilement tactile simulé → livraison
-  précédente `abandoned` sans gain (vérifié en base), publicité suivante affichée immédiatement,
-  exactement le comportement de `docs/08` §27.
+  campagne approuvée et financée via les mêmes services que la suite de tests. Résultat (avant la
+  correction §1.4, avec le bouton) : bannière de gain sur la vraie vidéo immersive → clic sur
+  « Démarrer » → vidéo réellement en cours de lecture (`readyState: 4`, `currentTime` progressant)
+  ; geste de défilement tactile simulé → livraison précédente `abandoned` sans gain (vérifié en
+  base), publicité suivante affichée immédiatement, exactement le comportement de `docs/08` §27.
+  Après la correction §1.4 : parcours rejoué sans aucun clic — vidéo déjà en lecture après 1,2 s
+  (`paused: false`, `readyState: 4`), gain visible en bandeau non bloquant.
 
 ## 6. Fichiers modifiés/ajoutés
 

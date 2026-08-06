@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import http from '@/lib/http';
 
 interface Interactions {
@@ -82,6 +82,14 @@ async function loadNext(): Promise<void> {
     delivery.value = data.delivery;
     noAdAvailable.value = data.delivery === null;
     loading.value = false;
+
+    // Le gain est connu avant lecture (docs/07 §1429, docs/08 §1710) — rien
+    // n'exige un geste supplémentaire pour le déclencher : la vidéo démarre
+    // d'elle-même dès qu'elle est prête, le montant reste affiché pendant
+    // la lecture.
+    if (data.delivery !== null && data.delivery.status === 'reserved') {
+        void beginPlayback();
+    }
 }
 
 async function beginPlayback(): Promise<void> {
@@ -94,6 +102,11 @@ async function beginPlayback(): Promise<void> {
     clientStartedAt = Date.now();
 
     heartbeatTimer = setInterval(sendHeartbeat, 400);
+
+    // videoRef ne pointe vers le nouvel élément qu'après le prochain rendu
+    // Vue — beginPlayback() peut désormais être appelé automatiquement dès
+    // loadNext(), dans le même tick que la mise à jour de `delivery`.
+    await nextTick();
     void videoRef.value?.play();
 }
 
@@ -333,22 +346,13 @@ onBeforeUnmount(stopHeartbeat);
                 />
             </div>
 
-            <!-- Gain banner before playback. -->
+            <!-- Gain connu avant/pendant la lecture — jamais un geste requis pour démarrer. -->
             <div
-                v-if="delivery.status === 'reserved'"
-                class="rounded-wpx-lg absolute inset-x-4 top-1/3 z-20 bg-black/70 p-4 text-center"
+                v-if="delivery.status === 'reserved' || delivery.status === 'started'"
+                class="absolute inset-x-4 top-16 z-20 flex items-center justify-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-center"
             >
-                <p class="text-wpx-white-soft text-sm font-semibold">Regardez jusqu'à la fin</p>
-                <p class="mt-1 text-xs text-white/70">
-                    Gain : <span class="text-wpx-gold font-bold">{{ gainLabel }}</span> · Durée : {{ durationLabel }}
-                </p>
-                <button
-                    type="button"
-                    class="rounded-wpx-md from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-3 w-full bg-gradient-to-br py-2 text-sm font-semibold"
-                    @click="beginPlayback"
-                >
-                    Démarrer
-                </button>
+                <span class="text-wpx-gold text-xs font-bold">{{ gainLabel }}</span>
+                <span class="text-[11px] text-white/60">· {{ durationLabel }}</span>
             </div>
 
             <!-- Left rail — reserved for future Alertes (P015), inert. -->
