@@ -72,6 +72,14 @@ final class FeedRiskReviewService
             ]);
         });
 
+        $this->userWallet->notifyBalanceChanged(
+            $delivery->account_id,
+            $delivery->gain_minor,
+            'feed.risk_review',
+            'credit',
+            $delivery->ledger_transaction_id,
+        );
+
         return $hold->refresh();
     }
 
