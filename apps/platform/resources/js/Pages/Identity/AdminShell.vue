@@ -6,6 +6,7 @@ import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
 import AdminAdvertisingPricingPanel from '@/Components/AdminAdvertisingPricingPanel.vue';
 import AdminCampaignReviewsPanel from '@/Components/AdminCampaignReviewsPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
+import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
@@ -62,6 +63,11 @@ const nav = [
 ] as const;
 
 const activeSection = ref<(typeof nav)[number]['key']>('dashboard');
+const feedPanel = ref<InstanceType<typeof AdminFeedPanel> | null>(null);
+
+function onFeedHoldResolved(): void {
+    void feedPanel.value?.load();
+}
 const grants = ref<Grant[]>([]);
 const newGrant = ref({ account_id: '', capability_code: '' });
 const error = ref<string | null>(null);
@@ -324,8 +330,9 @@ async function logout(): Promise<void> {
                     <AdminMatchingPanel />
                 </section>
 
-                <section v-else-if="activeSection === 'feed'">
-                    <AdminFeedPanel />
+                <section v-else-if="activeSection === 'feed'" class="flex flex-col gap-4">
+                    <AdminFeedPanel ref="feedPanel" />
+                    <AdminFeedRiskPanel @resolved="onFeedHoldResolved" />
                 </section>
 
                 <section

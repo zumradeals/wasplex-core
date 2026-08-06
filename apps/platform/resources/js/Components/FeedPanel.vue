@@ -14,7 +14,7 @@ interface Interactions {
 interface Delivery {
     id: string;
     campaign_id: string;
-    status: 'reserved' | 'started' | 'completed' | 'abandoned' | 'expired';
+    status: 'reserved' | 'started' | 'completed' | 'abandoned' | 'expired' | 'held' | 'rejected';
     gain_minor: number;
     required_duration_ms: number;
     visible_duration_ms: number;
@@ -42,6 +42,7 @@ const showComments = ref(false);
 const comments = ref<Comment[]>([]);
 const newComment = ref('');
 const gainToast = ref<number | null>(null);
+const holdNotice = ref(false);
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let clientStartedAt = 0;
@@ -109,7 +110,22 @@ async function completeDelivery(): Promise<void> {
     }
 
     const { data } = await http.post(`/feed/deliveries/${delivery.value.id}/complete`);
-    delivery.value = { ...delivery.value, ...data.delivery };
+    const updated = { ...delivery.value, ...data.delivery };
+    delivery.value = updated;
+
+    // Une livraison mise en attente (docs/chantiers/P010-CHANTIER.md §5)
+    // n'a reçu aucun gain — jamais présentée comme un crédit qui n'a pas eu
+    // lieu.
+    if (updated.status === 'held') {
+        holdNotice.value = true;
+        setTimeout(() => {
+            holdNotice.value = false;
+            void loadNext();
+        }, 1600);
+
+        return;
+    }
+
     gainToast.value = data.gain_minor;
     emit('balanceChanged', data.balance_minor);
 
@@ -358,6 +374,15 @@ onBeforeUnmount(stopHeartbeat);
                 class="from-wpx-orange to-wpx-gold text-wpx-navy-950 animate-bounce rounded-full bg-gradient-to-br px-6 py-3 text-lg font-bold shadow-xl"
             >
                 +{{ gainToast }} WP
+            </div>
+        </div>
+
+        <!-- Attention jugée douteuse : aucun gain décidé, en attente de vérification (docs/16 §20). -->
+        <div v-if="holdNotice" class="absolute inset-0 z-30 flex items-center justify-center bg-black/30">
+            <div class="bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md px-5 py-3 text-center text-sm shadow-xl">
+                Vérification en cours<br /><span class="text-wpx-muted-dark text-xs"
+                    >Le gain sera confirmé après contrôle.</span
+                >
             </div>
         </div>
 

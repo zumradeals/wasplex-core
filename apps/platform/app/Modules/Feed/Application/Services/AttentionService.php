@@ -12,6 +12,7 @@ use App\Modules\Campaigns\Application\Services\CampaignEnvelopeExhaustedExceptio
 use App\Modules\Campaigns\Application\Services\CampaignNotAvailableForDeliveryException;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
+use App\Modules\Feed\Infrastructure\Models\FeedAdDeliveryHold;
 use App\Modules\Matching\Application\Contracts\MatchingContract;
 use App\Modules\Subscriptions\Application\Services\NoActiveSubscriptionException;
 use App\Modules\Subscriptions\Application\Services\QuotaExhaustedException;
@@ -122,7 +123,7 @@ final class AttentionService
             }
 
             try {
-                $this->quota->consume($accountId, 1, "feed-quota:{$delivery->id}\n", FILE_APPEND);
+                $this->quota->consume($accountId, 1, "feed-quota:{$delivery->id}");
             } catch (QuotaExhaustedException $exception) {
                 $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
                 $delivery->update(['status' => FeedAdDelivery::STATUS_EXPIRED]);
@@ -144,15 +145,53 @@ final class AttentionService
             return $delivery;
         }
 
-        $realElapsedMs = max(0, Carbon::now('UTC')->diffInMilliseconds($delivery->started_at, true));
+        $now = Carbon::now('UTC');
+        $realElapsedMs = (int) max(0, $now->diffInMilliseconds($delivery->started_at, true));
         $clamped = max($delivery->visible_duration_ms, min($visibleDurationMs, $realElapsedMs));
         $progress = $delivery->required_duration_ms > 0
             ? (int) min(100, intdiv($clamped * 100, $delivery->required_duration_ms))
             : 100;
 
-        $delivery->update(['visible_duration_ms' => $clamped, 'progress_percent' => $progress]);
+        $attributes = [
+            'visible_duration_ms' => $clamped,
+            'progress_percent' => $progress,
+            'last_heartbeat_at' => $now,
+        ];
+
+        $signalCode = $this->detectRiskSignal($delivery, $now, $visibleDurationMs, $realElapsedMs);
+
+        if ($signalCode !== null) {
+            $attributes['risk_signal_count'] = $delivery->risk_signal_count + 1;
+            $attributes['last_risk_signal_code'] = $signalCode;
+        }
+
+        $delivery->update($attributes);
 
         return $delivery->refresh();
+    }
+
+    /**
+     * docs/chantiers/P010-CHANTIER.md §2.3/§5 : deux signaux calculables
+     * avec les données déjà collectées, faute de seuils chiffrés dans les
+     * spécifications qualitatives (docs/16 §18). Un signal n'entraîne pas
+     * lui-même de mise en attente — seul l'atteinte du seuil cumulé dans
+     * complete() décide (docs/16 §20 : preuve douteuse -> hold -> revue).
+     */
+    private function detectRiskSignal(FeedAdDelivery $delivery, Carbon $now, int $visibleDurationMs, int $realElapsedMs): ?string
+    {
+        if ($delivery->last_heartbeat_at !== null) {
+            $sinceLastHeartbeatMs = $now->diffInMilliseconds($delivery->last_heartbeat_at, true);
+
+            if ($sinceLastHeartbeatMs < (int) config('feed.heartbeat_min_interval_ms')) {
+                return 'heartbeat_rate_abuse';
+            }
+        }
+
+        if ($visibleDurationMs - $realElapsedMs > (int) config('feed.overclaim_tolerance_ms')) {
+            return 'overclaimed_duration';
+        }
+
+        return null;
     }
 
     /**
@@ -170,8 +209,41 @@ final class AttentionService
             ];
         }
 
+        if ($delivery->status === FeedAdDelivery::STATUS_HELD) {
+            return [
+                'delivery' => $delivery,
+                'gain_minor' => 0,
+                'balance_minor' => $this->userWallet->balanceMinor($accountId),
+            ];
+        }
+
         if ($delivery->status !== FeedAdDelivery::STATUS_STARTED || $delivery->progress_percent < 100) {
             throw new AttentionNotQualifiedException;
+        }
+
+        if ($delivery->risk_signal_count >= (int) config('feed.risk_hold_threshold')) {
+            DB::transaction(function () use ($delivery): void {
+                $delivery->update(['status' => FeedAdDelivery::STATUS_HELD]);
+
+                FeedAdDeliveryHold::query()->create([
+                    'feed_ad_delivery_id' => $delivery->id,
+                    'amount_minor' => $delivery->gain_minor,
+                    'reason_code' => $delivery->last_risk_signal_code ?? 'risk_signal_threshold',
+                    'status' => FeedAdDeliveryHold::STATUS_CREATED,
+                    'opened_at' => Carbon::now('UTC'),
+                    'evidence' => [
+                        'risk_signal_count' => $delivery->risk_signal_count,
+                        'visible_duration_ms' => $delivery->visible_duration_ms,
+                        'required_duration_ms' => $delivery->required_duration_ms,
+                    ],
+                ]);
+            });
+
+            return [
+                'delivery' => $delivery->refresh(),
+                'gain_minor' => 0,
+                'balance_minor' => $this->userWallet->balanceMinor($accountId),
+            ];
         }
 
         DB::transaction(function () use ($delivery, $accountId): void {
