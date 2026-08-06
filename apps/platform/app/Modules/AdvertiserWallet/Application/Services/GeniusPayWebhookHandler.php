@@ -6,11 +6,6 @@ namespace App\Modules\AdvertiserWallet\Application\Services;
 
 use App\Modules\AdvertiserWallet\Infrastructure\Models\AdvertiserWalletDeposit;
 use App\Modules\AdvertiserWallet\Infrastructure\Models\AdvertiserWalletDepositEvent;
-use App\Modules\Ledger\Application\Services\LedgerPostingContract;
-use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
-use App\Modules\Ledger\Domain\ValueObjects\LedgerEntryInput;
-use App\Modules\Ledger\Domain\ValueObjects\PostLedgerTransaction;
-use App\Shared\Money\Money;
 use App\Shared\Payments\PaymentProviderContract;
 
 /**
@@ -23,7 +18,7 @@ final class GeniusPayWebhookHandler
 {
     public function __construct(
         private readonly PaymentProviderContract $provider,
-        private readonly LedgerPostingContract $posting,
+        private readonly AdvertiserWalletCreditor $creditor,
     ) {}
 
     public function handle(string $rawPayload, array $headers): void
@@ -82,38 +77,10 @@ final class GeniusPayWebhookHandler
         ]);
 
         match ($verified->normalizedStatus) {
-            'confirmed' => $this->creditDeposit($deposit),
+            'confirmed' => $this->creditor->credit($deposit, "Dépôt GeniusPay {$deposit->provider_reference}"),
             'rejected' => $deposit->update(['status' => AdvertiserWalletDeposit::STATUS_REJECTED]),
             'expired' => $deposit->update(['status' => AdvertiserWalletDeposit::STATUS_EXPIRED]),
             default => null,
         };
-    }
-
-    private function creditDeposit(AdvertiserWalletDeposit $deposit): void
-    {
-        $organizationAccount = LedgerAccountReference::forOrganization(
-            AdvertiserWalletQueryService::AVAILABLE_ACCOUNT_CODE,
-            $deposit->organization_id,
-            'LIABILITY_ADVERTISER',
-            'WP',
-        );
-        $clearingAccount = LedgerAccountReference::system('wasplex.cash.clearing', 'ASSET', 'WP');
-
-        $transaction = $this->posting->post(new PostLedgerTransaction(
-            type: 'ADVERTISER_DEPOSIT_CREDIT',
-            sourceModule: 'advertiser_wallet',
-            idempotencyKey: "advertiser-deposit:{$deposit->id}",
-            entries: [
-                LedgerEntryInput::debit($clearingAccount, Money::of($deposit->amount_minor, 'WP'), "Dépôt GeniusPay {$deposit->provider_reference}"),
-                LedgerEntryInput::credit($organizationAccount, Money::of($deposit->amount_minor, 'WP'), "Dépôt GeniusPay {$deposit->provider_reference}"),
-            ],
-            businessReference: $deposit->provider_reference,
-            createdBy: $deposit->initiated_by,
-        ));
-
-        $deposit->update([
-            'status' => AdvertiserWalletDeposit::STATUS_CREDITED,
-            'ledger_transaction_id' => $transaction->id,
-        ]);
     }
 }
