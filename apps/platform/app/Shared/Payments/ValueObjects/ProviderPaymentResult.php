@@ -21,5 +21,13 @@ final class ProviderPaymentResult
         public readonly ?string $providerStatusRaw,
         public readonly string $normalizedStatus,
         public readonly string $environment,
+        // Echoed back from the provider's own record of the transaction —
+        // same field names as the webhook payload's data.amount/data.currency
+        // (docs/chantiers/P011-B-RAPPROCHEMENT.md §4: assumption not yet
+        // re-confirmed against real, non-sandboxed GeniusPay traffic).
+        // Null when the provider response omits them (e.g. reference
+        // not found).
+        public readonly ?int $amountMinor = null,
+        public readonly ?string $currency = null,
     ) {}
 }

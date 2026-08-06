@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\AdvertiserWallet\Infrastructure\Providers;
 
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
+use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReconcilablePaymentDirectory;
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReservationService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ final class AdvertiserWalletServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AdvertiserWalletReservationContract::class, AdvertiserWalletReservationService::class);
+        $this->app->tag([AdvertiserWalletReconcilablePaymentDirectory::class], 'reconciliation.directories');
     }
 
     public function boot(): void
