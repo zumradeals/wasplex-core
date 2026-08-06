@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
+import SubscriptionPanel from '@/Components/SubscriptionPanel.vue';
 import type { AuthShared } from '@/types/identity';
 
 const page = usePage<{ auth: AuthShared }>();
@@ -66,9 +67,9 @@ async function logout(): Promise<void> {
                             MFA : {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }}
                         </p>
                     </section>
+                    <SubscriptionPanel />
                     <p class="text-wpx-muted-dark text-xs">
-                        Le profil intelligent, les consentements et le score de complétude arrivent avec les chantiers
-                        suivants (P004+).
+                        Le profil intelligent et les consentements arrivent avec les chantiers suivants.
                     </p>
                 </div>
                 <div

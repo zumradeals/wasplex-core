@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\AdvertiserWallet\Infrastructure\Providers;
 
-use App\Modules\AdvertiserWallet\Application\Services\GeniusPayAdapter;
-use App\Modules\AdvertiserWallet\Application\Services\PaymentProviderContract;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -14,11 +12,6 @@ use Illuminate\Support\ServiceProvider;
 
 final class AdvertiserWalletServiceProvider extends ServiceProvider
 {
-    public function register(): void
-    {
-        $this->app->bind(PaymentProviderContract::class, GeniusPayAdapter::class);
-    }
-
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../../Database/Migrations');

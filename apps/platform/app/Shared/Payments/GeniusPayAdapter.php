@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\AdvertiserWallet\Application\Services;
+namespace App\Shared\Payments;
 
-use App\Modules\AdvertiserWallet\Domain\ValueObjects\CreateDepositRequest;
-use App\Modules\AdvertiserWallet\Domain\ValueObjects\ProviderDepositResult;
-use App\Modules\AdvertiserWallet\Domain\ValueObjects\ProviderWebhookEvent;
+use App\Shared\Payments\ValueObjects\CreatePaymentRequest;
+use App\Shared\Payments\ValueObjects\ProviderPaymentResult;
+use App\Shared\Payments\ValueObjects\ProviderWebhookEvent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -59,7 +59,7 @@ final class GeniusPayAdapter implements PaymentProviderContract
         }
     }
 
-    public function createDeposit(CreateDepositRequest $request): ProviderDepositResult
+    public function createPayment(CreatePaymentRequest $request): ProviderPaymentResult
     {
         $response = Http::baseUrl($this->baseUrl)
             ->withToken($this->merchantKey)
@@ -71,17 +71,17 @@ final class GeniusPayAdapter implements PaymentProviderContract
             ])
             ->throw();
 
-        return $this->normalizeDepositResponse($response->json());
+        return $this->normalizePaymentResponse($response->json());
     }
 
-    public function fetchDepositStatus(string $providerReference): ProviderDepositResult
+    public function fetchPaymentStatus(string $providerReference): ProviderPaymentResult
     {
         $response = Http::baseUrl($this->baseUrl)
             ->withToken($this->merchantKey)
             ->get("/payments/{$providerReference}")
             ->throw();
 
-        return $this->normalizeDepositResponse($response->json());
+        return $this->normalizePaymentResponse($response->json());
     }
 
     public function verifyWebhookSignature(string $rawPayload, array $headers): bool
@@ -128,7 +128,7 @@ final class GeniusPayAdapter implements PaymentProviderContract
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function normalizeDepositResponse(array $payload): ProviderDepositResult
+    private function normalizePaymentResponse(array $payload): ProviderPaymentResult
     {
         $checkoutUrl = isset($payload['checkout_url']) ? (string) $payload['checkout_url'] : null;
 
@@ -141,7 +141,7 @@ final class GeniusPayAdapter implements PaymentProviderContract
         // HOTFIX-P003-GENIUSPAY-SANDBOX.md §5) — never treat that as failure.
         $providerStatusRaw = isset($payload['status']) ? (string) $payload['status'] : null;
 
-        return new ProviderDepositResult(
+        return new ProviderPaymentResult(
             providerReference: isset($payload['reference']) ? (string) $payload['reference'] : null,
             checkoutUrl: $checkoutUrl,
             providerStatusRaw: $providerStatusRaw,
