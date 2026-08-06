@@ -8,6 +8,7 @@ use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
 use App\Modules\Ledger\Infrastructure\Models\LedgerAccount;
 use App\Modules\Ledger\Infrastructure\Models\LedgerEntry;
 use App\Modules\Wallet\Application\Contracts\UserWalletContract;
+use App\Modules\Wallet\Events\WalletBalanceChanged;
 use App\Modules\Wallet\Infrastructure\Models\UserWallet;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -55,6 +56,23 @@ final class UserWalletQueryService implements UserWalletContract
             ->sum('amount_minor');
 
         return $credits - $debits;
+    }
+
+    public function notifyBalanceChanged(
+        string $accountId,
+        int $amountMinor,
+        string $origin,
+        string $operation,
+        string $ledgerTransactionId,
+    ): void {
+        WalletBalanceChanged::dispatch(
+            $accountId,
+            $amountMinor,
+            $this->balanceMinor($accountId),
+            $origin,
+            $operation,
+            $ledgerTransactionId,
+        );
     }
 
     public function history(string $accountId, int $perPage = 25): LengthAwarePaginator

@@ -23,4 +23,18 @@ interface UserWalletContract
     public function availableAccountReference(string $accountId): LedgerAccountReference;
 
     public function balanceMinor(string $accountId): int;
+
+    /**
+     * docs/07 §23 : diffuse `wallet.balance.changed` sur le canal privé du
+     * compte après un changement de solde déjà commité au Grand Livre.
+     * Encapsulé derrière ce contrat pour que Feed n'importe jamais une
+     * classe d'événement du module Wallet (CLAUDE.md §6).
+     */
+    public function notifyBalanceChanged(
+        string $accountId,
+        int $amountMinor,
+        string $origin,
+        string $operation,
+        string $ledgerTransactionId,
+    ): void;
 }

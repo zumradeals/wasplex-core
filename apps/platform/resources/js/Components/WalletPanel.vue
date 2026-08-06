@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
+import { useEcho } from '@laravel/echo-vue';
 import http from '@/lib/http';
+import type { AuthShared } from '@/types/identity';
 
 interface HistoryEntry {
     id: string;
@@ -39,6 +42,13 @@ function describe(entry: HistoryEntry): string {
 defineExpose({ load });
 
 onMounted(load);
+
+const page = usePage<{ auth: AuthShared }>();
+
+// docs/07 §23 / docs/chantiers/P011-CHANTIER.md : le solde se met à jour en
+// direct (déblocage antifraude, autre appareil) sans attendre un rechargement
+// déclenché par la réponse HTTP de l'action qui vient de créditer.
+useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load);
 </script>
 
 <template>

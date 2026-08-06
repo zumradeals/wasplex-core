@@ -268,6 +268,14 @@ final class AttentionService
             ]);
         });
 
+        $this->userWallet->notifyBalanceChanged(
+            $accountId,
+            $delivery->gain_minor,
+            'feed.attention',
+            'credit',
+            $delivery->ledger_transaction_id,
+        );
+
         return [
             'delivery' => $delivery->refresh(),
             'gain_minor' => $delivery->gain_minor,

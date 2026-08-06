@@ -17,7 +17,7 @@
 | P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | ready_for_review |
 | P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | ready_for_review |
 | P010 | Antifraude, preuves renforcées et reprise | P009 | Valeur et confiance | ready_for_review |
-| P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | En attente |
+| P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | ready_for_review (temps réel seul — rapprochement et retraits en P011-B/P011-C) |
 | P012 | Reporting et dashboards | P007, P009, P011 | Pilotage | En attente |
 | P013 | Stabilisation première verticale | P000-P012 | Stabilisation | En attente |
 | P014 | Fonds | P003, P004, P011, P012 | Extension | En attente |
