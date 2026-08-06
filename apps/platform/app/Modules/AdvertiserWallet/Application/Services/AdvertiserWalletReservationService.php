@@ -61,4 +61,33 @@ final class AdvertiserWalletReservationService implements AdvertiserWalletReserv
 
         return $transaction->id;
     }
+
+    public function release(string $organizationId, string $campaignId, int $amountMinor, string $idempotencyKey): string
+    {
+        $availableAccount = LedgerAccountReference::forOrganization(
+            AdvertiserWalletQueryService::AVAILABLE_ACCOUNT_CODE,
+            $organizationId,
+            'LIABILITY_ADVERTISER',
+            'WP',
+        );
+        $reservedAccount = LedgerAccountReference::forOrganization(
+            self::RESERVED_ACCOUNT_CODE,
+            $organizationId,
+            'LIABILITY_ADVERTISER',
+            'WP',
+        );
+
+        $transaction = $this->posting->post(new PostLedgerTransaction(
+            type: 'CAMPAIGN_BUDGET_RELEASED',
+            sourceModule: 'campaigns',
+            idempotencyKey: $idempotencyKey,
+            entries: [
+                LedgerEntryInput::debit($reservedAccount, Money::of($amountMinor, 'WP'), 'Libération budget campagne'),
+                LedgerEntryInput::credit($availableAccount, Money::of($amountMinor, 'WP'), 'Libération budget campagne'),
+            ],
+            businessReference: $campaignId,
+        ));
+
+        return $transaction->id;
+    }
 }

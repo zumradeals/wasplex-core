@@ -109,6 +109,10 @@ final class SeedFounderCommand extends Command
             'admin.subscriptions.classes.manage',
             // docs/chantiers/P006-CHANTIER.md: catalogue de prix publicitaire.
             'admin.advertising.pricing.manage',
+            // docs/chantiers/P007-CHANTIER.md: revue administrative des campagnes.
+            'admin.campaign-reviews.view',
+            'admin.campaign-reviews.decide',
+            'admin.campaigns.suspend',
         ];
     }
 }

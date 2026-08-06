@@ -22,6 +22,14 @@ final class Campaign extends Model
 
     public const STATUS_SUBMITTED = 'submitted';
 
+    public const STATUS_CHANGES_REQUESTED = 'changes_requested';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_REJECTED = 'rejected';
+
+    public const STATUS_SUSPENDED = 'suspended';
+
     public const OBJECTIVES = [
         'faire_connaitre' => 'En savoir plus',
         'obtenir_appels' => 'Appeler',
@@ -55,6 +63,19 @@ final class Campaign extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(CampaignBudgetReservation::class);
+    }
+
+    public function reviewCases(): HasMany
+    {
+        return $this->hasMany(CampaignReviewCase::class);
+    }
+
+    public function latestReviewCase(): ?CampaignReviewCase
+    {
+        // `opened_at` is second-precision — two cases can tie within the
+        // same second, so the ULID primary key (monotonic at creation)
+        // breaks ties reliably.
+        return $this->reviewCases()->orderByDesc('opened_at')->orderByDesc('id')->first();
     }
 
     public function currentVersion(): ?CampaignVersion

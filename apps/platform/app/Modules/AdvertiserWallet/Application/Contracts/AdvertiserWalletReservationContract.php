@@ -19,4 +19,11 @@ interface AdvertiserWalletReservationContract
      * @throws InsufficientAdvertiserBalanceException
      */
     public function reserve(string $organizationId, string $campaignId, int $amountMinor, string $idempotencyKey): string;
+
+    /**
+     * Reverses a prior reserve() — moves value back from "reserved" to
+     * "available" (docs/chantiers/P007-CHANTIER.md §6: a rejected campaign
+     * releases its reservation; an approved/suspended one keeps it).
+     */
+    public function release(string $organizationId, string $campaignId, int $amountMinor, string $idempotencyKey): string;
 }

@@ -10,6 +10,8 @@ use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservati
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignQuote;
+use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewCase;
+use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewEvent;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignVersion;
 use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 use App\Modules\Subscriptions\Application\ValueObjects\AudienceEstimate;
@@ -73,7 +75,7 @@ final class CampaignService
     {
         $campaign = Campaign::query()
             ->where('organization_id', $organizationId)
-            ->with(['versions.quotes'])
+            ->with(['versions.quotes', 'reviewCases' => fn ($query) => $query->orderByDesc('opened_at')])
             ->find($campaignId);
 
         if ($campaign === null) {
@@ -90,8 +92,10 @@ final class CampaignService
     {
         $campaign = $this->find($organizationId, $campaignId);
 
-        if ($campaign->status === Campaign::STATUS_SUBMITTED) {
-            throw new InvalidCampaignStateException('Une campagne soumise ne peut plus être modifiée dans ce chantier.');
+        $locked = [Campaign::STATUS_SUBMITTED, Campaign::STATUS_APPROVED, Campaign::STATUS_REJECTED, Campaign::STATUS_SUSPENDED];
+
+        if (in_array($campaign->status, $locked, true)) {
+            throw new InvalidCampaignStateException('Cette campagne ne peut plus être modifiée dans son état actuel.');
         }
 
         $version = $campaign->currentVersion();
@@ -131,7 +135,11 @@ final class CampaignService
                 $version->update($versionUpdate);
             }
 
-            if ($campaign->status !== Campaign::STATUS_DRAFT) {
+            // Editing while changes_requested keeps that status — the
+            // advertiser must explicitly call resubmit() (docs/13 §56).
+            // Editing while draft/quoted/funded reverts to draft: a stale
+            // quote or funding must be redone.
+            if (! in_array($campaign->status, [Campaign::STATUS_DRAFT, Campaign::STATUS_CHANGES_REQUESTED], true)) {
                 $campaign->update(['status' => Campaign::STATUS_DRAFT]);
             }
 
@@ -234,7 +242,7 @@ final class CampaignService
         }
     }
 
-    public function submit(string $organizationId, string $campaignId): Campaign
+    public function submit(string $organizationId, string $campaignId, string $actorAccountId): Campaign
     {
         $campaign = $this->find($organizationId, $campaignId);
 
@@ -242,9 +250,43 @@ final class CampaignService
             throw new InvalidCampaignStateException('La campagne doit être financée avant soumission.');
         }
 
+        return DB::transaction(fn (): Campaign => $this->openReviewCase($campaign, $actorAccountId, CampaignReviewEvent::TYPE_SUBMITTED));
+    }
+
+    /**
+     * docs/13 §56 : correction puis resoumission — aucun nouveau
+     * financement, le budget déjà réservé reste verrouillé
+     * (docs/chantiers/P007-CHANTIER.md §6).
+     */
+    public function resubmit(string $organizationId, string $campaignId, string $actorAccountId): Campaign
+    {
+        $campaign = $this->find($organizationId, $campaignId);
+
+        if ($campaign->status !== Campaign::STATUS_CHANGES_REQUESTED) {
+            throw new InvalidCampaignStateException('Seule une campagne avec correction demandée peut être resoumise.');
+        }
+
+        return DB::transaction(fn (): Campaign => $this->openReviewCase($campaign, $actorAccountId, CampaignReviewEvent::TYPE_RESUBMITTED));
+    }
+
+    private function openReviewCase(Campaign $campaign, string $actorAccountId, string $eventType): Campaign
+    {
         $version = $campaign->currentVersion();
         $version->update(['status' => CampaignVersion::STATUS_SUBMITTED]);
         $campaign->update(['status' => Campaign::STATUS_SUBMITTED]);
+
+        $case = CampaignReviewCase::query()->create([
+            'campaign_id' => $campaign->id,
+            'campaign_version_id' => $version->id,
+            'status' => CampaignReviewCase::STATUS_OPEN,
+            'opened_at' => now(),
+        ]);
+
+        CampaignReviewEvent::query()->create([
+            'campaign_review_case_id' => $case->id,
+            'event_type' => $eventType,
+            'actor_account_id' => $actorAccountId,
+        ]);
 
         return $campaign->refresh();
     }
