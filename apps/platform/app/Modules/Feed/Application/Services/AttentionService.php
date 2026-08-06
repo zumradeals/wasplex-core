@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Feed\Application\Services;
 
 use App\Modules\AdvertiserStudio\Application\Contracts\BrandDirectoryContract;
+use App\Modules\AdvertiserStudio\Application\Contracts\CreativeAssetDirectoryContract;
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
 use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract;
 use App\Modules\Campaigns\Application\Contracts\CampaignEnvelopeContract;
@@ -36,6 +37,7 @@ final class AttentionService
         private readonly CampaignEnvelopeContract $envelope,
         private readonly ApprovedCampaignAudienceContract $campaigns,
         private readonly BrandDirectoryContract $brands,
+        private readonly CreativeAssetDirectoryContract $creativeAssets,
         private readonly MatchingContract $matching,
         private readonly SubscriptionQuotaContract $quota,
         private readonly AdvertiserWalletReservationContract $advertiserReservations,
@@ -43,7 +45,7 @@ final class AttentionService
     ) {}
 
     /**
-     * @return array{delivery: FeedAdDelivery, brand_name: ?string, objective_code: ?string, cta_label: ?string}|null
+     * @return array{delivery: FeedAdDelivery, brand_name: ?string, objective_code: ?string, cta_label: ?string, creative: ?array{url: string, type: string, duration: ?int}}|null
      */
     public function next(string $feedSessionId, string $accountId): ?array
     {
@@ -315,11 +317,22 @@ final class AttentionService
         $campaign = $this->campaigns->find($delivery->campaign_id);
         $brand = $campaign !== null ? $this->brands->find($campaign->organizationId, $campaign->brandId) : null;
 
+        $creative = null;
+
+        if ($campaign?->creativeAssetId !== null) {
+            $asset = $this->creativeAssets->find($campaign->organizationId, $campaign->creativeAssetId);
+
+            if ($asset !== null) {
+                $creative = ['url' => $asset->url, 'type' => $asset->type, 'duration' => $asset->duration];
+            }
+        }
+
         return [
             'delivery' => $delivery,
             'brand_name' => $brand?->name,
             'objective_code' => $campaign?->objectiveCode,
             'cta_label' => Campaign::ctaFor($campaign?->objectiveCode),
+            'creative' => $creative,
         ];
     }
 }

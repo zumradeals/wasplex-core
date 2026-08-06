@@ -11,6 +11,12 @@ interface Interactions {
     saved_by_me: boolean;
 }
 
+interface Creative {
+    url: string;
+    type: string;
+    duration: number | null;
+}
+
 interface Delivery {
     id: string;
     campaign_id: string;
@@ -22,6 +28,7 @@ interface Delivery {
     brand_name: string | null;
     objective_code: string | null;
     cta_label: string | null;
+    creative: Creative | null;
     interactions: Interactions;
 }
 
@@ -43,9 +50,12 @@ const comments = ref<Comment[]>([]);
 const newComment = ref('');
 const gainToast = ref<number | null>(null);
 const holdNotice = ref(false);
+const videoRef = ref<HTMLVideoElement | null>(null);
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let clientStartedAt = 0;
+let touchStartY = 0;
+let scrollGestureLocked = false;
 
 function stopHeartbeat(): void {
     if (heartbeatTimer !== null) {
@@ -84,6 +94,7 @@ async function beginPlayback(): Promise<void> {
     clientStartedAt = Date.now();
 
     heartbeatTimer = setInterval(sendHeartbeat, 400);
+    void videoRef.value?.play();
 }
 
 async function sendHeartbeat(): Promise<void> {
@@ -143,6 +154,41 @@ async function skip(): Promise<void> {
     }
 
     await loadNext();
+}
+
+/**
+ * docs/08-feed-principal-wasplex.md §27/§83 : le défilement vertical
+ * abandonne sans confirmation, exactement comme le bouton "Passer" — aucune
+ * nouvelle règle serveur, juste un geste plus naturel pour déclencher le
+ * même flux.
+ */
+function triggerScrollGesture(): void {
+    if (scrollGestureLocked || showComments.value || loading.value || delivery.value === null) {
+        return;
+    }
+
+    scrollGestureLocked = true;
+    skip().finally(() => {
+        scrollGestureLocked = false;
+    });
+}
+
+function onTouchStart(event: TouchEvent): void {
+    touchStartY = event.touches[0]?.clientY ?? 0;
+}
+
+function onTouchEnd(event: TouchEvent): void {
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY;
+
+    if (touchStartY - endY > 60) {
+        triggerScrollGesture();
+    }
+}
+
+function onWheel(event: WheelEvent): void {
+    if (event.deltaY > 40) {
+        triggerScrollGesture();
+    }
 }
 
 async function toggleLike(): Promise<void> {
@@ -221,7 +267,12 @@ onBeforeUnmount(stopHeartbeat);
 </script>
 
 <template>
-    <div class="rounded-wpx-lg shadow-wpx-card-dark relative aspect-[9/16] w-full overflow-hidden bg-black">
+    <div
+        class="rounded-wpx-lg shadow-wpx-card-dark relative aspect-[9/16] w-full overflow-hidden bg-black"
+        @touchstart="onTouchStart"
+        @touchend="onTouchEnd"
+        @wheel.passive="onWheel"
+    >
         <!-- Immersive top header, overlaid on the content itself. -->
         <div class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-3 pt-3 pb-8">
             <div class="flex items-center justify-between">
@@ -237,8 +288,26 @@ onBeforeUnmount(stopHeartbeat);
             </div>
         </div>
 
-        <!-- Content area (decorative — no real media asset in this chantier). -->
+        <!-- Content area: real creative when attached, decorative fallback otherwise. -->
+        <video
+            v-if="delivery?.creative?.type === 'video'"
+            ref="videoRef"
+            :key="delivery.id"
+            :src="delivery.creative.url"
+            class="absolute inset-0 h-full w-full object-cover"
+            :muted="true"
+            loop
+            playsinline
+            autoplay
+        />
+        <img
+            v-else-if="delivery?.creative?.type === 'image'"
+            :src="delivery.creative.url"
+            alt=""
+            class="absolute inset-0 h-full w-full object-cover"
+        />
         <div
+            v-else
             class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 absolute inset-0 flex items-center justify-center bg-gradient-to-br"
         >
             <p v-if="loading" class="text-wpx-muted-dark text-xs">Chargement…</p>
