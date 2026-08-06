@@ -52,6 +52,7 @@ final class ApprovedCampaignAudienceService implements ApprovedCampaignAudienceC
             audienceConfiguration: $version->audience_configuration ?? [],
             scheduledStart: $campaign->scheduled_start?->toDateString(),
             scheduledEnd: $campaign->scheduled_end?->toDateString(),
+            creativeAssetId: $version->creative_configuration['asset_id'] ?? null,
         );
     }
 }

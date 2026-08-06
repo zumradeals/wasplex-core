@@ -177,6 +177,7 @@ final class FeedDeliveriesController extends Controller
             'brand_name' => $result['brand_name'],
             'objective_code' => $result['objective_code'],
             'cta_label' => $result['cta_label'],
+            'creative' => $result['creative'],
             'interactions' => $this->interactions->counts($accountId, $delivery->campaign_id),
         ]);
     }

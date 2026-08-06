@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import http from '@/lib/http';
 
 interface Interactions {
@@ -9,6 +9,12 @@ interface Interactions {
     comments: number;
     liked_by_me: boolean;
     saved_by_me: boolean;
+}
+
+interface Creative {
+    url: string;
+    type: string;
+    duration: number | null;
 }
 
 interface Delivery {
@@ -22,6 +28,7 @@ interface Delivery {
     brand_name: string | null;
     objective_code: string | null;
     cta_label: string | null;
+    creative: Creative | null;
     interactions: Interactions;
 }
 
@@ -43,9 +50,12 @@ const comments = ref<Comment[]>([]);
 const newComment = ref('');
 const gainToast = ref<number | null>(null);
 const holdNotice = ref(false);
+const videoRef = ref<HTMLVideoElement | null>(null);
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let clientStartedAt = 0;
+let touchStartY = 0;
+let scrollGestureLocked = false;
 
 function stopHeartbeat(): void {
     if (heartbeatTimer !== null) {
@@ -72,6 +82,14 @@ async function loadNext(): Promise<void> {
     delivery.value = data.delivery;
     noAdAvailable.value = data.delivery === null;
     loading.value = false;
+
+    // Le gain est connu avant lecture (docs/07 §1429, docs/08 §1710) — rien
+    // n'exige un geste supplémentaire pour le déclencher : la vidéo démarre
+    // d'elle-même dès qu'elle est prête, le montant reste affiché pendant
+    // la lecture.
+    if (data.delivery !== null && data.delivery.status === 'reserved') {
+        void beginPlayback();
+    }
 }
 
 async function beginPlayback(): Promise<void> {
@@ -84,6 +102,12 @@ async function beginPlayback(): Promise<void> {
     clientStartedAt = Date.now();
 
     heartbeatTimer = setInterval(sendHeartbeat, 400);
+
+    // videoRef ne pointe vers le nouvel élément qu'après le prochain rendu
+    // Vue — beginPlayback() peut désormais être appelé automatiquement dès
+    // loadNext(), dans le même tick que la mise à jour de `delivery`.
+    await nextTick();
+    void videoRef.value?.play();
 }
 
 async function sendHeartbeat(): Promise<void> {
@@ -143,6 +167,41 @@ async function skip(): Promise<void> {
     }
 
     await loadNext();
+}
+
+/**
+ * docs/08-feed-principal-wasplex.md §27/§83 : le défilement vertical
+ * abandonne sans confirmation, exactement comme le bouton "Passer" — aucune
+ * nouvelle règle serveur, juste un geste plus naturel pour déclencher le
+ * même flux.
+ */
+function triggerScrollGesture(): void {
+    if (scrollGestureLocked || showComments.value || loading.value || delivery.value === null) {
+        return;
+    }
+
+    scrollGestureLocked = true;
+    skip().finally(() => {
+        scrollGestureLocked = false;
+    });
+}
+
+function onTouchStart(event: TouchEvent): void {
+    touchStartY = event.touches[0]?.clientY ?? 0;
+}
+
+function onTouchEnd(event: TouchEvent): void {
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY;
+
+    if (touchStartY - endY > 60) {
+        triggerScrollGesture();
+    }
+}
+
+function onWheel(event: WheelEvent): void {
+    if (event.deltaY > 40) {
+        triggerScrollGesture();
+    }
 }
 
 async function toggleLike(): Promise<void> {
@@ -221,7 +280,12 @@ onBeforeUnmount(stopHeartbeat);
 </script>
 
 <template>
-    <div class="rounded-wpx-lg shadow-wpx-card-dark relative aspect-[9/16] w-full overflow-hidden bg-black">
+    <div
+        class="rounded-wpx-lg shadow-wpx-card-dark relative aspect-[9/16] w-full overflow-hidden bg-black"
+        @touchstart="onTouchStart"
+        @touchend="onTouchEnd"
+        @wheel.passive="onWheel"
+    >
         <!-- Immersive top header, overlaid on the content itself. -->
         <div class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-3 pt-3 pb-8">
             <div class="flex items-center justify-between">
@@ -237,8 +301,26 @@ onBeforeUnmount(stopHeartbeat);
             </div>
         </div>
 
-        <!-- Content area (decorative — no real media asset in this chantier). -->
+        <!-- Content area: real creative when attached, decorative fallback otherwise. -->
+        <video
+            v-if="delivery?.creative?.type === 'video'"
+            ref="videoRef"
+            :key="delivery.id"
+            :src="delivery.creative.url"
+            class="absolute inset-0 h-full w-full object-cover"
+            :muted="true"
+            loop
+            playsinline
+            autoplay
+        />
+        <img
+            v-else-if="delivery?.creative?.type === 'image'"
+            :src="delivery.creative.url"
+            alt=""
+            class="absolute inset-0 h-full w-full object-cover"
+        />
         <div
+            v-else
             class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 absolute inset-0 flex items-center justify-center bg-gradient-to-br"
         >
             <p v-if="loading" class="text-wpx-muted-dark text-xs">Chargement…</p>
@@ -264,22 +346,13 @@ onBeforeUnmount(stopHeartbeat);
                 />
             </div>
 
-            <!-- Gain banner before playback. -->
+            <!-- Gain connu avant/pendant la lecture — jamais un geste requis pour démarrer. -->
             <div
-                v-if="delivery.status === 'reserved'"
-                class="rounded-wpx-lg absolute inset-x-4 top-1/3 z-20 bg-black/70 p-4 text-center"
+                v-if="delivery.status === 'reserved' || delivery.status === 'started'"
+                class="absolute inset-x-4 top-16 z-20 flex items-center justify-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-center"
             >
-                <p class="text-wpx-white-soft text-sm font-semibold">Regardez jusqu'à la fin</p>
-                <p class="mt-1 text-xs text-white/70">
-                    Gain : <span class="text-wpx-gold font-bold">{{ gainLabel }}</span> · Durée : {{ durationLabel }}
-                </p>
-                <button
-                    type="button"
-                    class="rounded-wpx-md from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-3 w-full bg-gradient-to-br py-2 text-sm font-semibold"
-                    @click="beginPlayback"
-                >
-                    Démarrer
-                </button>
+                <span class="text-wpx-gold text-xs font-bold">{{ gainLabel }}</span>
+                <span class="text-[11px] text-white/60">· {{ durationLabel }}</span>
             </div>
 
             <!-- Left rail — reserved for future Alertes (P015), inert. -->

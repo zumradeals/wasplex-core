@@ -18,5 +18,6 @@ final class ApprovedCampaignAudience
         public readonly array $audienceConfiguration,
         public readonly ?string $scheduledStart,
         public readonly ?string $scheduledEnd,
+        public readonly ?string $creativeAssetId = null,
     ) {}
 }
