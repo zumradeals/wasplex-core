@@ -59,6 +59,8 @@ final class OrganizationRegistrationService
             // advertiser.brand.*/advertiser.media.* belong to
             // docs/chantiers/P005-CHANTIER.md — same domain-agnostic grant
             // pattern as the wallet capabilities above.
+            // advertiser.campaign.* belong to docs/chantiers/
+            // P006-CHANTIER.md — same pattern again.
             foreach ([
                 'organization.manage.self',
                 'advertiser.wallet.view',
@@ -67,6 +69,9 @@ final class OrganizationRegistrationService
                 'advertiser.brand.manage',
                 'advertiser.media.upload',
                 'advertiser.media.manage',
+                'advertiser.campaign.view',
+                'advertiser.campaign.manage',
+                'advertiser.campaign.submit',
             ] as $capability) {
                 CapabilityGrant::create([
                     'account_id' => $creator->id,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Subscriptions\Infrastructure\Providers;
 
+use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
+use App\Modules\Subscriptions\Application\Services\EconomicClassCatalogService;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaService;
 use App\Modules\Subscriptions\Console\ApplyScheduledDowngradesCommand;
@@ -17,6 +19,7 @@ final class SubscriptionsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(SubscriptionQuotaContract::class, SubscriptionQuotaService::class);
+        $this->app->bind(EconomicClassCatalogContract::class, EconomicClassCatalogService::class);
     }
 
     public function boot(): void

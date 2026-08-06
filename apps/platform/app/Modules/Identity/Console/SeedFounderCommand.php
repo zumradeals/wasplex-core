@@ -107,6 +107,8 @@ final class SeedFounderCommand extends Command
             // docs/chantiers/P004-CHANTIER.md: capacités Abonnements/Classes.
             'admin.subscriptions.plans.manage',
             'admin.subscriptions.classes.manage',
+            // docs/chantiers/P006-CHANTIER.md: catalogue de prix publicitaire.
+            'admin.advertising.pricing.manage',
         ];
     }
 }

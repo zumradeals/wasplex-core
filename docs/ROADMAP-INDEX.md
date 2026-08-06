@@ -12,7 +12,7 @@
 | P003 | Wallet annonceur (dépôt GeniusPay) | P002 | Noyau | ready_for_review |
 | P004 | Configurations, plans et classes | P001, P003 | Noyau | ready_for_review |
 | P005 | Studio Annonceur, marques et financement | P001, P003, P004 | Annonceur | ready_for_review |
-| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | En attente (réinitialisé) |
+| P006 | Campagne, audience, devis et budget | P004, P005 | Annonceur | ready_for_review |
 | P007 | Revue administrative | P006 | Annonceur | En attente (réinitialisé) |
 | P008 | SmartProfile, consentements et Matching | P004, P007 | Distribution | En attente (réinitialisé) |
 | P009 | Super Moteur, Feed, attention et crédit automatique | P002-P008 | Distribution et valeur | En attente (réinitialisé) |
