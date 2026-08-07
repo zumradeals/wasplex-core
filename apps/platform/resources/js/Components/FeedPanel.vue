@@ -372,8 +372,15 @@ onBeforeUnmount(stopHeartbeat);
 
             <!-- Right rail — real social actions. -->
             <div class="absolute right-2 bottom-28 z-20 flex flex-col items-center gap-4">
-                <button type="button" class="flex flex-col items-center gap-0.5" @click="toggleLike">
+                <button
+                    type="button"
+                    class="flex flex-col items-center gap-0.5"
+                    :aria-label="delivery.interactions.liked_by_me ? 'Retirer le like' : 'Aimer'"
+                    :aria-pressed="delivery.interactions.liked_by_me"
+                    @click="toggleLike"
+                >
                     <span
+                        aria-hidden="true"
                         class="flex h-10 w-10 items-center justify-center rounded-full text-lg"
                         :class="
                             delivery.interactions.liked_by_me ? 'bg-wpx-danger text-white' : 'bg-black/40 text-white/90'
@@ -383,15 +390,28 @@ onBeforeUnmount(stopHeartbeat);
                     </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.likes }}</span>
                 </button>
-                <button type="button" class="flex flex-col items-center gap-0.5" @click="openComments">
+                <button
+                    type="button"
+                    class="flex flex-col items-center gap-0.5"
+                    aria-label="Voir les commentaires"
+                    @click="openComments"
+                >
                     <span
+                        aria-hidden="true"
                         class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-lg text-white/90"
                         >💬</span
                     >
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.comments }}</span>
                 </button>
-                <button type="button" class="flex flex-col items-center gap-0.5" @click="toggleSave">
+                <button
+                    type="button"
+                    class="flex flex-col items-center gap-0.5"
+                    :aria-label="delivery.interactions.saved_by_me ? 'Retirer des enregistrements' : 'Enregistrer'"
+                    :aria-pressed="delivery.interactions.saved_by_me"
+                    @click="toggleSave"
+                >
                     <span
+                        aria-hidden="true"
                         class="flex h-10 w-10 items-center justify-center rounded-full text-lg"
                         :class="
                             delivery.interactions.saved_by_me
@@ -403,8 +423,9 @@ onBeforeUnmount(stopHeartbeat);
                     </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.saves }}</span>
                 </button>
-                <button type="button" class="flex flex-col items-center gap-0.5" @click="share">
+                <button type="button" class="flex flex-col items-center gap-0.5" aria-label="Partager" @click="share">
                     <span
+                        aria-hidden="true"
                         class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-lg text-white/90"
                         >🔗</span
                     >

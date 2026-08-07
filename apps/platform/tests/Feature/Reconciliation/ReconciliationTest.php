@@ -177,3 +177,22 @@ it('lets an authorized admin trigger a reconciliation run via the API', function
         ->assertOk()
         ->assertJsonPath('entries.0.result_code', 'matched');
 });
+
+it('never submits a manual supervised deposit for GeniusPay reconciliation', function (): void {
+    // docs/chantiers/P013-CHANTIER.md : trouvé en rejouant la verticale —
+    // un dépôt supervisé (docs/13 §28) n'a jamais existé chez GeniusPay,
+    // le rapprocher reviendrait à interroger le prestataire pour une
+    // référence qu'il n'a jamais émise.
+    $deposit = makeReconciliationDeposit([
+        'status' => AdvertiserWalletDeposit::STATUS_CREDITED,
+        'provider_code' => 'manual_supervised',
+        'provider_reference' => 'PROOF-REF-123',
+    ]);
+
+    Http::fake();
+
+    app(ReconciliationService::class)->run();
+
+    expect(ReconciliationEntry::query()->where('source_record_id', $deposit->id)->exists())->toBeFalse();
+    Http::assertNothingSent();
+});

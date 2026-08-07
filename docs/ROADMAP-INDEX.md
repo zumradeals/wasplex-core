@@ -19,7 +19,7 @@
 | P010 | Antifraude, preuves renforcées et reprise | P009 | Valeur et confiance | ready_for_review |
 | P011 | Temps réel, rapprochement et retraits utilisateur | P003, P009, P010 | Valeur | ready_for_review (temps réel P011 + rapprochement P011-B ; retraits en P011-C, attend un chantier KYC) |
 | P012 | Reporting et dashboards | P007, P009, P011 | Pilotage | ready_for_review (première verticale — reporting Studio + dashboard fondateur) |
-| P013 | Stabilisation première verticale | P000-P012 | Stabilisation | En attente |
+| P013 | Stabilisation première verticale | P000-P012 | Stabilisation | ready_for_review (verticale rejouée en conditions réelles — dataset GamaDeals/Orange, durcissement, captures, guide opérateur) |
 | P014 | Fonds | P003, P004, P011, P012 | Extension | En attente |
 | P015 | Alertes | P001, P009, P011, P012, P019 | Extension | En attente |
 | P016 | Santé | P001, P012, P015, P019 | Extension | En attente |
