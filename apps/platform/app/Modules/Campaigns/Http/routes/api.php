@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Campaigns\Http\Controllers\Admin\CampaignReviewsController;
 use App\Modules\Campaigns\Http\Controllers\Admin\PricingController;
+use App\Modules\Campaigns\Http\Controllers\Advertiser\CampaignReportingController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\CampaignsController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\TargetingController;
 use App\Modules\Identity\Http\Middleware\EnsureActiveAdvertiserOrganization;
@@ -24,7 +25,14 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
         Route::post('/campaigns', [CampaignsController::class, 'store'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+        // docs/18-reporting-statistiques-audit-observabilite-wasplex.md §26
+        // (comparaison) : doit être déclarée avant /campaigns/{campaign}
+        // pour ne pas être capturée par le paramètre générique.
+        Route::get('/campaigns/report', [CampaignReportingController::class, 'index'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
         Route::get('/campaigns/{campaign}', [CampaignsController::class, 'show'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+        Route::get('/campaigns/{campaign}/report', [CampaignReportingController::class, 'show'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
         Route::patch('/campaigns/{campaign}', [CampaignsController::class, 'update'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');

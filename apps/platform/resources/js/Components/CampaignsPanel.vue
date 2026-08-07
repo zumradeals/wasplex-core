@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import http from '@/lib/http';
+import CampaignPerformancePanel from '@/Components/CampaignPerformancePanel.vue';
 import CampaignPreviewPhone from '@/Components/CampaignPreviewPhone.vue';
 
 interface Brand {
@@ -634,6 +635,12 @@ void loadAll();
                                 </button>
                             </template>
                         </div>
+
+                        <CampaignPerformancePanel
+                            v-if="selectedCampaign.status === 'approved' || selectedCampaign.status === 'suspended'"
+                            :campaign-id="selectedCampaign.id"
+                            class="mt-4"
+                        />
 
                         <div class="mt-4 flex justify-between">
                             <button

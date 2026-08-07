@@ -149,3 +149,42 @@ it('does not broadcast when an admin rejects a held delivery', function (): void
 
     Event::assertNotDispatched(WalletBalanceChanged::class);
 });
+
+it('still credits and responds successfully when the wallet.balance.changed broadcast itself fails', function (): void {
+    // A real, unreachable broadcaster (nothing listens on this port) —
+    // the credit must not fail just because the live-update side effect
+    // does (docs/chantiers/P011-B-RAPPORT.md, found via a genuine Reverb
+    // outage during manual capture, not a hypothetical).
+    config([
+        'broadcasting.default' => 'pusher',
+        'broadcasting.connections.pusher' => [
+            'driver' => 'pusher',
+            'key' => 'unreachable',
+            'secret' => 'unreachable',
+            'app_id' => 'unreachable',
+            'options' => ['host' => '127.0.0.1', 'port' => 1, 'scheme' => 'http', 'useTLS' => false],
+        ],
+    ]);
+
+    ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
+        'feed-realtime-broadcast-fails-advertiser@example.com',
+        ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
+        200000,
+    );
+    readyFeedCandidate('feed-realtime-broadcast-fails-candidate@example.com', 'GOLD');
+    $sessionId = startFeedSession();
+
+    $next = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")->assertOk()->json('delivery');
+    test()->postJson("/api/feed/deliveries/{$next['id']}/start")->assertOk();
+
+    Carbon::setTestNow(Carbon::now('UTC')->addMilliseconds($next['required_duration_ms'] + 500));
+    test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
+    Carbon::setTestNow();
+
+    $completed = test()->postJson("/api/feed/deliveries/{$next['id']}/complete")->assertOk();
+
+    expect($completed->json('gain_minor'))->toBeGreaterThan(0);
+    $delivery = FeedAdDelivery::query()->findOrFail($next['id']);
+    expect($delivery->status)->toBe(FeedAdDelivery::STATUS_COMPLETED);
+    expect($delivery->ledger_transaction_id)->not->toBeNull();
+});

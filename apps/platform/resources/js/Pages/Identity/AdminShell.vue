@@ -5,6 +5,7 @@ import http from '@/lib/http';
 import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
 import AdminAdvertisingPricingPanel from '@/Components/AdminAdvertisingPricingPanel.vue';
 import AdminCampaignReviewsPanel from '@/Components/AdminCampaignReviewsPanel.vue';
+import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
@@ -339,6 +340,10 @@ async function logout(): Promise<void> {
 
                 <section v-else-if="activeSection === 'reconciliation'">
                     <AdminReconciliationPanel />
+                </section>
+
+                <section v-else-if="activeSection === 'dashboard'">
+                    <AdminDashboardPanel />
                 </section>
 
                 <section
