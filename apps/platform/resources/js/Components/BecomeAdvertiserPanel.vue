@@ -25,9 +25,7 @@ async function submit(): Promise<void> {
         });
 
         const { data: spacesData } = await http.get('/me/spaces');
-        const createdSpace = (spacesData.spaces as AuthShared['spaces']).find(
-            (s) => s.organization_id === data.id,
-        );
+        const createdSpace = (spacesData.spaces as AuthShared['spaces']).find((s) => s.organization_id === data.id);
 
         if (createdSpace) {
             await http.post(`/me/spaces/${createdSpace.user_space_id}/switch`);
