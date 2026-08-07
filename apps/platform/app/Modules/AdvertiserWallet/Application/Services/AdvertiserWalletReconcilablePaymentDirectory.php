@@ -25,6 +25,12 @@ final class AdvertiserWalletReconcilablePaymentDirectory implements Reconcilable
         $cutoff = Carbon::now('UTC')->subDays((int) config('reconciliation.lookback_days'));
 
         $deposits = AdvertiserWalletDeposit::query()
+            // docs/chantiers/P013-CHANTIER.md : un dépôt supervisé
+            // (docs/13 §28) n'est jamais soumis à GeniusPay — le
+            // rapprocher reviendrait à interroger le prestataire pour une
+            // référence qu'il n'a jamais émise (défaut trouvé en
+            // rejouant la verticale de bout en bout).
+            ->where('provider_code', '!=', 'manual_supervised')
             ->where(function ($query) use ($cutoff): void {
                 $query->whereNotIn('status', AdvertiserWalletDeposit::TERMINAL_STATUSES)
                     ->orWhere('created_at', '>=', $cutoff);
