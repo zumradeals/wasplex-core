@@ -7,6 +7,7 @@ import SubscriptionPanel from '@/Components/SubscriptionPanel.vue';
 import SmartProfilePanel from '@/Components/SmartProfilePanel.vue';
 import ConsentsPanel from '@/Components/ConsentsPanel.vue';
 import EligibleCampaignsPanel from '@/Components/EligibleCampaignsPanel.vue';
+import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';
 import FeedPanel from '@/Components/FeedPanel.vue';
 import WalletPanel from '@/Components/WalletPanel.vue';
 import type { AuthShared } from '@/types/identity';
@@ -72,6 +73,7 @@ async function logout(): Promise<void> {
                             MFA : {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }}
                         </p>
                     </section>
+                    <BecomeAdvertiserPanel />
                     <EligibleCampaignsPanel />
                     <SmartProfilePanel />
                     <ConsentsPanel />
