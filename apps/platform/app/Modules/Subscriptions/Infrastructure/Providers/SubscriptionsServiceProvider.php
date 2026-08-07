@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Subscriptions\Infrastructure\Providers;
 
 use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
+use App\Modules\Subscriptions\Application\Contracts\SubscriptionsReportingContract;
 use App\Modules\Subscriptions\Application\Services\EconomicClassCatalogService;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaService;
 use App\Modules\Subscriptions\Application\Services\SubscriptionsReconcilablePaymentDirectory;
+use App\Modules\Subscriptions\Application\Services\SubscriptionsReportingService;
 use App\Modules\Subscriptions\Console\ApplyScheduledDowngradesCommand;
 use App\Modules\Subscriptions\Console\ExpireOverdueSubscriptionsCommand;
 use App\Modules\Subscriptions\Console\SeedEconomicCatalogCommand;
@@ -22,6 +24,7 @@ final class SubscriptionsServiceProvider extends ServiceProvider
         $this->app->bind(SubscriptionQuotaContract::class, SubscriptionQuotaService::class);
         $this->app->bind(EconomicClassCatalogContract::class, EconomicClassCatalogService::class);
         $this->app->tag([SubscriptionsReconcilablePaymentDirectory::class], 'reconciliation.directories');
+        $this->app->bind(SubscriptionsReportingContract::class, SubscriptionsReportingService::class);
     }
 
     public function boot(): void
