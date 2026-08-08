@@ -23,4 +23,16 @@ final class SubscriptionsReportingService implements SubscriptionsReportingContr
 
         return new SubscriptionsSummary($active, $revenue);
     }
+
+    public function activeEconomicClassCodeForAccount(string $accountId): ?string
+    {
+        $subscription = UserSubscription::query()
+            ->where('account_id', $accountId)
+            ->whereIn('status', [UserSubscription::STATUS_ACTIVE, UserSubscription::STATUS_SCHEDULED_DOWNGRADE])
+            ->with('economicClass')
+            ->latest('id')
+            ->first();
+
+        return $subscription?->economicClass?->code;
+    }
 }

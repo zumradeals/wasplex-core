@@ -38,7 +38,7 @@ interface Advertiser {
     status: string;
 }
 
-const emit = defineEmits<{ navigate: [section: 'campaign-reviews' | 'advertisers'] }>();
+const emit = defineEmits<{ navigate: [section: 'advertisers'] }>();
 
 const summary = ref<Summary | null>(null);
 const reviewCases = ref<ReviewCase[]>([]);
@@ -175,7 +175,7 @@ defineExpose({ load });
                     <button
                         type="button"
                         class="rounded-wpx-sm bg-wpx-navy-950 px-4 py-2 text-xs font-bold whitespace-nowrap text-white"
-                        @click="emit('navigate', 'campaign-reviews')"
+                        @click="emit('navigate', 'advertisers')"
                     >
                         Examiner
                     </button>

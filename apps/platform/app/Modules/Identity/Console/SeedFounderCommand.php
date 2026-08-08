@@ -93,6 +93,9 @@ final class SeedFounderCommand extends Command
             'admin.capabilities.grant',
             'admin.capabilities.revoke',
             'admin.audit.view',
+            // docs/chantiers/P017-CHANTIER.md: écran Utilisateurs.
+            'admin.accounts.view',
+            'admin.accounts.restrict',
             // docs/chantiers/P002-CHANTIER.md: capacités Grand Livre.
             // Identity ne connaît pas leur signification, seulement leur
             // code (le système de capacités est agnostique du domaine).
