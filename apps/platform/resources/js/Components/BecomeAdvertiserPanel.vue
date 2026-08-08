@@ -42,21 +42,28 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-    <section class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 flex flex-col gap-3 p-4">
-        <template v-if="advertiserSpace">
-            <p class="text-wpx-muted-dark text-xs font-semibold tracking-wide uppercase">Espace annonceur</p>
-            <p class="text-wpx-white-soft text-sm">
-                {{ advertiserSpace.organization_name }}
-            </p>
-            <a
-                href="/studio"
-                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 mt-1 bg-gradient-to-br px-4 py-2 text-center text-sm font-semibold"
-            >
-                Aller au Studio Annonceur
-            </a>
-        </template>
+    <a
+        v-if="advertiserSpace"
+        href="/studio"
+        class="bg-wpx-navy-750 border-wpx-border-dark rounded-wpx-lg flex items-center gap-3 border p-4"
+    >
+        <span class="bg-wpx-blue/16 rounded-wpx-sm flex h-9 w-9 shrink-0 items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect x="4" y="8" width="16" height="12" rx="2" stroke="#4FA3FF" stroke-width="1.7" />
+                <path d="M8 8V6a4 4 0 018 0v2" stroke="#4FA3FF" stroke-width="1.7" />
+            </svg>
+        </span>
+        <span class="flex-1">
+            <span class="text-wpx-white-soft block text-sm font-bold">Studio Annonceur</span>
+            <span class="text-wpx-muted-dark block text-xs">{{ advertiserSpace.organization_name }}</span>
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M9 6l6 6-6 6" stroke="#A9B7C8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+    </a>
 
-        <form v-else class="flex flex-col gap-3" @submit.prevent="submit">
+    <section v-else class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 flex flex-col gap-3 p-4">
+        <form class="flex flex-col gap-3" @submit.prevent="submit">
             <div>
                 <p class="text-wpx-muted-dark text-xs font-semibold tracking-wide uppercase">Devenir annonceur</p>
                 <p class="text-wpx-muted-dark mt-1 text-xs">

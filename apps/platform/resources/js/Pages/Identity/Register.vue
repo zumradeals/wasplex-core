@@ -40,9 +40,7 @@ async function submit(): Promise<void> {
 <template>
     <main class="bg-wpx-navy-950 mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-10">
         <div class="flex flex-col items-center text-center">
-            <div class="rounded-wpx-lg bg-white p-2 shadow">
-                <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-14 w-14 object-contain" />
-            </div>
+            <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-16 w-16 object-contain" />
             <h1 class="text-wpx-white-soft mt-4 text-xl font-semibold">Créer un compte</h1>
         </div>
 

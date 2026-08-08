@@ -19,6 +19,8 @@ const CATEGORY_META: Record<string, { title: string; icon: string }> = {
     territory: { title: 'Ma zone approximative', icon: '📍' },
 };
 
+const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
+
 const categories = ref<Record<string, TaxonomyEntry[]>>({});
 const loading = ref(true);
 const busy = ref<string | null>(null);
@@ -37,6 +39,18 @@ const activeCount = computed(
 );
 
 const totalCount = computed(() => Object.values(categories.value).flat().length);
+
+const percent = computed(() => (totalCount.value === 0 ? 0 : Math.round((activeCount.value / totalCount.value) * 100)));
+
+const nextSuggestions = computed(() =>
+    orderedCategories.value
+        .flatMap((category) => categories.value[category] ?? [])
+        .filter((entry) => !entry.declared)
+        .slice(0, 2)
+        .map((entry) => entry.label),
+);
+
+defineExpose({ percent, nextSuggestions });
 
 async function load(): Promise<void> {
     loading.value = true;
@@ -67,7 +81,7 @@ void load();
 
 <template>
     <div class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 flex flex-col gap-4 p-4">
-        <div>
+        <div v-if="!props.compact">
             <p class="text-wpx-muted-dark text-xs font-semibold tracking-wide uppercase">Profil intelligent</p>
             <p v-if="!loading" class="text-wpx-white-soft mt-1 text-sm">
                 {{ activeCount }} information{{ activeCount > 1 ? 's' : '' }} active{{ activeCount > 1 ? 's' : '' }} sur
@@ -77,6 +91,12 @@ void load();
                 Facultatif et corrigible à tout moment. Ces informations restent internes à Wasplex — jamais partagées
                 avec un annonceur.
             </p>
+            <div v-if="!loading" class="bg-wpx-navy-750 mt-3 h-1.5 overflow-hidden rounded-full">
+                <div
+                    class="from-wpx-blue to-wpx-gold h-full bg-gradient-to-r transition-[width] duration-300"
+                    :style="{ width: `${percent}%` }"
+                />
+            </div>
         </div>
 
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
