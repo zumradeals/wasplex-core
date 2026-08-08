@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import http from '@/lib/http';
+import { CAMPAIGN_OBJECTIVES } from '@/lib/campaignObjectives';
+import { economicClassLabel } from '@/lib/economicClasses';
 import CampaignPerformancePanel from '@/Components/CampaignPerformancePanel.vue';
 import CampaignPreviewPhone from '@/Components/CampaignPreviewPhone.vue';
 
@@ -65,18 +67,40 @@ interface Campaign {
     review_cases?: ReviewCase[];
 }
 
-const OBJECTIVES: Record<string, string> = {
-    faire_connaitre: 'En savoir plus',
-    obtenir_appels: 'Appeler',
-    recevoir_messages: 'Envoyer un message',
-    visiter_site: 'Visiter le site',
-    promouvoir_produit: 'Découvrir',
-    promouvoir_evenement: "Voir l'événement",
-    obtenir_inscriptions: "S'inscrire",
-    inviter_live: 'Rejoindre le Live',
-};
+const OBJECTIVES = CAMPAIGN_OBJECTIVES;
 
 const STEPS = ['Marque', 'Objectif', 'Contenu', 'Audience', 'Budget', 'Vérification', 'Soumission'] as const;
+
+const STEP_META = [
+    {
+        title: 'Pour quelle marque est cette campagne ?',
+        subtitle: 'Les visuels et couleurs de cette marque seront proposés automatiquement.',
+    },
+    {
+        title: 'Quel est ton objectif ?',
+        subtitle: "C'est ce que les gens pourront faire en touchant ta publicité.",
+    },
+    {
+        title: 'Quel contenu veux-tu diffuser ?',
+        subtitle: 'Choisis un visuel de ta bibliothèque créative et donne un titre court à ta publicité.',
+    },
+    {
+        title: 'Qui veux-tu toucher ?',
+        subtitle: 'Choisis les profils qui verront ta publicité en priorité, et un pays si tu veux la limiter.',
+    },
+    {
+        title: 'Combien veux-tu dépenser ?',
+        subtitle: 'Ce montant sera réservé sur ton Wallet annonceur — 1 WP = 1 FCFA.',
+    },
+    {
+        title: 'Vérifie et confirme ton budget',
+        subtitle: 'Génère un devis détaillé, puis finance la campagne pour verrouiller le montant.',
+    },
+    {
+        title: 'Envoie ta campagne en revue',
+        subtitle: 'Un administrateur Wasplex vérifie chaque campagne avant sa diffusion dans le Feed.',
+    },
+] as const;
 
 const campaigns = ref<Campaign[]>([]);
 const brands = ref<Brand[]>([]);
@@ -423,19 +447,28 @@ void loadAll();
                 <!-- Assistant -->
                 <div v-if="selectedCampaign" class="flex flex-1 flex-col gap-4 lg:flex-row">
                     <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex-1 p-4">
-                        <div class="mb-4 flex flex-wrap gap-1 text-[11px]">
-                            <span
-                                v-for="(label, i) in STEPS"
-                                :key="label"
-                                class="rounded-wpx-sm px-2 py-1"
-                                :class="
-                                    i === step
-                                        ? 'bg-wpx-navy-950 font-semibold text-white'
-                                        : 'bg-wpx-canvas text-wpx-text-muted'
-                                "
-                            >
-                                {{ i + 1 }}. {{ label }}
-                            </span>
+                        <div class="mb-6 flex items-center overflow-x-auto pb-1">
+                            <template v-for="(label, i) in STEPS" :key="label">
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <span
+                                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                                        :class="
+                                            i <= step
+                                                ? 'bg-wpx-blue-light text-white'
+                                                : 'border-wpx-border text-wpx-text-muted border-[1.5px] bg-white'
+                                        "
+                                    >
+                                        {{ i + 1 }}
+                                    </span>
+                                    <span
+                                        class="text-[11px] font-semibold whitespace-nowrap"
+                                        :class="i === step ? 'text-wpx-blue-light' : 'text-wpx-text-muted'"
+                                    >
+                                        {{ label }}
+                                    </span>
+                                </div>
+                                <div v-if="i < STEPS.length - 1" class="bg-wpx-border mx-1.5 mb-4 h-0.5 w-9 shrink-0" />
+                            </template>
                         </div>
 
                         <p
@@ -445,83 +478,148 @@ void loadAll();
                             {{ actionError }}
                         </p>
 
+                        <div class="mb-4.5">
+                            <p class="text-wpx-text text-[15px] font-bold">{{ STEP_META[step].title }}</p>
+                            <p class="text-wpx-text-muted mt-1 text-xs">{{ STEP_META[step].subtitle }}</p>
+                        </div>
+
                         <!-- 1. Marque -->
                         <div v-if="step === 0" class="flex flex-col gap-2">
-                            <p class="text-wpx-text-muted text-sm">
-                                Marque : <strong>{{ brands.find((b) => b.id === form.brand_id)?.name }}</strong>
-                            </p>
+                            <div
+                                class="border-wpx-blue-light bg-wpx-blue-light/5 rounded-wpx-md flex max-w-xs items-center gap-3.5 border-[1.5px] p-3.5"
+                            >
+                                <span
+                                    class="from-wpx-blue to-wpx-cyan flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-extrabold text-white"
+                                >
+                                    {{
+                                        (brands.find((b) => b.id === form.brand_id)?.name ?? '??')
+                                            .slice(0, 2)
+                                            .toUpperCase()
+                                    }}
+                                </span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="text-wpx-text block truncate text-sm font-bold">
+                                        {{ brands.find((b) => b.id === form.brand_id)?.name }}
+                                    </span>
+                                    <span class="text-wpx-text-muted block text-xs">Marque de cette campagne</span>
+                                </span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="shrink-0">
+                                    <path
+                                        d="M5 13l4 4L19 7"
+                                        stroke="#075CCF"
+                                        stroke-width="2.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
+                            </div>
                         </div>
 
                         <!-- 2. Objectif -->
-                        <div v-else-if="step === 1" class="grid grid-cols-2 gap-2">
+                        <div v-else-if="step === 1" class="grid grid-cols-2 gap-2.5">
                             <button
                                 v-for="(label, code) in OBJECTIVES"
                                 :key="code"
                                 type="button"
-                                class="rounded-wpx-sm border-wpx-border border p-2 text-left text-xs"
-                                :class="form.objective_code === code ? 'border-wpx-blue bg-wpx-blue/10' : ''"
+                                class="rounded-wpx-md flex items-center justify-between border-[1.5px] p-3 text-left text-sm font-semibold"
+                                :class="
+                                    form.objective_code === code
+                                        ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text'
+                                        : 'border-wpx-border text-wpx-text'
+                                "
                                 @click="form.objective_code = code"
                             >
                                 {{ label }}
+                                <svg
+                                    v-if="form.objective_code === code"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                >
+                                    <path
+                                        d="M5 13l4 4L19 7"
+                                        stroke="#075CCF"
+                                        stroke-width="2.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
                             </button>
                         </div>
 
                         <!-- 3. Contenu -->
                         <div v-else-if="step === 2" class="flex flex-col gap-3">
                             <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text-muted">Média (bibliothèque créative)</span>
+                                <span class="text-wpx-text font-semibold">Visuel à diffuser</span>
                                 <select
                                     v-model="form.asset_id"
                                     class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
                                 >
-                                    <option :value="null" disabled>Choisir…</option>
+                                    <option :value="null" disabled>Choisir dans ma bibliothèque…</option>
                                     <option v-for="asset in assets" :key="asset.id" :value="asset.id">
                                         {{ asset.filename }}
                                     </option>
                                 </select>
                             </label>
                             <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text-muted">Titre</span>
+                                <span class="text-wpx-text font-semibold">Titre de la publicité</span>
                                 <input
                                     v-model="form.title"
+                                    placeholder="Ex. Livraison gratuite ce week-end"
                                     class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
                                 />
                             </label>
                         </div>
 
                         <!-- 4. Audience -->
-                        <div v-else-if="step === 3" class="flex flex-col gap-3">
+                        <div v-else-if="step === 3" class="flex flex-col gap-4">
                             <div>
-                                <span class="text-wpx-text-muted text-xs">Classes économiques ciblées</span>
-                                <div class="mt-1 flex flex-wrap gap-2">
+                                <span class="text-wpx-text text-xs font-semibold">Profils à toucher en priorité</span>
+                                <div class="mt-2 grid grid-cols-2 gap-2.5">
                                     <button
                                         v-for="ec in economicClasses"
                                         :key="ec.code"
                                         type="button"
-                                        class="rounded-wpx-sm border-wpx-border border px-2 py-1 text-xs"
+                                        class="rounded-wpx-md flex items-center justify-between border-[1.5px] p-3 text-left text-sm font-semibold"
                                         :class="
                                             form.economic_classes.includes(ec.code)
-                                                ? 'border-wpx-blue bg-wpx-blue/10'
-                                                : ''
+                                                ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text'
+                                                : 'border-wpx-border text-wpx-text'
                                         "
                                         @click="toggleClass(ec.code)"
                                     >
-                                        {{ ec.code }}
+                                        {{ economicClassLabel(ec.code) }}
+                                        <svg
+                                            v-if="form.economic_classes.includes(ec.code)"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M5 13l4 4L19 7"
+                                                stroke="#075CCF"
+                                                stroke-width="2.2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
                             <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text-muted">Pays ciblé (optionnel)</span>
+                                <span class="text-wpx-text font-semibold">Limiter à un pays (optionnel)</span>
                                 <input
                                     v-model="form.country_code"
                                     maxlength="2"
-                                    placeholder="CI"
+                                    placeholder="Ex. CI"
                                     class="rounded-wpx-sm border-wpx-border w-24 border px-2 py-1.5 text-sm uppercase"
                                 />
                             </label>
                             <button
                                 type="button"
-                                class="rounded-wpx-sm bg-wpx-navy-950 self-start px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                                class="rounded-wpx-md bg-wpx-navy-950 self-start px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
                                 :disabled="estimating || form.economic_classes.length === 0"
                                 @click="runEstimate"
                             >
@@ -537,11 +635,12 @@ void loadAll();
                         <!-- 5. Budget -->
                         <div v-else-if="step === 4" class="flex flex-col gap-3">
                             <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text-muted">Budget total (FCFA)</span>
+                                <span class="text-wpx-text font-semibold">Budget total à réserver (FCFA)</span>
                                 <input
                                     v-model.number="form.budget_amount_minor"
                                     type="number"
                                     min="1"
+                                    placeholder="Ex. 10000"
                                     class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
                                 />
                             </label>
@@ -642,10 +741,10 @@ void loadAll();
                             class="mt-4"
                         />
 
-                        <div class="mt-4 flex justify-between">
+                        <div class="mt-5 flex justify-between">
                             <button
                                 type="button"
-                                class="text-wpx-text-muted text-xs disabled:opacity-30"
+                                class="rounded-wpx-md border-wpx-border text-wpx-text border-[1.5px] bg-white px-4 py-2 text-xs font-semibold disabled:opacity-30"
                                 :disabled="step === 0"
                                 @click="step--"
                             >
@@ -653,7 +752,7 @@ void loadAll();
                             </button>
                             <button
                                 type="button"
-                                class="text-wpx-blue-light text-xs font-semibold disabled:opacity-30"
+                                class="rounded-wpx-md bg-wpx-blue-light px-6 py-2 text-xs font-bold text-white disabled:opacity-30"
                                 :disabled="step === STEPS.length - 1"
                                 @click="step++"
                             >
@@ -670,6 +769,7 @@ void loadAll();
                             :asset-url="selectedAsset?.url ?? null"
                             :asset-type="selectedAsset?.type ?? null"
                             :gain-label="gainLabel"
+                            :progress-percent="((step + 1) / STEPS.length) * 100"
                         />
                     </div>
                 </div>

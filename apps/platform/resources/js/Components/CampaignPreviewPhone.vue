@@ -1,12 +1,16 @@
 <script setup lang="ts">
-defineProps<{
-    brandName?: string | null;
-    title?: string | null;
-    ctaLabel?: string | null;
-    assetUrl?: string | null;
-    assetType?: string | null;
-    gainLabel?: string | null;
-}>();
+withDefaults(
+    defineProps<{
+        brandName?: string | null;
+        title?: string | null;
+        ctaLabel?: string | null;
+        assetUrl?: string | null;
+        assetType?: string | null;
+        gainLabel?: string | null;
+        progressPercent?: number;
+    }>(),
+    { progressPercent: 0 },
+);
 </script>
 
 <template>
@@ -37,10 +41,11 @@ defineProps<{
                     </div>
                 </div>
 
-                <div class="absolute inset-x-0 top-0 flex items-center gap-1 p-2">
-                    <div class="bg-wpx-gold/80 h-1 flex-1 rounded-full" />
-                    <span class="text-[9px] text-white/80">🔊</span>
-                    <span class="text-[9px] text-white/80">CC</span>
+                <div class="absolute inset-x-2 top-2 h-0.5 overflow-hidden rounded-full bg-white/15">
+                    <div
+                        class="from-wpx-blue to-wpx-gold h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
+                        :style="{ width: `${progressPercent}%` }"
+                    />
                 </div>
 
                 <div

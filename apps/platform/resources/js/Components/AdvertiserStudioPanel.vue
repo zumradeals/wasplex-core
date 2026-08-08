@@ -45,6 +45,7 @@ const newBrandName = ref('');
 const newColorName = ref('');
 const newColorHex = ref('#4FA3FF');
 const fileInput = ref<HTMLInputElement | null>(null);
+const dragOver = ref(false);
 
 const selectedBrand = computed(() => brands.value.find((b) => b.id === selectedBrandId.value) ?? null);
 
@@ -129,9 +130,7 @@ async function addColor(): Promise<void> {
     newColorName.value = '';
 }
 
-async function uploadFile(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+async function uploadFile(file: File | undefined): Promise<void> {
     if (!file || !selectedBrandId.value) {
         return;
     }
@@ -151,6 +150,15 @@ async function uploadFile(event: Event): Promise<void> {
             fileInput.value.value = '';
         }
     }
+}
+
+function onFileInputChange(event: Event): void {
+    void uploadFile((event.target as HTMLInputElement).files?.[0]);
+}
+
+function onDrop(event: DragEvent): void {
+    dragOver.value = false;
+    void uploadFile(event.dataTransfer?.files?.[0]);
 }
 
 function statusClasses(status: string): string {
@@ -294,14 +302,43 @@ void load();
                     </div>
 
                     <h3 class="text-wpx-text mb-2 text-sm font-semibold">Bibliothèque créative</h3>
-                    <input
-                        ref="fileInput"
-                        type="file"
-                        accept="image/*,video/*"
-                        class="mb-3 text-sm"
-                        @change="uploadFile"
-                    />
-                    <p v-if="uploading" class="text-wpx-text-muted text-xs">Envoi en cours…</p>
+                    <label
+                        class="rounded-wpx-md mb-3 flex cursor-pointer flex-col items-center border-[1.5px] border-dashed p-7 text-center transition"
+                        :class="
+                            dragOver ? 'border-wpx-blue-light bg-wpx-blue-light/5' : 'border-wpx-border bg-wpx-raised'
+                        "
+                        @dragover.prevent="dragOver = true"
+                        @dragleave.prevent="dragOver = false"
+                        @drop.prevent="onDrop"
+                    >
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M12 16V4M7 9l5-5 5 5"
+                                stroke="#8B99AC"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"
+                                stroke="#8B99AC"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <span class="text-wpx-text mt-2.5 text-sm font-bold">Glisse tes visuels ici</span>
+                        <span class="text-wpx-text-muted mt-0.5 text-[11px]">
+                            JPG, PNG, WEBP (10 Mo max) ou MP4, MOV, WEBM (200 Mo max)
+                        </span>
+                        <input
+                            ref="fileInput"
+                            type="file"
+                            accept="image/*,video/*"
+                            class="hidden"
+                            @change="onFileInputChange"
+                        />
+                    </label>
+                    <p v-if="uploading" class="text-wpx-text-muted mb-3 text-xs">Envoi en cours…</p>
                     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div
                             v-for="asset in assets"

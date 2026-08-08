@@ -14,8 +14,14 @@ interface Deposit {
 
 const QUICK_AMOUNTS = [2500, 5000, 10000, 25000, 50000] as const;
 
+interface CampaignReport {
+    status: string;
+    budget_captured_minor: number;
+}
+
 const wallet = ref<{ available_minor: number; currency: string } | null>(null);
 const deposits = ref<Deposit[]>([]);
+const campaignReports = ref<CampaignReport[]>([]);
 const loading = ref(true);
 const showRecharge = ref(false);
 const selectedAmount = ref<number>(QUICK_AMOUNTS[1]);
@@ -30,6 +36,9 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
+const totalSpentMinor = computed(() => campaignReports.value.reduce((total, r) => total + r.budget_captured_minor, 0));
+const activeCampaignsCount = computed(() => campaignReports.value.filter((r) => r.status === 'approved').length);
+
 const effectiveAmount = computed<number>(() => {
     const custom = Number.parseInt(customAmount.value, 10);
     return Number.isFinite(custom) && custom > 0 ? custom : selectedAmount.value;
@@ -39,12 +48,14 @@ async function load(): Promise<void> {
     loading.value = true;
     loadError.value = null;
     try {
-        const [walletRes, depositsRes] = await Promise.all([
+        const [walletRes, depositsRes, reportsRes] = await Promise.all([
             http.get('/advertiser/wallet'),
             http.get('/advertiser/wallet/deposits'),
+            http.get('/advertiser/campaigns/report'),
         ]);
         wallet.value = walletRes.data.wallet;
         deposits.value = depositsRes.data.deposits;
+        campaignReports.value = reportsRes.data.reports;
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
         loadError.value = message ?? 'Le Wallet annonceur est momentanément indisponible.';
@@ -152,31 +163,48 @@ void load();
             {{ loadError }}
         </div>
 
-        <!-- Solde -->
-        <div
-            v-else
-            class="rounded-wpx-xl from-wpx-orange to-wpx-gold ease-wpx-reward relative overflow-hidden bg-gradient-to-br p-6 transition-shadow duration-700"
-            :class="justCredited ? 'shadow-wpx-reward' : 'shadow-wpx-card'"
-        >
-            <p class="text-wpx-navy-950/70 text-xs font-semibold tracking-wide uppercase">Solde disponible</p>
-            <p class="text-wpx-navy-950 mt-1 text-4xl font-bold [font-variant-numeric:tabular-nums]">
-                <span v-if="loading">—</span>
-                <span v-else>{{ numberFormatter.format(wallet?.available_minor ?? 0) }} WP</span>
-            </p>
-            <p class="text-wpx-navy-950/70 mt-1 text-xs">
-                ≈ {{ numberFormatter.format(wallet?.available_minor ?? 0) }} FCFA — 1 WP = 1 FCFA
-            </p>
-
-            <button
-                type="button"
-                class="bg-wpx-navy-950 text-wpx-gold rounded-wpx-md mt-4 px-4 py-2 text-sm font-semibold shadow"
-                @click="showRecharge = !showRecharge"
+        <!-- Solde + statistiques -->
+        <div v-else class="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1.3fr_1fr]">
+            <div
+                class="rounded-wpx-xl from-wpx-orange to-wpx-gold ease-wpx-reward relative overflow-hidden bg-gradient-to-br p-6 transition-shadow duration-700"
+                :class="justCredited ? 'shadow-wpx-reward' : 'shadow-wpx-card'"
             >
-                {{ showRecharge ? 'Annuler' : 'Recharger le Wallet' }}
-            </button>
+                <p class="text-wpx-navy-950/70 text-xs font-semibold tracking-wide uppercase">Solde disponible</p>
+                <p class="text-wpx-navy-950 mt-1 text-4xl font-bold [font-variant-numeric:tabular-nums]">
+                    <span v-if="loading">—</span>
+                    <span v-else>{{ numberFormatter.format(wallet?.available_minor ?? 0) }} WP</span>
+                </p>
+                <p class="text-wpx-navy-950/70 mt-1 text-xs">
+                    ≈ {{ numberFormatter.format(wallet?.available_minor ?? 0) }} FCFA — 1 WP = 1 FCFA
+                </p>
 
-            <div v-if="justCredited" class="text-wpx-navy-950 absolute top-4 right-4 text-xs font-semibold">
-                ✨ Dépôt confirmé
+                <button
+                    type="button"
+                    class="bg-wpx-navy-950 text-wpx-gold rounded-wpx-md mt-4 px-4 py-2 text-sm font-semibold shadow"
+                    @click="showRecharge = !showRecharge"
+                >
+                    {{ showRecharge ? 'Annuler' : 'Recharger le Wallet' }}
+                </button>
+
+                <div v-if="justCredited" class="text-wpx-navy-950 absolute top-4 right-4 text-xs font-semibold">
+                    ✨ Dépôt confirmé
+                </div>
+            </div>
+
+            <div
+                class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface border-wpx-border flex flex-col justify-between border p-5"
+            >
+                <div>
+                    <p class="text-wpx-text-muted text-xs font-bold">Dépensé au total</p>
+                    <p class="text-wpx-text mt-1 text-[22px] font-bold">
+                        {{ numberFormatter.format(totalSpentMinor) }} WP
+                    </p>
+                </div>
+                <div class="bg-wpx-border my-3.5 h-px" />
+                <div>
+                    <p class="text-wpx-text-muted text-xs font-bold">Campagnes actives</p>
+                    <p class="text-wpx-text mt-1 text-[22px] font-bold">{{ activeCampaignsCount }}</p>
+                </div>
             </div>
         </div>
 
@@ -238,7 +266,16 @@ void load();
         <div v-if="!loadError" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-5">
             <h3 class="text-wpx-text mb-3 text-sm font-semibold">Historique des dépôts</h3>
             <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
-            <p v-else-if="deposits.length === 0" class="text-wpx-text-muted text-sm">Aucun dépôt pour le moment.</p>
+            <div v-else-if="deposits.length === 0" class="flex flex-col items-center gap-2 py-7 text-center">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="6" width="18" height="13" rx="3" stroke="#CBD5E1" stroke-width="1.6" />
+                    <path d="M3 10h18" stroke="#CBD5E1" stroke-width="1.6" />
+                </svg>
+                <p class="text-wpx-text-muted text-sm">Aucun dépôt pour le moment.</p>
+                <button type="button" class="text-wpx-blue-light text-xs font-bold" @click="showRecharge = true">
+                    Faire mon premier dépôt
+                </button>
+            </div>
             <table v-else class="w-full text-sm">
                 <thead>
                     <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
