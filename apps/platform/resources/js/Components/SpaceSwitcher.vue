@@ -36,11 +36,11 @@ function label(space: SpaceSummary): string {
 <template>
     <select
         :value="activeSpaceId ?? ''"
-        class="rounded-wpx-sm border px-2 py-1 text-sm"
+        class="rounded-wpx-full border px-3 py-1.5 text-xs font-bold"
         :class="
             variant === 'dark'
                 ? 'border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft'
-                : 'border-wpx-border bg-wpx-surface text-wpx-text'
+                : 'border-wpx-border bg-wpx-canvas text-wpx-text'
         "
         @change="onChange"
     >

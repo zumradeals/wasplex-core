@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import http from '@/lib/http';
+import { CAMPAIGN_OBJECTIVES } from '@/lib/campaignObjectives';
 import CampaignPerformancePanel from '@/Components/CampaignPerformancePanel.vue';
 import CampaignPreviewPhone from '@/Components/CampaignPreviewPhone.vue';
 
@@ -65,16 +66,7 @@ interface Campaign {
     review_cases?: ReviewCase[];
 }
 
-const OBJECTIVES: Record<string, string> = {
-    faire_connaitre: 'En savoir plus',
-    obtenir_appels: 'Appeler',
-    recevoir_messages: 'Envoyer un message',
-    visiter_site: 'Visiter le site',
-    promouvoir_produit: 'Découvrir',
-    promouvoir_evenement: "Voir l'événement",
-    obtenir_inscriptions: "S'inscrire",
-    inviter_live: 'Rejoindre le Live',
-};
+const OBJECTIVES = CAMPAIGN_OBJECTIVES;
 
 const STEPS = ['Marque', 'Objectif', 'Contenu', 'Audience', 'Budget', 'Vérification', 'Soumission'] as const;
 
@@ -423,19 +415,28 @@ void loadAll();
                 <!-- Assistant -->
                 <div v-if="selectedCampaign" class="flex flex-1 flex-col gap-4 lg:flex-row">
                     <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex-1 p-4">
-                        <div class="mb-4 flex flex-wrap gap-1 text-[11px]">
-                            <span
-                                v-for="(label, i) in STEPS"
-                                :key="label"
-                                class="rounded-wpx-sm px-2 py-1"
-                                :class="
-                                    i === step
-                                        ? 'bg-wpx-navy-950 font-semibold text-white'
-                                        : 'bg-wpx-canvas text-wpx-text-muted'
-                                "
-                            >
-                                {{ i + 1 }}. {{ label }}
-                            </span>
+                        <div class="mb-6 flex items-center overflow-x-auto pb-1">
+                            <template v-for="(label, i) in STEPS" :key="label">
+                                <div class="flex flex-col items-center gap-1.5">
+                                    <span
+                                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                                        :class="
+                                            i <= step
+                                                ? 'bg-wpx-blue-light text-white'
+                                                : 'border-wpx-border text-wpx-text-muted border-[1.5px] bg-white'
+                                        "
+                                    >
+                                        {{ i + 1 }}
+                                    </span>
+                                    <span
+                                        class="text-[11px] font-semibold whitespace-nowrap"
+                                        :class="i === step ? 'text-wpx-blue-light' : 'text-wpx-text-muted'"
+                                    >
+                                        {{ label }}
+                                    </span>
+                                </div>
+                                <div v-if="i < STEPS.length - 1" class="bg-wpx-border mx-1.5 mb-4 h-0.5 w-9 shrink-0" />
+                            </template>
                         </div>
 
                         <p
@@ -670,6 +671,7 @@ void loadAll();
                             :asset-url="selectedAsset?.url ?? null"
                             :asset-type="selectedAsset?.type ?? null"
                             :gain-label="gainLabel"
+                            :progress-percent="((step + 1) / STEPS.length) * 100"
                         />
                     </div>
                 </div>
