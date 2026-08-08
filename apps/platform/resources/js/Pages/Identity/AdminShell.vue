@@ -9,6 +9,7 @@ import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
+import AdminNavIcon from '@/Components/AdminNavIcon.vue';
 import AdminReconciliationPanel from '@/Components/AdminReconciliationPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
@@ -51,18 +52,18 @@ interface LedgerTransactionRow {
 const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
-    { key: 'dashboard', label: 'Tableau de bord', icon: '🧭' },
-    { key: 'capabilities', label: 'Capacités', icon: '🔑' },
-    { key: 'ledger', label: 'Grand Livre', icon: '📒' },
-    { key: 'subscriptions', label: 'Abonnements', icon: '🏷️' },
-    { key: 'advertisers', label: 'Annonceurs', icon: '🏬' },
-    { key: 'campaign-reviews', label: 'Revue de campagnes', icon: '🎯' },
-    { key: 'smartprofile', label: 'Profil intelligent', icon: '🧩' },
-    { key: 'matching', label: 'Matching', icon: '🔗' },
-    { key: 'feed', label: 'Feed', icon: '🎬' },
-    { key: 'reconciliation', label: 'Rapprochement', icon: '🧮' },
-    { key: 'organizations', label: 'Organisations', icon: '🏢' },
-    { key: 'audit', label: 'Audit', icon: '📜' },
+    { key: 'dashboard', label: "Vue d'ensemble" },
+    { key: 'capabilities', label: 'Capacités' },
+    { key: 'ledger', label: 'Grand Livre' },
+    { key: 'subscriptions', label: 'Abonnements' },
+    { key: 'advertisers', label: 'Annonceurs' },
+    { key: 'campaign-reviews', label: 'Revue de campagnes' },
+    { key: 'smartprofile', label: 'Informations de profil' },
+    { key: 'matching', label: 'Ciblage publicitaire' },
+    { key: 'feed', label: 'Feed' },
+    { key: 'reconciliation', label: 'Rapprochement' },
+    { key: 'organizations', label: 'Organisations' },
+    { key: 'audit', label: 'Audit' },
 ] as const;
 
 const activeSection = ref<(typeof nav)[number]['key']>('dashboard');
@@ -143,41 +144,42 @@ async function logout(): Promise<void> {
 
 <template>
     <div class="bg-wpx-canvas flex min-h-screen">
-        <aside class="bg-wpx-navy-950 border-wpx-border-dark flex w-60 flex-col border-r">
-            <div class="border-wpx-border-dark flex items-center gap-2 border-b p-4">
-                <div class="rounded-wpx-sm bg-white p-1">
-                    <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-6 w-6 object-contain" />
-                </div>
-                <span class="text-wpx-gold text-sm font-semibold">Administration</span>
+        <aside class="bg-wpx-navy-950 flex w-56 flex-col py-5">
+            <div class="flex items-center gap-2.5 px-[18px] pt-0 pb-5.5">
+                <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-6.5 w-6.5 object-contain" />
+                <span class="text-wpx-white-soft text-sm font-bold">Administration</span>
             </div>
-            <nav class="flex flex-1 flex-col gap-1 p-2">
+            <nav class="flex flex-1 flex-col gap-px">
                 <button
                     v-for="item in nav"
                     :key="item.key"
-                    class="rounded-wpx-sm px-3 py-2 text-left text-sm"
+                    class="flex items-center gap-2.5 px-[18px] py-2.5 text-left text-[13px] font-semibold"
                     :class="
                         activeSection === item.key
-                            ? 'bg-wpx-navy-850 text-wpx-gold font-semibold'
-                            : 'text-wpx-muted-dark'
+                            ? 'bg-wpx-navy-850 border-wpx-cyan text-wpx-white-soft border-l-[3px]'
+                            : 'text-wpx-muted-dark border-l-[3px] border-transparent'
                     "
                     @click="selectSection(item.key)"
                 >
-                    {{ item.icon }} {{ item.label }}
+                    <span class="flex h-4 w-4 shrink-0 items-center justify-center">
+                        <AdminNavIcon :section="item.key" :active="activeSection === item.key" />
+                    </span>
+                    {{ item.label }}
                 </button>
             </nav>
         </aside>
 
         <div class="flex flex-1 flex-col">
-            <header class="bg-wpx-surface border-wpx-border flex items-center justify-between border-b px-6 py-3">
-                <span class="text-wpx-text text-sm font-medium">
+            <header class="bg-wpx-surface border-wpx-border flex items-center justify-between border-b px-7 py-4">
+                <span class="text-wpx-text text-[17px] font-bold">
                     {{ nav.find((n) => n.key === activeSection)?.label }}
                 </span>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-4">
                     <SpaceSwitcher
                         :spaces="page.props.auth.spaces"
                         :active-space-id="page.props.auth.active_space_id"
                     />
-                    <button class="text-wpx-text-muted text-xs hover:underline" @click="logout">Déconnexion</button>
+                    <button class="text-wpx-danger-light text-xs font-semibold" @click="logout">Déconnexion</button>
                 </div>
             </header>
 
@@ -343,7 +345,7 @@ async function logout(): Promise<void> {
                 </section>
 
                 <section v-else-if="activeSection === 'dashboard'">
-                    <AdminDashboardPanel />
+                    <AdminDashboardPanel @navigate="selectSection" />
                 </section>
 
                 <section
