@@ -2,9 +2,7 @@
 import { ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
-import AdminAdvertisersPanel from '@/Components/AdminAdvertisersPanel.vue';
-import AdminAdvertisingPricingPanel from '@/Components/AdminAdvertisingPricingPanel.vue';
-import AdminCampaignReviewsPanel from '@/Components/AdminCampaignReviewsPanel.vue';
+import AdminCampaignsPanel from '@/Components/AdminCampaignsPanel.vue';
 import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
@@ -24,8 +22,7 @@ const nav = [
     { key: 'capabilities', label: 'Permissions' },
     { key: 'ledger', label: 'Wallet & Grand livre' },
     { key: 'subscriptions', label: 'Abonnements' },
-    { key: 'advertisers', label: 'Annonceurs' },
-    { key: 'campaign-reviews', label: 'Revue de campagnes' },
+    { key: 'advertisers', label: 'Annonceurs & campagnes' },
     { key: 'smartprofile', label: 'Informations de profil' },
     { key: 'matching', label: 'Ciblage publicitaire' },
     { key: 'feed', label: 'Feed' },
@@ -104,13 +101,8 @@ async function logout(): Promise<void> {
                     <AdminSubscriptionsPanel />
                 </section>
 
-                <section v-else-if="activeSection === 'advertisers'" class="flex flex-col gap-4">
-                    <AdminAdvertisersPanel />
-                    <AdminAdvertisingPricingPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'campaign-reviews'">
-                    <AdminCampaignReviewsPanel />
+                <section v-else-if="activeSection === 'advertisers'">
+                    <AdminCampaignsPanel />
                 </section>
 
                 <section v-else-if="activeSection === 'smartprofile'">
