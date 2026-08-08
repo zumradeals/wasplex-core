@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import http from '@/lib/http';
 
 interface Taxonomy {
@@ -29,21 +29,59 @@ interface ConsentPurpose {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-    possession: 'Possession (ce que la personne possède)',
-    usage: 'Usage (ce que la personne utilise)',
-    interest: 'Intérêt (ce qui intéresse la personne)',
-    project: 'Projet (ce que la personne prévoit de faire)',
-    situation: 'Situation (le contexte actuel de la personne)',
+    possession: 'Possession — ce que la personne possède',
+    usage: 'Usage — ce que la personne utilise',
+    interest: 'Intérêt — ce qui intéresse la personne',
+    project: 'Projet — ce que la personne prévoit de faire',
+    situation: 'Situation — le contexte actuel de la personne',
     territory: 'Zone approximative',
 };
+
+function slugify(text: string, separator: string): string {
+    return text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, separator)
+        .replace(new RegExp(`(^${separator}|${separator}$)`, 'g'), '');
+}
 
 const taxonomies = ref<Taxonomy[]>([]);
 const categories = ref<string[]>([]);
 const purposes = ref<ConsentPurpose[]>([]);
 const busy = ref<string | null>(null);
+const loading = ref(true);
 
+const creatingTaxonomy = ref(false);
+const advancedMode = ref(false);
 const newTaxonomy = reactive({ code: '', category: 'interest', label: '' });
-const newPurpose = reactive({ code: '', name: '', description: '', requires_new_decision: false });
+const autoTaxonomyCode = computed(() => `${newTaxonomy.category}.${slugify(newTaxonomy.label, '-')}`);
+
+const creatingPurpose = ref(false);
+const editingPurposeId = ref<string | null>(null);
+const purposeForm = reactive({ code: '', name: '', description: '', requires_new_decision: false });
+
+const groupedTaxonomies = computed(() =>
+    categories.value
+        .map((category) => ({
+            category,
+            label: CATEGORY_LABELS[category] ?? category,
+            items: taxonomies.value.filter((t) => t.category === category),
+        }))
+        .filter((group) => group.items.length > 0),
+);
+
+function publishedVersion(purpose: ConsentPurpose): ConsentVersion | null {
+    const published = purpose.versions
+        .filter((v) => v.status === 'published')
+        .sort((a, b) => b.version_number - a.version_number);
+    return published[0] ?? null;
+}
+
+function draftVersion(purpose: ConsentPurpose): ConsentVersion | undefined {
+    return purpose.versions.find((v) => v.status === 'draft');
+}
 
 async function loadTaxonomies(): Promise<void> {
     const { data } = await http.get('/admin/smartprofile/taxonomies');
@@ -56,10 +94,13 @@ async function loadPurposes(): Promise<void> {
     purposes.value = data.purposes;
 }
 
-async function createTaxonomy(): Promise<void> {
-    await http.post('/admin/smartprofile/taxonomies', newTaxonomy);
+async function submitTaxonomy(): Promise<void> {
+    const code = advancedMode.value && newTaxonomy.code ? newTaxonomy.code : autoTaxonomyCode.value;
+    await http.post('/admin/smartprofile/taxonomies', { ...newTaxonomy, code });
     newTaxonomy.code = '';
     newTaxonomy.label = '';
+    advancedMode.value = false;
+    creatingTaxonomy.value = false;
     await loadTaxonomies();
 }
 
@@ -83,212 +124,352 @@ async function suspendTaxonomy(taxonomy: Taxonomy): Promise<void> {
     }
 }
 
-async function createPurposeVersion(): Promise<void> {
-    await http.post('/admin/smartprofile/consent-purposes', newPurpose);
-    newPurpose.code = '';
-    newPurpose.name = '';
-    newPurpose.description = '';
-    newPurpose.requires_new_decision = false;
-    await loadPurposes();
+function startCreatePurpose(): void {
+    editingPurposeId.value = null;
+    creatingPurpose.value = true;
+    purposeForm.code = '';
+    purposeForm.name = '';
+    purposeForm.description = '';
+    purposeForm.requires_new_decision = false;
 }
 
-async function publishVersion(version: ConsentVersion): Promise<void> {
-    busy.value = version.id;
+function startEditPurpose(purpose: ConsentPurpose): void {
+    creatingPurpose.value = false;
+    editingPurposeId.value = purpose.id;
+    const current = publishedVersion(purpose) ?? draftVersion(purpose);
+    purposeForm.code = purpose.code;
+    purposeForm.name = current?.name ?? '';
+    purposeForm.description = current?.description ?? '';
+    purposeForm.requires_new_decision = current?.requires_new_decision ?? false;
+}
+
+function cancelPurposeForm(): void {
+    creatingPurpose.value = false;
+    editingPurposeId.value = null;
+}
+
+async function submitNewPurpose(): Promise<void> {
+    busy.value = 'new-purpose';
     try {
-        await http.post(`/admin/smartprofile/consent-purposes/versions/${version.id}/publish`);
+        const code = purposeForm.code || slugify(purposeForm.name, '_');
+        const { data } = await http.post('/admin/smartprofile/consent-purposes', { ...purposeForm, code });
+        await http.post(`/admin/smartprofile/consent-purposes/versions/${data.version.id}/publish`);
+        cancelPurposeForm();
         await loadPurposes();
     } finally {
         busy.value = null;
     }
 }
 
-function draftVersion(purpose: ConsentPurpose): ConsentVersion | undefined {
-    return purpose.versions.find((v) => v.status === 'draft');
+async function submitPurposeEdit(purpose: ConsentPurpose): Promise<void> {
+    busy.value = purpose.id;
+    try {
+        const existingDraft = draftVersion(purpose);
+        let versionId: string;
+        if (existingDraft) {
+            await http.patch(`/admin/smartprofile/consent-purposes/versions/${existingDraft.id}`, {
+                name: purposeForm.name,
+                description: purposeForm.description,
+                requires_new_decision: purposeForm.requires_new_decision,
+            });
+            versionId = existingDraft.id;
+        } else {
+            const { data } = await http.post('/admin/smartprofile/consent-purposes', {
+                code: purpose.code,
+                name: purposeForm.name,
+                description: purposeForm.description,
+                requires_new_decision: purposeForm.requires_new_decision,
+            });
+            versionId = data.version.id;
+        }
+        await http.post(`/admin/smartprofile/consent-purposes/versions/${versionId}/publish`);
+        cancelPurposeForm();
+        await loadPurposes();
+    } finally {
+        busy.value = null;
+    }
 }
 
-function statusClasses(status: string): string {
-    if (status === 'active' || status === 'published') {
-        return 'bg-wpx-success/10 text-wpx-success-light';
+onMounted(async () => {
+    loading.value = true;
+    try {
+        await Promise.all([loadTaxonomies(), loadPurposes()]);
+    } finally {
+        loading.value = false;
     }
-    if (status === 'suspended') {
-        return 'bg-wpx-danger/10 text-wpx-danger-light';
-    }
-    return 'bg-wpx-pending/10 text-wpx-warning-light';
-}
-
-onMounted(() => {
-    void loadTaxonomies();
-    void loadPurposes();
 });
 </script>
 
 <template>
-    <div class="flex flex-col gap-6">
-        <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
-            <h2 class="text-wpx-text mb-1 text-sm font-semibold">Informations de profil (SmartProfile)</h2>
-            <p class="text-wpx-text-muted mb-3 text-xs">
-                Chaque information appartient à une seule catégorie, jamais mélangée avec une autre (ex. « possède un
-                deux-roues » n'est jamais confondu avec « intéressé par les deux-roues »). Une information en brouillon
-                n'est visible par personne tant qu'elle n'est pas activée.
+    <div class="mx-auto flex max-w-4xl flex-col gap-5">
+        <div class="border-wpx-blue-light/25 rounded-wpx-md flex gap-3 border bg-white p-4">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="mt-0.5 shrink-0">
+                <circle cx="12" cy="12" r="9" stroke="#075CCF" stroke-width="1.6" />
+                <path d="M12 8v.5M12 11v5" stroke="#075CCF" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+            <p class="text-wpx-text text-xs leading-relaxed">
+                Ce sont les informations qu'un utilisateur peut cocher sur son profil (« Possède un smartphone », «
+                Habite à Cocody »...) pour recevoir des publicités mieux ciblées. Une information « en attente » n'est
+                visible par personne, y compris les annonceurs, jusqu'à son activation.
             </p>
+        </div>
 
-            <form class="mb-4 flex flex-wrap items-end gap-3" @submit.prevent="createTaxonomy">
+        <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
+
+        <template v-else>
+            <div class="flex items-center justify-between">
+                <p class="text-wpx-text text-[15px] font-bold">Informations disponibles</p>
+                <button
+                    type="button"
+                    class="rounded-wpx-sm bg-wpx-navy-950 px-4.5 py-2.5 text-[13px] font-bold text-white"
+                    @click="creatingTaxonomy = !creatingTaxonomy"
+                >
+                    + Nouvelle information
+                </button>
+            </div>
+
+            <form
+                v-if="creatingTaxonomy"
+                class="rounded-wpx-lg shadow-wpx-card border-wpx-border bg-wpx-surface flex flex-col gap-3 border p-4"
+                @submit.prevent="submitTaxonomy"
+            >
                 <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                    <span>Libellé affiché à l'utilisateur</span>
+                    <span class="font-semibold">Libellé affiché à l'utilisateur</span>
                     <input
                         v-model="newTaxonomy.label"
                         placeholder="Ex. Intéressé par la mode"
-                        class="rounded-wpx-sm border-wpx-border w-56 border px-2 py-1"
+                        class="rounded-wpx-sm border-wpx-border border px-2.5 py-1.5 text-sm"
                         required
                     />
                 </label>
                 <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                    <span>Catégorie</span>
-                    <select v-model="newTaxonomy.category" class="rounded-wpx-sm border-wpx-border border px-2 py-1">
+                    <span class="font-semibold">Catégorie</span>
+                    <select
+                        v-model="newTaxonomy.category"
+                        class="rounded-wpx-sm border-wpx-border border px-2.5 py-1.5 text-sm"
+                    >
                         <option v-for="category in categories" :key="category" :value="category">
                             {{ CATEGORY_LABELS[category] ?? category }}
                         </option>
                     </select>
                 </label>
-                <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                    <span>Code technique (unique)</span>
+                <button
+                    type="button"
+                    class="text-wpx-blue-light self-start text-xs font-semibold"
+                    @click="advancedMode = !advancedMode"
+                >
+                    {{ advancedMode ? 'Masquer le mode avancé' : 'Mode avancé' }}
+                </button>
+                <label v-if="advancedMode" class="text-wpx-text flex flex-col gap-1 text-xs">
+                    <span class="font-semibold">Code technique (généré automatiquement si laissé vide)</span>
                     <input
                         v-model="newTaxonomy.code"
-                        placeholder="interest.mode"
-                        class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1"
-                        required
+                        :placeholder="autoTaxonomyCode"
+                        class="rounded-wpx-sm border-wpx-border w-56 border px-2.5 py-1.5 text-sm"
                     />
                 </label>
-                <button
-                    type="submit"
-                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-3 py-1.5 text-sm font-semibold"
-                >
-                    Ajouter (brouillon)
-                </button>
-            </form>
-
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
-                        <th class="p-2">Libellé</th>
-                        <th class="p-2">Catégorie</th>
-                        <th class="p-2">Statut</th>
-                        <th class="p-2"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="t in taxonomies" :key="t.id" class="border-wpx-border text-wpx-text border-b">
-                        <td class="p-2">{{ t.label }}</td>
-                        <td class="text-wpx-text-muted p-2 text-xs">{{ CATEGORY_LABELS[t.category] ?? t.category }}</td>
-                        <td class="p-2">
-                            <span
-                                class="rounded-wpx-sm px-2 py-0.5 text-xs font-semibold"
-                                :class="statusClasses(t.status)"
-                            >
-                                {{ t.status }}
-                            </span>
-                        </td>
-                        <td class="p-2 text-right whitespace-nowrap">
-                            <button
-                                v-if="t.status !== 'active'"
-                                class="text-wpx-success-light mr-2 text-xs hover:underline disabled:opacity-50"
-                                :disabled="busy === t.id"
-                                @click="activateTaxonomy(t)"
-                            >
-                                Activer
-                            </button>
-                            <button
-                                v-if="t.status === 'active'"
-                                class="text-wpx-danger-light text-xs hover:underline disabled:opacity-50"
-                                :disabled="busy === t.id"
-                                @click="suspendTaxonomy(t)"
-                            >
-                                Suspendre
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
-            <h2 class="text-wpx-text mb-1 text-sm font-semibold">Finalités de consentement</h2>
-            <p class="text-wpx-text-muted mb-3 text-xs">
-                Le texte présenté à l'utilisateur est conservé pour preuve. Une nouvelle version « exige une nouvelle
-                décision » force les utilisateurs déjà d'accord à redécider — à cocher seulement pour un changement
-                important.
-            </p>
-
-            <form class="mb-4 flex flex-wrap items-end gap-3" @submit.prevent="createPurposeVersion">
-                <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                    <span>Code (existant ou nouveau)</span>
-                    <input
-                        v-model="newPurpose.code"
-                        placeholder="advertising_personalization"
-                        class="rounded-wpx-sm border-wpx-border w-56 border px-2 py-1"
-                        required
-                    />
-                </label>
-                <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                    <span>Titre affiché</span>
-                    <input
-                        v-model="newPurpose.name"
-                        class="rounded-wpx-sm border-wpx-border w-48 border px-2 py-1"
-                        required
-                    />
-                </label>
-                <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                    <span>Explication en langage clair</span>
-                    <input
-                        v-model="newPurpose.description"
-                        class="rounded-wpx-sm border-wpx-border w-72 border px-2 py-1"
-                        required
-                    />
-                </label>
-                <label class="text-wpx-text flex items-center gap-1 text-xs">
-                    <input v-model="newPurpose.requires_new_decision" type="checkbox" />
-                    <span>Exige une nouvelle décision</span>
-                </label>
-                <button
-                    type="submit"
-                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-3 py-1.5 text-sm font-semibold"
-                >
-                    Créer une version (brouillon)
-                </button>
-            </form>
-
-            <div
-                v-for="purpose in purposes"
-                :key="purpose.id"
-                class="border-wpx-border mb-3 border-b pb-3 last:border-0"
-            >
-                <p class="text-wpx-text text-sm font-semibold">
-                    {{ purpose.code }}
-                    <span
-                        class="rounded-wpx-sm ml-2 px-2 py-0.5 text-xs font-semibold"
-                        :class="statusClasses(purpose.status)"
-                    >
-                        {{ purpose.status }}
-                    </span>
-                </p>
-                <div v-for="version in purpose.versions" :key="version.id" class="text-wpx-text-muted mt-1 text-xs">
-                    v{{ version.version_number }} — {{ version.name }} —
-                    <span :class="statusClasses(version.status)" class="rounded-wpx-sm px-1.5 py-0.5">{{
-                        version.status
-                    }}</span>
+                <div class="flex gap-2">
                     <button
-                        v-if="version.status === 'draft'"
-                        class="text-wpx-success-light ml-2 hover:underline disabled:opacity-50"
-                        :disabled="busy === version.id"
-                        @click="publishVersion(version)"
+                        type="submit"
+                        class="rounded-wpx-sm bg-wpx-blue-light px-4 py-2 text-xs font-bold text-white"
                     >
-                        Publier
+                        Ajouter
+                    </button>
+                    <button
+                        type="button"
+                        class="text-wpx-text-muted text-xs font-semibold"
+                        @click="creatingTaxonomy = false"
+                    >
+                        Annuler
                     </button>
                 </div>
-                <p v-if="!draftVersion(purpose)" class="text-wpx-text-muted mt-1 text-[11px] italic">
-                    Aucune version en brouillon.
+            </form>
+
+            <div class="flex flex-col gap-2.5">
+                <div
+                    v-for="group in groupedTaxonomies"
+                    :key="group.category"
+                    class="rounded-wpx-md shadow-wpx-card border-wpx-border bg-wpx-surface border p-2"
+                >
+                    <p class="text-wpx-blue-light px-3 pt-2 pb-1 text-[11px] font-extrabold tracking-wide uppercase">
+                        {{ group.label }}
+                    </p>
+                    <div
+                        v-for="taxonomy in group.items"
+                        :key="taxonomy.id"
+                        class="rounded-wpx-sm flex items-center gap-3 p-3"
+                        :class="taxonomy.status !== 'active' ? 'bg-wpx-warning/10' : ''"
+                    >
+                        <div class="flex-1">
+                            <p class="text-wpx-text text-[13px] font-bold">{{ taxonomy.label }}</p>
+                            <p v-if="taxonomy.status !== 'active'" class="text-wpx-warning-light mt-0.5 text-[11px]">
+                                En attente — pas encore visible des utilisateurs
+                            </p>
+                        </div>
+                        <template v-if="taxonomy.status === 'active'">
+                            <span
+                                class="bg-wpx-success/10 text-wpx-success-light rounded-wpx-full px-3 py-1 text-[11px] font-bold"
+                            >
+                                Active
+                            </span>
+                            <button
+                                type="button"
+                                class="bg-wpx-success relative h-5.5 w-9.5 shrink-0 rounded-full disabled:opacity-50"
+                                :disabled="busy === taxonomy.id"
+                                title="Suspendre"
+                                @click="suspendTaxonomy(taxonomy)"
+                            >
+                                <span class="absolute top-0.5 right-0.5 h-4.5 w-4.5 rounded-full bg-white" />
+                            </button>
+                        </template>
+                        <button
+                            v-else
+                            type="button"
+                            class="rounded-wpx-sm bg-wpx-blue-light px-4 py-2 text-xs font-bold whitespace-nowrap text-white disabled:opacity-50"
+                            :disabled="busy === taxonomy.id"
+                            @click="activateTaxonomy(taxonomy)"
+                        >
+                            Activer
+                        </button>
+                    </div>
+                </div>
+                <p v-if="groupedTaxonomies.length === 0" class="text-wpx-text-muted text-sm">
+                    Aucune information de profil pour le moment.
                 </p>
             </div>
-        </div>
+
+            <div class="mt-2 flex items-center justify-between">
+                <p class="text-wpx-text text-[15px] font-bold">Autorisations demandées aux utilisateurs</p>
+                <button type="button" class="text-wpx-blue-light text-xs font-bold" @click="startCreatePurpose">
+                    + Nouvelle autorisation
+                </button>
+            </div>
+
+            <form
+                v-if="creatingPurpose"
+                class="rounded-wpx-lg shadow-wpx-card border-wpx-border bg-wpx-surface flex flex-col gap-3 border p-4"
+                @submit.prevent="submitNewPurpose"
+            >
+                <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                    <span class="font-semibold">Titre affiché</span>
+                    <input
+                        v-model="purposeForm.name"
+                        class="rounded-wpx-sm border-wpx-border border px-2.5 py-1.5 text-sm"
+                        required
+                    />
+                </label>
+                <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                    <span class="font-semibold">Texte présenté à l'utilisateur</span>
+                    <input
+                        v-model="purposeForm.description"
+                        class="rounded-wpx-sm border-wpx-border border px-2.5 py-1.5 text-sm"
+                        required
+                    />
+                </label>
+                <label class="text-wpx-text flex items-center gap-1.5 text-xs">
+                    <input v-model="purposeForm.requires_new_decision" type="checkbox" />
+                    <span>Exige une nouvelle décision des utilisateurs déjà d'accord</span>
+                </label>
+                <div class="flex gap-2">
+                    <button
+                        type="submit"
+                        class="rounded-wpx-sm bg-wpx-blue-light px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                        :disabled="busy === 'new-purpose'"
+                    >
+                        Publier cette autorisation
+                    </button>
+                    <button type="button" class="text-wpx-text-muted text-xs font-semibold" @click="cancelPurposeForm">
+                        Annuler
+                    </button>
+                </div>
+            </form>
+
+            <div class="rounded-wpx-lg shadow-wpx-card border-wpx-border bg-wpx-surface overflow-hidden border">
+                <div
+                    v-for="purpose in purposes"
+                    :key="purpose.id"
+                    class="border-wpx-border/60 flex flex-col gap-3 border-b p-4 last:border-0"
+                >
+                    <div v-if="editingPurposeId !== purpose.id" class="flex items-center gap-3.5">
+                        <div class="flex-1">
+                            <p class="text-wpx-text text-[13px] font-bold">
+                                {{ publishedVersion(purpose)?.name ?? purpose.code }}
+                            </p>
+                            <p
+                                v-if="publishedVersion(purpose)"
+                                class="text-wpx-text-muted mt-0.5 text-xs leading-relaxed"
+                            >
+                                « {{ publishedVersion(purpose)?.description }} »
+                            </p>
+                        </div>
+                        <span
+                            class="rounded-wpx-full px-3 py-1 text-[11px] font-bold whitespace-nowrap"
+                            :class="
+                                purpose.status === 'active'
+                                    ? 'bg-wpx-success/10 text-wpx-success-light'
+                                    : purpose.status === 'suspended'
+                                      ? 'bg-wpx-danger/10 text-wpx-danger-light'
+                                      : 'bg-wpx-pending/10 text-wpx-warning-light'
+                            "
+                        >
+                            {{
+                                purpose.status === 'active'
+                                    ? 'En vigueur'
+                                    : purpose.status === 'suspended'
+                                      ? 'Suspendue'
+                                      : 'Brouillon'
+                            }}
+                        </span>
+                        <button
+                            type="button"
+                            class="text-wpx-blue-light text-xs font-bold whitespace-nowrap"
+                            @click="startEditPurpose(purpose)"
+                        >
+                            Modifier le texte
+                        </button>
+                    </div>
+
+                    <form v-else class="flex flex-col gap-3" @submit.prevent="submitPurposeEdit(purpose)">
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                            <span class="font-semibold">Titre affiché</span>
+                            <input
+                                v-model="purposeForm.name"
+                                class="rounded-wpx-sm border-wpx-border border px-2.5 py-1.5 text-sm"
+                                required
+                            />
+                        </label>
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                            <span class="font-semibold">Texte présenté à l'utilisateur</span>
+                            <input
+                                v-model="purposeForm.description"
+                                class="rounded-wpx-sm border-wpx-border border px-2.5 py-1.5 text-sm"
+                                required
+                            />
+                        </label>
+                        <label class="text-wpx-text flex items-center gap-1.5 text-xs">
+                            <input v-model="purposeForm.requires_new_decision" type="checkbox" />
+                            <span>Exige une nouvelle décision des utilisateurs déjà d'accord</span>
+                        </label>
+                        <div class="flex gap-2">
+                            <button
+                                type="submit"
+                                class="rounded-wpx-sm bg-wpx-blue-light px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                                :disabled="busy === purpose.id"
+                            >
+                                Publier cette version
+                            </button>
+                            <button
+                                type="button"
+                                class="text-wpx-text-muted text-xs font-semibold"
+                                @click="cancelPurposeForm"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <p v-if="purposes.length === 0" class="text-wpx-text-muted p-4 text-sm">Aucune autorisation définie.</p>
+            </div>
+        </template>
     </div>
 </template>
