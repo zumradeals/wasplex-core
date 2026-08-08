@@ -62,3 +62,29 @@ fusion, comme pour P014).
 ## Chantier suivant recommandé
 
 Selon décision du fondateur : suivi quotidien des vues et/ou écran d'acceptation d'invitation.
+
+---
+
+## Addendum — ajustements écran Campagnes (retour fondateur)
+
+Retour : « tout est acceptable sauf des ajustements sur écrans Campagne […] pour qu'un non tech
+comprend et le bouton suivant bien assorti ».
+
+Modifications apportées à `Components/CampaignsPanel.vue` :
+
+- Ajout d'un titre + sous-titre en langage clair au-dessus de chaque étape (`STEP_META`), ex.
+  « Pour quelle marque est cette campagne ? », « Qui veux-tu toucher ? ».
+- Étape Marque : carte visuelle (avatar dégradé, nom, coche) au lieu d'une ligne de texte brute.
+- Étape Objectif : boutons transformés en cartes avec coche de sélection.
+- Étape Audience : boutons classes économiques passés en cartes avec coche ; affichage des noms
+  réels (« Gratuit », « Premium », « Gold », « Platine » — nouveau `lib/economicClasses.ts`, mappé
+  sur les constantes backend `EconomicClass::CODE_*`) au lieu des codes bruts (`FREE`, `PREMIUM`…).
+- Étape Contenu et Budget : libellés reformulés en langage naturel avec exemples de saisie.
+- Navigation bas de page : « Suivant » devient un bouton plein `bg-wpx-blue-light` (au lieu d'un
+  lien texte), « Précédent » devient un bouton secondaire à bordure — conforme à la maquette de
+  référence.
+
+Tests exécutés après ajustement : `npm run types:check`, `npx prettier --check` (formatage
+appliqué), `php artisan test` (209 tests, 2568 assertions, inchangé — frontend only), parcours
+Playwright complet (inscription → marque → campagne, étapes 0 à 3) avec captures d'écran vérifiées
+visuellement.
