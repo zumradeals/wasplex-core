@@ -13,6 +13,12 @@ const color = computed(() => (props.active ? '#2BC4DE' : '#A9B7C8'));
         <rect x="3" y="13" width="8" height="8" rx="2" :stroke="color" stroke-width="1.7" />
         <rect x="13" y="13" width="8" height="8" rx="2" :stroke="color" stroke-width="1.7" />
     </svg>
+    <svg v-else-if="section === 'users'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <circle cx="9" cy="8" r="3" :stroke="color" stroke-width="1.6" />
+        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" :stroke="color" stroke-width="1.6" />
+        <circle cx="18" cy="9" r="2.4" :stroke="color" stroke-width="1.6" />
+        <path d="M15.5 20c.3-2.6 2.1-4.5 4.5-4.5" :stroke="color" stroke-width="1.6" />
+    </svg>
     <svg v-else-if="section === 'capabilities'" width="16" height="16" viewBox="0 0 24 24" fill="none">
         <rect x="4" y="10" width="16" height="10" rx="2" :stroke="color" stroke-width="1.7" />
         <path d="M8 10V7a4 4 0 018 0v3" :stroke="color" stroke-width="1.7" />

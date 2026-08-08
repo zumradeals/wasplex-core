@@ -24,7 +24,13 @@ final class Account extends AuthenticatableUser implements Authenticatable
         'country_code',
         'language',
         'timezone',
+        'restricted_at',
     ];
+
+    public function isRestricted(): bool
+    {
+        return $this->restricted_at !== null;
+    }
 
     protected $hidden = [
         'password',

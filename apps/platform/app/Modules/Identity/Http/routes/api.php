@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Identity\Http\Controllers\Admin\AccountsController;
 use App\Modules\Identity\Http\Controllers\Admin\CapabilityGrantsController;
 use App\Modules\Identity\Http\Controllers\Api\AuthController;
 use App\Modules\Identity\Http\Controllers\Api\MeController;
@@ -57,5 +58,14 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
                 ->middleware(EnsureCapability::class.':admin.capabilities.grant');
             Route::delete('/capabilities/{grant}', [CapabilityGrantsController::class, 'destroy'])
                 ->middleware(EnsureCapability::class.':admin.capabilities.revoke');
+
+            Route::get('/accounts', [AccountsController::class, 'index'])
+                ->middleware(EnsureCapability::class.':admin.accounts.view');
+            Route::get('/accounts/{account}', [AccountsController::class, 'show'])
+                ->middleware(EnsureCapability::class.':admin.accounts.view');
+            Route::post('/accounts/{account}/restrict', [AccountsController::class, 'restrict'])
+                ->middleware(EnsureCapability::class.':admin.accounts.restrict');
+            Route::post('/accounts/{account}/unrestrict', [AccountsController::class, 'unrestrict'])
+                ->middleware(EnsureCapability::class.':admin.accounts.restrict');
         });
 });

@@ -67,6 +67,8 @@ export const FOUNDER_CAPABILITIES = [
     'admin.capabilities.grant',
     'admin.capabilities.revoke',
     'admin.audit.view',
+    'admin.accounts.view',
+    'admin.accounts.restrict',
     'wallet.ledger.view',
     'wallet.correction.propose',
     'wallet.correction.approve',

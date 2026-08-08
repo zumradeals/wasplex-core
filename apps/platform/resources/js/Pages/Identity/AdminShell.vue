@@ -11,6 +11,7 @@ import AdminNavIcon from '@/Components/AdminNavIcon.vue';
 import AdminPermissionsPanel from '@/Components/AdminPermissionsPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
+import AdminUsersPanel from '@/Components/AdminUsersPanel.vue';
 import AdminWalletLedgerPanel from '@/Components/AdminWalletLedgerPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
@@ -19,6 +20,7 @@ const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
     { key: 'dashboard', label: "Vue d'ensemble" },
+    { key: 'users', label: 'Utilisateurs' },
     { key: 'capabilities', label: 'Permissions' },
     { key: 'ledger', label: 'Wallet & Grand livre' },
     { key: 'subscriptions', label: 'Abonnements' },
@@ -120,6 +122,10 @@ async function logout(): Promise<void> {
 
                 <section v-else-if="activeSection === 'dashboard'">
                     <AdminDashboardPanel @navigate="selectSection" />
+                </section>
+
+                <section v-else-if="activeSection === 'users'">
+                    <AdminUsersPanel />
                 </section>
 
                 <section
