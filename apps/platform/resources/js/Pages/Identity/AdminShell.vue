@@ -10,21 +10,12 @@ import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminNavIcon from '@/Components/AdminNavIcon.vue';
+import AdminPermissionsPanel from '@/Components/AdminPermissionsPanel.vue';
 import AdminReconciliationPanel from '@/Components/AdminReconciliationPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
-
-interface Grant {
-    id: string;
-    account_id: string;
-    capability_code: string;
-    scope_type: string | null;
-    scope_id: string | null;
-    status: string;
-    expires_at: string | null;
-}
 
 interface LedgerEntryRow {
     id: string;
@@ -53,7 +44,7 @@ const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
     { key: 'dashboard', label: "Vue d'ensemble" },
-    { key: 'capabilities', label: 'Capacités' },
+    { key: 'capabilities', label: 'Permissions' },
     { key: 'ledger', label: 'Grand Livre' },
     { key: 'subscriptions', label: 'Abonnements' },
     { key: 'advertisers', label: 'Annonceurs' },
@@ -72,9 +63,6 @@ const feedPanel = ref<InstanceType<typeof AdminFeedPanel> | null>(null);
 function onFeedHoldResolved(): void {
     void feedPanel.value?.load();
 }
-const grants = ref<Grant[]>([]);
-const newGrant = ref({ account_id: '', capability_code: '' });
-const error = ref<string | null>(null);
 
 const ledgerTransactions = ref<LedgerTransactionRow[]>([]);
 const selectedTransaction = ref<LedgerTransactionRow | null>(null);
@@ -95,32 +83,8 @@ async function viewTransaction(id: string): Promise<void> {
     selectedTransaction.value = data.transaction;
 }
 
-async function loadGrants(): Promise<void> {
-    const { data } = await http.get('/admin/capabilities');
-    grants.value = data.grants;
-}
-
-async function grantCapability(): Promise<void> {
-    error.value = null;
-    try {
-        await http.post('/admin/capabilities', newGrant.value);
-        newGrant.value = { account_id: '', capability_code: '' };
-        await loadGrants();
-    } catch {
-        error.value = "L'attribution a échoué.";
-    }
-}
-
-async function revoke(grant: Grant): Promise<void> {
-    await http.delete(`/admin/capabilities/${grant.id}`);
-    await loadGrants();
-}
-
 function selectSection(key: (typeof nav)[number]['key']): void {
     activeSection.value = key;
-    if (key === 'capabilities') {
-        void loadGrants();
-    }
     if (key === 'ledger') {
         selectedTransaction.value = null;
         void loadLedgerTransactions();
@@ -128,9 +92,6 @@ function selectSection(key: (typeof nav)[number]['key']): void {
 }
 
 onMounted(() => {
-    if (activeSection.value === 'capabilities') {
-        void loadGrants();
-    }
     if (activeSection.value === 'ledger') {
         void loadLedgerTransactions();
     }
@@ -184,61 +145,8 @@ async function logout(): Promise<void> {
             </header>
 
             <main class="flex-1 p-6">
-                <section v-if="activeSection === 'capabilities'" class="flex flex-col gap-4">
-                    <form
-                        class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex flex-wrap items-end gap-3 p-4"
-                        @submit.prevent="grantCapability"
-                    >
-                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                            <span>Compte (id)</span>
-                            <input
-                                v-model="newGrant.account_id"
-                                class="rounded-wpx-sm border-wpx-border border px-2 py-1"
-                            />
-                        </label>
-                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
-                            <span>Capacité</span>
-                            <input
-                                v-model="newGrant.capability_code"
-                                placeholder="admin.audit.view"
-                                class="rounded-wpx-sm border-wpx-border border px-2 py-1"
-                            />
-                        </label>
-                        <button
-                            type="submit"
-                            class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-3 py-1.5 text-sm font-semibold"
-                        >
-                            Accorder
-                        </button>
-                        <p v-if="error" class="text-wpx-danger-light text-xs">{{ error }}</p>
-                    </form>
-
-                    <table class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface w-full text-sm">
-                        <thead>
-                            <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
-                                <th class="p-3">Compte</th>
-                                <th class="p-3">Capacité</th>
-                                <th class="p-3">Périmètre</th>
-                                <th class="p-3">Expiration</th>
-                                <th class="p-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="g in grants" :key="g.id" class="border-wpx-border text-wpx-text border-b">
-                                <td class="p-3 font-mono text-xs">{{ g.account_id }}</td>
-                                <td class="p-3">{{ g.capability_code }}</td>
-                                <td class="text-wpx-text-muted p-3 text-xs">
-                                    {{ g.scope_type ? `${g.scope_type}:${g.scope_id}` : 'global' }}
-                                </td>
-                                <td class="text-wpx-text-muted p-3 text-xs">{{ g.expires_at ?? '—' }}</td>
-                                <td class="p-3 text-right">
-                                    <button class="text-wpx-danger-light text-xs hover:underline" @click="revoke(g)">
-                                        Révoquer
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <section v-if="activeSection === 'capabilities'">
+                    <AdminPermissionsPanel />
                 </section>
 
                 <section v-else-if="activeSection === 'ledger'" class="flex flex-col gap-4 lg:flex-row">
