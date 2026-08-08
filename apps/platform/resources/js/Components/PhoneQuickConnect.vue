@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import http from '@/lib/http';
-import TapMatchGate from '@/Components/TapMatchGate.vue';
+import { useComingSoon } from '@/lib/comingSoon';
 
 const COUNTRIES = [
     { iso2: 'CI', dial: '+225', label: '🇨🇮 Côte d’Ivoire' },
@@ -17,13 +17,15 @@ const mode = ref<'login' | 'register'>('login');
 const country = ref<(typeof COUNTRIES)[number]>(COUNTRIES[0]);
 const localNumber = ref('');
 const password = ref('');
-const gateSolved = ref(false);
 const error = ref<string | null>(null);
 const submitting = ref(false);
+const { notice: forgotPasswordNotice, announce: announceForgotPassword } = useComingSoon(
+    'Réinitialisation du mot de passe bientôt disponible.',
+);
 
 const fullPhone = computed(() => `${country.value.dial}${localNumber.value.replace(/\D/g, '')}`);
 const canSubmit = computed(
-    () => gateSolved.value && localNumber.value.trim().length >= 6 && password.value.length >= 8 && !submitting.value,
+    () => localNumber.value.trim().length >= 6 && password.value.length >= 8 && !submitting.value,
 );
 
 function switchMode(next: 'login' | 'register'): void {
@@ -66,33 +68,41 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-    <div id="connexion-rapide" class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 flex flex-col gap-4 p-5">
-        <div class="bg-wpx-navy-750 rounded-wpx-md flex p-1 text-sm font-semibold">
+    <div id="connexion-rapide" class="flex flex-col gap-4">
+        <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md flex gap-1 border p-1">
             <button
                 type="button"
-                class="rounded-wpx-sm flex-1 py-2 transition"
-                :class="mode === 'login' ? 'bg-wpx-blue text-wpx-navy-950' : 'text-wpx-muted-dark'"
+                class="rounded-wpx-sm flex-1 py-2.5 text-sm font-semibold transition"
+                :class="
+                    mode === 'login'
+                        ? 'from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br'
+                        : 'text-wpx-muted-dark'
+                "
                 @click="switchMode('login')"
             >
                 Connexion
             </button>
             <button
                 type="button"
-                class="rounded-wpx-sm flex-1 py-2 transition"
-                :class="mode === 'register' ? 'bg-wpx-blue text-wpx-navy-950' : 'text-wpx-muted-dark'"
+                class="rounded-wpx-sm flex-1 py-2.5 text-sm font-semibold transition"
+                :class="
+                    mode === 'register'
+                        ? 'from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br'
+                        : 'text-wpx-muted-dark'
+                "
                 @click="switchMode('register')"
             >
                 Inscription
             </button>
         </div>
 
-        <form class="flex flex-col gap-3" @submit.prevent="submit">
-            <label class="flex flex-col gap-1 text-sm">
-                <span class="text-wpx-white-soft font-medium">Numéro de téléphone</span>
+        <form class="flex flex-col gap-3.5" @submit.prevent="submit">
+            <label class="flex flex-col gap-1.5 text-sm">
+                <span class="text-wpx-muted-dark font-semibold">Numéro de téléphone</span>
                 <div class="flex gap-2">
                     <select
                         v-model="country"
-                        class="rounded-wpx-sm border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft border px-2 py-2 text-sm"
+                        class="rounded-wpx-md border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft w-22 border px-1.5 py-3.5 text-sm font-semibold"
                     >
                         <option v-for="c in COUNTRIES" :key="c.iso2" :value="c">{{ c.dial }}</option>
                     </select>
@@ -102,33 +112,38 @@ async function submit(): Promise<void> {
                         inputmode="numeric"
                         required
                         placeholder="07 00 00 00 00"
-                        class="rounded-wpx-sm border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft focus:ring-wpx-blue w-full border px-3 py-2 focus:ring-2 focus:outline-none"
+                        class="rounded-wpx-md border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft focus:ring-wpx-blue w-full border px-4 py-3.5 text-sm focus:ring-2 focus:outline-none"
                     />
                 </div>
             </label>
 
-            <label class="flex flex-col gap-1 text-sm">
-                <span class="text-wpx-white-soft font-medium">Mot de passe</span>
+            <label class="flex flex-col gap-1.5 text-sm">
+                <span class="text-wpx-muted-dark font-semibold">Mot de passe</span>
                 <input
                     v-model="password"
                     type="password"
                     minlength="8"
                     required
-                    class="rounded-wpx-sm border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft focus:ring-wpx-blue border px-3 py-2 focus:ring-2 focus:outline-none"
+                    class="rounded-wpx-md border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft focus:ring-wpx-blue border px-4 py-3.5 text-sm focus:ring-2 focus:outline-none"
                 />
             </label>
-
-            <TapMatchGate @solved="gateSolved = true" />
 
             <p v-if="error" class="text-wpx-danger text-sm">{{ error }}</p>
 
             <button
                 type="submit"
                 :disabled="!canSubmit"
-                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 ease-wpx-standard bg-gradient-to-br px-4 py-2 font-semibold transition duration-200 disabled:opacity-50"
+                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 ease-wpx-standard mt-1 bg-gradient-to-br py-4 text-base font-bold transition duration-200 disabled:opacity-50"
             >
                 {{ mode === 'register' ? 'Créer mon compte' : 'Se connecter' }}
             </button>
+
+            <button type="button" class="text-wpx-blue text-center text-sm font-medium" @click="announceForgotPassword">
+                Mot de passe oublié ?
+            </button>
+            <p v-if="forgotPasswordNotice" class="text-wpx-muted-dark text-center text-xs">
+                {{ forgotPasswordNotice }}
+            </p>
 
             <a href="/login" class="text-wpx-muted-dark text-center text-xs hover:underline">
                 Options avancées (email, autre méthode)

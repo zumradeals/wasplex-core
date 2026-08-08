@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import { useComingSoon } from '@/lib/comingSoon';
 
 interface Interactions {
     likes: number;
@@ -51,6 +52,13 @@ const newComment = ref('');
 const gainToast = ref<number | null>(null);
 const holdNotice = ref(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
+const balance = ref<number | null>(null);
+const { notice: alertsNotice, announce: announceAlerts } = useComingSoon();
+
+async function loadBalance(): Promise<void> {
+    const { data } = await http.get('/me/wallet');
+    balance.value = data.balance_minor;
+}
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let clientStartedAt = 0;
@@ -151,6 +159,7 @@ async function completeDelivery(): Promise<void> {
     }
 
     gainToast.value = data.gain_minor;
+    balance.value = data.balance_minor;
     emit('balanceChanged', data.balance_minor);
 
     setTimeout(() => {
@@ -275,7 +284,10 @@ const durationLabel = computed(() =>
     delivery.value ? `${Math.round(delivery.value.required_duration_ms / 1000)} s` : '',
 );
 
-onMounted(loadNext);
+onMounted(() => {
+    void loadNext();
+    void loadBalance();
+});
 onBeforeUnmount(stopHeartbeat);
 </script>
 
@@ -287,17 +299,31 @@ onBeforeUnmount(stopHeartbeat);
         @wheel.passive="onWheel"
     >
         <!-- Immersive top header, overlaid on the content itself. -->
-        <div class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-3 pt-3 pb-8">
+        <div class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-3.5 pt-3 pb-6">
             <div class="flex items-center justify-between">
-                <div class="rounded-wpx-sm bg-white/90 p-0.5">
-                    <img src="/brand/wasplex-logo-full.png" alt="Wasplex" class="h-5 w-5 object-contain" />
+                <div class="flex items-center gap-3.5">
+                    <img
+                        src="/brand/wasplex-logo-transparent.png"
+                        alt="Wasplex"
+                        class="wpx-motion-safe h-6.5 w-6.5 animate-[wpxPulseLogo_2.4s_ease-in-out_infinite] object-contain"
+                    />
+                    <div class="flex items-center gap-4 text-sm">
+                        <span class="border-wpx-blue border-b-2 pb-0.5 font-bold text-white">Pour toi</span>
+                        <span class="font-semibold text-white/70">Explorer</span>
+                    </div>
                 </div>
-                <div class="flex items-center gap-3 text-[11px] font-semibold text-white/90">
-                    <span class="text-wpx-gold border-wpx-gold border-b-2 pb-0.5">Pour toi</span>
-                    <span class="text-white/40">Alertes</span>
-                    <span class="text-white/40">Explorer</span>
-                </div>
-                <span class="rounded-full bg-black/50 px-2 py-1 text-[10px] font-semibold text-white/90">🕊️ WP</span>
+                <span
+                    class="border-wpx-gold/40 flex items-center gap-1.5 rounded-full border bg-black/55 px-2.5 py-1.5"
+                >
+                    <span class="bg-wpx-gold h-1.5 w-1.5 rounded-full" />
+                    <span class="text-wpx-gold text-xs font-bold">{{ balance ?? '…' }} WP</span>
+                </span>
+            </div>
+            <div class="mt-3 h-0.5 overflow-hidden rounded-full bg-white/15">
+                <div
+                    class="from-wpx-blue to-wpx-gold h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
+                    :style="{ width: progressWidth }"
+                />
             </div>
         </div>
 
@@ -335,17 +361,6 @@ onBeforeUnmount(stopHeartbeat);
         </div>
 
         <template v-if="delivery && !noAdAvailable">
-            <!-- Progress bar, real (server-clamped) attention. -->
-            <div
-                v-if="delivery.status === 'started'"
-                class="absolute inset-x-3 top-14 z-20 h-1 rounded-full bg-white/20"
-            >
-                <div
-                    class="from-wpx-blue to-wpx-gold h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
-                    :style="{ width: progressWidth }"
-                />
-            </div>
-
             <!-- Gain connu avant/pendant la lecture — jamais un geste requis pour démarrer. -->
             <div
                 v-if="delivery.status === 'reserved' || delivery.status === 'started'"
@@ -355,23 +370,30 @@ onBeforeUnmount(stopHeartbeat);
                 <span class="text-[11px] text-white/60">· {{ durationLabel }}</span>
             </div>
 
-            <!-- Left rail — reserved for future Alertes (P015), inert. -->
-            <div class="absolute bottom-28 left-2 z-20 flex flex-col items-center gap-3 opacity-40">
-                <div
-                    class="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-black/30 text-sm"
-                >
-                    🔔
-                </div>
-                <div
-                    class="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-black/30 text-sm"
-                >
-                    📍
-                </div>
-                <span class="text-center text-[9px] leading-tight text-white/50">Alertes<br />bientôt</span>
-            </div>
-
-            <!-- Right rail — real social actions. -->
+            <!-- Rail d'actions droit : Alertes (inerte, docs P015) + actions sociales réelles. -->
             <div class="absolute right-2 bottom-28 z-20 flex flex-col items-center gap-4">
+                <button
+                    type="button"
+                    class="flex flex-col items-center gap-0.5"
+                    aria-label="Alertes"
+                    @click="announceAlerts"
+                >
+                    <span
+                        aria-hidden="true"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M12 4a5 5 0 015 5v3l1.5 3h-13L7 12V9a5 5 0 015-5z"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linejoin="round"
+                            />
+                            <path d="M10 18a2 2 0 004 0" stroke="currentColor" stroke-width="1.7" />
+                        </svg>
+                    </span>
+                    <span class="text-[10px] text-white/80">Alertes</span>
+                </button>
                 <button
                     type="button"
                     class="flex flex-col items-center gap-0.5"
@@ -433,10 +455,20 @@ onBeforeUnmount(stopHeartbeat);
                 </button>
             </div>
 
+            <div
+                v-if="alertsNotice"
+                class="absolute right-16 bottom-32 z-20 rounded-full bg-black/70 px-2.5 py-1 text-[10px] text-white/90"
+            >
+                {{ alertsNotice }}
+            </div>
+
             <!-- Bottom brand / CTA row. -->
             <div class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 to-transparent p-3 pr-16">
-                <p class="text-sm font-semibold text-white">{{ delivery.brand_name ?? 'Annonceur' }}</p>
-                <div class="mt-1 flex items-center gap-2">
+                <div class="flex items-center gap-2.5">
+                    <span class="from-wpx-blue to-wpx-cyan rounded-wpx-sm h-8.5 w-8.5 shrink-0 bg-gradient-to-br" />
+                    <p class="text-sm font-semibold text-white">{{ delivery.brand_name ?? 'Annonceur' }}</p>
+                </div>
+                <div class="mt-1.5 flex items-center gap-2">
                     <button
                         v-if="delivery.cta_label"
                         type="button"

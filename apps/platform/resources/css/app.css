@@ -4,3 +4,45 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+
+/*
+ * Animations de marque (docs/00-identite-visuelle-wasplex.md §15) référencées
+ * via des utilitaires Tailwind arbitraires, ex. animate-[wpxGlow_3.2s_ease-in-out_infinite].
+ */
+@keyframes wpxGlow {
+    0%,
+    100% {
+        box-shadow: 0 12px 32px rgba(199, 81, 0, 0.28);
+    }
+    50% {
+        box-shadow: 0 16px 46px rgba(242, 193, 78, 0.48);
+    }
+}
+
+@keyframes wpxShine {
+    0% {
+        transform: translateX(-140%) rotate(10deg);
+    }
+    100% {
+        transform: translateX(240%) rotate(10deg);
+    }
+}
+
+@keyframes wpxPulseLogo {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.14);
+        opacity: 0.82;
+    }
+}
+
+/* docs/00 §15.5 : mouvement réduit — le pulse et le glow s'arrêtent, l'état final reste visible. */
+@media (prefers-reduced-motion: reduce) {
+    .wpx-motion-safe {
+        animation: none !important;
+    }
+}

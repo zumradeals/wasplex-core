@@ -38,6 +38,10 @@ const activeCount = computed(
 
 const totalCount = computed(() => Object.values(categories.value).flat().length);
 
+const percent = computed(() => (totalCount.value === 0 ? 0 : Math.round((activeCount.value / totalCount.value) * 100)));
+
+defineExpose({ percent });
+
 async function load(): Promise<void> {
     loading.value = true;
     try {
@@ -77,6 +81,12 @@ void load();
                 Facultatif et corrigible à tout moment. Ces informations restent internes à Wasplex — jamais partagées
                 avec un annonceur.
             </p>
+            <div v-if="!loading" class="bg-wpx-navy-750 mt-3 h-1.5 overflow-hidden rounded-full">
+                <div
+                    class="from-wpx-blue to-wpx-gold h-full bg-gradient-to-r transition-[width] duration-300"
+                    :style="{ width: `${percent}%` }"
+                />
+            </div>
         </div>
 
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>

@@ -2,16 +2,23 @@
 
 Référence normative : `docs/00-identite-visuelle-wasplex.md` §4.3.
 
-## État réel (2026-08-05)
+## État réel (2026-08-08)
 
-Le fondateur a fourni le premier asset officiel réel : `source/wasplex-logo-official-source.jpg`
-(martin-pêcheur avec poisson, logotype "Wasplex" intégré, fond blanc, 1024×1024, raster).//
-C'est la seule source de vérité visuelle disponible à ce jour — aucune autre variante
-(fichier vectoriel, déclinaison isolée, monochrome) n'a été transmise.
+Le fondateur a fourni un second asset officiel avec la maquette de refonte visuelle
+(chantier P014) : `wasplex-logo-transparent.png` — même illustration (martin-pêcheur avec
+poisson, logotype "Wasplex" intégré), mais **fond réellement transparent** (canal alpha
+vérifié : ~62 % de pixels transparents, PNG RGBA 500×500). Cet asset lève la limite documentée
+le 2026-08-05 : les écrans sur fond sombre n'ont plus besoin d'une plaque blanche de
+composition pour afficher le logo proprement.
+
+`wasplex-logo-full.png` (fond blanc, dérivé du JPG source original) reste en usage partout où
+un fond blanc explicite est voulu (ex. compositions déjà validées). Le nouveau fichier
+transparent est utilisé pour tout affichage direct sur fond sombre (connexion, Feed).
 
 | Fichier attendu (§4.3) | Statut | Origine |
 |---|---|---|
 | `wasplex-logo-full.png` | ✅ présent | conversion sans perte du JPG officiel fourni |
+| `wasplex-logo-transparent.png` | ✅ présent (2026-08-08) | fourni par le fondateur avec la maquette P014, fond transparent |
 | `wasplex-app-icon-512.png` | ✅ présent | redimensionnement du même asset officiel |
 | `wasplex-app-icon-192.png` | ✅ présent | redimensionnement du même asset officiel |
 | `wasplex-logo-full.svg` | ❌ absent | nécessite une vectorisation professionnelle du dessin |
@@ -41,6 +48,9 @@ externe les prépare à partir de `source/wasplex-logo-official-source.jpg`.
 
 En l'absence des déclinaisons horizontale et mascotte-seule, les écrans qui ont besoin
 d'un repère de marque compact (barre latérale annonceur/admin, navigation mobile)
-utilisent temporairement le logo complet (`wasplex-logo-full.png`) redimensionné dans
-son ratio d'origine — jamais recadré ni recoloré à la main. Cette limite est documentée
-dans le rapport du chantier design correspondant.
+utilisent temporairement le logo complet redimensionné dans son ratio d'origine — jamais
+recadré ni recoloré à la main. Depuis P014, les écrans de connexion et le Feed utilisent
+`wasplex-logo-transparent.png` directement sur fond sombre (plus de plaque blanche de
+composition nécessaire pour ces deux écrans) ; les autres emplacements construits avant
+P014 (barres latérales annonceur/admin) continuent d'utiliser `wasplex-logo-full.png` sur
+plaque blanche jusqu'à leur propre passage en revue visuelle.
