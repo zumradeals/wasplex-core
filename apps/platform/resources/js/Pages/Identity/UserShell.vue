@@ -55,6 +55,8 @@ const initials = computed(() => {
 });
 
 const smartProfilePercent = computed(() => smartProfilePanel.value?.percent ?? 0);
+const smartProfileSuggestions = computed(() => smartProfilePanel.value?.nextSuggestions ?? []);
+const profileExpanded = ref(false);
 
 async function loadMe(): Promise<void> {
     const { data } = await http.get('/me');
@@ -297,7 +299,44 @@ onMounted(loadMe);
 
                     <BecomeAdvertiserPanel />
                     <EligibleCampaignsPanel />
-                    <SmartProfilePanel ref="smartProfilePanel" />
+                    <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-4.5">
+                        <div class="flex items-baseline justify-between">
+                            <p class="text-wpx-white-soft text-sm font-bold">Profil intelligent</p>
+                            <p class="text-wpx-gold text-sm font-bold">{{ smartProfilePercent }}%</p>
+                        </div>
+                        <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
+                            Complète ton profil pour des publicités mieux ciblées — facultatif, corrigible à tout
+                            moment, jamais partagé avec un annonceur.
+                        </p>
+                        <div class="bg-wpx-navy-750 mt-3 h-1.5 overflow-hidden rounded-full">
+                            <div
+                                class="from-wpx-blue to-wpx-gold h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
+                                :style="{ width: `${smartProfilePercent}%` }"
+                            />
+                        </div>
+                        <div v-if="smartProfileSuggestions.length > 0" class="mt-3.5 flex flex-col gap-2">
+                            <button
+                                v-for="suggestion in smartProfileSuggestions"
+                                :key="suggestion"
+                                type="button"
+                                class="bg-wpx-navy-750 rounded-wpx-md flex items-center justify-between p-2.5 text-left"
+                                @click="profileExpanded = true"
+                            >
+                                <span class="text-wpx-white-soft text-sm font-semibold">{{ suggestion }}</span>
+                                <span class="bg-wpx-gold/15 text-wpx-gold rounded-full px-2.5 py-1 text-xs font-bold">
+                                    +
+                                </span>
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            class="text-wpx-blue mt-3 text-xs font-bold"
+                            @click="profileExpanded = !profileExpanded"
+                        >
+                            {{ profileExpanded ? 'Réduire' : 'Compléter mon profil' }} ›
+                        </button>
+                        <SmartProfilePanel v-show="profileExpanded" ref="smartProfilePanel" compact class="mt-3" />
+                    </section>
                     <ConsentsPanel />
 
                     <section
