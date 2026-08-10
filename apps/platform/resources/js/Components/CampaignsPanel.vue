@@ -22,7 +22,7 @@ interface Asset {
 
 interface EconomicClass {
     code: string;
-    weight_percent: number;
+    reward_per_complete_view_minor: number;
 }
 
 interface ProfileCriterion {
@@ -46,6 +46,7 @@ interface Quote {
     class_breakdown: Record<string, QuoteClassBreakdown>;
     expires_at: string;
     status: string;
+    price_version?: { duration_days: number; minimum_budget_minor: number };
 }
 
 interface CampaignVersion {
@@ -727,6 +728,9 @@ void loadAll();
                             <div v-if="latestQuote" class="rounded-wpx-sm bg-wpx-canvas flex flex-col gap-1 p-3">
                                 <p>
                                     Budget : <strong>{{ latestQuote.gross_amount_minor }} FCFA</strong>
+                                </p>
+                                <p>
+                                    Diffusion : <strong>{{ latestQuote.price_version?.duration_days ?? 7 }} jours</strong>
                                 </p>
                                 <p>
                                     Événements estimés : <strong>{{ latestQuote.estimated_events }}</strong>

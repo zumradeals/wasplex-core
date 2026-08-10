@@ -34,8 +34,7 @@ final class EconomicClassCatalogService implements EconomicClassCatalogContract
             ->filter(fn (EconomicClass $class) => $class->versions->isNotEmpty())
             ->map(fn (EconomicClass $class) => new EconomicClassSummary(
                 code: $class->code,
-                weightPercent: (float) $class->versions->first()->weight_percent,
-                coefficient: (float) $class->versions->first()->coefficient,
+                rewardPerCompleteViewMinor: (int) $class->versions->first()->reward_per_complete_view_minor,
             ))
             ->values()
             ->all();

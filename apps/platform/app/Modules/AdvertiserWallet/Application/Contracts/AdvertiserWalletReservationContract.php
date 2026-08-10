@@ -29,17 +29,15 @@ interface AdvertiserWalletReservationContract
     public function release(string $organizationId, string $campaignId, int $amountMinor, string $idempotencyKey): string;
 
     /**
-     * Spends a reserved amount permanently: debits "reserved" and credits
-     * the caller-supplied destination — never the advertiser's own
-     * "available" account (docs/chantiers/P009-CHANTIER.md §4). Used by
-     * Feed to pay out a validated ad delivery straight into the viewer's
-     * Wallet, in one balanced transaction the caller never has to
-     * assemble itself.
+     * Captures one qualified advertising event with the immutable Wasplex
+     * split: the viewer receives $userRewardMinor and Wasplex recognizes
+     * the same amount as revenue. The gross campaign consumption is thus
+     * exactly twice the viewer reward (50 % / 50 %).
      */
     public function capture(
         string $organizationId,
         string $campaignId,
-        int $amountMinor,
+        int $userRewardMinor,
         LedgerAccountReference $destination,
         string $idempotencyKey,
     ): string;

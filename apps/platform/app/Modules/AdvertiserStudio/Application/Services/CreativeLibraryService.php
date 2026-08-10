@@ -8,6 +8,7 @@ use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeAsset;
 use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeModerationCase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Process;
 
 /**
  * docs/13 §18-21: la bibliothèque créative. Aucun pipeline de traitement
@@ -50,9 +51,29 @@ final class CreativeLibraryService
             throw new InvalidCreativeAssetException('Le fichier n\'a pas pu être enregistré.');
         }
 
+        $absolutePath = Storage::disk($disk)->path($path);
         [$width, $height] = $type === CreativeAsset::TYPE_IMAGE
-            ? $this->imageDimensions(Storage::disk($disk)->path($path))
+            ? $this->imageDimensions($absolutePath)
             : [null, null];
+
+        $duration = null;
+
+        if ($type === CreativeAsset::TYPE_VIDEO) {
+            try {
+                $duration = $this->videoDurationSeconds($absolutePath);
+                $maxDuration = (int) $config['max_duration_seconds'];
+
+                if ($duration > $maxDuration) {
+                    throw new InvalidCreativeAssetException(
+                        "Vidéo trop longue ({$duration} secondes, maximum {$maxDuration} secondes)."
+                    );
+                }
+            } catch (InvalidCreativeAssetException $exception) {
+                Storage::disk($disk)->delete($path);
+
+                throw $exception;
+            }
+        }
 
         return CreativeAsset::query()->create([
             'brand_id' => $brand->id,
@@ -62,6 +83,7 @@ final class CreativeLibraryService
             'size' => $file->getSize(),
             'width' => $width,
             'height' => $height,
+            'duration' => $duration,
             'rights_status' => 'unknown',
             'moderation_status' => CreativeAsset::STATUS_READY,
             'storage_disk' => $disk,
@@ -124,5 +146,31 @@ final class CreativeLibraryService
         $size = @getimagesize($absolutePath);
 
         return $size === false ? [null, null] : [$size[0], $size[1]];
+    }
+
+    private function videoDurationSeconds(string $absolutePath): int
+    {
+        $process = new Process([
+            (string) config('advertiser_studio.video.ffprobe_binary'),
+            '-v',
+            'error',
+            '-show_entries',
+            'format=duration',
+            '-of',
+            'default=noprint_wrappers=1:nokey=1',
+            $absolutePath,
+        ]);
+        $process->setTimeout(15);
+        $process->run();
+
+        $duration = (float) trim($process->getOutput());
+
+        if (! $process->isSuccessful() || ! is_finite($duration) || $duration <= 0) {
+            throw new InvalidCreativeAssetException(
+                'La durée de cette vidéo ne peut pas être vérifiée. Vérifiez le fichier puis réessayez.'
+            );
+        }
+
+        return (int) ceil($duration);
     }
 }

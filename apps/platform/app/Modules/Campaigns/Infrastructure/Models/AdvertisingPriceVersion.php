@@ -20,7 +20,8 @@ final class AdvertisingPriceVersion extends Model
 
     protected $fillable = [
         'catalog_id', 'status', 'currency', 'base_price_minor_per_event',
-        'image_multiplier', 'video_multiplier', 'effective_from', 'effective_to', 'published_at',
+        'image_multiplier', 'video_multiplier', 'minimum_budget_minor', 'duration_days',
+        'effective_from', 'effective_to', 'published_at',
     ];
 
     protected function casts(): array
@@ -29,6 +30,8 @@ final class AdvertisingPriceVersion extends Model
             'base_price_minor_per_event' => 'integer',
             'image_multiplier' => 'decimal:4',
             'video_multiplier' => 'decimal:4',
+            'minimum_budget_minor' => 'integer',
+            'duration_days' => 'integer',
             'effective_from' => 'immutable_datetime',
             'effective_to' => 'immutable_datetime',
             'published_at' => 'immutable_datetime',
@@ -45,8 +48,4 @@ final class AdvertisingPriceVersion extends Model
         return $this->status === self::STATUS_PUBLISHED;
     }
 
-    public function multiplierFor(string $format): float
-    {
-        return (float) ($format === 'video' ? $this->video_multiplier : $this->image_multiplier);
-    }
 }

@@ -17,7 +17,7 @@ final class EconomicClassVersion extends Model
     protected $table = 'economic_class_versions';
 
     protected $fillable = [
-        'economic_class_id', 'quota_monthly', 'weight_percent', 'coefficient',
+        'economic_class_id', 'quota_monthly', 'weight_percent', 'coefficient', 'reward_per_complete_view_minor',
         'country_code', 'currency', 'effective_from', 'effective_to',
     ];
 
@@ -27,6 +27,7 @@ final class EconomicClassVersion extends Model
             'quota_monthly' => 'integer',
             'weight_percent' => 'decimal:2',
             'coefficient' => 'decimal:4',
+            'reward_per_complete_view_minor' => 'integer',
             'effective_from' => 'immutable_datetime',
             'effective_to' => 'immutable_datetime',
         ];

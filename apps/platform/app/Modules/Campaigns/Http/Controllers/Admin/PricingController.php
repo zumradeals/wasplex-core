@@ -32,9 +32,8 @@ final class PricingController extends Controller
         $data = $request->validate([
             'catalog_code' => ['required', 'string', 'max:64'],
             'currency' => ['required', 'string', 'size:3'],
-            'base_price_minor_per_event' => ['required', 'integer', 'min:0'],
-            'image_multiplier' => ['required', 'numeric', 'gt:0'],
-            'video_multiplier' => ['required', 'numeric', 'gt:0'],
+            'minimum_budget_minor' => ['required', 'integer', 'min:1'],
+            'duration_days' => ['required', 'integer', 'min:1', 'max:365'],
         ]);
 
         $catalog = AdvertisingPriceCatalog::query()->firstOrCreate(['code' => $data['catalog_code']]);
@@ -43,9 +42,11 @@ final class PricingController extends Controller
             'catalog_id' => $catalog->id,
             'status' => AdvertisingPriceVersion::STATUS_DRAFT,
             'currency' => strtoupper($data['currency']),
-            'base_price_minor_per_event' => $data['base_price_minor_per_event'],
-            'image_multiplier' => $data['image_multiplier'],
-            'video_multiplier' => $data['video_multiplier'],
+            'base_price_minor_per_event' => 0,
+            'image_multiplier' => 1,
+            'video_multiplier' => 1,
+            'minimum_budget_minor' => $data['minimum_budget_minor'],
+            'duration_days' => $data['duration_days'],
         ]);
 
         return response()->json(['price_version' => $version->refresh()->load('catalog')], 201);
@@ -60,9 +61,8 @@ final class PricingController extends Controller
         }
 
         $data = $request->validate([
-            'base_price_minor_per_event' => ['sometimes', 'integer', 'min:0'],
-            'image_multiplier' => ['sometimes', 'numeric', 'gt:0'],
-            'video_multiplier' => ['sometimes', 'numeric', 'gt:0'],
+            'minimum_budget_minor' => ['sometimes', 'integer', 'min:1'],
+            'duration_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
         ]);
 
         $version->update($data);

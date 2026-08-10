@@ -7,6 +7,7 @@ namespace App\Modules\Campaigns\Application\Services;
 use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract;
 use App\Modules\Campaigns\Application\ValueObjects\ApprovedCampaignAudience;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ApprovedCampaignAudienceService implements ApprovedCampaignAudienceContract
 {
@@ -14,6 +15,7 @@ final class ApprovedCampaignAudienceService implements ApprovedCampaignAudienceC
     {
         $campaign = Campaign::query()
             ->where('status', Campaign::STATUS_APPROVED)
+            ->where(fn (Builder $query) => $this->currentlyScheduled($query))
             ->find($campaignId);
 
         if ($campaign === null) {
@@ -27,12 +29,20 @@ final class ApprovedCampaignAudienceService implements ApprovedCampaignAudienceC
     {
         return Campaign::query()
             ->where('status', Campaign::STATUS_APPROVED)
+            ->where(fn (Builder $query) => $this->currentlyScheduled($query))
             ->with('versions')
             ->get()
             ->map(fn (Campaign $campaign) => $this->toValueObject($campaign))
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function currentlyScheduled(Builder $query): void
+    {
+        $today = now('UTC')->toDateString();
+        $query->where(fn (Builder $start) => $start->whereNull('scheduled_start')->orWhere('scheduled_start', '<=', $today))
+            ->where(fn (Builder $end) => $end->whereNull('scheduled_end')->orWhere('scheduled_end', '>=', $today));
     }
 
     private function toValueObject(Campaign $campaign): ?ApprovedCampaignAudience

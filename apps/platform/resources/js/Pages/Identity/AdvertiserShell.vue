@@ -30,7 +30,7 @@ function selectSection(key: (typeof nav)[number]['key']): void {
 
 async function logout(): Promise<void> {
     await http.post('/logout');
-    router.visit('/login');
+    router.visit('/');
 }
 </script>
 

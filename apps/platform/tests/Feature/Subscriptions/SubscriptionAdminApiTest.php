@@ -77,17 +77,7 @@ it('refuses to edit a plan version once it is no longer draft', function (): voi
         ->assertStatus(409);
 });
 
-it('reports the official weights as valid at 100 percent', function (): void {
-    registerAndLogin('sub-admin-3@wasplex.test');
-    grantFounderAccessForTests(accountForSubscriptionTests('sub-admin-3@wasplex.test'), ['admin.subscriptions.classes.manage']);
-    verifyRecentMfaForSubscriptionTests();
-
-    test()->postJson('/api/admin/economic-classes/validate-weights')
-        ->assertOk()
-        ->assertJson(['valid' => true, 'total_weight_percent' => 100.0]);
-});
-
-it('detects an invalid weight total after a partial class update', function (): void {
+it('lets an admin set a direct reward per complete view', function (): void {
     registerAndLogin('sub-admin-4@wasplex.test');
     grantFounderAccessForTests(accountForSubscriptionTests('sub-admin-4@wasplex.test'), ['admin.subscriptions.classes.manage']);
     verifyRecentMfaForSubscriptionTests();
@@ -96,14 +86,9 @@ it('detects an invalid weight total after a partial class update', function (): 
 
     test()->patchJson("/api/admin/economic-classes/{$free->id}", [
         'quota_monthly' => 120,
-        'weight_percent' => 50,
-        'coefficient' => 1.0,
+        'reward_per_complete_view_minor' => 35,
         'currency' => 'XOF',
-    ])->assertOk();
-
-    test()->postJson('/api/admin/economic-classes/validate-weights')
-        ->assertOk()
-        ->assertJson(['valid' => false]);
+    ])->assertOk()->assertJsonPath('economic_class_version.reward_per_complete_view_minor', 35);
 });
 
 it('versions an economic class instead of overwriting its history', function (): void {
@@ -115,8 +100,7 @@ it('versions an economic class instead of overwriting its history', function ():
 
     test()->patchJson("/api/admin/economic-classes/{$free->id}", [
         'quota_monthly' => 150,
-        'weight_percent' => 10,
-        'coefficient' => 1.0,
+        'reward_per_complete_view_minor' => 35,
         'currency' => 'XOF',
     ])->assertOk();
 

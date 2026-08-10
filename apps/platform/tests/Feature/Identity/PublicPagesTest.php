@@ -6,6 +6,10 @@ it('renders the public landing page for a guest', function (): void {
         ->assertInertia(fn ($page) => $page->component('Identity/Landing'));
 });
 
+it('uses the public landing as the single login page', function (): void {
+    $this->get('/login')->assertRedirect('/');
+});
+
 it('redirects an authenticated user space account away from the landing page to its shell', function (): void {
     registerAndLogin('landing-user@example.com');
 

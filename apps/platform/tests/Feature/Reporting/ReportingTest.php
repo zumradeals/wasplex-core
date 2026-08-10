@@ -114,7 +114,7 @@ it('reports real budget and delivery numbers for a campaign after a full vertica
     expect($report['feed']['total_deliveries'])->toBe(1);
     expect($report['feed']['completed'])->toBe(1);
     expect($report['feed']['gain_distributed_minor'])->toBe($gainMinor);
-    expect($report['budget_captured_minor'])->toBe($gainMinor);
+    expect($report['budget_captured_minor'])->toBe($gainMinor * 2);
     expect((float) $report['feed']['attention_rate'])->toEqual(1.0);
 });
 
@@ -196,7 +196,7 @@ it('reflects a known scenario in the founder dashboard summary', function (): vo
     expect($summary->json('ledger.net_by_account_type.LIABILITY_USER'))->toBe($gainMinor);
     expect($summary->json('feed.completed'))->toBe(1);
     expect($summary->json('feed.gain_distributed_minor'))->toBe($gainMinor);
-    expect($summary->json('campaigns.total_captured_minor'))->toBe($gainMinor);
+    expect($summary->json('campaigns.total_captured_minor'))->toBe($gainMinor * 2);
 });
 
 it('refuses the founder dashboard without the admin.dashboard.view capability', function (): void {

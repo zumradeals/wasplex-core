@@ -94,7 +94,7 @@ final class AdvertiserWalletReservationService implements AdvertiserWalletReserv
     public function capture(
         string $organizationId,
         string $campaignId,
-        int $amountMinor,
+        int $userRewardMinor,
         LedgerAccountReference $destination,
         string $idempotencyKey,
     ): string {
@@ -104,14 +104,21 @@ final class AdvertiserWalletReservationService implements AdvertiserWalletReserv
             'LIABILITY_ADVERTISER',
             'WP',
         );
+        $wasplexRevenueAccount = LedgerAccountReference::system(
+            'wasplex.advertising.revenue',
+            'REVENUE',
+            'WP',
+        );
+        $grossAmountMinor = $userRewardMinor * 2;
 
         $transaction = $this->posting->post(new PostLedgerTransaction(
             type: 'CAMPAIGN_EVENT_CAPTURED',
             sourceModule: 'feed',
             idempotencyKey: $idempotencyKey,
             entries: [
-                LedgerEntryInput::debit($reservedAccount, Money::of($amountMinor, 'WP'), 'Publicité livrée et validée'),
-                LedgerEntryInput::credit($destination, Money::of($amountMinor, 'WP'), 'Gain publicitaire'),
+                LedgerEntryInput::debit($reservedAccount, Money::of($grossAmountMinor, 'WP'), 'Publicité entièrement vue et validée'),
+                LedgerEntryInput::credit($destination, Money::of($userRewardMinor, 'WP'), 'Part utilisateur — 50 %'),
+                LedgerEntryInput::credit($wasplexRevenueAccount, Money::of($userRewardMinor, 'WP'), 'Part Wasplex — 50 %'),
             ],
             businessReference: $campaignId,
         ));

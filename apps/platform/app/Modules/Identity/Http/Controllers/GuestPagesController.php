@@ -38,9 +38,14 @@ final class GuestPagesController extends Controller
         return Inertia::render('Identity/Landing');
     }
 
-    public function login(): Response
+    public function login(): RedirectResponse
     {
-        return Inertia::render('Identity/Login');
+        // La page publique principale contient désormais l'unique parcours
+        // de connexion (téléphone en premier, autres méthodes en option).
+        // Conserver une seconde interface sous /login créait deux vérités
+        // produit et renvoyait l'utilisateur vers l'ancien écran après sa
+        // déconnexion.
+        return redirect()->route('landing');
     }
 
     public function register(): Response

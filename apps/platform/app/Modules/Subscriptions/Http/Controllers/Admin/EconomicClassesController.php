@@ -39,13 +39,17 @@ final class EconomicClassesController extends Controller
 
         $data = $request->validate([
             'quota_monthly' => ['required', 'integer', 'min:1'],
-            'weight_percent' => ['required', 'numeric', 'min:0', 'max:100'],
-            'coefficient' => ['required', 'numeric', 'gt:0'],
+            'reward_per_complete_view_minor' => ['required', 'integer', 'min:1'],
             'country_code' => ['nullable', 'string', 'size:2'],
             'currency' => ['required', 'string', 'size:3'],
         ]);
 
         $now = now();
+        $current = EconomicClassVersion::query()
+            ->where('economic_class_id', $class->id)
+            ->whereNull('effective_to')
+            ->latest('effective_from')
+            ->firstOrFail();
 
         EconomicClassVersion::query()
             ->where('economic_class_id', $class->id)
@@ -55,8 +59,9 @@ final class EconomicClassesController extends Controller
         $version = EconomicClassVersion::query()->create([
             'economic_class_id' => $class->id,
             'quota_monthly' => $data['quota_monthly'],
-            'weight_percent' => $data['weight_percent'],
-            'coefficient' => $data['coefficient'],
+            'weight_percent' => $current->weight_percent,
+            'coefficient' => $current->coefficient,
+            'reward_per_complete_view_minor' => $data['reward_per_complete_view_minor'],
             'country_code' => $data['country_code'] ?? null,
             'currency' => strtoupper($data['currency']),
             'effective_from' => $now,
@@ -65,15 +70,4 @@ final class EconomicClassesController extends Controller
         return response()->json(['economic_class_version' => $version]);
     }
 
-    public function validateWeights(): JsonResponse
-    {
-        $total = EconomicClassVersion::query()
-            ->whereNull('effective_to')
-            ->sum('weight_percent');
-
-        return response()->json([
-            'total_weight_percent' => (float) $total,
-            'valid' => abs((float) $total - 100.0) < 0.01,
-        ]);
-    }
 }
