@@ -6,6 +6,7 @@ namespace App\Modules\Identity\Infrastructure\Providers;
 
 use App\Modules\Identity\Application\Contracts\AccountCountryLookupContract;
 use App\Modules\Identity\Application\Services\AccountCountryLookupService;
+use App\Modules\Identity\Console\BootstrapFounderCommand;
 use App\Modules\Identity\Console\SeedFounderCommand;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +34,7 @@ final class IdentityServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
+                BootstrapFounderCommand::class,
                 SeedFounderCommand::class,
             ]);
         }

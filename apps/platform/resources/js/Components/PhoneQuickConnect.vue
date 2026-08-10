@@ -14,8 +14,10 @@ const COUNTRIES = [
 ] as const;
 
 const mode = ref<'login' | 'register'>('login');
+const identifierMode = ref<'phone' | 'email'>('phone');
 const country = ref<(typeof COUNTRIES)[number]>(COUNTRIES[0]);
 const localNumber = ref('');
+const email = ref('');
 const password = ref('');
 const error = ref<string | null>(null);
 const submitting = ref(false);
@@ -24,12 +26,27 @@ const { notice: forgotPasswordNotice, announce: announceForgotPassword } = useCo
 );
 
 const fullPhone = computed(() => `${country.value.dial}${localNumber.value.replace(/\D/g, '')}`);
+const localDigits = computed(() => localNumber.value.replace(/\D/g, ''));
+const normalizedEmail = computed(() => email.value.trim().toLowerCase());
 const canSubmit = computed(
-    () => localNumber.value.trim().length >= 6 && password.value.length >= 8 && !submitting.value,
+    () =>
+        (identifierMode.value === 'phone'
+            ? localDigits.value.length >= 6
+            : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail.value)) &&
+        password.value.length >= 8 &&
+        !submitting.value,
 );
 
 function switchMode(next: 'login' | 'register'): void {
     mode.value = next;
+    if (next === 'register') {
+        identifierMode.value = 'phone';
+    }
+    error.value = null;
+}
+
+function switchIdentifierMode(next: 'phone' | 'email'): void {
+    identifierMode.value = next;
     error.value = null;
 }
 
@@ -52,7 +69,7 @@ async function submit(): Promise<void> {
         }
 
         await http.post('/login', {
-            identifier_value: fullPhone.value,
+            identifier_value: identifierMode.value === 'phone' ? fullPhone.value : normalizedEmail.value,
             password: password.value,
         });
 
@@ -97,7 +114,26 @@ async function submit(): Promise<void> {
         </div>
 
         <form class="flex flex-col gap-3.5" @submit.prevent="submit">
-            <label class="flex flex-col gap-1.5 text-sm">
+            <div v-if="mode === 'login'" class="border-wpx-border-dark grid grid-cols-2 rounded-wpx-md border p-1">
+                <button
+                    type="button"
+                    class="rounded-wpx-sm py-2 text-xs font-semibold transition"
+                    :class="identifierMode === 'phone' ? 'bg-wpx-blue text-wpx-navy-950' : 'text-wpx-muted-dark'"
+                    @click="switchIdentifierMode('phone')"
+                >
+                    Téléphone
+                </button>
+                <button
+                    type="button"
+                    class="rounded-wpx-sm py-2 text-xs font-semibold transition"
+                    :class="identifierMode === 'email' ? 'bg-wpx-blue text-wpx-navy-950' : 'text-wpx-muted-dark'"
+                    @click="switchIdentifierMode('email')"
+                >
+                    Email
+                </button>
+            </div>
+
+            <label v-if="identifierMode === 'phone'" class="flex flex-col gap-1.5 text-sm">
                 <span class="text-wpx-muted-dark font-semibold">Numéro de téléphone</span>
                 <div class="flex gap-2">
                     <select
@@ -115,6 +151,19 @@ async function submit(): Promise<void> {
                         class="rounded-wpx-md border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft focus:ring-wpx-blue w-full border px-4 py-3.5 text-sm focus:ring-2 focus:outline-none"
                     />
                 </div>
+            </label>
+
+            <label v-else class="flex flex-col gap-1.5 text-sm">
+                <span class="text-wpx-muted-dark font-semibold">Adresse email</span>
+                <input
+                    v-model="email"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    required
+                    placeholder="nom@exemple.com"
+                    class="rounded-wpx-md border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft focus:ring-wpx-blue border px-4 py-3.5 text-sm focus:ring-2 focus:outline-none"
+                />
             </label>
 
             <label class="flex flex-col gap-1.5 text-sm">
@@ -145,9 +194,14 @@ async function submit(): Promise<void> {
                 {{ forgotPasswordNotice }}
             </p>
 
-            <a href="/login" class="text-wpx-muted-dark text-center text-xs hover:underline">
-                Options avancées (email, autre méthode)
-            </a>
+            <button
+                v-if="mode === 'login'"
+                type="button"
+                class="text-wpx-muted-dark text-center text-xs hover:underline"
+                @click="switchIdentifierMode(identifierMode === 'phone' ? 'email' : 'phone')"
+            >
+                {{ identifierMode === 'phone' ? 'Se connecter avec un email' : 'Se connecter avec un téléphone' }}
+            </button>
         </form>
     </div>
 </template>

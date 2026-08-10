@@ -67,7 +67,7 @@ final class SeedFounderCommand extends Command
                 'joined_at' => now(),
             ]);
 
-            foreach ($this->founderCapabilities() as $capability) {
+            foreach (self::founderCapabilities() as $capability) {
                 CapabilityGrant::create([
                     'account_id' => $account->id,
                     'capability_code' => $capability,
@@ -86,7 +86,7 @@ final class SeedFounderCommand extends Command
     /**
      * @return array<int, string>
      */
-    private function founderCapabilities(): array
+    public static function founderCapabilities(): array
     {
         return [
             'admin.dashboard.view',
