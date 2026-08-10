@@ -63,6 +63,9 @@ interface PriceVersion {
     status: string;
     currency: string;
     minimum_budget_minor: number;
+    minimum_daily_budget_minor: number;
+    minimum_duration_days: number;
+    maximum_duration_days: number;
     duration_days: number;
     catalog: { code: string };
 }
@@ -83,7 +86,13 @@ const showPricing = ref(false);
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
-const priceDraftForm = reactive({ minimum_budget_minor: 5000, duration_days: 7 });
+const priceDraftForm = reactive({
+    minimum_budget_minor: 2000,
+    minimum_daily_budget_minor: 500,
+    minimum_duration_days: 1,
+    maximum_duration_days: 30,
+    duration_days: 7,
+});
 
 function initials(name: string): string {
     return name.slice(0, 2).toUpperCase();
@@ -121,6 +130,9 @@ async function load(): Promise<void> {
             const draftPrice = priceVersions.value.find((version) => version.status === 'draft');
             if (draftPrice) {
                 priceDraftForm.minimum_budget_minor = draftPrice.minimum_budget_minor;
+                priceDraftForm.minimum_daily_budget_minor = draftPrice.minimum_daily_budget_minor;
+                priceDraftForm.minimum_duration_days = draftPrice.minimum_duration_days;
+                priceDraftForm.maximum_duration_days = draftPrice.maximum_duration_days;
                 priceDraftForm.duration_days = draftPrice.duration_days;
             }
         }
@@ -267,7 +279,10 @@ async function createPriceDraft(): Promise<void> {
         await http.post('/admin/advertising/pricing', {
             catalog_code: 'standard',
             currency: 'XOF',
-            minimum_budget_minor: published?.minimum_budget_minor ?? 5000,
+            minimum_budget_minor: published?.minimum_budget_minor ?? 2000,
+            minimum_daily_budget_minor: published?.minimum_daily_budget_minor ?? 500,
+            minimum_duration_days: published?.minimum_duration_days ?? 1,
+            maximum_duration_days: published?.maximum_duration_days ?? 30,
             duration_days: published?.duration_days ?? 7,
         });
         await load();
@@ -683,68 +698,101 @@ onMounted(load);
                     </button>
                 </div>
                 <p class="text-wpx-text-muted mt-1 mb-3 text-xs">
-                    Définissez simplement le budget minimum et la durée de diffusion. Le budget est partagé
-                    automatiquement : 50 % Wasplex, 50 % récompenses utilisateurs.
+                    Ces limites protègent la qualité des campagnes sans imposer leur durée. L’annonceur choisit
+                    librement ses jours de diffusion. Le budget reste partagé automatiquement : 50 % Wasplex, 50 %
+                    récompenses utilisateurs.
                 </p>
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
-                            <th class="p-2">Configuration</th>
-                            <th class="p-2">Budget minimum</th>
-                            <th class="p-2">Durée de diffusion</th>
-                            <th class="p-2">Statut</th>
-                            <th class="p-2"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="v in priceVersions" :key="v.id" class="border-wpx-border text-wpx-text border-b">
-                            <td class="p-2">{{ v.catalog.code }}</td>
-                            <td class="p-2">
-                                <input
-                                    v-if="v.status === 'draft'"
-                                    v-model.number="priceDraftForm.minimum_budget_minor"
-                                    type="number"
-                                    class="rounded-wpx-sm border-wpx-border w-28 border px-1 py-0.5 text-xs"
-                                />
-                                <span v-else>{{ numberFormatter.format(v.minimum_budget_minor) }} FCFA</span>
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    v-if="v.status === 'draft'"
-                                    v-model.number="priceDraftForm.duration_days"
-                                    type="number"
-                                    class="rounded-wpx-sm border-wpx-border w-20 border px-1 py-0.5 text-xs"
-                                />
-                                <span v-else>{{ v.duration_days }} jours</span>
-                            </td>
-                            <td class="p-2">
-                                <span
-                                    class="rounded-wpx-sm px-2 py-0.5 text-xs font-semibold"
-                                    :class="statusClasses(v.status)"
-                                    >{{ v.status }}</span
-                                >
-                            </td>
-                            <td class="p-2 text-right whitespace-nowrap">
-                                <button
-                                    v-if="v.status === 'draft'"
-                                    class="text-wpx-blue-light mr-2 text-xs hover:underline disabled:opacity-50"
-                                    :disabled="busy"
-                                    @click="savePriceDraft(v)"
-                                >
-                                    Enregistrer
-                                </button>
-                                <button
-                                    v-if="v.status === 'draft'"
-                                    class="text-wpx-success-light text-xs hover:underline disabled:opacity-50"
-                                    :disabled="busy"
-                                    @click="publishPrice(v)"
-                                >
-                                    Publier
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1050px] text-sm">
+                        <thead>
+                            <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
+                                <th class="p-2">Configuration</th>
+                                <th class="p-2">Budget minimum</th>
+                                <th class="p-2">Minimum/jour</th>
+                                <th class="p-2">Durée min.</th>
+                                <th class="p-2">Durée max.</th>
+                                <th class="p-2">Durée proposée</th>
+                                <th class="p-2">Statut</th>
+                                <th class="p-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="v in priceVersions" :key="v.id" class="border-wpx-border text-wpx-text border-b">
+                                <td class="p-2">{{ v.catalog.code }}</td>
+                                <td class="p-2">
+                                    <input
+                                        v-if="v.status === 'draft'"
+                                        v-model.number="priceDraftForm.minimum_budget_minor"
+                                        type="number"
+                                        class="rounded-wpx-sm border-wpx-border w-28 border px-1 py-0.5 text-xs"
+                                    />
+                                    <span v-else>{{ numberFormatter.format(v.minimum_budget_minor) }} FCFA</span>
+                                </td>
+                                <td class="p-2">
+                                    <input
+                                        v-if="v.status === 'draft'"
+                                        v-model.number="priceDraftForm.minimum_daily_budget_minor"
+                                        type="number"
+                                        class="rounded-wpx-sm border-wpx-border w-24 border px-1 py-0.5 text-xs"
+                                    />
+                                    <span v-else>{{ numberFormatter.format(v.minimum_daily_budget_minor) }} FCFA</span>
+                                </td>
+                                <td class="p-2">
+                                    <input
+                                        v-if="v.status === 'draft'"
+                                        v-model.number="priceDraftForm.minimum_duration_days"
+                                        type="number"
+                                        class="rounded-wpx-sm border-wpx-border w-16 border px-1 py-0.5 text-xs"
+                                    />
+                                    <span v-else>{{ v.minimum_duration_days }} j</span>
+                                </td>
+                                <td class="p-2">
+                                    <input
+                                        v-if="v.status === 'draft'"
+                                        v-model.number="priceDraftForm.maximum_duration_days"
+                                        type="number"
+                                        class="rounded-wpx-sm border-wpx-border w-16 border px-1 py-0.5 text-xs"
+                                    />
+                                    <span v-else>{{ v.maximum_duration_days }} j</span>
+                                </td>
+                                <td class="p-2">
+                                    <input
+                                        v-if="v.status === 'draft'"
+                                        v-model.number="priceDraftForm.duration_days"
+                                        type="number"
+                                        class="rounded-wpx-sm border-wpx-border w-20 border px-1 py-0.5 text-xs"
+                                    />
+                                    <span v-else>{{ v.duration_days }} jours</span>
+                                </td>
+                                <td class="p-2">
+                                    <span
+                                        class="rounded-wpx-sm px-2 py-0.5 text-xs font-semibold"
+                                        :class="statusClasses(v.status)"
+                                        >{{ v.status }}</span
+                                    >
+                                </td>
+                                <td class="p-2 text-right whitespace-nowrap">
+                                    <button
+                                        v-if="v.status === 'draft'"
+                                        class="text-wpx-blue-light mr-2 text-xs hover:underline disabled:opacity-50"
+                                        :disabled="busy"
+                                        @click="savePriceDraft(v)"
+                                    >
+                                        Enregistrer
+                                    </button>
+                                    <button
+                                        v-if="v.status === 'draft'"
+                                        class="text-wpx-success-light text-xs hover:underline disabled:opacity-50"
+                                        :disabled="busy"
+                                        @click="publishPrice(v)"
+                                    >
+                                        Publier
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
