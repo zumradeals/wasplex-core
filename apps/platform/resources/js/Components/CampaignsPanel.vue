@@ -7,6 +7,8 @@ import { TARGET_COUNTRIES } from '@/lib/countries';
 import CampaignPerformancePanel from '@/Components/CampaignPerformancePanel.vue';
 import CampaignPreviewPhone from '@/Components/CampaignPreviewPhone.vue';
 
+const emit = defineEmits<{ navigateWallet: [] }>();
+
 interface Brand {
     id: string;
     name: string;
@@ -63,7 +65,7 @@ interface CampaignVersion {
         economic_classes?: string[];
         profile_taxonomies?: string[];
     } | null;
-    budget_configuration: { budget_amount_minor?: number; duration_days?: number } | null;
+    budget_configuration: { budget_amount_minor?: number; daily_budget_minor?: number; duration_days?: number } | null;
     status: string;
     quotes?: Quote[];
 }
@@ -94,36 +96,24 @@ interface AdvertisingRules {
 
 const OBJECTIVES = CAMPAIGN_OBJECTIVES;
 
-const STEPS = ['Marque', 'Objectif', 'Contenu', 'Audience', 'Budget', 'Vérification', 'Soumission'] as const;
+const STEPS = ['Publicité', 'Audience', 'Budget', 'Envoi'] as const;
 
 const STEP_META = [
     {
-        title: 'Pour quelle marque est cette campagne ?',
-        subtitle: 'Les visuels et couleurs de cette marque seront proposés automatiquement.',
-    },
-    {
-        title: 'Quel est ton objectif ?',
-        subtitle: "C'est ce que les gens pourront faire en touchant ta publicité.",
-    },
-    {
-        title: 'Quel contenu veux-tu diffuser ?',
-        subtitle: 'Choisis un visuel de ta bibliothèque créative et donne un titre court à ta publicité.',
+        title: 'Prépare ta publicité',
+        subtitle: 'Choisis l’objectif, le média et le message associés à ta marque.',
     },
     {
         title: 'Qui veux-tu toucher ?',
-        subtitle: 'Choisis les profils qui verront ta publicité en priorité, et un pays si tu veux la limiter.',
+        subtitle: 'Choisis une audience large ou quelques critères facultatifs.',
     },
     {
-        title: 'Combien veux-tu dépenser ?',
-        subtitle: 'Ce montant sera réservé sur ton Wallet annonceur — 1 WP = 1 FCFA.',
+        title: 'Quel budget veux-tu investir ?',
+        subtitle: 'Définis un montant quotidien et une durée. Wasplex calcule automatiquement le total.',
     },
     {
-        title: 'Vérifie et confirme ton budget',
-        subtitle: 'Génère un devis détaillé, puis finance la campagne pour verrouiller le montant.',
-    },
-    {
-        title: 'Envoie ta campagne en revue',
-        subtitle: 'Un administrateur Wasplex vérifie chaque campagne avant sa diffusion dans le Feed.',
+        title: 'Vérifie et envoie',
+        subtitle: 'Wasplex finance et transmet la campagne à l’administration en une seule action.',
     },
 ] as const;
 
@@ -146,10 +136,10 @@ const loadError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
 const estimating = ref(false);
 const estimate = ref<{ estimated_min: number; estimated_max: number; too_small: boolean } | null>(null);
-const quoting = ref(false);
-const funding = ref(false);
-const submitting = ref(false);
+const sending = ref(false);
 const resubmitting = ref(false);
+const walletAvailableMinor = ref(0);
+const walletShortfallMinor = ref<number | null>(null);
 
 const form = reactive({
     brand_id: '',
@@ -159,8 +149,25 @@ const form = reactive({
     country_code: '',
     economic_classes: [] as string[],
     profile_taxonomies: [] as string[],
-    budget_amount_minor: null as number | null,
+    daily_budget_minor: 500,
     duration_days: 7,
+});
+
+const totalBudgetMinor = computed(
+    () => Math.max(0, Number(form.daily_budget_minor) || 0) * Math.max(0, Number(form.duration_days) || 0),
+);
+const canContinue = computed(() => {
+    if (step.value === 0) return Boolean(form.objective_code && form.asset_id);
+    if (step.value === 1) return form.economic_classes.length > 0;
+    if (step.value === 2) {
+        return (
+            form.daily_budget_minor >= advertisingRules.value.minimum_daily_budget_minor &&
+            form.duration_days >= advertisingRules.value.minimum_duration_days &&
+            form.duration_days <= advertisingRules.value.maximum_duration_days &&
+            totalBudgetMinor.value >= advertisingRules.value.minimum_budget_minor
+        );
+    }
+    return false;
 });
 
 const selectedCampaign = computed(() => campaigns.value.find((c) => c.id === selectedCampaignId.value) ?? null);
@@ -202,18 +209,20 @@ async function loadAll(): Promise<void> {
     loading.value = true;
     loadError.value = null;
     try {
-        const [campaignsRes, brandsRes, classesRes, criteriaRes, rulesRes] = await Promise.all([
+        const [campaignsRes, brandsRes, classesRes, criteriaRes, rulesRes, walletRes] = await Promise.all([
             http.get('/advertiser/campaigns'),
             http.get('/advertiser/brands'),
             http.get('/advertiser/economic-classes'),
             http.get('/advertiser/targeting/profile-criteria'),
             http.get('/advertiser/advertising-rules'),
+            http.get('/advertiser/wallet'),
         ]);
         campaigns.value = campaignsRes.data.campaigns;
         brands.value = brandsRes.data.brands;
         economicClasses.value = classesRes.data.economic_classes;
         profileCriteria.value = criteriaRes.data.profile_criteria;
         if (rulesRes.data.advertising_rules) advertisingRules.value = rulesRes.data.advertising_rules;
+        walletAvailableMinor.value = walletRes.data.wallet.available_minor;
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
         loadError.value = message ?? 'Les campagnes sont momentanément indisponibles.';
@@ -231,8 +240,13 @@ function hydrateFormFromCampaign(campaign: Campaign): void {
     form.country_code = version?.audience_configuration?.territory?.country_code ?? '';
     form.economic_classes = version?.audience_configuration?.economic_classes ?? [];
     form.profile_taxonomies = version?.audience_configuration?.profile_taxonomies ?? [];
-    form.budget_amount_minor = version?.budget_configuration?.budget_amount_minor ?? null;
     form.duration_days = version?.budget_configuration?.duration_days ?? advertisingRules.value.duration_days;
+    form.daily_budget_minor =
+        version?.budget_configuration?.daily_budget_minor ??
+        Math.max(
+            advertisingRules.value.minimum_daily_budget_minor,
+            Math.floor((version?.budget_configuration?.budget_amount_minor ?? 0) / Math.max(1, form.duration_days)),
+        );
     estimate.value = null;
 }
 
@@ -297,8 +311,12 @@ async function autosave(): Promise<void> {
                               : {}),
                       }
                     : undefined,
-            budget_configuration: form.budget_amount_minor
-                ? { budget_amount_minor: form.budget_amount_minor, duration_days: form.duration_days }
+            budget_configuration: form.daily_budget_minor
+                ? {
+                      daily_budget_minor: form.daily_budget_minor,
+                      duration_days: form.duration_days,
+                      budget_amount_minor: totalBudgetMinor.value,
+                  }
                 : undefined,
         });
         await refreshSelected();
@@ -317,7 +335,7 @@ watch(
         form.country_code,
         [...form.economic_classes],
         [...form.profile_taxonomies],
-        form.budget_amount_minor,
+        form.daily_budget_minor,
         form.duration_days,
     ],
     () => scheduleAutosave(),
@@ -334,9 +352,6 @@ function toggleClass(code: string): void {
 }
 
 function toggleProfileCriterion(code: string): void {
-    if (code.startsWith('demographic.gender.') && !form.profile_taxonomies.includes(code)) {
-        form.profile_taxonomies = form.profile_taxonomies.filter((item) => !item.startsWith('demographic.gender.'));
-    }
     const index = form.profile_taxonomies.indexOf(code);
     if (index === -1) form.profile_taxonomies.push(code);
     else form.profile_taxonomies.splice(index, 1);
@@ -361,57 +376,24 @@ async function runEstimate(): Promise<void> {
     }
 }
 
-async function runQuote(): Promise<void> {
+async function financeAndSubmit(): Promise<void> {
     if (!selectedCampaignId.value) {
         return;
     }
-    quoting.value = true;
+    sending.value = true;
     actionError.value = null;
+    walletShortfallMinor.value = null;
     try {
         await autosave();
-        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/quote`);
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/finance-and-submit`);
         await refreshSelected();
-        step.value = 5;
+        walletAvailableMinor.value = Math.max(0, walletAvailableMinor.value - totalBudgetMinor.value);
     } catch (e) {
-        actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Devis impossible.';
+        const data = (e as { response?: { data?: { message?: string; missing_minor?: number } } }).response?.data;
+        actionError.value = data?.message ?? 'La campagne ne peut pas encore être envoyée.';
+        walletShortfallMinor.value = data?.missing_minor ?? null;
     } finally {
-        quoting.value = false;
-    }
-}
-
-async function runFund(): Promise<void> {
-    if (!selectedCampaignId.value) {
-        return;
-    }
-    funding.value = true;
-    actionError.value = null;
-    try {
-        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/fund`);
-        await refreshSelected();
-        step.value = 6;
-    } catch (e) {
-        actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Financement impossible.';
-    } finally {
-        funding.value = false;
-    }
-}
-
-async function runSubmit(): Promise<void> {
-    if (!selectedCampaignId.value) {
-        return;
-    }
-    submitting.value = true;
-    actionError.value = null;
-    try {
-        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/submit`);
-        await refreshSelected();
-    } catch (e) {
-        actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Soumission impossible.';
-    } finally {
-        submitting.value = false;
+        sending.value = false;
     }
 }
 
@@ -539,8 +521,8 @@ void loadAll();
                             <p class="text-wpx-text-muted mt-1 text-xs">{{ STEP_META[step].subtitle }}</p>
                         </div>
 
-                        <!-- 1. Marque -->
-                        <div v-if="step === 0" class="flex flex-col gap-2">
+                        <!-- 1. Publicité -->
+                        <div v-if="step === 0" class="flex flex-col gap-5">
                             <div
                                 class="border-wpx-blue-light bg-wpx-blue-light/5 rounded-wpx-md flex max-w-xs items-center gap-3.5 border-[1.5px] p-3.5"
                             >
@@ -569,43 +551,26 @@ void loadAll();
                                     />
                                 </svg>
                             </div>
-                        </div>
-
-                        <!-- 2. Objectif -->
-                        <div v-else-if="step === 1" class="grid grid-cols-2 gap-2.5">
-                            <button
-                                v-for="(label, code) in OBJECTIVES"
-                                :key="code"
-                                type="button"
-                                class="rounded-wpx-md flex items-center justify-between border-[1.5px] p-3 text-left text-sm font-semibold"
-                                :class="
-                                    form.objective_code === code
-                                        ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text'
-                                        : 'border-wpx-border text-wpx-text'
-                                "
-                                @click="form.objective_code = code"
-                            >
-                                {{ label }}
-                                <svg
-                                    v-if="form.objective_code === code"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                >
-                                    <path
-                                        d="M5 13l4 4L19 7"
-                                        stroke="#075CCF"
-                                        stroke-width="2.2"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-
-                        <!-- 3. Contenu -->
-                        <div v-else-if="step === 2" class="flex flex-col gap-3">
+                            <div>
+                                <span class="text-wpx-text text-xs font-semibold">Objectif de la publicité</span>
+                                <div class="mt-2 grid grid-cols-2 gap-2.5">
+                                    <button
+                                        v-for="(label, code) in OBJECTIVES"
+                                        :key="code"
+                                        type="button"
+                                        class="rounded-wpx-md flex items-center justify-between border-[1.5px] p-3 text-left text-sm font-semibold"
+                                        :class="
+                                            form.objective_code === code
+                                                ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text'
+                                                : 'border-wpx-border text-wpx-text'
+                                        "
+                                        @click="form.objective_code = code"
+                                    >
+                                        {{ label }}
+                                        <span v-if="form.objective_code === code" class="text-wpx-blue-light">✓</span>
+                                    </button>
+                                </div>
+                            </div>
                             <label class="flex flex-col gap-1 text-xs">
                                 <span class="text-wpx-text font-semibold">Visuel à diffuser</span>
                                 <select
@@ -628,8 +593,8 @@ void loadAll();
                             </label>
                         </div>
 
-                        <!-- 4. Audience -->
-                        <div v-else-if="step === 3" class="flex flex-col gap-4">
+                        <!-- 2. Audience -->
+                        <div v-else-if="step === 1" class="flex flex-col gap-4">
                             <div>
                                 <span class="text-wpx-text text-xs font-semibold">Profils à toucher en priorité</span>
                                 <div class="mt-2 grid grid-cols-2 gap-2.5">
@@ -721,21 +686,29 @@ void loadAll();
                                 Estimer l'audience
                             </button>
                             <p v-if="estimate" class="text-wpx-text text-sm">
-                                Audience estimée :
-                                <strong>{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong> comptes.
-                                <span v-if="estimate.too_small" class="text-wpx-danger-light">Segment trop petit.</span>
+                                <template v-if="estimate.too_small">
+                                    <strong>Audience encore limitée.</strong> La diffusion progressera à mesure que de
+                                    nouveaux utilisateurs éligibles rejoignent Wasplex. Aucun budget n’est débité sans
+                                    vue complète.
+                                </template>
+                                <template v-else>
+                                    Audience estimée :
+                                    <strong>{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong>
+                                    comptes.
+                                </template>
                             </p>
                         </div>
 
-                        <!-- 5. Budget -->
-                        <div v-else-if="step === 4" class="flex flex-col gap-3">
+                        <!-- 3. Budget -->
+                        <div v-else-if="step === 2" class="flex flex-col gap-4">
                             <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Budget total à réserver (FCFA)</span>
+                                <span class="text-wpx-text font-semibold">Budget quotidien (FCFA)</span>
                                 <input
-                                    v-model.number="form.budget_amount_minor"
+                                    v-model.number="form.daily_budget_minor"
                                     type="number"
-                                    min="1"
-                                    placeholder="Ex. 10000"
+                                    :min="advertisingRules.minimum_daily_budget_minor"
+                                    step="100"
+                                    placeholder="Ex. 2000"
                                     class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
                                 />
                             </label>
@@ -749,57 +722,26 @@ void loadAll();
                                     class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
                                 />
                             </label>
+                            <div class="rounded-wpx-md bg-wpx-canvas border-wpx-border max-w-md border p-4">
+                                <p class="text-wpx-text-muted text-xs">Budget total de la campagne</p>
+                                <p class="text-wpx-text mt-1 text-xl font-bold">
+                                    {{ form.daily_budget_minor }} FCFA × {{ form.duration_days }} jours =
+                                    {{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA
+                                </p>
+                                <p class="text-wpx-text-muted mt-2 text-xs">
+                                    Solde disponible : {{ walletAvailableMinor.toLocaleString('fr-FR') }} WP
+                                </p>
+                            </div>
                             <p class="text-wpx-text-muted text-xs">
                                 Tu choisis librement entre {{ advertisingRules.minimum_duration_days }} et
-                                {{ advertisingRules.maximum_duration_days }} jours. Budget total minimum :
-                                {{ advertisingRules.minimum_budget_minor }} FCFA, avec au moins
-                                {{ advertisingRules.minimum_daily_budget_minor }} FCFA par jour.
+                                {{ advertisingRules.maximum_duration_days }} jours, avec au moins
+                                {{ advertisingRules.minimum_daily_budget_minor }} FCFA par jour et
+                                {{ advertisingRules.minimum_budget_minor }} FCFA au total.
                             </p>
                         </div>
 
-                        <!-- 6. Vérification -->
-                        <div v-else-if="step === 5" class="flex flex-col gap-3 text-sm">
-                            <button
-                                type="button"
-                                class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
-                                :disabled="quoting"
-                                @click="runQuote"
-                            >
-                                Générer le devis
-                            </button>
-                            <div v-if="latestQuote" class="rounded-wpx-sm bg-wpx-canvas flex flex-col gap-1 p-3">
-                                <p>
-                                    Budget : <strong>{{ latestQuote.gross_amount_minor }} FCFA</strong>
-                                </p>
-                                <p>
-                                    Diffusion : <strong>{{ form.duration_days }} jours</strong>
-                                </p>
-                                <p>
-                                    Événements estimés : <strong>{{ latestQuote.estimated_events }}</strong>
-                                </p>
-                                <p>
-                                    Portée estimée :
-                                    <strong
-                                        >{{ latestQuote.estimated_reach_min }} –
-                                        {{ latestQuote.estimated_reach_max }}</strong
-                                    >
-                                </p>
-                                <p class="text-wpx-text-muted text-xs">
-                                    Expire le {{ new Date(latestQuote.expires_at).toLocaleString() }}
-                                </p>
-                                <button
-                                    type="button"
-                                    class="rounded-wpx-sm bg-wpx-navy-950 mt-2 self-start px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
-                                    :disabled="funding"
-                                    @click="runFund"
-                                >
-                                    Financer la campagne
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 7. Soumission -->
-                        <div v-else-if="step === 6" class="flex flex-col gap-3 text-sm">
+                        <!-- 4. Financement et envoi -->
+                        <div v-else-if="step === 3" class="flex flex-col gap-3 text-sm">
                             <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-success-light">
                                 Campagne soumise — en attente de revue administrative.
                             </p>
@@ -837,14 +779,43 @@ void loadAll();
                                 </button>
                             </template>
                             <template v-else>
-                                <p class="text-wpx-text-muted">Budget réservé. Prête à être soumise pour revue.</p>
+                                <div
+                                    class="rounded-wpx-md bg-wpx-canvas border-wpx-border grid gap-2 border p-4 sm:grid-cols-2"
+                                >
+                                    <p>
+                                        Durée : <strong>{{ form.duration_days }} jours</strong>
+                                    </p>
+                                    <p>
+                                        Par jour :
+                                        <strong>{{ form.daily_budget_minor.toLocaleString('fr-FR') }} FCFA</strong>
+                                    </p>
+                                    <p>
+                                        Budget total :
+                                        <strong>{{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA</strong>
+                                    </p>
+                                    <p>
+                                        Wallet : <strong>{{ walletAvailableMinor.toLocaleString('fr-FR') }} WP</strong>
+                                    </p>
+                                </div>
+                                <p class="text-wpx-text-muted text-xs">
+                                    En continuant, Wasplex réserve le budget et transmet immédiatement la campagne à
+                                    l’administration. Aucun débit publicitaire n’a lieu sans vue complète.
+                                </p>
                                 <button
                                     type="button"
                                     class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
-                                    :disabled="submitting || selectedCampaign.status !== 'funded'"
-                                    @click="runSubmit"
+                                    :disabled="sending || totalBudgetMinor < advertisingRules.minimum_budget_minor"
+                                    @click="financeAndSubmit"
                                 >
-                                    Soumettre la campagne
+                                    {{ sending ? 'Envoi en cours…' : 'Financer et envoyer à Wasplex' }}
+                                </button>
+                                <button
+                                    v-if="walletShortfallMinor !== null"
+                                    type="button"
+                                    class="text-wpx-blue-light self-start text-sm font-bold"
+                                    @click="emit('navigateWallet')"
+                                >
+                                    Ajouter {{ walletShortfallMinor.toLocaleString('fr-FR') }} FCFA au Wallet →
                                 </button>
                             </template>
                         </div>
@@ -867,7 +838,7 @@ void loadAll();
                             <button
                                 type="button"
                                 class="rounded-wpx-md bg-wpx-blue-light px-6 py-2 text-xs font-bold text-white disabled:opacity-30"
-                                :disabled="step === STEPS.length - 1"
+                                :disabled="step === STEPS.length - 1 || !canContinue"
                                 @click="step++"
                             >
                                 Suivant →

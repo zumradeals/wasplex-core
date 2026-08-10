@@ -27,11 +27,15 @@ final class CampaignQuoteService
         $budget = $version->budget_configuration ?? [];
         $classCodes = $audience['economic_classes'] ?? [];
         $countryCode = $audience['territory']['country_code'] ?? null;
-        $grossAmountMinor = (int) ($budget['budget_amount_minor'] ?? 0);
+        $dailyBudgetMinor = (int) ($budget['daily_budget_minor'] ?? 0);
+        $configuredDurationDays = (int) ($budget['duration_days'] ?? 0);
+        $grossAmountMinor = $dailyBudgetMinor > 0 && $configuredDurationDays > 0
+            ? $dailyBudgetMinor * $configuredDurationDays
+            : (int) ($budget['budget_amount_minor'] ?? 0);
 
         if ($classCodes === [] || $grossAmountMinor <= 0) {
             throw new InvalidCampaignConfigurationException(
-                "L'audience (au moins une classe) et un budget positif sont requis avant de générer un devis."
+                "Choisissez au moins un profil d’abonnement, un budget quotidien et une durée."
             );
         }
 
@@ -48,6 +52,7 @@ final class CampaignQuoteService
         // with the published default; new drafts persist the advertiser's
         // explicit choice in budget_configuration.
         $durationDays = (int) ($budget['duration_days'] ?? $priceVersion->duration_days);
+        $dailyBudgetMinor = $dailyBudgetMinor > 0 ? $dailyBudgetMinor : intdiv($grossAmountMinor, $durationDays);
 
         if ($grossAmountMinor < $priceVersion->minimum_budget_minor) {
             throw new InvalidCampaignConfigurationException(
@@ -61,7 +66,7 @@ final class CampaignQuoteService
             );
         }
 
-        if (intdiv($grossAmountMinor, $durationDays) < $priceVersion->minimum_daily_budget_minor) {
+        if ($dailyBudgetMinor < $priceVersion->minimum_daily_budget_minor) {
             throw new InvalidCampaignConfigurationException(
                 "Prévoyez au moins {$priceVersion->minimum_daily_budget_minor} FCFA par jour de diffusion."
             );
@@ -69,10 +74,6 @@ final class CampaignQuoteService
 
         $minimumSegmentSize = (int) config('campaigns.minimum_segment_size');
         $estimate = $this->economicClasses->estimateAudience($classCodes, $countryCode, $minimumSegmentSize);
-
-        if ($estimate->tooSmall) {
-            throw new SegmentTooSmallException($estimate->total(), $minimumSegmentSize);
-        }
 
         $classes = collect($this->economicClasses->listActive())
             ->filter(fn ($summary) => in_array($summary->code, $classCodes, true))
@@ -114,7 +115,15 @@ final class CampaignQuoteService
                 'status' => CampaignQuote::STATUS_ACTIVE,
             ]);
 
-            $version->update(['price_version_id' => $priceVersion->id, 'status' => CampaignVersion::STATUS_QUOTED]);
+            $budgetConfiguration = $version->budget_configuration ?? [];
+            $budgetConfiguration['daily_budget_minor'] = intdiv($grossAmountMinor, max(1, (int) ($budgetConfiguration['duration_days'] ?? $priceVersion->duration_days)));
+            $budgetConfiguration['budget_amount_minor'] = $grossAmountMinor;
+
+            $version->update([
+                'price_version_id' => $priceVersion->id,
+                'budget_configuration' => $budgetConfiguration,
+                'status' => CampaignVersion::STATUS_QUOTED,
+            ]);
             $version->campaign()->update(['status' => Campaign::STATUS_QUOTED]);
 
             return $quote;

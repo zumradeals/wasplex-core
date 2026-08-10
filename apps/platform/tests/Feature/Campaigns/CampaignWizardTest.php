@@ -60,7 +60,9 @@ function publishPriceCatalog(int $basePriceMinorPerEvent = 500, string $imageMul
 {
     Artisan::call('campaigns:seed-price-catalog');
 
-    $version = AdvertisingPriceVersion::query()->where('status', AdvertisingPriceVersion::STATUS_DRAFT)->firstOrFail();
+    $version = AdvertisingPriceVersion::query()
+        ->whereIn('status', [AdvertisingPriceVersion::STATUS_DRAFT, AdvertisingPriceVersion::STATUS_PUBLISHED])
+        ->firstOrFail();
     $version->update([
         'base_price_minor_per_event' => $basePriceMinorPerEvent,
         'image_multiplier' => $imageMultiplier,
@@ -117,6 +119,19 @@ it('autosaves objective, audience and budget configuration', function (): void {
 
     expect($version['audience_configuration'])->toBe(['economic_classes' => ['GOLD'], 'profile_taxonomies' => ['interest.formation']]);
     expect($version['budget_configuration'])->toBe(['budget_amount_minor' => 100000]);
+});
+
+it('allows an advertiser to target both women and men', function (): void {
+    registerAndLogin('campaign-both-genders@example.com');
+    $brandId = createBrandForCampaignTests();
+    $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
+
+    test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
+        'audience_configuration' => [
+            'economic_classes' => ['GOLD'],
+            'profile_taxonomies' => ['demographic.gender.woman', 'demographic.gender.man'],
+        ],
+    ])->assertOk();
 });
 
 it('rejects an unknown objective code', function (): void {
