@@ -9,6 +9,7 @@ use App\Modules\Campaigns\Infrastructure\Models\AdvertisingPriceVersion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\ValidationException;
 
 /**
  * docs/05 §30. Only the price catalog is administered here — campaign
@@ -33,8 +34,13 @@ final class PricingController extends Controller
             'catalog_code' => ['required', 'string', 'max:64'],
             'currency' => ['required', 'string', 'size:3'],
             'minimum_budget_minor' => ['required', 'integer', 'min:1'],
+            'minimum_daily_budget_minor' => ['required', 'integer', 'min:1'],
+            'minimum_duration_days' => ['required', 'integer', 'min:1', 'max:365'],
+            'maximum_duration_days' => ['required', 'integer', 'min:1', 'max:365'],
             'duration_days' => ['required', 'integer', 'min:1', 'max:365'],
         ]);
+
+        $this->validateDurations($data);
 
         $catalog = AdvertisingPriceCatalog::query()->firstOrCreate(['code' => $data['catalog_code']]);
 
@@ -46,6 +52,9 @@ final class PricingController extends Controller
             'image_multiplier' => 1,
             'video_multiplier' => 1,
             'minimum_budget_minor' => $data['minimum_budget_minor'],
+            'minimum_daily_budget_minor' => $data['minimum_daily_budget_minor'],
+            'minimum_duration_days' => $data['minimum_duration_days'],
+            'maximum_duration_days' => $data['maximum_duration_days'],
             'duration_days' => $data['duration_days'],
         ]);
 
@@ -62,8 +71,15 @@ final class PricingController extends Controller
 
         $data = $request->validate([
             'minimum_budget_minor' => ['sometimes', 'integer', 'min:1'],
+            'minimum_daily_budget_minor' => ['sometimes', 'integer', 'min:1'],
+            'minimum_duration_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
+            'maximum_duration_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'duration_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
         ]);
+
+        $this->validateDurations(array_merge($version->only([
+            'minimum_duration_days', 'maximum_duration_days', 'duration_days',
+        ]), $data));
 
         $version->update($data);
 
@@ -86,5 +102,19 @@ final class PricingController extends Controller
         ]);
 
         return response()->json(['price_version' => $version->refresh()]);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function validateDurations(array $data): void
+    {
+        $minimum = (int) $data['minimum_duration_days'];
+        $maximum = (int) $data['maximum_duration_days'];
+        $default = (int) $data['duration_days'];
+
+        if ($minimum > $maximum || $default < $minimum || $default > $maximum) {
+            throw ValidationException::withMessages([
+                'duration_days' => 'La durée proposée doit être comprise entre la durée minimale et maximale.',
+            ]);
+        }
     }
 }
