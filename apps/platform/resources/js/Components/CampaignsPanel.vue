@@ -46,7 +46,13 @@ interface Quote {
     class_breakdown: Record<string, QuoteClassBreakdown>;
     expires_at: string;
     status: string;
-    price_version?: { duration_days: number; minimum_budget_minor: number };
+    price_version?: {
+        duration_days: number;
+        minimum_budget_minor: number;
+        minimum_daily_budget_minor: number;
+        minimum_duration_days: number;
+        maximum_duration_days: number;
+    };
 }
 
 interface CampaignVersion {
@@ -57,7 +63,7 @@ interface CampaignVersion {
         economic_classes?: string[];
         profile_taxonomies?: string[];
     } | null;
-    budget_configuration: { budget_amount_minor?: number } | null;
+    budget_configuration: { budget_amount_minor?: number; duration_days?: number } | null;
     status: string;
     quotes?: Quote[];
 }
@@ -76,6 +82,14 @@ interface Campaign {
     status: string;
     versions: CampaignVersion[];
     review_cases?: ReviewCase[];
+}
+
+interface AdvertisingRules {
+    minimum_budget_minor: number;
+    minimum_daily_budget_minor: number;
+    minimum_duration_days: number;
+    maximum_duration_days: number;
+    duration_days: number;
 }
 
 const OBJECTIVES = CAMPAIGN_OBJECTIVES;
@@ -118,6 +132,13 @@ const brands = ref<Brand[]>([]);
 const assets = ref<Asset[]>([]);
 const economicClasses = ref<EconomicClass[]>([]);
 const profileCriteria = ref<Record<string, ProfileCriterion[]>>({});
+const advertisingRules = ref<AdvertisingRules>({
+    minimum_budget_minor: 2000,
+    minimum_daily_budget_minor: 500,
+    minimum_duration_days: 1,
+    maximum_duration_days: 30,
+    duration_days: 7,
+});
 const selectedCampaignId = ref<string | null>(null);
 const step = ref(0);
 const loading = ref(true);
@@ -139,6 +160,7 @@ const form = reactive({
     economic_classes: [] as string[],
     profile_taxonomies: [] as string[],
     budget_amount_minor: null as number | null,
+    duration_days: 7,
 });
 
 const selectedCampaign = computed(() => campaigns.value.find((c) => c.id === selectedCampaignId.value) ?? null);
@@ -180,16 +202,18 @@ async function loadAll(): Promise<void> {
     loading.value = true;
     loadError.value = null;
     try {
-        const [campaignsRes, brandsRes, classesRes, criteriaRes] = await Promise.all([
+        const [campaignsRes, brandsRes, classesRes, criteriaRes, rulesRes] = await Promise.all([
             http.get('/advertiser/campaigns'),
             http.get('/advertiser/brands'),
             http.get('/advertiser/economic-classes'),
             http.get('/advertiser/targeting/profile-criteria'),
+            http.get('/advertiser/advertising-rules'),
         ]);
         campaigns.value = campaignsRes.data.campaigns;
         brands.value = brandsRes.data.brands;
         economicClasses.value = classesRes.data.economic_classes;
         profileCriteria.value = criteriaRes.data.profile_criteria;
+        if (rulesRes.data.advertising_rules) advertisingRules.value = rulesRes.data.advertising_rules;
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
         loadError.value = message ?? 'Les campagnes sont momentanément indisponibles.';
@@ -208,6 +232,7 @@ function hydrateFormFromCampaign(campaign: Campaign): void {
     form.economic_classes = version?.audience_configuration?.economic_classes ?? [];
     form.profile_taxonomies = version?.audience_configuration?.profile_taxonomies ?? [];
     form.budget_amount_minor = version?.budget_configuration?.budget_amount_minor ?? null;
+    form.duration_days = version?.budget_configuration?.duration_days ?? advertisingRules.value.duration_days;
     estimate.value = null;
 }
 
@@ -273,7 +298,7 @@ async function autosave(): Promise<void> {
                       }
                     : undefined,
             budget_configuration: form.budget_amount_minor
-                ? { budget_amount_minor: form.budget_amount_minor }
+                ? { budget_amount_minor: form.budget_amount_minor, duration_days: form.duration_days }
                 : undefined,
         });
         await refreshSelected();
@@ -293,6 +318,7 @@ watch(
         [...form.economic_classes],
         [...form.profile_taxonomies],
         form.budget_amount_minor,
+        form.duration_days,
     ],
     () => scheduleAutosave(),
 );
@@ -713,6 +739,22 @@ void loadAll();
                                     class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
                                 />
                             </label>
+                            <label class="flex flex-col gap-1 text-xs">
+                                <span class="text-wpx-text font-semibold">Nombre de jours de diffusion</span>
+                                <input
+                                    v-model.number="form.duration_days"
+                                    type="number"
+                                    :min="advertisingRules.minimum_duration_days"
+                                    :max="advertisingRules.maximum_duration_days"
+                                    class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
+                                />
+                            </label>
+                            <p class="text-wpx-text-muted text-xs">
+                                Tu choisis librement entre {{ advertisingRules.minimum_duration_days }} et
+                                {{ advertisingRules.maximum_duration_days }} jours. Budget total minimum :
+                                {{ advertisingRules.minimum_budget_minor }} FCFA, avec au moins
+                                {{ advertisingRules.minimum_daily_budget_minor }} FCFA par jour.
+                            </p>
                         </div>
 
                         <!-- 6. Vérification -->
@@ -730,8 +772,7 @@ void loadAll();
                                     Budget : <strong>{{ latestQuote.gross_amount_minor }} FCFA</strong>
                                 </p>
                                 <p>
-                                    Diffusion :
-                                    <strong>{{ latestQuote.price_version?.duration_days ?? 7 }} jours</strong>
+                                    Diffusion : <strong>{{ form.duration_days }} jours</strong>
                                 </p>
                                 <p>
                                     Événements estimés : <strong>{{ latestQuote.estimated_events }}</strong>
