@@ -49,7 +49,7 @@ function creditAdvertiserWalletForTests(string $organizationId, int $amountMinor
     ));
 }
 
-function setUpQuotableCampaign(string $email, int $budgetAmountMinor = 100000): array
+function setUpQuotableCampaign(string $email, int $budgetAmountMinor = 100000, int $durationDays = 7): array
 {
     createActiveSubscriberInClass('GOLD', 'CI');
     createActiveSubscriberInClass('GOLD', 'CI');
@@ -65,11 +65,30 @@ function setUpQuotableCampaign(string $email, int $budgetAmountMinor = 100000): 
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
         'audience_configuration' => ['economic_classes' => ['GOLD', 'PLATINUM'], 'territory' => ['country_code' => 'CI']],
-        'budget_configuration' => ['budget_amount_minor' => $budgetAmountMinor],
+        'budget_configuration' => ['budget_amount_minor' => $budgetAmountMinor, 'duration_days' => $durationDays],
     ])->assertOk();
 
     return ['organization_id' => $organizationId, 'campaign_id' => $campaignId];
 }
+
+it('lets the advertiser choose a two-day campaign', function (): void {
+    publishPriceCatalog();
+    ['campaign_id' => $campaignId] = setUpQuotableCampaign('campaign-duration-2-days@example.com', 2000, 2);
+
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")->assertOk();
+
+    $quote = CampaignQuote::query()->latest('created_at')->firstOrFail();
+    expect($quote->campaignVersion->budget_configuration['duration_days'])->toBe(2);
+});
+
+it('refuses a campaign below the minimum daily budget', function (): void {
+    publishPriceCatalog();
+    ['campaign_id' => $campaignId] = setUpQuotableCampaign('campaign-daily-minimum@example.com', 2000, 5);
+
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Prévoyez au moins 500 FCFA par jour de diffusion.');
+});
 
 it('blocks quoting without a published price catalog', function (): void {
     ['campaign_id' => $campaignId] = setUpQuotableCampaign('campaign-quote-1@example.com');

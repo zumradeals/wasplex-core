@@ -69,7 +69,9 @@ final class CampaignReviewService
                 'actor_account_id' => $actorAccountId,
             ]);
 
-            $durationDays = (int) ($case->campaignVersion->latestQuote()?->priceVersion?->duration_days ?? 7);
+            $durationDays = (int) ($case->campaignVersion->budget_configuration['duration_days']
+                ?? $case->campaignVersion->latestQuote()?->priceVersion?->duration_days
+                ?? 7);
             $start = Carbon::today('UTC');
             $case->campaign->update([
                 'status' => Campaign::STATUS_APPROVED,

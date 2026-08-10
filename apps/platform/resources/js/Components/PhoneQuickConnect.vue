@@ -114,7 +114,7 @@ async function submit(): Promise<void> {
         </div>
 
         <form class="flex flex-col gap-3.5" @submit.prevent="submit">
-            <div v-if="mode === 'login'" class="border-wpx-border-dark grid grid-cols-2 rounded-wpx-md border p-1">
+            <div v-if="mode === 'login'" class="border-wpx-border-dark rounded-wpx-md grid grid-cols-2 border p-1">
                 <button
                     type="button"
                     class="rounded-wpx-sm py-2 text-xs font-semibold transition"

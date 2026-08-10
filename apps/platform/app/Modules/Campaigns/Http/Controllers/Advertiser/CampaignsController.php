@@ -13,6 +13,7 @@ use App\Modules\Campaigns\Application\Services\InvalidCampaignStateException;
 use App\Modules\Campaigns\Application\Services\NoPublishedPriceCatalogException;
 use App\Modules\Campaigns\Application\Services\QuoteExpiredException;
 use App\Modules\Campaigns\Application\Services\SegmentTooSmallException;
+use App\Modules\Campaigns\Infrastructure\Models\AdvertisingPriceVersion;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,22 @@ final class CampaignsController extends Controller
         $organizationId = $request->attributes->get('advertiser_organization_id');
 
         return response()->json(['campaigns' => $this->campaigns->list($organizationId)]);
+    }
+
+    public function advertisingRules(): JsonResponse
+    {
+        $rules = AdvertisingPriceVersion::query()
+            ->where('status', AdvertisingPriceVersion::STATUS_PUBLISHED)
+            ->latest('published_at')
+            ->first();
+
+        return response()->json(['advertising_rules' => $rules?->only([
+            'minimum_budget_minor',
+            'minimum_daily_budget_minor',
+            'minimum_duration_days',
+            'maximum_duration_days',
+            'duration_days',
+        ])]);
     }
 
     public function store(Request $request): JsonResponse

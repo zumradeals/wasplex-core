@@ -22,6 +22,8 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
         Route::get('/targeting/profile-criteria', [TargetingController::class, 'profileCriteria'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+        Route::get('/advertising-rules', [CampaignsController::class, 'advertisingRules'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
 
         Route::get('/campaigns', [CampaignsController::class, 'index'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
