@@ -77,7 +77,7 @@ final class CampaignReportingService implements CampaignsReportingContract
         return new CampaignsBudgetSummary(
             activeCampaigns: $active,
             totalReservedMinor: $totalReserved,
-            totalCapturedMinor: (int) ($consumptionSums[CampaignEnvelopeConsumption::STATUS_CAPTURED] ?? 0),
+            totalCapturedMinor: ((int) ($consumptionSums[CampaignEnvelopeConsumption::STATUS_CAPTURED] ?? 0)) * 2,
             totalReleasedMinor: (int) ($consumptionSums[CampaignEnvelopeConsumption::STATUS_RELEASED] ?? 0),
         );
     }
@@ -124,7 +124,7 @@ final class CampaignReportingService implements CampaignsReportingContract
             status: $campaign->status,
             budgetAmountMinor: $targetBudgetMinor,
             budgetReservedMinor: $reservedBudgetMinor,
-            budgetCapturedMinor: (int) ($byStatus[CampaignEnvelopeConsumption::STATUS_CAPTURED] ?? 0),
+            budgetCapturedMinor: ((int) ($byStatus[CampaignEnvelopeConsumption::STATUS_CAPTURED] ?? 0)) * 2,
             budgetReleasedMinor: (int) ($byStatus[CampaignEnvelopeConsumption::STATUS_RELEASED] ?? 0),
             feed: $this->feedStats->statsForCampaign($campaign->id),
         );

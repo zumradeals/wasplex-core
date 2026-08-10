@@ -10,6 +10,7 @@ use App\Modules\Campaigns\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewCase;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewEvent;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -68,7 +69,13 @@ final class CampaignReviewService
                 'actor_account_id' => $actorAccountId,
             ]);
 
-            $case->campaign->update(['status' => Campaign::STATUS_APPROVED]);
+            $durationDays = (int) ($case->campaignVersion->latestQuote()?->priceVersion?->duration_days ?? 7);
+            $start = Carbon::today('UTC');
+            $case->campaign->update([
+                'status' => Campaign::STATUS_APPROVED,
+                'scheduled_start' => $start,
+                'scheduled_end' => $start->clone()->addDays($durationDays - 1),
+            ]);
 
             return $case->refresh();
         });

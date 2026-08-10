@@ -8,7 +8,6 @@ final class EconomicClassSummary
 {
     public function __construct(
         public readonly string $code,
-        public readonly float $weightPercent,
-        public readonly float $coefficient,
+        public readonly int $rewardPerCompleteViewMinor,
     ) {}
 }

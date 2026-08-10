@@ -75,7 +75,7 @@ final class CampaignService
     {
         $campaign = Campaign::query()
             ->where('organization_id', $organizationId)
-            ->with(['versions.quotes', 'reviewCases' => fn ($query) => $query->orderByDesc('opened_at')])
+            ->with(['versions.quotes.priceVersion', 'reviewCases' => fn ($query) => $query->orderByDesc('opened_at')])
             ->find($campaignId);
 
         if ($campaign === null) {

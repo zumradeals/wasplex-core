@@ -36,14 +36,14 @@ it('lets an admin create, edit and publish a price catalog version', function ()
     $versionId = test()->postJson('/api/admin/advertising/pricing', [
         'catalog_code' => 'standard',
         'currency' => 'XOF',
-        'base_price_minor_per_event' => 0,
-        'image_multiplier' => 1.0,
-        'video_multiplier' => 1.2,
+        'minimum_budget_minor' => 5000,
+        'duration_days' => 7,
     ])->assertCreated()->assertJsonPath('price_version.status', 'draft')->json('price_version.id');
 
-    test()->patchJson("/api/admin/advertising/pricing/{$versionId}", ['base_price_minor_per_event' => 500])
+    test()->patchJson("/api/admin/advertising/pricing/{$versionId}", ['minimum_budget_minor' => 10000, 'duration_days' => 15])
         ->assertOk()
-        ->assertJsonPath('price_version.base_price_minor_per_event', 500);
+        ->assertJsonPath('price_version.minimum_budget_minor', 10000)
+        ->assertJsonPath('price_version.duration_days', 15);
 
     test()->postJson("/api/admin/advertising/pricing/{$versionId}/publish")
         ->assertOk()
@@ -58,13 +58,12 @@ it('refuses to edit a price version that is no longer draft', function (): void 
     $versionId = test()->postJson('/api/admin/advertising/pricing', [
         'catalog_code' => 'standard',
         'currency' => 'XOF',
-        'base_price_minor_per_event' => 500,
-        'image_multiplier' => 1.0,
-        'video_multiplier' => 1.2,
+        'minimum_budget_minor' => 5000,
+        'duration_days' => 7,
     ])->assertCreated()->json('price_version.id');
 
     test()->postJson("/api/admin/advertising/pricing/{$versionId}/publish")->assertOk();
 
-    test()->patchJson("/api/admin/advertising/pricing/{$versionId}", ['base_price_minor_per_event' => 999])
+    test()->patchJson("/api/admin/advertising/pricing/{$versionId}", ['minimum_budget_minor' => 9999])
         ->assertStatus(409);
 });

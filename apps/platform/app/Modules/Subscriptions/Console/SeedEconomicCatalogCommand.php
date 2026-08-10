@@ -33,12 +33,12 @@ final class SeedEconomicCatalogCommand extends Command
 
     protected $description = 'Initialise les classes économiques et les plans commerciaux (idempotent).';
 
-    /** @var array<int, array{code: string, name: string, quota: int, weight: string, coefficient: string}> */
+    /** @var array<int, array{code: string, name: string, quota: int, reward: int}> */
     private const CLASSES = [
-        ['code' => EconomicClass::CODE_FREE, 'name' => 'Gratuit', 'quota' => 120, 'weight' => '10.00', 'coefficient' => '1.0000'],
-        ['code' => EconomicClass::CODE_PREMIUM, 'name' => 'Premium', 'quota' => 300, 'weight' => '20.00', 'coefficient' => '1.1500'],
-        ['code' => EconomicClass::CODE_GOLD, 'name' => 'Gold', 'quota' => 600, 'weight' => '35.00', 'coefficient' => '1.3500'],
-        ['code' => EconomicClass::CODE_PLATINUM, 'name' => 'Platine', 'quota' => 900, 'weight' => '35.00', 'coefficient' => '1.6000'],
+        ['code' => EconomicClass::CODE_FREE, 'name' => 'Gratuit', 'quota' => 120, 'reward' => 30],
+        ['code' => EconomicClass::CODE_PREMIUM, 'name' => 'Premium', 'quota' => 300, 'reward' => 40],
+        ['code' => EconomicClass::CODE_GOLD, 'name' => 'Gold', 'quota' => 600, 'reward' => 50],
+        ['code' => EconomicClass::CODE_PLATINUM, 'name' => 'Platine', 'quota' => 900, 'reward' => 60],
     ];
 
     public function handle(): int
@@ -58,8 +58,11 @@ final class SeedEconomicCatalogCommand extends Command
                 EconomicClassVersion::query()->create([
                     'economic_class_id' => $economicClass->id,
                     'quota_monthly' => $definition['quota'],
-                    'weight_percent' => $definition['weight'],
-                    'coefficient' => $definition['coefficient'],
+                    // Colonnes historiques conservées le temps d'une migration
+                    // destructive ultérieure ; elles ne participent plus à aucun calcul.
+                    'weight_percent' => '0.00',
+                    'coefficient' => '1.0000',
+                    'reward_per_complete_view_minor' => $definition['reward'],
                     'currency' => 'XOF',
                     'effective_from' => now(),
                 ]);

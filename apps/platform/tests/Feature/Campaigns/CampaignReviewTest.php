@@ -168,7 +168,10 @@ it('approves a campaign and keeps the reservation reserved', function (): void {
         ->assertOk()
         ->assertJsonPath('review_case.decision', 'approved');
 
-    expect(Campaign::query()->findOrFail($campaignId)->status)->toBe(Campaign::STATUS_APPROVED);
+    $approved = Campaign::query()->findOrFail($campaignId);
+    expect($approved->status)->toBe(Campaign::STATUS_APPROVED);
+    expect($approved->scheduled_start->toDateString())->toBe(now('UTC')->toDateString());
+    expect($approved->scheduled_end->toDateString())->toBe(now('UTC')->addDays(6)->toDateString());
     expect(app(ApprovedCampaignAudienceContract::class)->find($campaignId))->not->toBeNull();
     expect(CampaignBudgetReservation::query()->where('campaign_id', $campaignId)->first()->status)
         ->toBe(CampaignBudgetReservation::STATUS_RESERVED);

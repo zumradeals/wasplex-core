@@ -61,13 +61,14 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
             // with an aggregate (count()) anyway.
             CampaignQuote::query()->whereKey($quote->id)->lockForUpdate()->first();
 
-            $consumed = CampaignEnvelopeConsumption::query()
+            $committedReward = (int) CampaignEnvelopeConsumption::query()
                 ->where('campaign_quote_id', $quote->id)
-                ->where('economic_class', $economicClass)
                 ->whereIn('status', [CampaignEnvelopeConsumption::STATUS_RESERVED, CampaignEnvelopeConsumption::STATUS_CAPTURED])
-                ->count();
+                ->sum('gain_minor');
 
-            if ($consumed >= (int) $classBreakdown['events']) {
+            $gainMinor = (int) $classBreakdown['gain_unitaire_minor'];
+
+            if ($committedReward + $gainMinor > intdiv($quote->gross_amount_minor, 2)) {
                 throw new CampaignEnvelopeExhaustedException;
             }
 
@@ -77,7 +78,7 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
                 'campaign_quote_id' => $quote->id,
                 'economic_class' => $economicClass,
                 'status' => CampaignEnvelopeConsumption::STATUS_RESERVED,
-                'gain_minor' => (int) $classBreakdown['gain_unitaire_minor'],
+                'gain_minor' => $gainMinor,
                 'reserved_at' => $now,
                 'expires_at' => $now->clone()->addSeconds((int) config('campaigns.envelope_reservation_ttl_seconds')),
                 'idempotency_key' => $idempotencyKey,

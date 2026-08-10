@@ -47,6 +47,4 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
             ->middleware(EnsureCapability::class.':admin.subscriptions.classes.manage');
         Route::patch('/economic-classes/{economicClass}', [EconomicClassesController::class, 'update'])
             ->middleware(EnsureCapability::class.':admin.subscriptions.classes.manage');
-        Route::post('/economic-classes/validate-weights', [EconomicClassesController::class, 'validateWeights'])
-            ->middleware(EnsureCapability::class.':admin.subscriptions.classes.manage');
     });

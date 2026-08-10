@@ -12,11 +12,10 @@ use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract
 use Illuminate\Support\Facades\DB;
 
 /**
- * docs/05-modele-economique-publicitaire-wasplex.md §4-19 : partage
- * 50/50, répartition normalisée par classe, gain unitaire, reliquat
- * conservé, arrondis exacts (1 WP = 1 FCFA, jamais de fraction cachée).
- * docs/chantiers/P006-CHANTIER.md §3.2 : seuls le format et la classe
- * ciblée sont des axes de prix réels dans ce chantier.
+ * Partage fixe 50/50 : la moitié du budget finance les récompenses et
+ * l'autre moitié revient à Wasplex au fil des vues complètes. Le gain est
+ * une valeur WP explicite du niveau d'abonnement ; aucun poids,
+ * coefficient ou multiplicateur média n'intervient dans le calcul.
  */
 final class CampaignQuoteService
 {
@@ -26,12 +25,9 @@ final class CampaignQuoteService
     {
         $audience = $version->audience_configuration ?? [];
         $budget = $version->budget_configuration ?? [];
-        $creative = $version->creative_configuration ?? [];
-
         $classCodes = $audience['economic_classes'] ?? [];
         $countryCode = $audience['territory']['country_code'] ?? null;
         $grossAmountMinor = (int) ($budget['budget_amount_minor'] ?? 0);
-        $format = $creative['format'] ?? 'image';
 
         if ($classCodes === [] || $grossAmountMinor <= 0) {
             throw new InvalidCampaignConfigurationException(
@@ -44,8 +40,14 @@ final class CampaignQuoteService
             ->orderByDesc('published_at')
             ->first();
 
-        if ($priceVersion === null || $priceVersion->base_price_minor_per_event <= 0) {
+        if ($priceVersion === null) {
             throw new NoPublishedPriceCatalogException;
+        }
+
+        if ($grossAmountMinor < $priceVersion->minimum_budget_minor) {
+            throw new InvalidCampaignConfigurationException(
+                "Le budget minimum pour {$priceVersion->duration_days} jours est de {$priceVersion->minimum_budget_minor} FCFA."
+            );
         }
 
         $minimumSegmentSize = (int) config('campaigns.minimum_segment_size');
@@ -59,38 +61,26 @@ final class CampaignQuoteService
             ->filter(fn ($summary) => in_array($summary->code, $classCodes, true))
             ->values();
 
-        $totalWeight = $classes->sum('weightPercent');
         $netDistributableAmountMinor = $grossAmountMinor;
         $userEnvelopeTotal = intdiv($netDistributableAmountMinor, 2);
-
-        $envelopeByClass = $this->apportion(
-            $userEnvelopeTotal,
-            $classes->mapWithKeys(fn ($summary) => [$summary->code => (float) $summary->weightPercent / (float) $totalWeight])->all(),
-        );
-
-        $formatMultiplier = $priceVersion->multiplierFor($format);
         $classBreakdown = [];
-        $estimatedEvents = 0;
+        $highestReward = 0;
 
         foreach ($classes as $summary) {
-            $envelopeMinor = $envelopeByClass[$summary->code];
-            $costPerEventMinor = (int) ceil($priceVersion->base_price_minor_per_event * $formatMultiplier * $summary->coefficient);
-
-            $events = $costPerEventMinor > 0 ? intdiv($envelopeMinor, $costPerEventMinor) : 0;
-            $gainUnitaireMinor = $events > 0 ? intdiv($envelopeMinor, $events) : 0;
-            $reliquatMinor = $envelopeMinor - ($gainUnitaireMinor * $events);
+            $gainUnitaireMinor = $summary->rewardPerCompleteViewMinor;
+            $events = intdiv($userEnvelopeTotal, $gainUnitaireMinor);
+            $highestReward = max($highestReward, $gainUnitaireMinor);
 
             $classBreakdown[$summary->code] = [
-                'weight_percent_normalized' => round(((float) $summary->weightPercent / (float) $totalWeight) * 100, 4),
-                'envelope_minor' => $envelopeMinor,
-                'cost_per_event_minor' => $costPerEventMinor,
+                'envelope_minor' => $userEnvelopeTotal,
                 'events' => $events,
                 'gain_unitaire_minor' => $gainUnitaireMinor,
-                'reliquat_minor' => $reliquatMinor,
             ];
-
-            $estimatedEvents += $events;
         }
+
+        // Estimation prudente : si toutes les vues appartenaient au niveau
+        // ciblé le mieux rémunéré, ce nombre reste finançable.
+        $estimatedEvents = $highestReward > 0 ? intdiv($userEnvelopeTotal, $highestReward) : 0;
 
         return DB::transaction(function () use ($version, $priceVersion, $netDistributableAmountMinor, $grossAmountMinor, $estimatedEvents, $estimate, $classBreakdown): CampaignQuote {
             $quote = CampaignQuote::query()->create([
@@ -114,38 +104,4 @@ final class CampaignQuoteService
         });
     }
 
-    /**
-     * Largest-remainder apportionment: distributes $total across the given
-     * normalized weights so the parts sum back to $total exactly — no
-     * fraction is ever silently lost (docs/05 §18).
-     *
-     * @param  array<string, float>  $normalizedWeights
-     * @return array<string, int>
-     */
-    private function apportion(int $total, array $normalizedWeights): array
-    {
-        $floors = [];
-        $remainders = [];
-
-        foreach ($normalizedWeights as $code => $weight) {
-            $raw = $total * $weight;
-            $floors[$code] = (int) floor($raw);
-            $remainders[$code] = $raw - floor($raw);
-        }
-
-        $remaining = $total - array_sum($floors);
-
-        arsort($remainders);
-
-        foreach (array_keys($remainders) as $code) {
-            if ($remaining <= 0) {
-                break;
-            }
-
-            $floors[$code]++;
-            $remaining--;
-        }
-
-        return $floors;
-    }
 }

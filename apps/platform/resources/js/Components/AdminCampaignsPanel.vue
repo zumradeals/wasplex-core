@@ -62,9 +62,8 @@ interface PriceVersion {
     id: string;
     status: string;
     currency: string;
-    base_price_minor_per_event: number;
-    image_multiplier: string;
-    video_multiplier: string;
+    minimum_budget_minor: number;
+    duration_days: number;
     catalog: { code: string };
 }
 
@@ -84,7 +83,7 @@ const showPricing = ref(false);
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
-const priceDraftForm = reactive({ base_price_minor_per_event: 0, image_multiplier: 1, video_multiplier: 1 });
+const priceDraftForm = reactive({ minimum_budget_minor: 5000, duration_days: 7 });
 
 function initials(name: string): string {
     return name.slice(0, 2).toUpperCase();
@@ -117,7 +116,14 @@ async function load(): Promise<void> {
         if (advertisersRes.status === 'fulfilled') advertisers.value = advertisersRes.value.data.advertisers;
         if (brandsRes.status === 'fulfilled') brands.value = brandsRes.value.data.brands;
         if (assetsRes.status === 'fulfilled') pendingAssets.value = assetsRes.value.data.assets;
-        if (pricingRes.status === 'fulfilled') priceVersions.value = pricingRes.value.data.price_versions;
+        if (pricingRes.status === 'fulfilled') {
+            priceVersions.value = pricingRes.value.data.price_versions;
+            const draftPrice = priceVersions.value.find((version) => version.status === 'draft');
+            if (draftPrice) {
+                priceDraftForm.minimum_budget_minor = draftPrice.minimum_budget_minor;
+                priceDraftForm.duration_days = draftPrice.duration_days;
+            }
+        }
     } finally {
         loading.value = false;
     }
@@ -248,6 +254,27 @@ async function savePriceDraft(version: PriceVersion): Promise<void> {
     try {
         await http.patch(`/admin/advertising/pricing/${version.id}`, priceDraftForm);
         await load();
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function createPriceDraft(): Promise<void> {
+    busy.value = true;
+    actionError.value = null;
+    try {
+        const published = priceVersions.value.find((version) => version.status === 'published');
+        await http.post('/admin/advertising/pricing', {
+            catalog_code: 'standard',
+            currency: 'XOF',
+            minimum_budget_minor: published?.minimum_budget_minor ?? 5000,
+            duration_days: published?.duration_days ?? 7,
+        });
+        await load();
+    } catch (e) {
+        actionError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'Création de la configuration impossible.';
     } finally {
         busy.value = false;
     }
@@ -643,14 +670,27 @@ onMounted(load);
                 {{ showPricing ? 'Masquer les tarifs publicitaires' : 'Voir les tarifs publicitaires' }}
             </button>
             <div v-if="showPricing" class="rounded-wpx-lg shadow-wpx-card border-wpx-border border bg-white p-4.5">
-                <p class="text-wpx-text mb-3 text-sm font-bold">Catalogue de prix publicitaire</p>
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-wpx-text text-sm font-bold">Règles publicitaires</p>
+                    <button
+                        v-if="!priceVersions.some((version) => version.status === 'draft')"
+                        type="button"
+                        class="text-wpx-blue-light text-xs font-bold"
+                        :disabled="busy"
+                        @click="createPriceDraft"
+                    >
+                        Modifier les règles
+                    </button>
+                </div>
+                <p class="text-wpx-text-muted mt-1 mb-3 text-xs">
+                    Définissez simplement le budget minimum et la durée de diffusion. Le budget est partagé automatiquement : 50 % Wasplex, 50 % récompenses utilisateurs.
+                </p>
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
-                            <th class="p-2">Catalogue</th>
-                            <th class="p-2">Prix de base / événement</th>
-                            <th class="p-2">Mult. image</th>
-                            <th class="p-2">Mult. vidéo</th>
+                            <th class="p-2">Configuration</th>
+                            <th class="p-2">Budget minimum</th>
+                            <th class="p-2">Durée de diffusion</th>
                             <th class="p-2">Statut</th>
                             <th class="p-2"></th>
                         </tr>
@@ -661,33 +701,22 @@ onMounted(load);
                             <td class="p-2">
                                 <input
                                     v-if="v.status === 'draft'"
-                                    v-model.number="priceDraftForm.base_price_minor_per_event"
+                                    v-model.number="priceDraftForm.minimum_budget_minor"
                                     type="number"
                                     class="rounded-wpx-sm border-wpx-border w-28 border px-1 py-0.5 text-xs"
                                 />
                                 <span v-else
-                                    >{{ numberFormatter.format(v.base_price_minor_per_event) }} {{ v.currency }}</span
+                                    >{{ numberFormatter.format(v.minimum_budget_minor) }} FCFA</span
                                 >
                             </td>
                             <td class="p-2">
                                 <input
                                     v-if="v.status === 'draft'"
-                                    v-model.number="priceDraftForm.image_multiplier"
+                                    v-model.number="priceDraftForm.duration_days"
                                     type="number"
-                                    step="0.01"
                                     class="rounded-wpx-sm border-wpx-border w-20 border px-1 py-0.5 text-xs"
                                 />
-                                <span v-else>{{ v.image_multiplier }}</span>
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    v-if="v.status === 'draft'"
-                                    v-model.number="priceDraftForm.video_multiplier"
-                                    type="number"
-                                    step="0.01"
-                                    class="rounded-wpx-sm border-wpx-border w-20 border px-1 py-0.5 text-xs"
-                                />
-                                <span v-else>{{ v.video_multiplier }}</span>
+                                <span v-else>{{ v.duration_days }} jours</span>
                             </td>
                             <td class="p-2">
                                 <span

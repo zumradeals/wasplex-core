@@ -11,8 +11,7 @@ use Illuminate\Routing\Controller;
 
 /**
  * Read-only lookup for the Audience wizard step (docs/13 §36-38) — never
- * exposes anything beyond code/weight/coefficient, the same projection
- * used internally to compute the quote.
+ * exposes only the subscription level code and its direct reward.
  */
 final class TargetingController extends Controller
 {
@@ -25,7 +24,7 @@ final class TargetingController extends Controller
     {
         $classes = array_map(fn ($summary) => [
             'code' => $summary->code,
-            'weight_percent' => $summary->weightPercent,
+            'reward_per_complete_view_minor' => $summary->rewardPerCompleteViewMinor,
         ], $this->economicClasses->listActive());
 
         return response()->json(['economic_classes' => $classes]);

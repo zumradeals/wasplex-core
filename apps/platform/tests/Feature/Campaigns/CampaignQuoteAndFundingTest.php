@@ -93,7 +93,7 @@ it('blocks quoting when the targeted segment is too small', function (): void {
     test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")->assertStatus(422);
 });
 
-it('produces a quote with an exact 50/50 split and normalized class weights', function (): void {
+it('produces a quote with an exact 50/50 envelope and direct plan rewards', function (): void {
     publishPriceCatalog(basePriceMinorPerEvent: 500);
     ['campaign_id' => $campaignId] = setUpQuotableCampaign('campaign-quote-3@example.com', 100000);
 
@@ -105,18 +105,12 @@ it('produces a quote with an exact 50/50 split and normalized class weights', fu
     expect($quote->gross_amount_minor)->toBe(100000);
     expect($quote->net_distributable_amount_minor)->toBe(100000);
 
-    // GOLD 35 / (35+35) = 50%, PLATINUM the other 50% — user envelope is
-    // 50000, split evenly between the two selected classes.
+    // The two targeted plans draw from the same 50% user envelope.
     $breakdown = $quote->class_breakdown;
-    expect($breakdown['GOLD']['envelope_minor'] + $breakdown['PLATINUM']['envelope_minor'])->toBe(50000);
-    expect($breakdown['GOLD']['envelope_minor'])->toBe(25000);
-    expect($breakdown['PLATINUM']['envelope_minor'])->toBe(25000);
-
-    // No fraction silently lost: gain × events + reliquat == envelope, per class.
-    foreach (['GOLD', 'PLATINUM'] as $code) {
-        $class = $breakdown[$code];
-        expect(($class['gain_unitaire_minor'] * $class['events']) + $class['reliquat_minor'])->toBe($class['envelope_minor']);
-    }
+    expect($breakdown['GOLD']['envelope_minor'])->toBe(50000);
+    expect($breakdown['PLATINUM']['envelope_minor'])->toBe(50000);
+    expect($breakdown['GOLD']['gain_unitaire_minor'])->toBe(50);
+    expect($breakdown['PLATINUM']['gain_unitaire_minor'])->toBe(60);
 
     expect($quote->estimated_events)->toBeGreaterThan(0);
 });
