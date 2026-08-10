@@ -730,7 +730,8 @@ void loadAll();
                                     Budget : <strong>{{ latestQuote.gross_amount_minor }} FCFA</strong>
                                 </p>
                                 <p>
-                                    Diffusion : <strong>{{ latestQuote.price_version?.duration_days ?? 7 }} jours</strong>
+                                    Diffusion :
+                                    <strong>{{ latestQuote.price_version?.duration_days ?? 7 }} jours</strong>
                                 </p>
                                 <p>
                                     Événements estimés : <strong>{{ latestQuote.estimated_events }}</strong>

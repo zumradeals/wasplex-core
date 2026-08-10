@@ -683,7 +683,8 @@ onMounted(load);
                     </button>
                 </div>
                 <p class="text-wpx-text-muted mt-1 mb-3 text-xs">
-                    Définissez simplement le budget minimum et la durée de diffusion. Le budget est partagé automatiquement : 50 % Wasplex, 50 % récompenses utilisateurs.
+                    Définissez simplement le budget minimum et la durée de diffusion. Le budget est partagé
+                    automatiquement : 50 % Wasplex, 50 % récompenses utilisateurs.
                 </p>
                 <table class="w-full text-sm">
                     <thead>
@@ -705,9 +706,7 @@ onMounted(load);
                                     type="number"
                                     class="rounded-wpx-sm border-wpx-border w-28 border px-1 py-0.5 text-xs"
                                 />
-                                <span v-else
-                                    >{{ numberFormatter.format(v.minimum_budget_minor) }} FCFA</span
-                                >
+                                <span v-else>{{ numberFormatter.format(v.minimum_budget_minor) }} FCFA</span>
                             </td>
                             <td class="p-2">
                                 <input
