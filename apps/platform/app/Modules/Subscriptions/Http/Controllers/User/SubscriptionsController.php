@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Subscriptions\Http\Controllers\User;
 
+use App\Modules\Subscriptions\Application\Services\FreeSubscriptionProvisioner;
 use App\Modules\Subscriptions\Application\Services\NoActiveSubscriptionException;
 use App\Modules\Subscriptions\Application\Services\SubscriptionNotFoundException;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
@@ -21,12 +22,16 @@ final class SubscriptionsController extends Controller
     public function __construct(
         private readonly SubscriptionService $subscriptions,
         private readonly SubscriptionQuotaContract $quota,
+        private readonly FreeSubscriptionProvisioner $freeSubscription,
     ) {}
 
     public function current(Request $request): JsonResponse
     {
+        $accountId = (string) $request->user()->id;
+        $this->freeSubscription->ensureFor($accountId);
+
         $subscription = UserSubscription::query()
-            ->where('account_id', (string) $request->user()->id)
+            ->where('account_id', $accountId)
             ->whereIn('status', [UserSubscription::STATUS_ACTIVE, UserSubscription::STATUS_SCHEDULED_DOWNGRADE, UserSubscription::STATUS_PENDING_PAYMENT])
             ->latest('created_at')
             ->first();
@@ -100,8 +105,11 @@ final class SubscriptionsController extends Controller
 
     public function quota(Request $request): JsonResponse
     {
+        $accountId = (string) $request->user()->id;
+        $this->freeSubscription->ensureFor($accountId);
+
         try {
-            $counter = $this->quota->currentCounter((string) $request->user()->id);
+            $counter = $this->quota->currentCounter($accountId);
         } catch (NoActiveSubscriptionException) {
             return response()->json(['quota' => null]);
         }
