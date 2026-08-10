@@ -21,7 +21,7 @@ final class ProfileAnswerService
     public function __construct(private readonly ProfileTaxonomyService $taxonomies) {}
 
     /**
-     * @return array<string, array<int, array{id: string, code: string, label: string, declared: bool, declared_at: ?string}>>
+     * @return array<string, array<int, array{id: string, code: string, label: string, answer: ?bool, declared: bool, declared_at: ?string}>>
      */
     public function viewForAccount(string $accountId): array
     {
@@ -42,7 +42,8 @@ final class ProfileAnswerService
                 'id' => $taxonomy->id,
                 'code' => $taxonomy->code,
                 'label' => $taxonomy->label,
-                'declared' => $answer !== null,
+                'answer' => $answer?->answer_value,
+                'declared' => $answer?->answer_value === true,
                 'declared_at' => $answer?->declared_at?->toIso8601String(),
             ];
         }
@@ -50,7 +51,7 @@ final class ProfileAnswerService
         return $grouped;
     }
 
-    public function declare(string $accountId, string $taxonomyId): ProfileAnswer
+    public function answer(string $accountId, string $taxonomyId, bool $value): ProfileAnswer
     {
         $taxonomy = ProfileTaxonomy::query()->find($taxonomyId);
 
@@ -68,16 +69,36 @@ final class ProfileAnswerService
             ->whereNull('withdrawn_at')
             ->first();
 
-        if ($existing !== null) {
+        if ($existing !== null && $existing->answer_value === $value) {
             return $existing;
+        }
+
+        if ($existing !== null) {
+            $existing->update(['withdrawn_at' => Carbon::now('UTC')]);
+        }
+
+        if ($value && str_starts_with($taxonomy->code, 'demographic.gender.')) {
+            ProfileAnswer::query()
+                ->where('account_id', $accountId)
+                ->whereNull('withdrawn_at')
+                ->whereHas('taxonomy', fn ($query) => $query
+                    ->where('code', 'like', 'demographic.gender.%')
+                    ->where('id', '!=', $taxonomyId))
+                ->update(['withdrawn_at' => Carbon::now('UTC')]);
         }
 
         return ProfileAnswer::query()->create([
             'account_id' => $accountId,
             'profile_taxonomy_id' => $taxonomyId,
             'source' => ProfileAnswer::SOURCE_DECLARED_BY_USER,
+            'answer_value' => $value,
             'declared_at' => Carbon::now('UTC'),
         ]);
+    }
+
+    public function declare(string $accountId, string $taxonomyId): ProfileAnswer
+    {
+        return $this->answer($accountId, $taxonomyId, true);
     }
 
     public function withdraw(string $accountId, string $taxonomyId): void

@@ -174,6 +174,25 @@ it('matches voluntary interests only with explicit Smart Profile consent', funct
     expect($decision->reasonCodes)->toContain('profile_match');
 });
 
+it('does not match a profile criterion explicitly answered no', function (): void {
+    ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
+        'matching-interest-no-advertiser@example.com',
+        ['economic_classes' => ['GOLD'], 'profile_taxonomies' => ['interest.formation']],
+    );
+
+    registerAndLogin('matching-interest-no-candidate@example.com', country: 'CI');
+    $candidate = accountForMatchingTests('matching-interest-no-candidate@example.com');
+    subscribeAccountToClassForMatchingTests($candidate->id, 'GOLD');
+    $interest = ProfileTaxonomy::query()->where('code', 'interest.formation')->firstOrFail();
+    test()->postJson("/api/me/smart-profile/{$interest->id}", ['answer' => false])->assertCreated();
+    test()->postJson('/api/me/consents/'.ConsentPurpose::CODE_SMART_PROFILE_USAGE.'/grant')->assertOk();
+    test()->postJson('/api/me/consents/'.ConsentPurpose::CODE_ADVERTISING_PERSONALIZATION.'/grant')->assertOk();
+
+    $decision = app(MatchingContract::class)->checkEligibility($campaignId, $candidate->id);
+    expect($decision->decision)->toBe('ineligible');
+    expect($decision->reasonCodes)->toContain('profile_mismatch');
+});
+
 it('excludes a candidate outside the targeted country', function (): void {
     ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
         'matching-territory-advertiser@example.com',

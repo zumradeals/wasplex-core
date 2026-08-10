@@ -54,6 +54,7 @@ final class ProfileTargetingService implements ProfileTargetingContract
 
         $matched = ProfileAnswer::query()
             ->where('account_id', $accountId)
+            ->where('answer_value', true)
             ->whereNull('withdrawn_at')
             ->whereHas('taxonomy', fn ($query) => $query
                 ->where('status', ProfileTaxonomy::STATUS_ACTIVE)

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletQueryService;
+use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewCase;
@@ -158,6 +159,7 @@ it('lets the advertiser correct and resubmit without a second financing', functi
 
 it('approves a campaign and keeps the reservation reserved', function (): void {
     ['campaign_id' => $campaignId, 'case_id' => $caseId] = submitCampaignForReview('review-approve-advertiser@example.com');
+    expect(app(ApprovedCampaignAudienceContract::class)->find($campaignId))->toBeNull();
     test()->postJson('/api/logout')->assertNoContent();
 
     loginAsAdminWithReviewCapabilities('review-approve-admin@wasplex.test', ['admin.campaign-reviews.decide']);
@@ -167,6 +169,7 @@ it('approves a campaign and keeps the reservation reserved', function (): void {
         ->assertJsonPath('review_case.decision', 'approved');
 
     expect(Campaign::query()->findOrFail($campaignId)->status)->toBe(Campaign::STATUS_APPROVED);
+    expect(app(ApprovedCampaignAudienceContract::class)->find($campaignId))->not->toBeNull();
     expect(CampaignBudgetReservation::query()->where('campaign_id', $campaignId)->first()->status)
         ->toBe(CampaignBudgetReservation::STATUS_RESERVED);
 });

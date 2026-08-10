@@ -34,8 +34,10 @@ final class ProfileController extends Controller
         /** @var Account $account */
         $account = $request->user();
 
+        $data = $request->validate(['answer' => ['sometimes', 'boolean']]);
+
         try {
-            $answer = $this->answers->declare($account->id, $taxonomy);
+            $answer = $this->answers->answer($account->id, $taxonomy, $data['answer'] ?? true);
         } catch (ProfileTaxonomyNotFoundException $exception) {
             return response()->json(['message' => $exception->getMessage()], 404);
         } catch (ProfileTaxonomyNotActiveException $exception) {

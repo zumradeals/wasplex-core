@@ -37,7 +37,7 @@ function loginAsAdminForSmartProfileTests(string $email, array $capabilities): v
     verifyRecentMfaForSmartProfileTests();
 }
 
-it('lets a user declare and withdraw a profile answer while keeping the history', function (): void {
+it('lets a user answer yes, answer no and postpone while keeping the history', function (): void {
     registerAndLogin('profile-declare@example.com');
     $account = accountForSmartProfileTests('profile-declare@example.com');
 
@@ -49,6 +49,12 @@ it('lets a user declare and withdraw a profile answer while keeping the history'
     $afterDeclare = test()->getJson('/api/me/smart-profile')->assertOk()->json('categories');
     expect(collect($afterDeclare['interest'])->firstWhere('id', $taxonomy['id'])['declared'])->toBeTrue();
 
+    test()->postJson("/api/me/smart-profile/{$taxonomy['id']}", ['answer' => false])->assertCreated();
+    $afterNo = test()->getJson('/api/me/smart-profile')->assertOk()->json('categories');
+    $answeredNo = collect($afterNo['interest'])->firstWhere('id', $taxonomy['id']);
+    expect($answeredNo['answer'])->toBeFalse();
+    expect($answeredNo['declared'])->toBeFalse();
+
     test()->deleteJson("/api/me/smart-profile/{$taxonomy['id']}")->assertOk();
 
     $afterWithdraw = test()->getJson('/api/me/smart-profile')->assertOk()->json('categories');
@@ -56,8 +62,8 @@ it('lets a user declare and withdraw a profile answer while keeping the history'
 
     // History is preserved (append-only), not deleted.
     expect(ProfileAnswer::query()->where('account_id', $account->id)->where('profile_taxonomy_id', $taxonomy['id'])->count())
-        ->toBe(1);
-    expect(ProfileAnswer::query()->where('account_id', $account->id)->whereNotNull('withdrawn_at')->count())->toBe(1);
+        ->toBe(2);
+    expect(ProfileAnswer::query()->where('account_id', $account->id)->whereNotNull('withdrawn_at')->count())->toBe(2);
 });
 
 it('rejects an unknown category — Santé, Alertes, Fonds and KYC cannot be injected as SmartProfile taxonomies', function (): void {

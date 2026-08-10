@@ -7,6 +7,7 @@ interface TaxonomyEntry {
     code: string;
     label: string;
     declared: boolean;
+    answer: boolean | null;
     declared_at: string | null;
 }
 
@@ -25,6 +26,7 @@ const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: fals
 const categories = ref<Record<string, TaxonomyEntry[]>>({});
 const loading = ref(true);
 const busy = ref<string | null>(null);
+const currentIndex = ref(0);
 
 const orderedCategories = computed(() =>
     Object.keys(categories.value).sort(
@@ -32,21 +34,25 @@ const orderedCategories = computed(() =>
     ),
 );
 
-const activeCount = computed(
+const entries = computed(() => orderedCategories.value.flatMap((category) => categories.value[category] ?? []));
+const currentEntry = computed(() => entries.value[currentIndex.value] ?? null);
+const answeredCount = computed(
     () =>
         Object.values(categories.value)
             .flat()
-            .filter((entry) => entry.declared).length,
+            .filter((entry) => entry.answer !== null).length,
 );
 
 const totalCount = computed(() => Object.values(categories.value).flat().length);
 
-const percent = computed(() => (totalCount.value === 0 ? 0 : Math.round((activeCount.value / totalCount.value) * 100)));
+const percent = computed(() =>
+    totalCount.value === 0 ? 0 : Math.round((answeredCount.value / totalCount.value) * 100),
+);
 
 const nextSuggestions = computed(() =>
     orderedCategories.value
         .flatMap((category) => categories.value[category] ?? [])
-        .filter((entry) => !entry.declared)
+        .filter((entry) => entry.answer === null)
         .slice(0, 2)
         .map((entry) => entry.label),
 );
@@ -63,18 +69,44 @@ async function load(): Promise<void> {
     }
 }
 
-async function toggle(entry: TaxonomyEntry): Promise<void> {
+function questionFor(entry: TaxonomyEntry): string {
+    const label = entry.label.replace(/^Genre déclaré : /, 'Vous identifiez-vous comme ');
+    if (entry.code.startsWith('demographic.gender.')) return `${label} ?`;
+    if (entry.label.startsWith('Possède ')) return `Possédez-vous ${entry.label.slice(8).toLowerCase()} ?`;
+    if (entry.label.startsWith('Utilise ')) return `Utilisez-vous ${entry.label.slice(8).toLowerCase()} ?`;
+    if (entry.label.startsWith('Intéressé par '))
+        return `Êtes-vous intéressé(e) par ${entry.label.slice(14).toLowerCase()} ?`;
+    if (entry.label.startsWith('Projette de '))
+        return `Avez-vous le projet de ${entry.label.slice(11).toLowerCase()} ?`;
+    return `${entry.label} vous correspond-il ?`;
+}
+
+function move(offset: number): void {
+    currentIndex.value = Math.min(Math.max(currentIndex.value + offset, 0), Math.max(entries.value.length - 1, 0));
+}
+
+async function answer(entry: TaxonomyEntry, value: boolean): Promise<void> {
     busy.value = entry.id;
     try {
-        if (entry.declared) {
-            await http.delete(`/me/smart-profile/${entry.id}`);
-        } else {
-            await http.post(`/me/smart-profile/${entry.id}`);
-        }
+        await http.post(`/me/smart-profile/${entry.id}`, { answer: value });
         await load();
+        move(1);
     } finally {
         busy.value = null;
     }
+}
+
+async function postpone(entry: TaxonomyEntry): Promise<void> {
+    if (entry.answer !== null) {
+        busy.value = entry.id;
+        try {
+            await http.delete(`/me/smart-profile/${entry.id}`);
+            await load();
+        } finally {
+            busy.value = null;
+        }
+    }
+    move(1);
 }
 
 void load();
@@ -85,8 +117,7 @@ void load();
         <div v-if="!props.compact">
             <p class="text-wpx-muted-dark text-xs font-semibold tracking-wide uppercase">Profil intelligent</p>
             <p v-if="!loading" class="text-wpx-white-soft mt-1 text-sm">
-                {{ activeCount }} information{{ activeCount > 1 ? 's' : '' }} active{{ activeCount > 1 ? 's' : '' }} sur
-                {{ totalCount }} proposées
+                {{ answeredCount }} réponse{{ answeredCount > 1 ? 's' : '' }} sur {{ totalCount }} questions
             </p>
             <p class="text-wpx-muted-dark mt-1 text-xs">
                 Facultatif et corrigible à tout moment. Ces informations restent internes à Wasplex — jamais partagées
@@ -102,25 +133,87 @@ void load();
 
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
 
-        <div v-for="category in orderedCategories" v-else :key="category" class="flex flex-col gap-2">
-            <p class="text-wpx-white-soft text-sm font-semibold">
-                {{ CATEGORY_META[category]?.icon ?? '•' }} {{ CATEGORY_META[category]?.title ?? category }}
+        <div v-else-if="currentEntry" class="rounded-wpx-lg bg-wpx-navy-750 border-wpx-border-dark border p-4">
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-wpx-cyan text-xs font-semibold">
+                    {{ CATEGORY_META[currentEntry.code.split('.')[0]]?.icon ?? '•' }}
+                    {{ CATEGORY_META[currentEntry.code.split('.')[0]]?.title ?? 'Votre profil' }}
+                </p>
+                <span class="text-wpx-muted-dark text-[11px]">{{ currentIndex + 1 }} / {{ totalCount }}</span>
+            </div>
+
+            <p class="text-wpx-white-soft mt-3 text-base font-semibold">{{ questionFor(currentEntry) }}</p>
+            <p class="text-wpx-muted-dark mt-1 text-xs">
+                Votre réponse reste modifiable et n’est jamais montrée à l’annonceur.
             </p>
-            <div class="flex flex-wrap gap-2">
+
+            <div class="mt-4 grid grid-cols-2 gap-2">
                 <button
-                    v-for="entry in categories[category]"
-                    :key="entry.id"
                     type="button"
-                    class="rounded-wpx-md border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50"
+                    class="rounded-wpx-md border px-3 py-2.5 text-sm font-bold disabled:opacity-50"
                     :class="
-                        entry.declared
-                            ? 'from-wpx-blue to-wpx-cyan text-wpx-navy-950 border-transparent bg-gradient-to-br'
-                            : 'border-wpx-border-dark text-wpx-muted-dark hover:border-wpx-blue'
+                        currentEntry.answer === true
+                            ? 'border-wpx-cyan bg-wpx-cyan text-wpx-navy-950'
+                            : 'border-wpx-border-dark text-wpx-white-soft'
                     "
-                    :disabled="busy === entry.id"
-                    @click="toggle(entry)"
+                    :disabled="busy === currentEntry.id"
+                    @click="answer(currentEntry, true)"
                 >
-                    {{ entry.declared ? '✓ ' : '+ ' }}{{ entry.label }}
+                    Oui
+                </button>
+                <button
+                    type="button"
+                    class="rounded-wpx-md border px-3 py-2.5 text-sm font-bold disabled:opacity-50"
+                    :class="
+                        currentEntry.answer === false
+                            ? 'border-wpx-gold bg-wpx-gold text-wpx-navy-950'
+                            : 'border-wpx-border-dark text-wpx-white-soft'
+                    "
+                    :disabled="busy === currentEntry.id"
+                    @click="answer(currentEntry, false)"
+                >
+                    Non
+                </button>
+            </div>
+            <button
+                type="button"
+                class="text-wpx-muted-dark mt-3 w-full text-xs underline disabled:opacity-50"
+                :disabled="busy === currentEntry.id"
+                @click="postpone(currentEntry)"
+            >
+                {{ currentEntry.answer === null ? 'Plus tard' : 'Effacer ma réponse' }}
+            </button>
+
+            <div class="mt-4 flex items-center justify-between">
+                <button
+                    type="button"
+                    class="text-wpx-muted-dark text-xs disabled:opacity-30"
+                    :disabled="currentIndex === 0"
+                    @click="move(-1)"
+                >
+                    ← Précédente
+                </button>
+                <div class="flex max-w-[65%] gap-1 overflow-hidden">
+                    <span
+                        v-for="(entry, index) in entries"
+                        :key="entry.id"
+                        class="h-1.5 w-1.5 shrink-0 rounded-full"
+                        :class="
+                            index === currentIndex
+                                ? 'bg-wpx-cyan'
+                                : entry.answer !== null
+                                  ? 'bg-wpx-success'
+                                  : 'bg-wpx-border-dark'
+                        "
+                    />
+                </div>
+                <button
+                    type="button"
+                    class="text-wpx-muted-dark text-xs disabled:opacity-30"
+                    :disabled="currentIndex >= totalCount - 1"
+                    @click="move(1)"
+                >
+                    Suivante →
                 </button>
             </div>
         </div>

@@ -16,11 +16,12 @@ final class ProfileAnswer extends Model
 
     protected $table = 'profile_answers';
 
-    protected $fillable = ['account_id', 'profile_taxonomy_id', 'source', 'declared_at', 'withdrawn_at'];
+    protected $fillable = ['account_id', 'profile_taxonomy_id', 'source', 'answer_value', 'declared_at', 'withdrawn_at'];
 
     protected function casts(): array
     {
         return [
+            'answer_value' => 'boolean',
             'declared_at' => 'immutable_datetime',
             'withdrawn_at' => 'immutable_datetime',
         ];

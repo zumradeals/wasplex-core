@@ -100,8 +100,9 @@ function timeAgo(dateString: string): string {
 
 async function load(): Promise<void> {
     loading.value = true;
+    actionError.value = null;
     try {
-        const [queueRes, approvedRes, advertisersRes, brandsRes, assetsRes, pricingRes] = await Promise.all([
+        const results = await Promise.allSettled([
             http.get('/admin/campaign-reviews'),
             http.get('/admin/campaigns/approved'),
             http.get('/admin/advertisers'),
@@ -109,12 +110,14 @@ async function load(): Promise<void> {
             http.get('/admin/creative-assets'),
             http.get('/admin/advertising/pricing'),
         ]);
-        queue.value = queueRes.data.review_cases;
-        approvedCampaigns.value = approvedRes.data.campaigns;
-        advertisers.value = advertisersRes.data.advertisers;
-        brands.value = brandsRes.data.brands;
-        pendingAssets.value = assetsRes.data.assets;
-        priceVersions.value = pricingRes.data.price_versions;
+        const [queueRes, approvedRes, advertisersRes, brandsRes, assetsRes, pricingRes] = results;
+        if (queueRes.status === 'fulfilled') queue.value = queueRes.value.data.review_cases;
+        else actionError.value = 'La file des campagnes soumises ne peut pas être chargée.';
+        if (approvedRes.status === 'fulfilled') approvedCampaigns.value = approvedRes.value.data.campaigns;
+        if (advertisersRes.status === 'fulfilled') advertisers.value = advertisersRes.value.data.advertisers;
+        if (brandsRes.status === 'fulfilled') brands.value = brandsRes.value.data.brands;
+        if (assetsRes.status === 'fulfilled') pendingAssets.value = assetsRes.value.data.assets;
+        if (pricingRes.status === 'fulfilled') priceVersions.value = pricingRes.value.data.price_versions;
     } finally {
         loading.value = false;
     }
