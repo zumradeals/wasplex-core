@@ -20,7 +20,8 @@ final class AdvertisingPriceVersion extends Model
 
     protected $fillable = [
         'catalog_id', 'status', 'currency', 'base_price_minor_per_event',
-        'image_multiplier', 'video_multiplier', 'minimum_budget_minor', 'duration_days',
+        'image_multiplier', 'video_multiplier', 'minimum_budget_minor', 'minimum_daily_budget_minor',
+        'minimum_duration_days', 'maximum_duration_days', 'duration_days',
         'effective_from', 'effective_to', 'published_at',
     ];
 
@@ -31,6 +32,9 @@ final class AdvertisingPriceVersion extends Model
             'image_multiplier' => 'decimal:4',
             'video_multiplier' => 'decimal:4',
             'minimum_budget_minor' => 'integer',
+            'minimum_daily_budget_minor' => 'integer',
+            'minimum_duration_days' => 'integer',
+            'maximum_duration_days' => 'integer',
             'duration_days' => 'integer',
             'effective_from' => 'immutable_datetime',
             'effective_to' => 'immutable_datetime',
@@ -47,4 +51,5 @@ final class AdvertisingPriceVersion extends Model
     {
         return $this->status === self::STATUS_PUBLISHED;
     }
+
 }
