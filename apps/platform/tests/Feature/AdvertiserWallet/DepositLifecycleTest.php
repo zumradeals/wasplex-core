@@ -60,6 +60,65 @@ test('creating a deposit returns a sandbox checkout URL even when the provider s
     expect($deposit->provider_reference)->toBe('SANDBOX_create1');
 });
 
+test('uses the documented GeniusPay sandbox headers and nested response', function (): void {
+    Http::fake([
+        'geniuspay.ci/api/v1/merchant/payments' => Http::response([
+            'success' => true,
+            'data' => [
+                'reference' => 'MTX-SANDBOX-DOC',
+                'checkout_url' => 'https://pay.genius.ci/checkout/MTX-SANDBOX-DOC',
+                'status' => 'pending',
+                'environment' => 'sandbox',
+                'amount' => 5000,
+                'currency' => 'XOF',
+            ],
+        ], 201),
+    ]);
+
+    registerAndLogin('advertiser-geniuspay-contract@wasplex.test');
+    $organizationId = createAdvertiserOrganization();
+
+    $deposit = app(DepositService::class)->createDeposit($organizationId, 'account-contract', 5000, 'XOF');
+
+    expect($deposit->provider_reference)->toBe('MTX-SANDBOX-DOC');
+    expect($deposit->checkout_url)->toBe('https://pay.genius.ci/checkout/MTX-SANDBOX-DOC');
+
+    Http::assertSent(fn ($request): bool =>
+        $request->hasHeader('X-API-Key', 'sandbox_test_key')
+        && $request->hasHeader('X-API-Secret', 'sandbox_test_secret_key')
+        && $request['amount'] === 5000
+        && $request['metadata']['deposit_id'] === $deposit->id
+    );
+});
+
+test('accepts the documented GeniusPay webhook payload and signature', function (): void {
+    fakeGeniusPayCreate('MTX-SANDBOX-WEBHOOK');
+    registerAndLogin('advertiser-geniuspay-webhook@wasplex.test');
+    $organizationId = createAdvertiserOrganization();
+    app(DepositService::class)->createDeposit($organizationId, 'account-webhook', 5000, 'XOF');
+    fakeGeniusPayStatus('MTX-SANDBOX-WEBHOOK', 'completed');
+
+    $payload = json_encode([
+        'event' => 'payment.success',
+        'data' => [
+            'transaction' => [
+                'reference' => 'MTX-SANDBOX-WEBHOOK',
+                'amount' => 5000,
+                'status' => 'completed',
+            ],
+            'environment' => 'sandbox',
+        ],
+    ], JSON_THROW_ON_ERROR);
+    $signature = hash_hmac('sha256', $payload, (string) config('services.geniuspay.webhook_secret'));
+
+    postGeniusPayWebhook($payload, [
+        'X-GeniusPay-Signature' => $signature,
+        'X-GeniusPay-Timestamp' => (string) time(),
+    ])->assertOk();
+
+    expect(app(AdvertiserWalletQueryService::class)->availableBalanceMinor($organizationId))->toBe(5000);
+});
+
 test('a valid signed webhook confirmed by server-side re-verification credits the wallet exactly once', function (): void {
     fakeGeniusPayCreate('SANDBOX_credit1');
 

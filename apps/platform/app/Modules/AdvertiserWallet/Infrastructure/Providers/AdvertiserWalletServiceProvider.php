@@ -7,10 +7,12 @@ namespace App\Modules\AdvertiserWallet\Infrastructure\Providers;
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReconcilablePaymentDirectory;
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReservationService;
+use App\Modules\AdvertiserWallet\Infrastructure\Models\GeniusPayConfiguration;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 final class AdvertiserWalletServiceProvider extends ServiceProvider
@@ -24,6 +26,18 @@ final class AdvertiserWalletServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../../Database/Migrations');
+
+        if (Schema::hasTable('geniuspay_configurations')) {
+            $configuration = GeniusPayConfiguration::query()->latest('updated_at')->first();
+            if ($configuration !== null) {
+                config([
+                    'services.geniuspay.environment' => 'sandbox',
+                    'services.geniuspay.api_key' => $configuration->api_key,
+                    'services.geniuspay.api_secret' => $configuration->api_secret,
+                    'services.geniuspay.webhook_secret' => $configuration->webhook_secret,
+                ]);
+            }
+        }
 
         RateLimiter::for('geniuspay-webhook', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
 

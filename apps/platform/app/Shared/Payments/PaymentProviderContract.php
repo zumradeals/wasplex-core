@@ -22,6 +22,9 @@ use App\Shared\Payments\ValueObjects\ProviderWebhookEvent;
  */
 interface PaymentProviderContract
 {
+    /** @return array<string, mixed> */
+    public function testConnection(): array;
+
     public function createPayment(CreatePaymentRequest $request): ProviderPaymentResult;
 
     public function verifyWebhookSignature(string $rawPayload, array $headers): bool;

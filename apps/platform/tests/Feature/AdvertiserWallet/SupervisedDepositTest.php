@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletQueryService;
 use App\Modules\AdvertiserWallet\Infrastructure\Models\AdvertiserWalletDeposit;
 use App\Modules\Identity\Infrastructure\Models\Account;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use PragmaRX\Google2FA\Google2FA;
 
 beforeEach(function (): void {
@@ -38,6 +40,36 @@ it('refuses a supervised deposit request without the dedicated capability', func
         'proof_reference' => 'REF-1',
         'reason' => 'Virement bancaire reçu',
     ])->assertStatus(403);
+});
+
+it('lets an authorized admin configure and test GeniusPay sandbox without exposing secrets', function (): void {
+    registerAndLogin('geniuspay-settings-admin@wasplex.test');
+    grantFounderAccessForTests(accountForSupervisedDepositTests('geniuspay-settings-admin@wasplex.test'), ['admin.advertiser-wallet.supervised-deposit']);
+    verifyRecentMfaForSupervisedDepositTests();
+
+    test()->putJson('/api/admin/advertiser-wallet/geniuspay', [
+        'api_key' => 'pk_sandbox_example_public',
+        'api_secret' => 'sk_sandbox_example_secret',
+        'webhook_secret' => 'whsec_example_webhook',
+    ])->assertOk()
+        ->assertJsonPath('geniuspay.configured', true)
+        ->assertJsonMissing(['api_secret' => 'sk_sandbox_example_secret']);
+
+    $stored = DB::table('geniuspay_configurations')->first();
+    expect($stored->api_key)->not->toBe('pk_sandbox_example_public');
+    expect($stored->api_secret)->not->toBe('sk_sandbox_example_secret');
+    expect($stored->webhook_secret)->not->toBe('whsec_example_webhook');
+
+    Http::fake([
+        'geniuspay.ci/api/v1/merchant/account' => Http::response([
+            'success' => true,
+            'data' => ['name' => 'Wasplex Sandbox', 'status' => 'active'],
+        ]),
+    ]);
+
+    test()->postJson('/api/admin/advertiser-wallet/geniuspay/test')
+        ->assertOk()
+        ->assertJsonPath('connected', true);
 });
 
 it('credits the advertiser wallet through the Grand Livre once a second admin approves', function (): void {

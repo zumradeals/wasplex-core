@@ -42,8 +42,9 @@ return [
      */
     'geniuspay' => [
         'environment' => env('GENIUSPAY_ENVIRONMENT', 'sandbox'),
-        'base_url' => env('GENIUSPAY_BASE_URL', 'https://geniuspay.ci/api/v1/merchant'),
-        'merchant_key' => env('GENIUSPAY_MERCHANT_KEY'),
+        'base_url' => env('GENIUSPAY_BASE_URL', 'https://pay.genius.ci/api/v1/merchant'),
+        'api_key' => env('GENIUSPAY_API_KEY', env('GENIUSPAY_MERCHANT_KEY')),
+        'api_secret' => env('GENIUSPAY_API_SECRET'),
         'webhook_secret' => env('GENIUSPAY_WEBHOOK_SECRET'),
         'checkout_hosts' => array_filter(explode(',', (string) env('GENIUSPAY_CHECKOUT_HOSTS', 'geniuspay.ci,pay.genius.ci'))),
     ],

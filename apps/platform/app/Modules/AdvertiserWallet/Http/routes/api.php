@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AdvertiserWallet\Http\Controllers\Admin\SupervisedDepositsController;
+use App\Modules\AdvertiserWallet\Http\Controllers\Admin\GeniusPayConfigurationController;
 use App\Modules\AdvertiserWallet\Http\Controllers\Advertiser\DepositsController;
 use App\Modules\AdvertiserWallet\Http\Controllers\Advertiser\WalletController;
 use App\Modules\Identity\Http\Middleware\EnsureActiveAdvertiserOrganization;
@@ -32,6 +33,12 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
 Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::class])
     ->prefix('admin/advertiser-wallet')
     ->group(function (): void {
+        Route::get('/geniuspay', [GeniusPayConfigurationController::class, 'show'])
+            ->middleware(EnsureCapability::class.':admin.advertiser-wallet.supervised-deposit');
+        Route::put('/geniuspay', [GeniusPayConfigurationController::class, 'update'])
+            ->middleware(EnsureCapability::class.':admin.advertiser-wallet.supervised-deposit');
+        Route::post('/geniuspay/test', [GeniusPayConfigurationController::class, 'test'])
+            ->middleware(EnsureCapability::class.':admin.advertiser-wallet.supervised-deposit');
         Route::post('/deposits', [SupervisedDepositsController::class, 'store'])
             ->middleware(EnsureCapability::class.':admin.advertiser-wallet.supervised-deposit');
         Route::post('/deposits/{deposit}/approve', [SupervisedDepositsController::class, 'approve'])

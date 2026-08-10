@@ -52,6 +52,7 @@
         <env name="GENIUSPAY_ENVIRONMENT" value="sandbox"/>
         <env name="GENIUSPAY_BASE_URL" value="https://geniuspay.ci/api/v1/merchant"/>
         <env name="GENIUSPAY_MERCHANT_KEY" value="sandbox_test_key"/>
+        <env name="GENIUSPAY_API_SECRET" value="sandbox_test_secret_key"/>
         <env name="GENIUSPAY_WEBHOOK_SECRET" value="sandbox_test_secret"/>
         <env name="GENIUSPAY_CHECKOUT_HOSTS" value="geniuspay.ci,pay.genius.ci"/>
         <env name="PULSE_ENABLED" value="false"/>
