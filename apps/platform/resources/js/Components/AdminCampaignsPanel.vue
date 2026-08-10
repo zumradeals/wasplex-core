@@ -26,7 +26,11 @@ interface Quote {
 
 interface CampaignVersion {
     creative_configuration: { asset_id?: string; title?: string } | null;
-    audience_configuration: { territory?: { country_code?: string }; economic_classes?: string[] } | null;
+    audience_configuration: {
+        territory?: { country_code?: string };
+        economic_classes?: string[];
+        profile_taxonomies?: string[];
+    } | null;
     budget_configuration: { budget_amount_minor?: number } | null;
     quotes?: Quote[];
 }
@@ -413,6 +417,19 @@ onMounted(load);
                                             {{
                                                 selectedCase.review_case.campaign_version.audience_configuration
                                                     .territory.country_code
+                                            }}
+                                        </template>
+                                        <template
+                                            v-if="
+                                                selectedCase.review_case.campaign_version.audience_configuration
+                                                    .profile_taxonomies?.length
+                                            "
+                                        >
+                                            ·
+                                            {{
+                                                selectedCase.review_case.campaign_version.audience_configuration.profile_taxonomies.join(
+                                                    ', ',
+                                                )
                                             }}
                                         </template>
                                     </template>

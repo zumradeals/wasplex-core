@@ -11,6 +11,18 @@ use Illuminate\Support\Facades\Artisan;
 
 beforeEach(function (): void {
     Artisan::call('subscriptions:seed-catalog');
+    Artisan::call('smartprofile:seed-catalog');
+});
+
+it('lists safe profile criteria for the advertiser audience wizard', function (): void {
+    registerAndLogin('campaign-targeting-catalog@example.com');
+    createAdvertiserOrganization();
+
+    $criteria = test()->getJson('/api/advertiser/targeting/profile-criteria')
+        ->assertOk()->json('profile_criteria');
+
+    expect(collect($criteria['interest'] ?? [])->pluck('code'))->toContain('interest.formation');
+    expect(collect($criteria['demographic'] ?? [])->pluck('code'))->toContain('demographic.gender.woman');
 });
 
 /**
@@ -96,14 +108,14 @@ it('autosaves objective, audience and budget configuration', function (): void {
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
         'objective_code' => 'faire_connaitre',
-        'audience_configuration' => ['economic_classes' => ['GOLD']],
+        'audience_configuration' => ['economic_classes' => ['GOLD'], 'profile_taxonomies' => ['interest.formation']],
         'budget_configuration' => ['budget_amount_minor' => 100000],
     ])->assertOk()->assertJsonPath('campaign.objective_code', 'faire_connaitre');
 
     $campaign = test()->getJson("/api/advertiser/campaigns/{$campaignId}")->assertOk()->json('campaign');
     $version = collect($campaign['versions'])->sortByDesc('version_number')->first();
 
-    expect($version['audience_configuration'])->toBe(['economic_classes' => ['GOLD']]);
+    expect($version['audience_configuration'])->toBe(['economic_classes' => ['GOLD'], 'profile_taxonomies' => ['interest.formation']]);
     expect($version['budget_configuration'])->toBe(['budget_amount_minor' => 100000]);
 });
 

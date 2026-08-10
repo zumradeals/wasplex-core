@@ -24,6 +24,8 @@ final class SeedCatalogCommand extends Command
     protected $description = 'Initialise un catalogue de départ de taxonomies et de finalités de consentement (idempotent).';
 
     private const TAXONOMIES = [
+        ['code' => 'demographic.gender.woman', 'category' => 'demographic', 'label' => 'Genre déclaré : femme'],
+        ['code' => 'demographic.gender.man', 'category' => 'demographic', 'label' => 'Genre déclaré : homme'],
         ['code' => 'possession.smartphone', 'category' => 'possession', 'label' => 'Possède un smartphone'],
         ['code' => 'possession.deux_roues', 'category' => 'possession', 'label' => 'Possède un deux-roues'],
         ['code' => 'usage.reseau_orange', 'category' => 'usage', 'label' => 'Utilise principalement le réseau Orange'],

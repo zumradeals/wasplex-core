@@ -12,6 +12,8 @@ final class ProfileTaxonomy extends Model
 {
     use HasUlids;
 
+    public const CATEGORY_DEMOGRAPHIC = 'demographic';
+
     public const CATEGORY_POSSESSION = 'possession';
 
     public const CATEGORY_USAGE = 'usage';
@@ -25,6 +27,7 @@ final class ProfileTaxonomy extends Model
     public const CATEGORY_TERRITORY = 'territory';
 
     public const CATEGORIES = [
+        self::CATEGORY_DEMOGRAPHIC,
         self::CATEGORY_POSSESSION,
         self::CATEGORY_USAGE,
         self::CATEGORY_INTEREST,

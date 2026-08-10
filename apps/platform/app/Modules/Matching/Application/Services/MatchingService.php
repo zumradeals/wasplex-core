@@ -13,6 +13,7 @@ use App\Modules\Matching\Application\ValueObjects\MatchingDecisionResult;
 use App\Modules\Matching\Infrastructure\Models\MatchingConfiguration;
 use App\Modules\Matching\Infrastructure\Models\MatchingDecision;
 use App\Modules\SmartProfile\Application\Contracts\AdvertisingConsentContract;
+use App\Modules\SmartProfile\Application\Contracts\ProfileTargetingContract;
 use App\Modules\SmartProfile\Infrastructure\Models\ConsentPurpose;
 use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 use Illuminate\Support\Carbon;
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * docs/04-moteur-matching-et-distribution-publicitaire-wasplex.md §15,
  * réduit au périmètre réel de ce dépôt (docs/chantiers/P008-CHANTIER.md
  * §8) : campagne approuvée et non suspendue → période (si renseignée) →
- * territoire → classe économique → consentement publicitaire. Un refus de
+ * territoire → classe économique → profil volontaire → consentement publicitaire. Un refus de
  * consentement est une exclusion dure (`ineligible`) ; l'absence de
  * décision est un doute de confidentialité (`withheld`), jamais assimilée
  * à un refus.
@@ -33,6 +34,7 @@ final class MatchingService implements MatchingContract
         private readonly EconomicClassCatalogContract $economicClasses,
         private readonly AccountCountryLookupContract $countries,
         private readonly AdvertisingConsentContract $consents,
+        private readonly ProfileTargetingContract $profileTargeting,
     ) {}
 
     public function checkEligibility(string $campaignId, string $accountId): MatchingDecisionResult
@@ -65,6 +67,26 @@ final class MatchingService implements MatchingContract
             return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_INELIGIBLE, [$classReason]);
         }
 
+        $profileCriteria = $campaign->audienceConfiguration['profile_taxonomies'] ?? [];
+        if ($profileCriteria !== []) {
+            $profileConsent = $this->consents->stateFor($accountId, ConsentPurpose::CODE_SMART_PROFILE_USAGE);
+            if ($profileConsent === AdvertisingConsentContract::STATE_REFUSED) {
+                return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_INELIGIBLE, ['profile_consent_denied']);
+            }
+            if ($profileConsent === AdvertisingConsentContract::STATE_NOT_DECIDED) {
+                return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_WITHHELD, ['profile_consent_not_decided']);
+            }
+            if (collect($profileCriteria)->contains(fn ($code) => str_starts_with($code, 'territory.'))) {
+                $locationConsent = $this->consents->stateFor($accountId, ConsentPurpose::CODE_APPROXIMATE_LOCATION_TARGETING);
+                if ($locationConsent !== AdvertisingConsentContract::STATE_GRANTED) {
+                    return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_WITHHELD, ['location_consent_required']);
+                }
+            }
+            if (! $this->profileTargeting->accountMatchesAll($accountId, $profileCriteria)) {
+                return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_INELIGIBLE, ['profile_mismatch']);
+            }
+        }
+
         $consentState = $this->consents->stateFor($accountId, ConsentPurpose::CODE_ADVERTISING_PERSONALIZATION);
 
         if ($consentState === AdvertisingConsentContract::STATE_REFUSED) {
@@ -75,7 +97,12 @@ final class MatchingService implements MatchingContract
             return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_WITHHELD, ['consent_not_decided']);
         }
 
-        return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_ELIGIBLE, ['territory_match', 'class_match', 'consent_active']);
+        $reasons = ['territory_match', 'class_match', 'consent_active'];
+        if ($profileCriteria !== []) {
+            $reasons[] = 'profile_match';
+        }
+
+        return $this->decide($campaignId, $campaign->campaignVersionId, $accountId, MatchingDecision::DECISION_ELIGIBLE, $reasons);
     }
 
     public function explain(string $campaignId, string $accountId): array
@@ -90,6 +117,7 @@ final class MatchingService implements MatchingContract
             'territory_match' => 'Votre pays correspond à la zone visée par cette campagne.',
             'class_match' => 'Votre classe économique correspond à l\'audience visée.',
             'consent_active' => 'Vous avez autorisé la personnalisation publicitaire.',
+            'profile_match' => 'Cette publicité correspond aux informations volontaires de votre profil.',
         ];
 
         return array_values(array_filter(array_map(fn (string $code) => $labels[$code] ?? null, $result->reasonCodes)));

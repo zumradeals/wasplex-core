@@ -9,6 +9,7 @@ use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Matching\Application\Contracts\MatchingContract;
 use App\Modules\Matching\Infrastructure\Models\MatchingDecision;
 use App\Modules\SmartProfile\Infrastructure\Models\ConsentPurpose;
+use App\Modules\SmartProfile\Infrastructure\Models\ProfileTaxonomy;
 use App\Modules\Subscriptions\Infrastructure\Models\EconomicClass;
 use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionPlanVersion;
 use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
@@ -149,6 +150,28 @@ it('finds a Gold subscriber in the targeted country and class eligible, with a p
 
     // The contract never exposes the candidate's identity to the caller.
     expect($match)->not->toHaveKey('account_id');
+});
+
+it('matches voluntary interests only with explicit Smart Profile consent', function (): void {
+    ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
+        'matching-interest-advertiser@example.com',
+        ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI'], 'profile_taxonomies' => ['interest.formation']],
+    );
+
+    registerAndLogin('matching-interest-candidate@example.com', country: 'CI');
+    $candidate = accountForMatchingTests('matching-interest-candidate@example.com');
+    subscribeAccountToClassForMatchingTests($candidate->id, 'GOLD');
+    test()->postJson('/api/me/consents/'.ConsentPurpose::CODE_ADVERTISING_PERSONALIZATION.'/grant')->assertOk();
+
+    expect(app(MatchingContract::class)->checkEligibility($campaignId, $candidate->id)->decision)->toBe('withheld');
+
+    $interest = ProfileTaxonomy::query()->where('code', 'interest.formation')->firstOrFail();
+    test()->postJson("/api/me/smart-profile/{$interest->id}")->assertCreated();
+    test()->postJson('/api/me/consents/'.ConsentPurpose::CODE_SMART_PROFILE_USAGE.'/grant')->assertOk();
+
+    $decision = app(MatchingContract::class)->checkEligibility($campaignId, $candidate->id);
+    expect($decision->decision)->toBe('eligible');
+    expect($decision->reasonCodes)->toContain('profile_match');
 });
 
 it('excludes a candidate outside the targeted country', function (): void {

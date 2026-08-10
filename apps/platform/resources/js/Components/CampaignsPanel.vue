@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import http from '@/lib/http';
 import { CAMPAIGN_OBJECTIVES } from '@/lib/campaignObjectives';
 import { economicClassLabel } from '@/lib/economicClasses';
+import { TARGET_COUNTRIES } from '@/lib/countries';
 import CampaignPerformancePanel from '@/Components/CampaignPerformancePanel.vue';
 import CampaignPreviewPhone from '@/Components/CampaignPreviewPhone.vue';
 
@@ -22,6 +23,11 @@ interface Asset {
 interface EconomicClass {
     code: string;
     weight_percent: number;
+}
+
+interface ProfileCriterion {
+    code: string;
+    label: string;
 }
 
 interface QuoteClassBreakdown {
@@ -45,7 +51,11 @@ interface Quote {
 interface CampaignVersion {
     version_number: number;
     creative_configuration: Record<string, unknown> | null;
-    audience_configuration: { territory?: { country_code?: string }; economic_classes?: string[] } | null;
+    audience_configuration: {
+        territory?: { country_code?: string };
+        economic_classes?: string[];
+        profile_taxonomies?: string[];
+    } | null;
     budget_configuration: { budget_amount_minor?: number } | null;
     status: string;
     quotes?: Quote[];
@@ -106,6 +116,7 @@ const campaigns = ref<Campaign[]>([]);
 const brands = ref<Brand[]>([]);
 const assets = ref<Asset[]>([]);
 const economicClasses = ref<EconomicClass[]>([]);
+const profileCriteria = ref<Record<string, ProfileCriterion[]>>({});
 const selectedCampaignId = ref<string | null>(null);
 const step = ref(0);
 const loading = ref(true);
@@ -125,6 +136,7 @@ const form = reactive({
     title: '',
     country_code: '',
     economic_classes: [] as string[],
+    profile_taxonomies: [] as string[],
     budget_amount_minor: null as number | null,
 });
 
@@ -167,14 +179,16 @@ async function loadAll(): Promise<void> {
     loading.value = true;
     loadError.value = null;
     try {
-        const [campaignsRes, brandsRes, classesRes] = await Promise.all([
+        const [campaignsRes, brandsRes, classesRes, criteriaRes] = await Promise.all([
             http.get('/advertiser/campaigns'),
             http.get('/advertiser/brands'),
             http.get('/advertiser/economic-classes'),
+            http.get('/advertiser/targeting/profile-criteria'),
         ]);
         campaigns.value = campaignsRes.data.campaigns;
         brands.value = brandsRes.data.brands;
         economicClasses.value = classesRes.data.economic_classes;
+        profileCriteria.value = criteriaRes.data.profile_criteria;
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
         loadError.value = message ?? 'Les campagnes sont momentanément indisponibles.';
@@ -191,6 +205,7 @@ function hydrateFormFromCampaign(campaign: Campaign): void {
     form.title = (version?.creative_configuration?.title as string) ?? '';
     form.country_code = version?.audience_configuration?.territory?.country_code ?? '';
     form.economic_classes = version?.audience_configuration?.economic_classes ?? [];
+    form.profile_taxonomies = version?.audience_configuration?.profile_taxonomies ?? [];
     form.budget_amount_minor = version?.budget_configuration?.budget_amount_minor ?? null;
     estimate.value = null;
 }
@@ -248,6 +263,9 @@ async function autosave(): Promise<void> {
                 form.economic_classes.length > 0
                     ? {
                           economic_classes: form.economic_classes,
+                          ...(form.profile_taxonomies.length > 0
+                              ? { profile_taxonomies: form.profile_taxonomies }
+                              : {}),
                           ...(form.country_code
                               ? { territory: { country_code: form.country_code.toUpperCase() } }
                               : {}),
@@ -272,6 +290,7 @@ watch(
         form.title,
         form.country_code,
         [...form.economic_classes],
+        [...form.profile_taxonomies],
         form.budget_amount_minor,
     ],
     () => scheduleAutosave(),
@@ -284,6 +303,16 @@ function toggleClass(code: string): void {
     } else {
         form.economic_classes.splice(index, 1);
     }
+    estimate.value = null;
+}
+
+function toggleProfileCriterion(code: string): void {
+    if (code.startsWith('demographic.gender.') && !form.profile_taxonomies.includes(code)) {
+        form.profile_taxonomies = form.profile_taxonomies.filter((item) => !item.startsWith('demographic.gender.'));
+    }
+    const index = form.profile_taxonomies.indexOf(code);
+    if (index === -1) form.profile_taxonomies.push(code);
+    else form.profile_taxonomies.splice(index, 1);
     estimate.value = null;
 }
 
@@ -609,14 +638,53 @@ void loadAll();
                                 </div>
                             </div>
                             <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Limiter à un pays (optionnel)</span>
-                                <input
+                                <span class="text-wpx-text font-semibold">Pays ciblé (optionnel)</span>
+                                <select
                                     v-model="form.country_code"
-                                    maxlength="2"
-                                    placeholder="Ex. CI"
-                                    class="rounded-wpx-sm border-wpx-border w-24 border px-2 py-1.5 text-sm uppercase"
-                                />
+                                    class="rounded-wpx-sm border-wpx-border w-full max-w-sm border px-2 py-2 text-sm"
+                                >
+                                    <option value="">Tous les pays</option>
+                                    <option v-for="country in TARGET_COUNTRIES" :key="country[0]" :value="country[0]">
+                                        {{ country[1] }} ({{ country[0] }})
+                                    </option>
+                                </select>
                             </label>
+                            <div v-for="(criteria, category) in profileCriteria" :key="category">
+                                <span class="text-wpx-text text-xs font-semibold">
+                                    {{
+                                        {
+                                            demographic: 'Genre déclaré',
+                                            interest: 'Centres d’intérêt',
+                                            usage: 'Usages',
+                                            possession: 'Équipement',
+                                            project: 'Projets',
+                                            situation: 'Situation',
+                                            territory: 'Zone approximative',
+                                        }[category] ?? category
+                                    }}
+                                </span>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button
+                                        v-for="criterion in criteria"
+                                        :key="criterion.code"
+                                        type="button"
+                                        class="rounded-full border px-3 py-1.5 text-xs font-medium"
+                                        :class="
+                                            form.profile_taxonomies.includes(criterion.code)
+                                                ? 'border-wpx-blue bg-wpx-blue/10 text-wpx-blue'
+                                                : 'border-wpx-border text-wpx-text'
+                                        "
+                                        @click="toggleProfileCriterion(criterion.code)"
+                                    >
+                                        {{ form.profile_taxonomies.includes(criterion.code) ? '✓ ' : '+ '
+                                        }}{{ criterion.label }}
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-wpx-text-muted text-xs">
+                                Les critères de profil sont déclarés volontairement par les utilisateurs. Wasplex ne
+                                révèle jamais leur identité à l’annonceur.
+                            </p>
                             <button
                                 type="button"
                                 class="rounded-wpx-md bg-wpx-navy-950 self-start px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"

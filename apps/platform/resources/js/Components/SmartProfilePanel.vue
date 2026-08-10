@@ -11,6 +11,7 @@ interface TaxonomyEntry {
 }
 
 const CATEGORY_META: Record<string, { title: string; icon: string }> = {
+    demographic: { title: 'À propos de moi', icon: '👤' },
     possession: { title: 'Ce que je possède', icon: '📦' },
     usage: { title: "Ce que j'utilise", icon: '📶' },
     interest: { title: "Ce qui m'intéresse", icon: '✨' },

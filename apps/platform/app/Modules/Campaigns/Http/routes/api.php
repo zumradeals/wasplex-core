@@ -20,6 +20,8 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
     ->group(function (): void {
         Route::get('/economic-classes', [TargetingController::class, 'economicClasses'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+        Route::get('/targeting/profile-criteria', [TargetingController::class, 'profileCriteria'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
 
         Route::get('/campaigns', [CampaignsController::class, 'index'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletQueryService;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignEnvelopeConsumption;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignQuote;
 use App\Modules\Identity\Infrastructure\Models\Account;
@@ -66,6 +67,8 @@ it('delivers the full advertising vertical: gain known before play, real reserva
     );
 
     $candidate = readyFeedCandidate('feed-vertical-candidate@example.com', 'GOLD');
+    $advertiserAvailableAfterFunding = app(AdvertiserWalletQueryService::class)->availableBalanceMinor($organizationId);
+    expect($advertiserAvailableAfterFunding)->toBe(200000);
     $sessionId = startFeedSession();
 
     $next = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")->assertOk()->json('delivery');
