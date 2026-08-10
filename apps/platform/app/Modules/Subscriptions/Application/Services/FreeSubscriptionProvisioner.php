@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Subscriptions\Application\Services;
 
+use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Subscriptions\Infrastructure\Models\EconomicClass;
 use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionEntitlement;
 use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionEvent;
@@ -24,6 +25,10 @@ final class FreeSubscriptionProvisioner
     public function ensureFor(string $accountId): ?UserSubscription
     {
         $subscription = DB::transaction(function () use ($accountId): ?UserSubscription {
+            // Serialize provisioning on the stable account row so concurrent
+            // /current and /quota requests cannot create two FREE records.
+            Account::query()->whereKey($accountId)->lockForUpdate()->firstOrFail();
+
             $active = UserSubscription::query()
                 ->where('account_id', $accountId)
                 ->whereIn('status', [UserSubscription::STATUS_ACTIVE, UserSubscription::STATUS_SCHEDULED_DOWNGRADE])
