@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Partage fixe 50/50 : la moitié du budget finance les récompenses et
- * l'autre moitié revient à Wasplex au fil des vues complètes. Le gain est
- * une valeur WP explicite du niveau d'abonnement ; aucun poids,
- * coefficient ou multiplicateur média n'intervient dans le calcul.
+ * l'autre moitié revient à Wasplex au fil des vues complètes. Les classes
+ * d'abonnement restent internes : le devis couvre automatiquement tous les
+ * niveaux actifs, sans choix de l'annonceur.
  */
 final class CampaignQuoteService
 {
@@ -25,7 +25,6 @@ final class CampaignQuoteService
     {
         $audience = $version->audience_configuration ?? [];
         $budget = $version->budget_configuration ?? [];
-        $classCodes = $audience['economic_classes'] ?? [];
         $countryCode = $audience['territory']['country_code'] ?? null;
         $dailyBudgetMinor = (int) ($budget['daily_budget_minor'] ?? 0);
         $configuredDurationDays = (int) ($budget['duration_days'] ?? 0);
@@ -33,9 +32,18 @@ final class CampaignQuoteService
             ? $dailyBudgetMinor * $configuredDurationDays
             : (int) ($budget['budget_amount_minor'] ?? 0);
 
-        if ($classCodes === [] || $grossAmountMinor <= 0) {
+        if ($grossAmountMinor <= 0) {
             throw new InvalidCampaignConfigurationException(
-                "Choisissez au moins un profil d’abonnement, un budget quotidien et une durée."
+                'Choisissez un budget quotidien et une durée.'
+            );
+        }
+
+        $classes = collect($this->economicClasses->listActive())->values();
+        $classCodes = $classes->pluck('code')->all();
+
+        if ($classCodes === []) {
+            throw new InvalidCampaignConfigurationException(
+                'Aucun niveau membre actif n’est disponible pour la diffusion.'
             );
         }
 
@@ -75,10 +83,6 @@ final class CampaignQuoteService
         $minimumSegmentSize = (int) config('campaigns.minimum_segment_size');
         $estimate = $this->economicClasses->estimateAudience($classCodes, $countryCode, $minimumSegmentSize);
 
-        $classes = collect($this->economicClasses->listActive())
-            ->filter(fn ($summary) => in_array($summary->code, $classCodes, true))
-            ->values();
-
         $netDistributableAmountMinor = $grossAmountMinor;
         $userEnvelopeTotal = intdiv($netDistributableAmountMinor, 2);
         $classBreakdown = [];
@@ -97,7 +101,7 @@ final class CampaignQuoteService
         }
 
         // Estimation prudente : si toutes les vues appartenaient au niveau
-        // ciblé le mieux rémunéré, ce nombre reste finançable.
+        // actif le mieux rémunéré, ce nombre reste finançable.
         $estimatedEvents = $highestReward > 0 ? intdiv($userEnvelopeTotal, $highestReward) : 0;
 
         return DB::transaction(function () use ($version, $priceVersion, $netDistributableAmountMinor, $grossAmountMinor, $estimatedEvents, $estimate, $classBreakdown): CampaignQuote {
@@ -129,5 +133,4 @@ final class CampaignQuoteService
             return $quote;
         });
     }
-
 }
