@@ -11,6 +11,8 @@ final class GeniusPayConfiguration extends Model
 {
     use HasUlids;
 
+    protected $table = 'geniuspay_configurations';
+
     protected $fillable = [
         'environment', 'api_key', 'api_secret', 'webhook_secret', 'updated_by',
     ];
