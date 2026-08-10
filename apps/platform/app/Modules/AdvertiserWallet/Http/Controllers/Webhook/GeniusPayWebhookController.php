@@ -16,6 +16,8 @@ final class GeniusPayWebhookController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         $this->handler->handle($request->getContent(), [
+            'X-GeniusPay-Signature' => $request->header('X-GeniusPay-Signature'),
+            'X-GeniusPay-Timestamp' => $request->header('X-GeniusPay-Timestamp'),
             'X-Webhook-Signature' => $request->header('X-Webhook-Signature'),
             'X-Webhook-Timestamp' => $request->header('X-Webhook-Timestamp'),
         ]);

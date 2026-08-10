@@ -83,6 +83,7 @@ const actionError = ref<string | null>(null);
 
 const showAdvertisers = ref(false);
 const showPricing = ref(false);
+const showPreparatoryControls = ref(false);
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
@@ -545,7 +546,26 @@ onMounted(load);
                 Choisis une campagne à examiner à gauche.
             </div>
 
-            <div class="rounded-wpx-lg shadow-wpx-card border-wpx-border overflow-hidden border bg-white">
+            <div class="rounded-wpx-md bg-wpx-blue/5 border-wpx-blue/20 border p-4 text-sm">
+                <p class="text-wpx-text font-bold">Une seule approbation pour la campagne</p>
+                <p class="text-wpx-text-muted mt-1 text-xs">
+                    Quand tu approuves une campagne financée, Wasplex valide aussi son compte annonceur, sa marque et le
+                    média utilisé. Les contrôles séparés ci-dessous restent disponibles seulement en cas de besoin.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="text-wpx-blue-light block self-start text-xs font-bold"
+                @click="showPreparatoryControls = !showPreparatoryControls"
+            >
+                {{ showPreparatoryControls ? 'Masquer les contrôles séparés' : 'Afficher les contrôles séparés' }}
+            </button>
+
+            <div
+                v-if="showPreparatoryControls"
+                class="rounded-wpx-lg shadow-wpx-card border-wpx-border overflow-hidden border bg-white"
+            >
                 <p class="text-wpx-text border-wpx-border border-b p-4.5 text-sm font-bold">Marques à vérifier</p>
                 <div
                     v-for="brand in brands.filter((b) => b.status !== 'verified')"
@@ -581,7 +601,10 @@ onMounted(load);
                 </p>
             </div>
 
-            <div class="rounded-wpx-lg shadow-wpx-card border-wpx-border overflow-hidden border bg-white">
+            <div
+                v-if="showPreparatoryControls"
+                class="rounded-wpx-lg shadow-wpx-card border-wpx-border overflow-hidden border bg-white"
+            >
                 <p class="text-wpx-text border-wpx-border border-b p-4.5 text-sm font-bold">
                     Médias en attente de modération
                 </p>

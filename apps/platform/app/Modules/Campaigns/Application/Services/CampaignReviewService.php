@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Campaigns\Application\Services;
 
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
+use App\Modules\AdvertiserStudio\Application\Contracts\CampaignModerationContract;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewCase;
@@ -22,7 +23,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class CampaignReviewService
 {
-    public function __construct(private readonly AdvertiserWalletReservationContract $reservations) {}
+    public function __construct(
+        private readonly AdvertiserWalletReservationContract $reservations,
+        private readonly CampaignModerationContract $moderation,
+    ) {}
 
     /**
      * @return Collection<int, CampaignReviewCase>
@@ -56,6 +60,14 @@ final class CampaignReviewService
         $this->assertDistinctDecider($case, $actorAccountId);
 
         return DB::transaction(function () use ($case, $actorAccountId): CampaignReviewCase {
+            $creative = $case->campaignVersion->creative_configuration ?? [];
+            $this->moderation->approveBundle(
+                $case->campaign->organization_id,
+                $case->campaign->brand_id,
+                isset($creative['asset_id']) ? (string) $creative['asset_id'] : null,
+                $actorAccountId,
+            );
+
             $case->update([
                 'status' => CampaignReviewCase::STATUS_DECIDED,
                 'decision' => CampaignReviewCase::DECISION_APPROVED,

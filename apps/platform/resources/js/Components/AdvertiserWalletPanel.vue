@@ -85,8 +85,10 @@ async function startRecharge(): Promise<void> {
         }
 
         beginPolling(data.deposit.id);
-    } catch {
-        error.value = 'La création du dépôt a échoué.';
+    } catch (e) {
+        error.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'La création du dépôt a échoué.';
     } finally {
         creatingDeposit.value = false;
     }
@@ -213,7 +215,16 @@ void load();
             v-if="!loadError && showRecharge"
             class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex flex-col gap-4 p-5"
         >
-            <h3 class="text-wpx-text text-sm font-semibold">Choisir un montant (FCFA)</h3>
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-wpx-text text-sm font-semibold">Choisir un montant (FCFA)</h3>
+                <span class="bg-wpx-warning/10 text-wpx-warning-light rounded-full px-2.5 py-1 text-[11px] font-bold">
+                    GeniusPay · Sandbox
+                </span>
+            </div>
+            <p class="text-wpx-text-muted text-xs">
+                Mode test : aucune transaction réelle ne sera débitée. GeniusPay ouvrira sa page sécurisée pour simuler
+                le paiement.
+            </p>
             <div class="flex flex-wrap gap-2">
                 <button
                     v-for="amount in QUICK_AMOUNTS"
@@ -236,7 +247,7 @@ void load();
                 <input
                     v-model="customAmount"
                     type="number"
-                    min="100"
+                    min="200"
                     placeholder="Ex. 15000"
                     class="rounded-wpx-sm border-wpx-border border px-3 py-2 text-sm"
                 />

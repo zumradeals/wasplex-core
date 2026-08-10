@@ -12,15 +12,10 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * GeniusPay Merchant API adapter (sandbox only). The contract implemented
- * here — base URL, checkout domain allowlist, X-Webhook-* headers, HMAC-
- * SHA256 signature over "timestamp.payload", environment at the payload
- * root, business fields under data.*, a possibly-null initial status — is
- * the *real* provider contract documented in docs/chantiers/
- * HOTFIX-P003-GENIUSPAY-SANDBOX.md after a production incident. Exact
- * endpoint paths beyond the documented base URL (/payments,
- * /payments/{reference}) are this adapter's own REST convention — the
- * hotfix note documents response shapes and headers, not a full path list.
+ * GeniusPay Merchant API adapter (sandbox only). Authentication uses the
+ * documented X-API-Key/X-API-Secret pair. It accepts the current nested
+ * data response/webhook structure and the former flat sandbox structure so
+ * in-flight test transactions remain reconcilable during the transition.
  */
 final class GeniusPayAdapter implements PaymentProviderContract
 {
@@ -28,7 +23,9 @@ final class GeniusPayAdapter implements PaymentProviderContract
 
     private readonly string $baseUrl;
 
-    private readonly string $merchantKey;
+    private readonly string $apiKey;
+
+    private readonly string $apiSecret;
 
     private readonly string $webhookSecret;
 
@@ -46,7 +43,8 @@ final class GeniusPayAdapter implements PaymentProviderContract
         }
 
         $this->baseUrl = (string) config('services.geniuspay.base_url', '');
-        $this->merchantKey = (string) config('services.geniuspay.merchant_key', '');
+        $this->apiKey = (string) config('services.geniuspay.api_key', '');
+        $this->apiSecret = (string) config('services.geniuspay.api_secret', '');
         $this->webhookSecret = (string) config('services.geniuspay.webhook_secret', '');
         $this->checkoutHosts = (array) config('services.geniuspay.checkout_hosts', []);
 
@@ -54,30 +52,59 @@ final class GeniusPayAdapter implements PaymentProviderContract
             throw new PaymentProviderConfigurationException('GeniusPay: la base API doit être en HTTPS.');
         }
 
-        if (Str::contains(strtolower($this->merchantKey), 'live')) {
-            throw new PaymentProviderConfigurationException('GeniusPay: une clé de production ("live") ne peut pas être utilisée ici.');
+        if ($this->apiKey === '' || $this->apiSecret === '') {
+            throw new PaymentProviderConfigurationException(
+                'GeniusPay sandbox n’est pas configuré : renseignez GENIUSPAY_API_KEY et GENIUSPAY_API_SECRET.',
+            );
+        }
+
+        if ($this->webhookSecret === '') {
+            throw new PaymentProviderConfigurationException(
+                'GeniusPay sandbox n’est pas configuré : renseignez GENIUSPAY_WEBHOOK_SECRET.',
+            );
+        }
+
+        if (Str::contains(strtolower($this->apiKey.' '.$this->apiSecret), 'live')) {
+            throw new PaymentProviderConfigurationException('GeniusPay: les clés de production ne sont pas autorisées en mode sandbox.');
         }
     }
 
     public function createPayment(CreatePaymentRequest $request): ProviderPaymentResult
     {
         $response = Http::baseUrl($this->baseUrl)
-            ->withToken($this->merchantKey)
+            ->withHeaders($this->authenticationHeaders())
             ->post('/payments', [
                 'amount' => $request->amountMinor,
                 'currency' => $request->currency,
-                'reference' => $request->internalReference,
-                'idempotency_key' => $request->idempotencyKey,
+                'description' => "Recharge Wallet Wasplex {$request->internalReference}",
+                'success_url' => rtrim((string) config('app.url'), '/').'/studio?payment=success',
+                'error_url' => rtrim((string) config('app.url'), '/').'/studio?payment=failed',
+                'metadata' => [
+                    'deposit_id' => $request->internalReference,
+                    'idempotency_key' => $request->idempotencyKey,
+                ],
             ])
             ->throw();
 
         return $this->normalizePaymentResponse($response->json());
     }
 
+    public function testConnection(): array
+    {
+        $response = Http::baseUrl($this->baseUrl)
+            ->withHeaders($this->authenticationHeaders())
+            ->get('/account')
+            ->throw();
+
+        $payload = $response->json();
+
+        return is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+    }
+
     public function fetchPaymentStatus(string $providerReference): ProviderPaymentResult
     {
         $response = Http::baseUrl($this->baseUrl)
-            ->withToken($this->merchantKey)
+            ->withHeaders($this->authenticationHeaders())
             ->get("/payments/{$providerReference}")
             ->throw();
 
@@ -86,20 +113,26 @@ final class GeniusPayAdapter implements PaymentProviderContract
 
     public function verifyWebhookSignature(string $rawPayload, array $headers): bool
     {
-        $signature = $headers['X-Webhook-Signature'] ?? $headers['x-webhook-signature'] ?? null;
-        $timestamp = $headers['X-Webhook-Timestamp'] ?? $headers['x-webhook-timestamp'] ?? null;
+        $signature = $headers['X-GeniusPay-Signature'] ?? $headers['x-geniuspay-signature']
+            ?? $headers['X-Webhook-Signature'] ?? $headers['x-webhook-signature'] ?? null;
+        $timestamp = $headers['X-GeniusPay-Timestamp'] ?? $headers['x-geniuspay-timestamp']
+            ?? $headers['X-Webhook-Timestamp'] ?? $headers['x-webhook-timestamp'] ?? null;
 
-        if (! is_string($signature) || ! is_string($timestamp) || ! ctype_digit($timestamp)) {
+        if (! is_string($signature) || $signature === '') {
             return false;
         }
 
-        if (abs(time() - (int) $timestamp) > self::SIGNATURE_TOLERANCE_SECONDS) {
+        if (is_string($timestamp) && ctype_digit($timestamp) && abs(time() - (int) $timestamp) > self::SIGNATURE_TOLERANCE_SECONDS) {
             return false;
         }
 
-        $expected = hash_hmac('sha256', "{$timestamp}.{$rawPayload}", $this->webhookSecret);
+        $expected = hash_hmac('sha256', $rawPayload, $this->webhookSecret);
+        $legacyExpected = is_string($timestamp) && $timestamp !== ''
+            ? hash_hmac('sha256', "{$timestamp}.{$rawPayload}", $this->webhookSecret)
+            : null;
 
-        return hash_equals($expected, $signature);
+        return hash_equals($expected, $signature)
+            || ($legacyExpected !== null && hash_equals($legacyExpected, $signature));
     }
 
     public function parseWebhookPayload(string $rawPayload): ProviderWebhookEvent
@@ -111,14 +144,15 @@ final class GeniusPayAdapter implements PaymentProviderContract
         }
 
         $data = is_array($decoded['data'] ?? null) ? $decoded['data'] : [];
-        $environment = (string) ($decoded['environment'] ?? 'unknown');
-        $providerStatusRaw = isset($data['status']) ? (string) $data['status'] : null;
+        $transaction = is_array($data['transaction'] ?? null) ? $data['transaction'] : $data;
+        $environment = (string) ($data['environment'] ?? $decoded['environment'] ?? 'unknown');
+        $providerStatusRaw = isset($transaction['status']) ? (string) $transaction['status'] : null;
 
         return new ProviderWebhookEvent(
-            eventType: (string) ($decoded['event_type'] ?? 'unknown'),
-            providerReference: isset($data['reference']) ? (string) $data['reference'] : null,
-            amountMinor: isset($data['amount']) ? (int) $data['amount'] : null,
-            currency: isset($data['currency']) ? (string) $data['currency'] : null,
+            eventType: (string) ($decoded['event'] ?? $decoded['event_type'] ?? 'unknown'),
+            providerReference: isset($transaction['reference']) ? (string) $transaction['reference'] : null,
+            amountMinor: isset($transaction['amount']) ? (int) $transaction['amount'] : null,
+            currency: isset($transaction['currency']) ? (string) $transaction['currency'] : null,
             providerStatusRaw: $providerStatusRaw,
             normalizedStatus: $this->normalizeStatus($providerStatusRaw, hasCheckoutUrl: false),
             environment: $environment,
@@ -130,7 +164,10 @@ final class GeniusPayAdapter implements PaymentProviderContract
      */
     private function normalizePaymentResponse(array $payload): ProviderPaymentResult
     {
-        $checkoutUrl = isset($payload['checkout_url']) ? (string) $payload['checkout_url'] : null;
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+        $checkoutUrl = isset($data['checkout_url'])
+            ? (string) $data['checkout_url']
+            : (isset($data['payment_url']) ? (string) $data['payment_url'] : null);
 
         if ($checkoutUrl !== null && ! $this->isAllowedCheckoutUrl($checkoutUrl)) {
             throw new RuntimeException("GeniusPay: domaine de checkout non autorisé ({$checkoutUrl}).");
@@ -139,16 +176,16 @@ final class GeniusPayAdapter implements PaymentProviderContract
         // The real sandbox API can return `status: null` on a successful
         // creation as long as a checkout URL is present (docs/chantiers/
         // HOTFIX-P003-GENIUSPAY-SANDBOX.md §5) — never treat that as failure.
-        $providerStatusRaw = isset($payload['status']) ? (string) $payload['status'] : null;
+        $providerStatusRaw = isset($data['status']) ? (string) $data['status'] : null;
 
         return new ProviderPaymentResult(
-            providerReference: isset($payload['reference']) ? (string) $payload['reference'] : null,
+            providerReference: isset($data['reference']) ? (string) $data['reference'] : null,
             checkoutUrl: $checkoutUrl,
             providerStatusRaw: $providerStatusRaw,
             normalizedStatus: $this->normalizeStatus($providerStatusRaw, hasCheckoutUrl: $checkoutUrl !== null && $checkoutUrl !== ''),
-            environment: (string) ($payload['environment'] ?? 'unknown'),
-            amountMinor: isset($payload['amount']) ? (int) $payload['amount'] : null,
-            currency: isset($payload['currency']) ? (string) $payload['currency'] : null,
+            environment: (string) ($data['environment'] ?? $payload['environment'] ?? 'unknown'),
+            amountMinor: isset($data['amount']) ? (int) $data['amount'] : null,
+            currency: isset($data['currency']) ? (string) $data['currency'] : null,
         );
     }
 
@@ -157,12 +194,22 @@ final class GeniusPayAdapter implements PaymentProviderContract
         return match (true) {
             $providerStatusRaw === null && $hasCheckoutUrl => 'awaiting_payment',
             $providerStatusRaw === null => 'unknown',
-            in_array($providerStatusRaw, ['success', 'confirmed', 'paid'], true) => 'confirmed',
+            in_array($providerStatusRaw, ['success', 'completed', 'confirmed', 'paid'], true) => 'confirmed',
             in_array($providerStatusRaw, ['pending', 'processing'], true) => 'awaiting_payment',
-            in_array($providerStatusRaw, ['failed', 'declined'], true) => 'rejected',
-            in_array($providerStatusRaw, ['expired'], true) => 'expired',
+            in_array($providerStatusRaw, ['failed', 'declined', 'cancelled', 'refunded'], true) => 'rejected',
+            $providerStatusRaw === 'expired' => 'expired',
             default => 'unknown',
         };
+    }
+
+    /** @return array<string, string> */
+    private function authenticationHeaders(): array
+    {
+        return [
+            'X-API-Key' => $this->apiKey,
+            'X-API-Secret' => $this->apiSecret,
+            'Accept' => 'application/json',
+        ];
     }
 
     private function isAllowedCheckoutUrl(string $checkoutUrl): bool

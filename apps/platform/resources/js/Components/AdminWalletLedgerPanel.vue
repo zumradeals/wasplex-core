@@ -57,6 +57,13 @@ interface ReconciliationRun {
     summary: Record<string, number>;
 }
 
+interface GeniusPayStatus {
+    configured: boolean;
+    api_key_hint: string | null;
+    updated_at: string | null;
+    webhook_url: string;
+}
+
 const RESULT_LABELS: Record<string, string> = {
     matched: 'Rapproché',
     partially_matched: 'Partiellement rapproché',
@@ -77,6 +84,11 @@ const accounts = ref<LedgerAccountRow[]>([]);
 const reconciliationEntries = ref<ReconciliationEntry[]>([]);
 const reconciliationRuns = ref<ReconciliationRun[]>([]);
 const runningReconciliation = ref(false);
+const geniusPayStatus = ref<GeniusPayStatus | null>(null);
+const geniusPayForm = reactive({ api_key: '', api_secret: '', webhook_secret: '' });
+const geniusPayMessage = ref<string | null>(null);
+const savingGeniusPay = ref(false);
+const testingGeniusPay = ref(false);
 
 const depositForm = ref({ organization_id: '', amount_minor: 5000, currency: 'XOF', proof_reference: '', reason: '' });
 const depositMessage = ref<string | null>(null);
@@ -88,20 +100,56 @@ const correctionMessage = ref<string | null>(null);
 async function load(): Promise<void> {
     loading.value = true;
     try {
-        const [summaryRes, transactionsRes, accountsRes, entriesRes, runsRes] = await Promise.allSettled([
+        const [summaryRes, transactionsRes, accountsRes, entriesRes, runsRes, geniusPayRes] = await Promise.allSettled([
             http.get('/admin/dashboard/summary'),
             http.get('/admin/ledger/transactions'),
             http.get('/admin/ledger/accounts'),
             http.get('/admin/reconciliation/entries'),
             http.get('/admin/reconciliation/runs'),
+            http.get('/admin/advertiser-wallet/geniuspay'),
         ]);
         isBalanced.value = summaryRes.status === 'fulfilled' ? summaryRes.value.data.ledger.is_balanced : null;
         transactions.value = transactionsRes.status === 'fulfilled' ? transactionsRes.value.data.transactions : [];
         accounts.value = accountsRes.status === 'fulfilled' ? accountsRes.value.data.accounts : [];
         reconciliationEntries.value = entriesRes.status === 'fulfilled' ? entriesRes.value.data.entries : [];
         reconciliationRuns.value = runsRes.status === 'fulfilled' ? runsRes.value.data.runs : [];
+        geniusPayStatus.value = geniusPayRes.status === 'fulfilled' ? geniusPayRes.value.data.geniuspay : null;
     } finally {
         loading.value = false;
+    }
+}
+
+async function saveGeniusPay(): Promise<void> {
+    geniusPayMessage.value = null;
+    savingGeniusPay.value = true;
+    try {
+        const { data } = await http.put('/admin/advertiser-wallet/geniuspay', geniusPayForm);
+        geniusPayStatus.value = data.geniuspay;
+        geniusPayForm.api_key = '';
+        geniusPayForm.api_secret = '';
+        geniusPayForm.webhook_secret = '';
+        geniusPayMessage.value = 'Clés sandbox enregistrées et chiffrées.';
+    } catch (e) {
+        geniusPayMessage.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            "La configuration n'a pas pu être enregistrée.";
+    } finally {
+        savingGeniusPay.value = false;
+    }
+}
+
+async function testGeniusPay(): Promise<void> {
+    geniusPayMessage.value = null;
+    testingGeniusPay.value = true;
+    try {
+        const { data } = await http.post('/admin/advertiser-wallet/geniuspay/test');
+        geniusPayMessage.value = data.message;
+    } catch (e) {
+        geniusPayMessage.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'Test de connexion échoué.';
+    } finally {
+        testingGeniusPay.value = false;
     }
 }
 
@@ -385,6 +433,89 @@ onMounted(load);
                             </span>
                         </li>
                     </ul>
+                </div>
+
+                <div class="rounded-wpx-lg shadow-wpx-card border-wpx-border bg-wpx-surface border p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h2 class="text-wpx-text text-sm font-semibold">GeniusPay Sandbox</h2>
+                            <p class="text-wpx-text-muted mt-1 text-xs">
+                                Configure ici les paiements de test du Wallet annonceur. Les clés sont chiffrées et ne
+                                seront jamais réaffichées.
+                            </p>
+                        </div>
+                        <span
+                            class="rounded-full px-3 py-1 text-xs font-bold"
+                            :class="
+                                geniusPayStatus?.configured
+                                    ? 'bg-wpx-success/10 text-wpx-success-light'
+                                    : 'bg-wpx-warning/10 text-wpx-warning-light'
+                            "
+                        >
+                            {{ geniusPayStatus?.configured ? 'Configuré' : 'À configurer' }}
+                        </span>
+                    </div>
+
+                    <form class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3" @submit.prevent="saveGeniusPay">
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                            <span>Clé publique sandbox</span>
+                            <input
+                                v-model.trim="geniusPayForm.api_key"
+                                :placeholder="geniusPayStatus?.api_key_hint ?? 'pk_sandbox_...'"
+                                autocomplete="off"
+                                class="rounded-wpx-sm border-wpx-border border px-3 py-2 text-sm"
+                                :required="!geniusPayStatus?.configured"
+                            />
+                        </label>
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                            <span>Clé secrète sandbox</span>
+                            <input
+                                v-model.trim="geniusPayForm.api_secret"
+                                type="password"
+                                placeholder="sk_sandbox_..."
+                                autocomplete="new-password"
+                                class="rounded-wpx-sm border-wpx-border border px-3 py-2 text-sm"
+                                :required="!geniusPayStatus?.configured"
+                            />
+                        </label>
+                        <label class="text-wpx-text flex flex-col gap-1 text-xs">
+                            <span>Secret du webhook</span>
+                            <input
+                                v-model.trim="geniusPayForm.webhook_secret"
+                                type="password"
+                                placeholder="whsec_..."
+                                autocomplete="new-password"
+                                class="rounded-wpx-sm border-wpx-border border px-3 py-2 text-sm"
+                                :required="!geniusPayStatus?.configured"
+                            />
+                        </label>
+                        <div class="flex flex-wrap items-center gap-3 lg:col-span-3">
+                            <button
+                                type="submit"
+                                class="rounded-wpx-sm bg-wpx-navy-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                                :disabled="savingGeniusPay"
+                            >
+                                {{ savingGeniusPay ? 'Enregistrement…' : 'Enregistrer les clés' }}
+                            </button>
+                            <button
+                                v-if="geniusPayStatus?.configured"
+                                type="button"
+                                class="rounded-wpx-sm border-wpx-blue-light text-wpx-blue-light border px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                                :disabled="testingGeniusPay"
+                                @click="testGeniusPay"
+                            >
+                                {{ testingGeniusPay ? 'Test en cours…' : 'Tester la connexion' }}
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="bg-wpx-canvas mt-4 rounded-lg p-3 text-xs">
+                        <p class="text-wpx-text font-bold">Adresse du webhook à copier dans GeniusPay</p>
+                        <p class="text-wpx-text-muted mt-1 font-mono break-all">
+                            {{ geniusPayStatus?.webhook_url ?? 'https://wasplex.com/api/webhooks/geniuspay' }}
+                        </p>
+                    </div>
+                    <p v-if="geniusPayMessage" class="text-wpx-text-muted mt-3 text-xs">{{ geniusPayMessage }}</p>
                 </div>
 
                 <div class="rounded-wpx-lg shadow-wpx-card border-wpx-border bg-wpx-surface border p-4">
