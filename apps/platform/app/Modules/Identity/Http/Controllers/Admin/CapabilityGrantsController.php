@@ -6,6 +6,7 @@ namespace App\Modules\Identity\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\AuditLogger;
+use App\Modules\Identity\Application\Services\SpaceService;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\CapabilityGrant;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,10 @@ use Illuminate\Validation\Rule;
 
 final class CapabilityGrantsController extends Controller
 {
-    public function __construct(private readonly AuditLogger $auditLogger) {}
+    public function __construct(
+        private readonly AuditLogger $auditLogger,
+        private readonly SpaceService $spaceService,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -56,6 +60,12 @@ final class CapabilityGrantsController extends Controller
             'starts_at' => now(),
             'granted_by' => $grantor->id,
         ]);
+
+        if (str_starts_with($grant->capability_code, 'admin.')) {
+            /** @var Account $target */
+            $target = Account::query()->findOrFail($grant->account_id);
+            $this->spaceService->ensureAdminMembership($target, $grantor, $request);
+        }
 
         $this->auditLogger->record('CapabilityGranted', [
             'actor_account_id' => $grantor->id,
