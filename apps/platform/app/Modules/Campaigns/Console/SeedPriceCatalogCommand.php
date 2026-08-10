@@ -10,8 +10,8 @@ use Illuminate\Console\Command;
 
 /**
  * Configuration de départ volontairement simple et administrable : budget
- * minimum de 5 000 FCFA et diffusion pendant 7 jours. Aucun multiplicateur
- * média, poids ou coefficient n'intervient dans la tarification.
+ * minimum de 2 000 FCFA, 500 FCFA par jour et diffusion libre de 1 à 30
+ * jours (7 jours proposés). Aucun multiplicateur média, poids ou coefficient.
  */
 final class SeedPriceCatalogCommand extends Command
 {
@@ -33,7 +33,10 @@ final class SeedPriceCatalogCommand extends Command
                 'base_price_minor_per_event' => 0,
                 'image_multiplier' => '1.0000',
                 'video_multiplier' => '1.0000',
-                'minimum_budget_minor' => 5000,
+                'minimum_budget_minor' => 2000,
+                'minimum_daily_budget_minor' => 500,
+                'minimum_duration_days' => 1,
+                'maximum_duration_days' => 30,
                 'duration_days' => 7,
             ]);
         }
