@@ -44,9 +44,26 @@ final class CampaignQuoteService
             throw new NoPublishedPriceCatalogException;
         }
 
+        // Existing drafts created before flexible durations keep working
+        // with the published default; new drafts persist the advertiser's
+        // explicit choice in budget_configuration.
+        $durationDays = (int) ($budget['duration_days'] ?? $priceVersion->duration_days);
+
         if ($grossAmountMinor < $priceVersion->minimum_budget_minor) {
             throw new InvalidCampaignConfigurationException(
-                "Le budget minimum pour {$priceVersion->duration_days} jours est de {$priceVersion->minimum_budget_minor} FCFA."
+                "Le budget total minimum est de {$priceVersion->minimum_budget_minor} FCFA."
+            );
+        }
+
+        if ($durationDays < $priceVersion->minimum_duration_days || $durationDays > $priceVersion->maximum_duration_days) {
+            throw new InvalidCampaignConfigurationException(
+                "Choisissez une durée comprise entre {$priceVersion->minimum_duration_days} et {$priceVersion->maximum_duration_days} jours."
+            );
+        }
+
+        if (intdiv($grossAmountMinor, $durationDays) < $priceVersion->minimum_daily_budget_minor) {
+            throw new InvalidCampaignConfigurationException(
+                "Prévoyez au moins {$priceVersion->minimum_daily_budget_minor} FCFA par jour de diffusion."
             );
         }
 
@@ -103,4 +120,5 @@ final class CampaignQuoteService
             return $quote;
         });
     }
+
 }
