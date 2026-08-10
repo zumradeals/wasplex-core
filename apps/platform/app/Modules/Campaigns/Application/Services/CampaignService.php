@@ -114,8 +114,13 @@ final class CampaignService
         }
 
         if (isset($data['audience_configuration'])) {
-            $this->audienceValidator->validate($data['audience_configuration']);
-            $update['audience_configuration'] = $data['audience_configuration'];
+            $audienceConfiguration = $data['audience_configuration'];
+            // Compatibility with old clients/drafts: a class list may still
+            // arrive over the wire, but it is discarded before validation
+            // and persistence. The advertiser cannot influence it.
+            unset($audienceConfiguration['economic_classes']);
+            $this->audienceValidator->validate($audienceConfiguration);
+            $update['audience_configuration'] = $audienceConfiguration;
         }
 
         if (isset($data['budget_configuration'])) {
@@ -134,10 +139,6 @@ final class CampaignService
                 $version->update($versionUpdate);
             }
 
-            // Editing while changes_requested keeps that status — the
-            // advertiser must explicitly call resubmit() (docs/13 §56).
-            // Editing while draft/quoted/funded reverts to draft: a stale
-            // quote or funding must be redone.
             if (! in_array($campaign->status, [Campaign::STATUS_DRAFT, Campaign::STATUS_CHANGES_REQUESTED], true)) {
                 $campaign->update(['status' => Campaign::STATUS_DRAFT]);
             }
@@ -251,10 +252,6 @@ final class CampaignService
         return DB::transaction(fn (): Campaign => $this->openReviewCase($campaign, $actorAccountId, CampaignReviewEvent::TYPE_SUBMITTED));
     }
 
-    /**
-     * Public product action: the quote stays an internal accounting
-     * snapshot while reservation and submission appear as a single step.
-     */
     public function financeAndSubmit(string $organizationId, string $campaignId, string $actorAccountId): Campaign
     {
         $campaign = $this->find($organizationId, $campaignId);
@@ -281,11 +278,6 @@ final class CampaignService
         return $this->submit($organizationId, $campaignId, $actorAccountId);
     }
 
-    /**
-     * docs/13 §56 : correction puis resoumission — aucun nouveau
-     * financement, le budget déjà réservé reste verrouillé
-     * (docs/chantiers/P007-CHANTIER.md §6).
-     */
     public function resubmit(string $organizationId, string $campaignId, string $actorAccountId): Campaign
     {
         $campaign = $this->find($organizationId, $campaignId);
