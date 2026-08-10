@@ -47,5 +47,4 @@ final class AdvertisingPriceVersion extends Model
     {
         return $this->status === self::STATUS_PUBLISHED;
     }
-
 }

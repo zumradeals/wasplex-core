@@ -103,5 +103,4 @@ final class CampaignQuoteService
             return $quote;
         });
     }
-
 }

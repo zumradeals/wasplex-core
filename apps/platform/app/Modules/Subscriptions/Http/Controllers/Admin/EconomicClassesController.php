@@ -69,5 +69,4 @@ final class EconomicClassesController extends Controller
 
         return response()->json(['economic_class_version' => $version]);
     }
-
 }

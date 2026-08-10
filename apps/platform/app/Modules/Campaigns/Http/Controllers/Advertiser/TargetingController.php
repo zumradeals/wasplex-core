@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Campaigns\Http\Controllers\Advertiser;
 
-use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 use App\Modules\SmartProfile\Application\Contracts\ProfileTargetingContract;
+use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 

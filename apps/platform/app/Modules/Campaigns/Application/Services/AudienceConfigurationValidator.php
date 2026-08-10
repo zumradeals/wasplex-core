@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Campaigns\Application\Services;
 
-use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 use App\Modules\SmartProfile\Application\Contracts\ProfileTargetingContract;
+use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 
 /**
  * docs/17-donnees-permissions-consentements-techniques-wasplex.md L103 :
