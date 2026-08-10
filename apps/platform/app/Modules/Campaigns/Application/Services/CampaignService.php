@@ -322,6 +322,10 @@ final class CampaignService
             throw new InvalidCampaignConfigurationException('Le budget doit être un montant positif.');
         }
 
+        if (isset($configuration['duration_days']) && (int) $configuration['duration_days'] <= 0) {
+            throw new InvalidCampaignConfigurationException('La durée doit être exprimée en jours et être positive.');
+        }
+
         return $configuration;
     }
 }
