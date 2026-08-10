@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import http from '@/lib/http';
 
 interface EconomicClass {
@@ -36,6 +36,16 @@ const createForm = reactive({
 const editForm = reactive({ price_minor: 0, duration_days: 30 });
 const rewardForms = reactive<Record<string, { quota_monthly: number; reward_per_complete_view_minor: number }>>({});
 const numberFormatter = new Intl.NumberFormat('fr-FR');
+const freeReward = computed(() => {
+    const free = levels.value.find((level) => level.code === 'FREE');
+    return free ? (rewardForms[free.id]?.reward_per_complete_view_minor ?? 30) : 30;
+});
+
+function rewardAdvantage(level: EconomicClass): string {
+    const reward = rewardForms[level.id]?.reward_per_complete_view_minor ?? freeReward.value;
+    if (level.code === 'FREE' || freeReward.value <= 0) return 'Récompense normale';
+    return `+${Math.round(((reward - freeReward.value) / freeReward.value) * 100)} % par rapport au Gratuit`;
+}
 
 async function load(): Promise<void> {
     loading.value = true;
@@ -172,11 +182,13 @@ onMounted(load);
         <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-5">
             <h2 class="text-wpx-text text-base font-bold">Récompenses par vidéo entièrement vue</h2>
             <p class="text-wpx-text-muted mt-1 mb-4 text-sm">
-                Le gain dépend directement de l’abonnement. Aucun poids ni coefficient n’est utilisé.
+                Le montant final reste connu avant chaque vidéo. Les pourcentages indiquent seulement l’avantage par
+                rapport au plan Gratuit — ils ne divisent pas le budget en enveloppes fixes.
             </p>
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div v-for="level in levels" :key="level.id" class="border-wpx-border rounded-xl border p-4">
                     <p class="text-wpx-text mb-3 font-bold">{{ level.code }}</p>
+                    <p class="text-wpx-blue-light mb-3 text-xs font-semibold">{{ rewardAdvantage(level) }}</p>
                     <label class="text-wpx-text-muted block text-xs"
                         >Gain par vue complète (WP)
                         <input
