@@ -28,7 +28,7 @@ final class SeedPriceCatalogCommand extends Command
         if (! $hasVersion) {
             AdvertisingPriceVersion::query()->create([
                 'catalog_id' => $catalog->id,
-                'status' => AdvertisingPriceVersion::STATUS_DRAFT,
+                'status' => AdvertisingPriceVersion::STATUS_PUBLISHED,
                 'currency' => 'XOF',
                 'base_price_minor_per_event' => 0,
                 'image_multiplier' => '1.0000',
@@ -38,11 +38,13 @@ final class SeedPriceCatalogCommand extends Command
                 'minimum_duration_days' => 1,
                 'maximum_duration_days' => 30,
                 'duration_days' => 7,
+                'effective_from' => now(),
+                'published_at' => now(),
             ]);
         }
 
         $this->info('Catalogue de prix publicitaire "standard" initialisé.');
-        $this->warn('Reste en brouillon jusqu’à validation et publication par le fondateur.');
+        $this->info('La configuration standard est publiée automatiquement pour ne pas bloquer les premières campagnes.');
 
         return self::SUCCESS;
     }

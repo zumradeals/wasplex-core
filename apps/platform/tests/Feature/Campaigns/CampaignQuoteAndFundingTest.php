@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletQueryService;
+use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeAsset;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignBudgetReservation;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignQuote;
 use App\Modules\Ledger\Application\Services\LedgerPostingContract;
@@ -61,9 +62,23 @@ function setUpQuotableCampaign(string $email, int $budgetAmountMinor = 100000, i
     registerAndLogin($email);
     $organizationId = createAdvertiserOrganization();
     $brandId = test()->postJson('/api/advertiser/brands', ['name' => 'GamaDeals'])->assertCreated()->json('brand.id');
+    $asset = CreativeAsset::query()->create([
+        'brand_id' => $brandId,
+        'type' => CreativeAsset::TYPE_VIDEO,
+        'filename' => 'campagne-test.mp4',
+        'format' => 'video',
+        'size' => 1024,
+        'duration' => 15,
+        'moderation_status' => CreativeAsset::STATUS_READY,
+        'storage_disk' => 'public',
+        'storage_path' => 'creatives/campagne-test.mp4',
+        'created_by' => 'test-suite',
+    ]);
     $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
+        'objective_code' => 'faire_connaitre',
+        'creative_configuration' => ['asset_id' => $asset->id, 'title' => 'Campagne test'],
         'audience_configuration' => ['economic_classes' => ['GOLD', 'PLATINUM'], 'territory' => ['country_code' => 'CI']],
         'budget_configuration' => ['budget_amount_minor' => $budgetAmountMinor, 'duration_days' => $durationDays],
     ])->assertOk();
@@ -96,7 +111,7 @@ it('blocks quoting without a published price catalog', function (): void {
     test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")->assertStatus(422);
 });
 
-it('blocks quoting when the targeted segment is too small', function (): void {
+it('allows quoting when the targeted segment is still small', function (): void {
     publishPriceCatalog();
     registerAndLogin('campaign-quote-2@example.com');
     createAdvertiserOrganization();
@@ -109,7 +124,36 @@ it('blocks quoting when the targeted segment is too small', function (): void {
         'budget_configuration' => ['budget_amount_minor' => 100000],
     ])->assertOk();
 
-    test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")->assertStatus(422);
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")
+        ->assertOk()
+        ->assertJsonPath('campaign.status', 'quoted');
+});
+
+it('finances and submits a campaign in one advertiser action', function (): void {
+    publishPriceCatalog();
+    ['organization_id' => $organizationId, 'campaign_id' => $campaignId] = setUpQuotableCampaign(
+        'campaign-one-action@example.com',
+        2000,
+        2,
+    );
+    creditAdvertiserWalletForTests($organizationId, 2000);
+
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/finance-and-submit")
+        ->assertOk()
+        ->assertJsonPath('campaign.status', 'submitted');
+
+    expect(CampaignBudgetReservation::query()->where('campaign_id', $campaignId)->count())->toBe(1);
+});
+
+it('does not submit a campaign when its wallet is insufficient', function (): void {
+    publishPriceCatalog();
+    ['campaign_id' => $campaignId] = setUpQuotableCampaign('campaign-one-action-empty-wallet@example.com', 2000, 2);
+
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/finance-and-submit")
+        ->assertStatus(422)
+        ->assertJsonPath('available_minor', 0)
+        ->assertJsonPath('required_minor', 2000)
+        ->assertJsonPath('missing_minor', 2000);
 });
 
 it('produces a quote with an exact 50/50 envelope and direct plan rewards', function (): void {

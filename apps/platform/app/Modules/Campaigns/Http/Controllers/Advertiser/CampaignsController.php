@@ -12,7 +12,6 @@ use App\Modules\Campaigns\Application\Services\InvalidCampaignConfigurationExcep
 use App\Modules\Campaigns\Application\Services\InvalidCampaignStateException;
 use App\Modules\Campaigns\Application\Services\NoPublishedPriceCatalogException;
 use App\Modules\Campaigns\Application\Services\QuoteExpiredException;
-use App\Modules\Campaigns\Application\Services\SegmentTooSmallException;
 use App\Modules\Campaigns\Infrastructure\Models\AdvertisingPriceVersion;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Http\JsonResponse;
@@ -129,8 +128,6 @@ final class CampaignsController extends Controller
             return response()->json(['message' => $exception->getMessage()], 404);
         } catch (InvalidCampaignConfigurationException|InvalidCampaignStateException|NoPublishedPriceCatalogException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
-        } catch (SegmentTooSmallException $exception) {
-            return response()->json(['message' => $exception->getMessage(), 'estimated_total' => $exception->estimatedTotal], 422);
         }
 
         return response()->json(['campaign' => $updated]);
@@ -170,6 +167,35 @@ final class CampaignsController extends Controller
             return response()->json(['message' => $exception->getMessage()], 404);
         } catch (InvalidCampaignStateException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['campaign' => $updated]);
+    }
+
+    public function financeAndSubmit(Request $request, string $campaign): JsonResponse
+    {
+        $organizationId = $request->attributes->get('advertiser_organization_id');
+
+        /** @var Account $account */
+        $account = $request->user();
+
+        try {
+            $updated = $this->campaigns->financeAndSubmit($organizationId, $campaign, $account->id);
+        } catch (CampaignNotFoundException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 404);
+        } catch (InvalidCampaignConfigurationException|InvalidCampaignStateException|NoPublishedPriceCatalogException $exception) {
+            $message = $exception instanceof NoPublishedPriceCatalogException
+                ? 'La tarification publicitaire est temporairement indisponible. Réessaie dans quelques instants.'
+                : $exception->getMessage();
+
+            return response()->json(['message' => $message], 422);
+        } catch (InsufficientAdvertiserBalanceException $exception) {
+            return response()->json([
+                'message' => 'Ton Wallet ne contient pas encore assez de fonds pour envoyer cette campagne.',
+                'available_minor' => $exception->availableMinor,
+                'required_minor' => $exception->requestedMinor,
+                'missing_minor' => max(0, $exception->requestedMinor - $exception->availableMinor),
+            ], 422);
         }
 
         return response()->json(['campaign' => $updated]);

@@ -66,13 +66,6 @@ final class AudienceConfigurationValidator
                 throw new InvalidCampaignConfigurationException('Critère(s) de profil inconnu(s) ou suspendu(s) : '.implode(', ', $unknown));
             }
 
-            $genderCriteria = array_filter(
-                $configuration['profile_taxonomies'],
-                fn ($code) => is_string($code) && str_starts_with($code, 'demographic.gender.'),
-            );
-            if (count($genderCriteria) > 1) {
-                throw new InvalidCampaignConfigurationException('Une campagne ne peut sélectionner qu’un seul genre déclaré.');
-            }
         }
     }
 }

@@ -21,9 +21,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * docs/13-studio-annonceur-wasplex.md §32 : assistant en sept étapes avec
- * autosave — chaque appel à updateVersion() persiste immédiatement l'état
- * courant du brouillon (§98 : "autosave" est un test obligatoire).
+ * Assistant simplifié avec autosave : chaque appel à updateVersion()
+ * persiste immédiatement l'état courant du brouillon.
  */
 final class CampaignService
 {
@@ -254,6 +253,42 @@ final class CampaignService
     }
 
     /**
+     * Public product action: the quote stays an internal accounting
+     * snapshot while reservation and submission appear as a single step.
+     */
+    public function financeAndSubmit(string $organizationId, string $campaignId, string $actorAccountId): Campaign
+    {
+        $campaign = $this->find($organizationId, $campaignId);
+
+        $version = $campaign->currentVersion();
+        if ($campaign->objective_code === null || empty($version->creative_configuration['asset_id'])) {
+            throw new InvalidCampaignConfigurationException(
+                'Choisis un objectif et un média avant d’envoyer la campagne.'
+            );
+        }
+
+        if (empty($version->audience_configuration['economic_classes'])) {
+            throw new InvalidCampaignConfigurationException(
+                'Choisis au moins un profil d’abonnement dans l’audience.'
+            );
+        }
+
+        if ($campaign->status === Campaign::STATUS_DRAFT) {
+            $campaign = $this->quote($organizationId, $campaignId);
+        }
+
+        if ($campaign->status === Campaign::STATUS_QUOTED) {
+            $campaign = $this->fund($organizationId, $campaignId);
+        }
+
+        if ($campaign->status !== Campaign::STATUS_FUNDED) {
+            throw new InvalidCampaignStateException('Cette campagne ne peut pas être financée et envoyée dans son état actuel.');
+        }
+
+        return $this->submit($organizationId, $campaignId, $actorAccountId);
+    }
+
+    /**
      * docs/13 §56 : correction puis resoumission — aucun nouveau
      * financement, le budget déjà réservé reste verrouillé
      * (docs/chantiers/P007-CHANTIER.md §6).
@@ -324,6 +359,14 @@ final class CampaignService
 
         if (isset($configuration['duration_days']) && (int) $configuration['duration_days'] <= 0) {
             throw new InvalidCampaignConfigurationException('La durée doit être exprimée en jours et être positive.');
+        }
+
+        if (isset($configuration['daily_budget_minor']) && (int) $configuration['daily_budget_minor'] <= 0) {
+            throw new InvalidCampaignConfigurationException('Le budget quotidien doit être positif.');
+        }
+
+        if (isset($configuration['daily_budget_minor'], $configuration['duration_days'])) {
+            $configuration['budget_amount_minor'] = (int) $configuration['daily_budget_minor'] * (int) $configuration['duration_days'];
         }
 
         return $configuration;

@@ -48,6 +48,8 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
             ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
         Route::post('/campaigns/{campaign}/submit', [CampaignsController::class, 'submit'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.submit,organization:advertiser_organization_id');
+        Route::post('/campaigns/{campaign}/finance-and-submit', [CampaignsController::class, 'financeAndSubmit'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.submit,organization:advertiser_organization_id');
         Route::post('/campaigns/{campaign}/resubmit', [CampaignsController::class, 'resubmit'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.submit,organization:advertiser_organization_id');
     });

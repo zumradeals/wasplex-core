@@ -184,7 +184,7 @@ async function logout(): Promise<void> {
                 <AdvertiserDashboardPanel v-if="activeSection === 'dashboard'" />
                 <AdvertiserWalletPanel v-else-if="activeSection === 'wallet'" />
                 <AdvertiserStudioPanel v-else-if="activeSection === 'brands'" />
-                <CampaignsPanel v-else-if="activeSection === 'campaigns'" />
+                <CampaignsPanel v-else-if="activeSection === 'campaigns'" @navigate-wallet="selectSection('wallet')" />
                 <TeamPanel v-else-if="activeSection === 'team'" :organization-id="organizationId" />
             </main>
         </div>
