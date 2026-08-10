@@ -150,11 +150,10 @@ final class CampaignService
     {
         $campaign = $this->find($organizationId, $campaignId);
         $audience = $campaign->currentVersion()->audience_configuration ?? [];
-
-        $classCodes = $audience['economic_classes'] ?? [];
+        $classCodes = collect($this->economicClasses->listActive())->pluck('code')->all();
 
         if ($classCodes === []) {
-            throw new InvalidCampaignConfigurationException('Sélectionnez au moins une classe économique avant d\'estimer l\'audience.');
+            throw new InvalidCampaignConfigurationException('Aucun niveau membre actif n’est disponible pour estimer l’audience.');
         }
 
         return $this->economicClasses->estimateAudience(
@@ -264,12 +263,6 @@ final class CampaignService
         if ($campaign->objective_code === null || empty($version->creative_configuration['asset_id'])) {
             throw new InvalidCampaignConfigurationException(
                 'Choisis un objectif et un média avant d’envoyer la campagne.'
-            );
-        }
-
-        if (empty($version->audience_configuration['economic_classes'])) {
-            throw new InvalidCampaignConfigurationException(
-                'Choisis au moins un profil d’abonnement dans l’audience.'
             );
         }
 
