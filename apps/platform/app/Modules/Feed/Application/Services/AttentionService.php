@@ -45,6 +45,7 @@ final class AttentionService
         private readonly SubscriptionQuotaContract $quota,
         private readonly AdvertiserWalletReservationContract $advertiserReservations,
         private readonly UserWalletContract $userWallet,
+        private readonly FeedRewardEligibilityService $rewardEligibility,
     ) {}
 
     /**
@@ -59,7 +60,11 @@ final class AttentionService
             ->first();
 
         if ($pending !== null) {
-            return $this->present($pending);
+            if ($this->rewardEligibility->isBlockedForOrganization($accountId, $pending->organization_id)) {
+                $this->neutralizeBlockedDelivery($pending, $accountId);
+            } else {
+                return $this->present($pending);
+            }
         }
 
         $this->freeSubscription->ensureFor($accountId);
@@ -132,6 +137,17 @@ final class AttentionService
                 continue;
             }
 
+            // Final pre-reservation race check. If the account joined the
+            // advertiser organization between composition and reservation,
+            // release the slot immediately and never expose a rewardable
+            // delivery for that campaign.
+            if ($this->rewardEligibility->isBlockedForOrganization($accountId, $slot->organizationId)) {
+                $this->envelope->releaseSlot($slot->consumptionId);
+                $excluded[] = $candidate->campaignId;
+
+                continue;
+            }
+
             $delivery = FeedAdDelivery::query()->create([
                 'feed_session_id' => $feedSessionId,
                 'account_id' => $accountId,
@@ -160,6 +176,13 @@ final class AttentionService
         // rémunérée, ni quota, ni réservation financière supplémentaire.
         if ($delivery->status === FeedAdDelivery::STATUS_REPLAY) {
             return $delivery;
+        }
+
+        // A stale/direct API call must not consume quota for an advertiser's
+        // own campaign, even if the delivery was reserved before the account
+        // joined the organization.
+        if ($this->rewardEligibility->isBlockedForOrganization($accountId, $delivery->organization_id)) {
+            return $this->neutralizeBlockedDelivery($delivery, $accountId);
         }
 
         if ($delivery->status !== FeedAdDelivery::STATUS_STARTED) {
@@ -255,6 +278,17 @@ final class AttentionService
             ];
         }
 
+        if (in_array($delivery->status, [FeedAdDelivery::STATUS_RESERVED, FeedAdDelivery::STATUS_STARTED], true)
+            && $this->rewardEligibility->isBlockedForOrganization($accountId, $delivery->organization_id)) {
+            $delivery = $this->neutralizeBlockedDelivery($delivery, $accountId);
+
+            return [
+                'delivery' => $delivery,
+                'gain_minor' => 0,
+                'balance_minor' => $this->userWallet->balanceMinor($accountId),
+            ];
+        }
+
         if ($delivery->status === FeedAdDelivery::STATUS_HELD) {
             return [
                 'delivery' => $delivery,
@@ -293,6 +327,15 @@ final class AttentionService
         }
 
         $rewarded = DB::transaction(function () use ($delivery, $accountId): bool {
+            // Re-check immediately inside the payment transaction. The
+            // composition/start guards are UX and cost protections; this is
+            // the final economic barrier before reward claim and capture.
+            if ($this->rewardEligibility->isBlockedForOrganization($accountId, $delivery->organization_id)) {
+                $this->neutralizeBlockedDelivery($delivery, $accountId);
+
+                return false;
+            }
+
             $now = Carbon::now('UTC');
             $rewardId = (string) Str::ulid();
 
@@ -398,6 +441,40 @@ final class AttentionService
         $delivery = $this->findOwned($deliveryId, $accountId);
 
         return $this->matching->explain($delivery->campaign_id, $accountId);
+    }
+
+    private function neutralizeBlockedDelivery(FeedAdDelivery $delivery, string $accountId): FeedAdDelivery
+    {
+        DB::transaction(function () use ($delivery, $accountId): void {
+            /** @var FeedAdDelivery $locked */
+            $locked = FeedAdDelivery::query()->whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+
+            if (! in_array($locked->status, [FeedAdDelivery::STATUS_RESERVED, FeedAdDelivery::STATUS_STARTED], true)) {
+                return;
+            }
+
+            $quotaWasConsumed = $locked->status === FeedAdDelivery::STATUS_STARTED;
+
+            $this->envelope->releaseSlot($locked->campaign_envelope_consumption_id);
+
+            if ($quotaWasConsumed) {
+                try {
+                    $this->quota->restore($accountId, 1, "feed-quota-own-campaign:{$locked->id}");
+                } catch (NoActiveSubscriptionException) {
+                    // The economic block remains absolute even if the
+                    // subscription expired between start and neutralization.
+                }
+            }
+
+            $locked->update([
+                'is_replay' => true,
+                'gain_minor' => 0,
+                'status' => FeedAdDelivery::STATUS_REPLAY,
+                'ledger_transaction_id' => null,
+            ]);
+        });
+
+        return $delivery->refresh();
     }
 
     private function findOwned(string $deliveryId, string $accountId): FeedAdDelivery

@@ -27,6 +27,7 @@ final class FeedCompositionService
         private readonly MatchingContract $matching,
         private readonly EconomicClassCatalogContract $economicClasses,
         private readonly FreeSubscriptionProvisioner $freeSubscription,
+        private readonly FeedRewardEligibilityService $rewardEligibility,
     ) {}
 
     /**
@@ -56,6 +57,14 @@ final class FeedCompositionService
 
         foreach ($this->campaigns->listApproved() as $campaign) {
             if (in_array($campaign->campaignId, $excludingCampaignIds, true)) {
+                continue;
+            }
+
+            // A rewarded impression must never send an advertiser's own
+            // money back to the organization owner or one of its active
+            // team members. Filter here before Matching and before any
+            // campaign-envelope reservation is created.
+            if ($this->rewardEligibility->isBlockedForOrganization($accountId, $campaign->organizationId)) {
                 continue;
             }
 

@@ -29,6 +29,7 @@ final class FeedRiskReviewService
         private readonly AdvertiserWalletReservationContract $advertiserReservations,
         private readonly UserWalletContract $userWallet,
         private readonly SubscriptionQuotaContract $quota,
+        private readonly FeedRewardEligibilityService $rewardEligibility,
     ) {}
 
     /**
@@ -50,6 +51,38 @@ final class FeedRiskReviewService
 
         $rewarded = DB::transaction(function () use ($hold, $delivery, $adminAccountId, $note): bool {
             $now = Carbon::now('UTC');
+
+            // An admin review can never bypass the same economic-integrity
+            // rule enforced by Feed composition and direct completion. This
+            // also safely neutralizes an old hold if the account is an
+            // active member of the advertiser organization when reviewed.
+            if ($this->rewardEligibility->isBlockedForOrganization($delivery->account_id, $delivery->organization_id)) {
+                $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
+
+                try {
+                    $this->quota->restore($delivery->account_id, 1, "feed-quota-own-campaign:{$delivery->id}");
+                } catch (NoActiveSubscriptionException) {
+                    // No payment may be created even if the subscription
+                    // expired while the hold was awaiting manual review.
+                }
+
+                $delivery->update([
+                    'is_replay' => true,
+                    'gain_minor' => 0,
+                    'status' => FeedAdDelivery::STATUS_REJECTED,
+                    'ledger_transaction_id' => null,
+                ]);
+
+                $hold->update([
+                    'status' => FeedAdDeliveryHold::STATUS_REJECTED,
+                    'resolved_at' => $now,
+                    'resolved_by' => $adminAccountId,
+                    'resolution_note' => trim(($note !== null ? $note.' — ' : '').'Aucune récompense : le membre appartient à l’organisation annonceur de cette campagne.'),
+                ]);
+
+                return false;
+            }
+
             $rewardId = (string) Str::ulid();
 
             $claimed = FeedCampaignReward::query()->insertOrIgnore([
