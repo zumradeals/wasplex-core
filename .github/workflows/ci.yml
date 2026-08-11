@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   platform:
@@ -16,9 +16,9 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: wasplex_test
-          POSTGRES_USER: wasplex
-          POSTGRES_PASSWORD: wasplex_ci_only
+          POSTGRES_DB=wasplex_test
+          POSTGRES_USER=wasplex
+          POSTGRES_PASSWORD=wasplex_ci_only
         ports:
           - 5432:5432
         options: >-
@@ -43,8 +43,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: refactor/advertiser-quick-campaign
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -71,20 +70,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-
-      - name: Format quick campaign panel
-        run: npx prettier --write resources/js/Components/CampaignsPanel.vue
-
-      - name: Commit formatter output
-        working-directory: .
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- apps/platform/resources/js/Components/CampaignsPanel.vue
-          if ! git diff --cached --quiet; then
-            git commit -m "style: format quick campaign panel"
-            git push origin HEAD:refactor/advertiser-quick-campaign
-          fi
 
       - name: Check frontend formatting
         run: npm run format:check
