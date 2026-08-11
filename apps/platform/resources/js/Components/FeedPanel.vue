@@ -493,7 +493,10 @@ async function skip(): Promise<void> {
     pauseAttentionClock();
     videoRef.value?.pause();
 
-    if (delivery.value !== null && !['completed', 'held', 'rejected', 'expired', 'abandoned'].includes(delivery.value.status)) {
+    if (
+        delivery.value !== null &&
+        !['completed', 'held', 'rejected', 'expired', 'abandoned'].includes(delivery.value.status)
+    ) {
         await http.post(`/feed/deliveries/${delivery.value.id}/abandon`);
     }
 
