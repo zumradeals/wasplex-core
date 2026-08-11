@@ -11,13 +11,11 @@ use App\Modules\SmartProfile\Http\Controllers\User\ConsentsController;
 use App\Modules\SmartProfile\Http\Controllers\User\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-// docs/09 Phase 4/5 : self-service, aucune capacité spéciale requise
-// au-delà d'une session authentifiée valide (même discipline que
-// docs/03 §24 pour les abonnements).
 Route::middleware(['auth', EnsureSessionNotRevoked::class])
     ->prefix('me')
     ->group(function (): void {
         Route::get('/smart-profile', [ProfileController::class, 'index']);
+        Route::patch('/smart-profile/country', [ProfileController::class, 'updateCountry']);
         Route::post('/smart-profile/{taxonomy}', [ProfileController::class, 'declare']);
         Route::delete('/smart-profile/{taxonomy}', [ProfileController::class, 'withdraw']);
 
@@ -27,8 +25,6 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
         Route::get('/consents/history', [ConsentsController::class, 'history']);
     });
 
-// docs/09 Phase 4/5 (administration) : MFA récente + capacités dédiées,
-// même discipline que les autres domaines admin (P002, P004, P006, P007).
 Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::class])
     ->prefix('admin/smartprofile')
     ->group(function (): void {
