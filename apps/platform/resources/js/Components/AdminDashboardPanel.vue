@@ -72,7 +72,11 @@ const wpInCirculation = computed(() => {
 
 const antifraudAmount = computed(() => antifraudHolds.value.reduce((total, hold) => total + hold.amount_minor, 0));
 const totalPriorities = computed(
-    () => reviewCases.value.length + pendingAdvertiserCount.value + antifraudHolds.value.length + pendingFinanceCount.value,
+    () =>
+        reviewCases.value.length +
+        pendingAdvertiserCount.value +
+        antifraudHolds.value.length +
+        pendingFinanceCount.value,
 );
 const platformHealthy = computed(() => healthy.value !== false && summary.value?.ledger.is_balanced !== false);
 
@@ -94,7 +98,9 @@ async function load(): Promise<void> {
         reviewCases.value = reviewsRes.status === 'fulfilled' ? reviewsRes.value.data.review_cases : [];
         pendingAdvertiserCount.value =
             advertisersRes.status === 'fulfilled'
-                ? advertisersRes.value.data.advertisers.filter((advertiser: Advertiser) => advertiser.status === 'draft').length
+                ? advertisersRes.value.data.advertisers.filter(
+                      (advertiser: Advertiser) => advertiser.status === 'draft',
+                  ).length
                 : 0;
         antifraudHolds.value = holdsRes.status === 'fulfilled' ? holdsRes.value.data.holds : [];
         pendingFinanceCount.value =
@@ -123,18 +129,18 @@ defineExpose({ load });
 </script>
 
 <template>
-    <div class="flex flex-col gap-5 text-wpx-white-soft">
+    <div class="text-wpx-white-soft flex flex-col gap-5">
         <section
-            class="border-wpx-border-dark relative overflow-hidden rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark md:p-6"
+            class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark relative overflow-hidden border p-5 md:p-6"
         >
             <div class="from-wpx-blue/10 to-wpx-gold/5 pointer-events-none absolute inset-0 bg-gradient-to-br" />
             <div class="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-xs font-extrabold uppercase tracking-[0.16em]">Console fondateur</p>
+                    <p class="text-wpx-cyan text-xs font-extrabold tracking-[0.16em] uppercase">Console fondateur</p>
                     <h1 class="mt-2 text-2xl font-extrabold md:text-3xl">Voici l'essentiel de Wasplex.</h1>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm">
-                        Commence par les décisions qui attendent ton intervention. Les détails techniques restent disponibles
-                        seulement quand tu en as besoin.
+                        Commence par les décisions qui attendent ton intervention. Les détails techniques restent
+                        disponibles seulement quand tu en as besoin.
                     </p>
                 </div>
                 <div
@@ -146,14 +152,15 @@ defineExpose({ load });
                     "
                 >
                     <div class="flex items-center gap-2">
-                        <span class="h-2.5 w-2.5 rounded-full" :class="platformHealthy ? 'bg-wpx-success' : 'bg-wpx-danger'" />
+                        <span
+                            class="h-2.5 w-2.5 rounded-full"
+                            :class="platformHealthy ? 'bg-wpx-success' : 'bg-wpx-danger'"
+                        />
                         <p class="text-sm font-extrabold">
                             {{ platformHealthy ? 'Wasplex fonctionne normalement' : 'Une vérification est nécessaire' }}
                         </p>
                     </div>
-                    <p class="text-wpx-muted-dark mt-1 text-xs">
-                        Infrastructure et équilibre comptable surveillés.
-                    </p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">Infrastructure et équilibre comptable surveillés.</p>
                 </div>
             </div>
         </section>
@@ -161,15 +168,23 @@ defineExpose({ load });
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement du poste de commandement…</p>
 
         <template v-else>
-            <section class="border-wpx-border-dark overflow-hidden rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark">
+            <section
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border"
+            >
                 <div class="border-wpx-border-dark flex items-center justify-between border-b px-5 py-4">
                     <div>
                         <h2 class="text-base font-extrabold">À traiter maintenant</h2>
-                        <p class="text-wpx-muted-dark mt-0.5 text-xs">Les décisions qui peuvent bloquer une personne ou de l'argent.</p>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                            Les décisions qui peuvent bloquer une personne ou de l'argent.
+                        </p>
                     </div>
                     <span
                         class="rounded-wpx-full px-3 py-1 text-xs font-extrabold"
-                        :class="totalPriorities > 0 ? 'bg-wpx-warning/15 text-wpx-gold' : 'bg-wpx-success/15 text-wpx-success'"
+                        :class="
+                            totalPriorities > 0
+                                ? 'bg-wpx-warning/15 text-wpx-gold'
+                                : 'bg-wpx-success/15 text-wpx-success'
+                        "
                     >
                         {{ totalPriorities > 0 ? `${totalPriorities} à examiner` : 'Tout est à jour' }}
                     </span>
@@ -178,12 +193,18 @@ defineExpose({ load });
                 <div class="divide-wpx-border-dark divide-y">
                     <button
                         type="button"
-                        class="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-wpx-navy-750/60"
+                        class="hover:bg-wpx-navy-750/60 flex w-full items-center gap-3 px-5 py-4 text-left"
                         @click="emit('navigate', 'advertising')"
                     >
-                        <span class="bg-wpx-blue/12 flex h-10 w-10 shrink-0 items-center justify-center rounded-wpx-md text-wpx-blue">◎</span>
+                        <span
+                            class="bg-wpx-blue/12 rounded-wpx-md text-wpx-blue flex h-10 w-10 shrink-0 items-center justify-center"
+                            >◎</span
+                        >
                         <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-bold">{{ pendingAdvertiserCount }} annonceur{{ pendingAdvertiserCount > 1 ? 's' : '' }} à vérifier</span>
+                            <span class="block text-sm font-bold"
+                                >{{ pendingAdvertiserCount }} annonceur{{ pendingAdvertiserCount > 1 ? 's' : '' }} à
+                                vérifier</span
+                            >
                             <span class="text-wpx-muted-dark block text-xs">Avant leur première campagne.</span>
                         </span>
                         <span class="text-wpx-cyan text-xs font-extrabold">Examiner →</span>
@@ -191,25 +212,41 @@ defineExpose({ load });
 
                     <button
                         type="button"
-                        class="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-wpx-navy-750/60"
+                        class="hover:bg-wpx-navy-750/60 flex w-full items-center gap-3 px-5 py-4 text-left"
                         @click="emit('navigate', 'advertising')"
                     >
-                        <span class="bg-wpx-gold/12 flex h-10 w-10 shrink-0 items-center justify-center rounded-wpx-md text-wpx-gold">▶</span>
+                        <span
+                            class="bg-wpx-gold/12 rounded-wpx-md text-wpx-gold flex h-10 w-10 shrink-0 items-center justify-center"
+                            >▶</span
+                        >
                         <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-bold">{{ reviewCases.length }} campagne{{ reviewCases.length > 1 ? 's' : '' }} à approuver</span>
-                            <span class="text-wpx-muted-dark block text-xs">Publicités financées qui attendent ta décision.</span>
+                            <span class="block text-sm font-bold"
+                                >{{ reviewCases.length }} campagne{{ reviewCases.length > 1 ? 's' : '' }} à
+                                approuver</span
+                            >
+                            <span class="text-wpx-muted-dark block text-xs"
+                                >Publicités financées qui attendent ta décision.</span
+                            >
                         </span>
                         <span class="text-wpx-cyan text-xs font-extrabold">Examiner →</span>
                     </button>
 
                     <button
                         type="button"
-                        class="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-wpx-navy-750/60"
+                        class="hover:bg-wpx-navy-750/60 flex w-full items-center gap-3 px-5 py-4 text-left"
                         @click="emit('navigate', 'advertising')"
                     >
-                        <span class="bg-wpx-danger/12 flex h-10 w-10 shrink-0 items-center justify-center rounded-wpx-md text-wpx-danger">!</span>
+                        <span
+                            class="bg-wpx-danger/12 rounded-wpx-md text-wpx-danger flex h-10 w-10 shrink-0 items-center justify-center"
+                            >!</span
+                        >
                         <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-bold">{{ antifraudHolds.length }} récompense{{ antifraudHolds.length > 1 ? 's' : '' }} retenue{{ antifraudHolds.length > 1 ? 's' : '' }} par l'antifraude</span>
+                            <span class="block text-sm font-bold"
+                                >{{ antifraudHolds.length }} récompense{{
+                                    antifraudHolds.length > 1 ? 's' : ''
+                                }}
+                                retenue{{ antifraudHolds.length > 1 ? 's' : '' }} par l'antifraude</span
+                            >
                             <span class="text-wpx-muted-dark block text-xs">
                                 {{ numberFormatter.format(antifraudAmount) }} WP attendent une décision humaine.
                             </span>
@@ -219,13 +256,23 @@ defineExpose({ load });
 
                     <button
                         type="button"
-                        class="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-wpx-navy-750/60"
+                        class="hover:bg-wpx-navy-750/60 flex w-full items-center gap-3 px-5 py-4 text-left"
                         @click="emit('navigate', 'finance')"
                     >
-                        <span class="bg-wpx-success/12 flex h-10 w-10 shrink-0 items-center justify-center rounded-wpx-md text-wpx-success">₣</span>
+                        <span
+                            class="bg-wpx-success/12 rounded-wpx-md text-wpx-success flex h-10 w-10 shrink-0 items-center justify-center"
+                            >₣</span
+                        >
                         <span class="min-w-0 flex-1">
-                            <span class="block text-sm font-bold">{{ pendingFinanceCount }} opération{{ pendingFinanceCount > 1 ? 's' : '' }} financière{{ pendingFinanceCount > 1 ? 's' : '' }} à valider</span>
-                            <span class="text-wpx-muted-dark block text-xs">La double validation reste obligatoire.</span>
+                            <span class="block text-sm font-bold"
+                                >{{ pendingFinanceCount }} opération{{
+                                    pendingFinanceCount > 1 ? 's' : ''
+                                }}
+                                financière{{ pendingFinanceCount > 1 ? 's' : '' }} à valider</span
+                            >
+                            <span class="text-wpx-muted-dark block text-xs"
+                                >La double validation reste obligatoire.</span
+                            >
                         </span>
                         <span class="text-wpx-cyan text-xs font-extrabold">Examiner →</span>
                     </button>
@@ -242,45 +289,61 @@ defineExpose({ load });
                 <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <button
                         type="button"
-                        class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 text-left shadow-wpx-card-dark"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4 text-left"
                         @click="emit('navigate', 'users')"
                     >
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Utilisateurs</p>
-                        <p class="mt-2 text-2xl font-extrabold">{{ usersCount === null ? '—' : numberFormatter.format(usersCount) }}</p>
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                            Utilisateurs
+                        </p>
+                        <p class="mt-2 text-2xl font-extrabold">
+                            {{ usersCount === null ? '—' : numberFormatter.format(usersCount) }}
+                        </p>
                         <p class="text-wpx-cyan mt-1 text-[11px] font-bold">Voir les comptes →</p>
                     </button>
                     <button
                         type="button"
-                        class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 text-left shadow-wpx-card-dark"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4 text-left"
                         @click="emit('navigate', 'finance')"
                     >
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">WP en circulation</p>
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                            WP en circulation
+                        </p>
                         <p class="mt-2 text-2xl font-extrabold">{{ numberFormatter.format(wpInCirculation) }}</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[11px]">≈ {{ numberFormatter.format(wpInCirculation) }} FCFA</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                            ≈ {{ numberFormatter.format(wpInCirculation) }} FCFA
+                        </p>
                     </button>
                     <button
                         type="button"
-                        class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 text-left shadow-wpx-card-dark"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4 text-left"
                         @click="emit('navigate', 'advertising')"
                     >
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Publicités actives</p>
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                            Publicités actives
+                        </p>
                         <p class="mt-2 text-2xl font-extrabold">{{ summary?.campaigns.active_campaigns ?? 0 }}</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[11px]">{{ summary?.feed.completed ?? 0 }} vues complètes</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                            {{ summary?.feed.completed ?? 0 }} vues complètes
+                        </p>
                     </button>
                     <button
                         type="button"
-                        class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 text-left shadow-wpx-card-dark"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4 text-left"
                         @click="emit('navigate', 'offers')"
                     >
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Abonnements actifs</p>
-                        <p class="mt-2 text-2xl font-extrabold">{{ summary?.subscriptions.active_subscriptions ?? 0 }}</p>
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                            Abonnements actifs
+                        </p>
+                        <p class="mt-2 text-2xl font-extrabold">
+                            {{ summary?.subscriptions.active_subscriptions ?? 0 }}
+                        </p>
                         <p class="text-wpx-muted-dark mt-1 text-[11px]">Offres Wasplex</p>
                     </button>
                 </div>
             </section>
 
             <section class="grid grid-cols-1 gap-3 lg:grid-cols-3">
-                <div class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 shadow-wpx-card-dark">
+                <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <p class="text-sm font-extrabold">Grand Livre</p>
@@ -288,28 +351,38 @@ defineExpose({ load });
                         </div>
                         <span
                             class="rounded-wpx-full px-2.5 py-1 text-[11px] font-extrabold"
-                            :class="summary?.ledger.is_balanced ? 'bg-wpx-success/15 text-wpx-success' : 'bg-wpx-danger/15 text-wpx-danger'"
+                            :class="
+                                summary?.ledger.is_balanced
+                                    ? 'bg-wpx-success/15 text-wpx-success'
+                                    : 'bg-wpx-danger/15 text-wpx-danger'
+                            "
                         >
                             {{ summary?.ledger.is_balanced ? 'Équilibré' : 'À vérifier' }}
                         </span>
                     </div>
-                    <p class="mt-4 text-xl font-extrabold">{{ numberFormatter.format(summary?.ledger.transaction_count ?? 0) }}</p>
+                    <p class="mt-4 text-xl font-extrabold">
+                        {{ numberFormatter.format(summary?.ledger.transaction_count ?? 0) }}
+                    </p>
                     <p class="text-wpx-muted-dark text-[11px]">transactions comptabilisées</p>
                 </div>
 
-                <div class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 shadow-wpx-card-dark">
+                <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <p class="text-sm font-extrabold">Attention publicitaire</p>
                             <p class="text-wpx-muted-dark mt-1 text-xs">Récompenses déjà validées.</p>
                         </div>
-                        <span class="text-wpx-gold text-lg font-extrabold">{{ numberFormatter.format(summary?.feed.gain_distributed_minor ?? 0) }} WP</span>
+                        <span class="text-wpx-gold text-lg font-extrabold"
+                            >{{ numberFormatter.format(summary?.feed.gain_distributed_minor ?? 0) }} WP</span
+                        >
                     </div>
-                    <p class="mt-4 text-xl font-extrabold">{{ percentFormatter.format(summary?.feed.attention_rate ?? 0) }}</p>
+                    <p class="mt-4 text-xl font-extrabold">
+                        {{ percentFormatter.format(summary?.feed.attention_rate ?? 0) }}
+                    </p>
                     <p class="text-wpx-muted-dark text-[11px]">taux d'attention</p>
                 </div>
 
-                <div class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 shadow-wpx-card-dark">
+                <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4">
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <p class="text-sm font-extrabold">Paiements annonceurs</p>
@@ -317,7 +390,11 @@ defineExpose({ load });
                         </div>
                         <span
                             class="rounded-wpx-full px-2.5 py-1 text-[11px] font-extrabold"
-                            :class="geniusPayConfigured ? 'bg-wpx-success/15 text-wpx-success' : 'bg-wpx-warning/15 text-wpx-gold'"
+                            :class="
+                                geniusPayConfigured
+                                    ? 'bg-wpx-success/15 text-wpx-success'
+                                    : 'bg-wpx-warning/15 text-wpx-gold'
+                            "
                         >
                             {{ geniusPayConfigured ? 'Configuré' : 'À configurer' }}
                         </span>

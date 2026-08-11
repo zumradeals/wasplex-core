@@ -70,8 +70,8 @@ async function logout(): Promise<void> {
 </script>
 
 <template>
-    <div class="bg-wpx-navy-950 min-h-screen text-wpx-white-soft md:flex">
-        <aside class="border-wpx-border-dark hidden w-64 shrink-0 flex-col border-r bg-wpx-navy-950 md:flex">
+    <div class="bg-wpx-navy-950 text-wpx-white-soft min-h-screen md:flex">
+        <aside class="border-wpx-border-dark bg-wpx-navy-950 hidden w-64 shrink-0 flex-col border-r md:flex">
             <div class="border-wpx-border-dark flex items-center gap-3 border-b px-5 py-5">
                 <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-8 w-8 object-contain" />
                 <div>
@@ -94,7 +94,7 @@ async function logout(): Promise<void> {
                     @click="selectSection(item.key)"
                 >
                     <span
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-wpx-sm"
+                        class="rounded-wpx-sm flex h-9 w-9 shrink-0 items-center justify-center"
                         :class="activeSection === item.key ? 'bg-wpx-cyan/12' : 'bg-wpx-navy-850'"
                     >
                         <AdminNavIcon :section="item.key" :active="activeSection === item.key" />
@@ -107,13 +107,15 @@ async function logout(): Promise<void> {
             </nav>
 
             <div class="border-wpx-border-dark border-t p-4">
-                <p class="text-wpx-muted-dark text-[10px] uppercase tracking-[0.16em]">Wasplex Core</p>
+                <p class="text-wpx-muted-dark text-[10px] tracking-[0.16em] uppercase">Wasplex Core</p>
                 <p class="mt-1 text-xs font-semibold">Piloter sans jargon technique</p>
             </div>
         </aside>
 
-        <div class="min-w-0 flex-1 bg-wpx-navy-950">
-            <header class="border-wpx-border-dark sticky top-0 z-30 border-b bg-wpx-navy-950/95 px-4 py-3 backdrop-blur md:px-7">
+        <div class="bg-wpx-navy-950 min-w-0 flex-1">
+            <header
+                class="border-wpx-border-dark bg-wpx-navy-950/95 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur md:px-7"
+            >
                 <div class="flex items-center justify-between gap-4">
                     <div class="min-w-0">
                         <p class="truncate text-lg font-extrabold">{{ activeNavItem.label }}</p>
@@ -158,7 +160,9 @@ async function logout(): Promise<void> {
                 </section>
 
                 <section v-else-if="activeSection === 'advertising'" class="flex flex-col gap-5">
-                    <div class="border-wpx-border-dark flex gap-2 overflow-x-auto rounded-wpx-lg border bg-wpx-navy-850 p-2">
+                    <div
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
+                    >
                         <button
                             v-for="tab in advertisingTabs"
                             :key="tab.key"
@@ -193,7 +197,9 @@ async function logout(): Promise<void> {
                 </section>
 
                 <section v-else class="flex flex-col gap-5">
-                    <div class="border-wpx-border-dark flex gap-2 overflow-x-auto rounded-wpx-lg border bg-wpx-navy-850 p-2">
+                    <div
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
+                    >
                         <button
                             v-for="tab in settingsTabs"
                             :key="tab.key"
@@ -213,14 +219,14 @@ async function logout(): Promise<void> {
                     <AdminPermissionsPanel v-if="activeSettingsTab === 'capabilities'" />
                     <div
                         v-else
-                        class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-8 text-center shadow-wpx-card-dark"
+                        class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-8 text-center"
                     >
                         <p class="text-lg font-extrabold">
                             {{ activeSettingsTab === 'organizations' ? 'Organisations' : 'Audit & sécurité' }}
                         </p>
                         <p class="text-wpx-muted-dark mx-auto mt-2 max-w-xl text-sm">
-                            Cette zone sera enrichie dans la dernière étape de la refonte. Les fonctions déjà actives restent
-                            accessibles ailleurs dans la console.
+                            Cette zone sera enrichie dans la dernière étape de la refonte. Les fonctions déjà actives
+                            restent accessibles ailleurs dans la console.
                         </p>
                     </div>
                 </section>
