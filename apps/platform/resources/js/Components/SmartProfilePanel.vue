@@ -181,7 +181,7 @@ void load();
                 :disabled="busy === currentEntry.id"
                 @click="postpone(currentEntry)"
             >
-                {{ currentEntry.answer === null ? 'Plus tard' : 'Effacer ma réponse' }}
+                {{ currentEntry.answer === null ? 'Je préfère ne pas répondre' : 'Effacer ma réponse' }}
             </button>
 
             <div class="mt-4 flex items-center justify-between">
