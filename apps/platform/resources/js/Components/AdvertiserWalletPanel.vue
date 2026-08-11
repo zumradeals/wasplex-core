@@ -41,8 +41,12 @@ const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
     year: 'numeric',
 });
 
-const totalSpentMinor = computed(() => campaignReports.value.reduce((total, report) => total + report.budget_captured_minor, 0));
-const activeCampaignsCount = computed(() => campaignReports.value.filter((report) => report.status === 'approved').length);
+const totalSpentMinor = computed(() =>
+    campaignReports.value.reduce((total, report) => total + report.budget_captured_minor, 0),
+);
+const activeCampaignsCount = computed(
+    () => campaignReports.value.filter((report) => report.status === 'approved').length,
+);
 const effectiveAmount = computed<number>(() => {
     const custom = Number.parseInt(customAmount.value, 10);
     return Number.isFinite(custom) && custom > 0 ? custom : selectedAmount.value;
@@ -191,12 +195,18 @@ void load();
             >
                 <div class="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <p class="text-wpx-navy-950/65 text-xs font-extrabold tracking-wide uppercase">Mon solde publicitaire</p>
-                        <p class="text-wpx-navy-950 mt-1 text-4xl font-black [font-variant-numeric:tabular-nums] sm:text-5xl">
+                        <p class="text-wpx-navy-950/65 text-xs font-extrabold tracking-wide uppercase">
+                            Mon solde publicitaire
+                        </p>
+                        <p
+                            class="text-wpx-navy-950 mt-1 text-4xl font-black [font-variant-numeric:tabular-nums] sm:text-5xl"
+                        >
                             <span v-if="loading">—</span>
                             <span v-else>{{ numberFormatter.format(wallet?.available_minor ?? 0) }} FCFA</span>
                         </p>
-                        <p class="text-wpx-navy-950/65 mt-1 text-xs">Disponible pour financer vos prochaines publicités.</p>
+                        <p class="text-wpx-navy-950/65 mt-1 text-xs">
+                            Disponible pour financer vos prochaines publicités.
+                        </p>
                     </div>
                     <button
                         type="button"
@@ -206,14 +216,19 @@ void load();
                         + Recharger mon solde
                     </button>
                 </div>
-                <div v-if="justCredited" class="text-wpx-navy-950 absolute top-4 right-4 rounded-full bg-white/35 px-3 py-1 text-xs font-bold">
+                <div
+                    v-if="justCredited"
+                    class="text-wpx-navy-950 absolute top-4 right-4 rounded-full bg-white/35 px-3 py-1 text-xs font-bold"
+                >
                     ✓ Recharge confirmée
                 </div>
             </section>
 
             <section class="grid grid-cols-2 gap-3">
                 <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4">
-                    <p class="text-wpx-muted-dark text-[10px] font-bold tracking-wide uppercase">Dépensé en publicité</p>
+                    <p class="text-wpx-muted-dark text-[10px] font-bold tracking-wide uppercase">
+                        Dépensé en publicité
+                    </p>
                     <p class="text-wpx-white-soft mt-1.5 text-xl font-extrabold">
                         {{ numberFormatter.format(totalSpentMinor) }} FCFA
                     </p>
@@ -228,9 +243,13 @@ void load();
                 <div class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
                     <div>
                         <h2 class="text-wpx-white-soft text-sm font-bold">Mes recharges</h2>
-                        <p class="text-wpx-muted-dark mt-0.5 text-xs">Suivez simplement l’argent ajouté à votre solde.</p>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                            Suivez simplement l’argent ajouté à votre solde.
+                        </p>
                     </div>
-                    <button type="button" class="text-wpx-cyan text-xs font-bold" @click="openRecharge">Recharger</button>
+                    <button type="button" class="text-wpx-cyan text-xs font-bold" @click="openRecharge">
+                        Recharger
+                    </button>
                 </div>
 
                 <div v-if="loading" class="text-wpx-muted-dark p-5 text-sm">Chargement…</div>
@@ -251,11 +270,26 @@ void load();
                 </div>
 
                 <div v-else class="divide-wpx-border-dark divide-y">
-                    <article v-for="deposit in deposits" :key="deposit.id" class="flex items-center gap-3 px-4 py-4 sm:px-5">
+                    <article
+                        v-for="deposit in deposits"
+                        :key="deposit.id"
+                        class="flex items-center gap-3 px-4 py-4 sm:px-5"
+                    >
                         <span class="bg-wpx-navy-750 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                <path d="M12 4v12M7.5 8.5L12 4l4.5 4.5" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
+                                <path
+                                    d="M12 4v12M7.5 8.5L12 4l4.5 4.5"
+                                    stroke="#2BC4DE"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                                <path
+                                    d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"
+                                    stroke="#2BC4DE"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
                             </svg>
                         </span>
                         <div class="min-w-0 flex-1">
@@ -264,10 +298,15 @@ void load();
                             </p>
                             <p class="text-wpx-muted-dark mt-0.5 truncate text-[11px]">
                                 {{ formatDate(deposit.created_at) }}
-                                <template v-if="deposit.provider_reference"> · {{ deposit.provider_reference }}</template>
+                                <template v-if="deposit.provider_reference">
+                                    · {{ deposit.provider_reference }}</template
+                                >
                             </p>
                         </div>
-                        <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="statusClasses(deposit.status)">
+                        <span
+                            class="rounded-full px-2.5 py-1 text-[10px] font-bold"
+                            :class="statusClasses(deposit.status)"
+                        >
                             {{ statusLabel(deposit.status) }}
                         </span>
                     </article>
@@ -280,12 +319,20 @@ void load();
             class="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4"
             @click.self="closeRecharge"
         >
-            <section class="border-wpx-border-dark bg-wpx-navy-850 w-full max-w-lg rounded-t-3xl border p-5 shadow-2xl sm:rounded-3xl sm:p-6">
+            <section
+                class="border-wpx-border-dark bg-wpx-navy-850 w-full max-w-lg rounded-t-3xl border p-5 shadow-2xl sm:rounded-3xl sm:p-6"
+            >
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Recharger mon solde</p>
-                        <h2 class="text-wpx-white-soft mt-1 text-xl font-extrabold">Quel montant voulez-vous ajouter ?</h2>
-                        <p class="text-wpx-muted-dark mt-1 text-xs">Le montant sera disponible pour financer vos publicités.</p>
+                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">
+                            Recharger mon solde
+                        </p>
+                        <h2 class="text-wpx-white-soft mt-1 text-xl font-extrabold">
+                            Quel montant voulez-vous ajouter ?
+                        </h2>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">
+                            Le montant sera disponible pour financer vos publicités.
+                        </p>
                     </div>
                     <button
                         type="button"
@@ -316,7 +363,9 @@ void load();
 
                 <label class="mt-4 block">
                     <span class="text-wpx-muted-dark text-xs font-semibold">Autre montant</span>
-                    <div class="border-wpx-border-dark bg-wpx-navy-750 mt-1.5 flex items-center rounded-2xl border px-4">
+                    <div
+                        class="border-wpx-border-dark bg-wpx-navy-750 mt-1.5 flex items-center rounded-2xl border px-4"
+                    >
                         <input
                             v-model="customAmount"
                             type="number"
@@ -331,14 +380,21 @@ void load();
                 <div class="bg-wpx-gold/8 border-wpx-gold/20 mt-4 rounded-2xl border p-3">
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-wpx-muted-dark text-xs">Montant à ajouter</span>
-                        <strong class="text-wpx-gold text-base">{{ numberFormatter.format(effectiveAmount) }} FCFA</strong>
+                        <strong class="text-wpx-gold text-base"
+                            >{{ numberFormatter.format(effectiveAmount) }} FCFA</strong
+                        >
                     </div>
                     <p class="text-wpx-muted-dark mt-1 text-[11px]">GeniusPay · environnement de test actuel</p>
                 </div>
 
                 <p v-if="error" class="text-wpx-danger-light mt-3 text-xs">{{ error }}</p>
-                <div v-if="pendingDeposit?.status === 'awaiting_payment'" class="text-wpx-muted-dark mt-3 flex items-center gap-2 text-xs">
-                    <span class="border-wpx-border-dark h-3.5 w-3.5 animate-spin rounded-full border-2 border-t-transparent" />
+                <div
+                    v-if="pendingDeposit?.status === 'awaiting_payment'"
+                    class="text-wpx-muted-dark mt-3 flex items-center gap-2 text-xs"
+                >
+                    <span
+                        class="border-wpx-border-dark h-3.5 w-3.5 animate-spin rounded-full border-2 border-t-transparent"
+                    />
                     Vérification du paiement en cours…
                 </div>
 
@@ -348,7 +404,11 @@ void load();
                     :disabled="creatingDeposit || effectiveAmount < 200"
                     @click="startRecharge"
                 >
-                    {{ creatingDeposit ? 'Préparation…' : `Continuer avec ${numberFormatter.format(effectiveAmount)} FCFA` }}
+                    {{
+                        creatingDeposit
+                            ? 'Préparation…'
+                            : `Continuer avec ${numberFormatter.format(effectiveAmount)} FCFA`
+                    }}
                 </button>
             </section>
         </div>

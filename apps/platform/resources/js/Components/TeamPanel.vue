@@ -71,7 +71,9 @@ function titleLabel(title: string | null): string {
             admin: 'Administrateur',
             manager: 'Responsable',
             member: 'Membre',
-        }[normalized ?? ''] ?? title ?? 'Membre'
+        }[normalized ?? ''] ??
+        title ??
+        'Membre'
     );
 }
 
@@ -125,9 +127,12 @@ void load();
                 <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                     <div class="max-w-xl">
                         <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Équipe & accès</p>
-                        <h1 class="text-wpx-white-soft mt-1 text-xl font-extrabold sm:text-2xl">Travaillez seul ou à plusieurs.</h1>
+                        <h1 class="text-wpx-white-soft mt-1 text-xl font-extrabold sm:text-2xl">
+                            Travaillez seul ou à plusieurs.
+                        </h1>
                         <p class="text-wpx-muted-dark mt-2 text-sm leading-relaxed">
-                            Si vous gérez votre activité seul, vous n’avez rien à configurer ici. Invitez quelqu’un seulement lorsque vous souhaitez partager l’accès au Studio.
+                            Si vous gérez votre activité seul, vous n’avez rien à configurer ici. Invitez quelqu’un
+                            seulement lorsque vous souhaitez partager l’accès au Studio.
                         </p>
                     </div>
                     <div class="flex items-center gap-3">
@@ -145,7 +150,10 @@ void load();
                     </div>
                 </div>
 
-                <div v-if="!props.organizationId" class="bg-wpx-gold/8 border-wpx-gold/20 text-wpx-muted-dark mt-5 rounded-2xl border p-4 text-xs leading-relaxed">
+                <div
+                    v-if="!props.organizationId"
+                    class="bg-wpx-gold/8 border-wpx-gold/20 text-wpx-muted-dark mt-5 rounded-2xl border p-4 text-xs leading-relaxed"
+                >
                     Aucun espace d’organisation n’est encore associé à ce Studio.
                 </div>
 
@@ -156,7 +164,9 @@ void load();
                 >
                     <label class="block">
                         <span class="text-wpx-white-soft text-sm font-bold">Qui voulez-vous inviter ?</span>
-                        <span class="text-wpx-muted-dark mt-1 block text-xs">Saisissez son numéro de téléphone ou son adresse email.</span>
+                        <span class="text-wpx-muted-dark mt-1 block text-xs"
+                            >Saisissez son numéro de téléphone ou son adresse email.</span
+                        >
                         <div class="mt-3 flex flex-col gap-2 sm:flex-row">
                             <input
                                 v-model="identifierValue"
@@ -178,14 +188,19 @@ void load();
                     <div v-if="lastInvitation" class="border-wpx-cyan/25 bg-wpx-cyan/8 mt-4 rounded-2xl border p-4">
                         <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Invitation prête</p>
                         <p class="text-wpx-white-soft mt-1 text-sm font-bold">Envoyez ce code à la personne invitée.</p>
-                        <div class="border-wpx-border-dark bg-wpx-navy-950 mt-3 flex items-center gap-3 rounded-xl border p-3">
-                            <code class="text-wpx-gold min-w-0 flex-1 truncate text-sm font-bold">{{ lastInvitation.token }}</code>
+                        <div
+                            class="border-wpx-border-dark bg-wpx-navy-950 mt-3 flex items-center gap-3 rounded-xl border p-3"
+                        >
+                            <code class="text-wpx-gold min-w-0 flex-1 truncate text-sm font-bold">{{
+                                lastInvitation.token
+                            }}</code>
                             <button type="button" class="text-wpx-cyan shrink-0 text-xs font-bold" @click="copyToken">
                                 {{ copied ? 'Copié ✓' : 'Copier' }}
                             </button>
                         </div>
                         <p class="text-wpx-muted-dark mt-2 text-[11px] leading-relaxed">
-                            Wasplex ne l’envoie pas automatiquement pour le moment : transmettez-le par WhatsApp, SMS ou email.
+                            Wasplex ne l’envoie pas automatiquement pour le moment : transmettez-le par WhatsApp, SMS ou
+                            email.
                         </p>
                     </div>
                 </form>
@@ -205,13 +220,19 @@ void load();
                     <span class="bg-wpx-blue/12 mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                             <circle cx="9" cy="8" r="3" stroke="#4FA3FF" stroke-width="1.7" />
-                            <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#4FA3FF" stroke-width="1.7" stroke-linecap="round" />
+                            <path
+                                d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
+                                stroke="#4FA3FF"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                            />
                             <path d="M18 8v6M15 11h6" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
                         </svg>
                     </span>
                     <p class="text-wpx-white-soft mt-3 text-sm font-bold">Vous gérez cet espace seul</p>
                     <p class="text-wpx-muted-dark mx-auto mt-1 max-w-sm text-xs leading-relaxed">
-                        C’est parfaitement adapté à un commerçant, indépendant ou solo-entrepreneur. Vous pourrez inviter quelqu’un plus tard.
+                        C’est parfaitement adapté à un commerçant, indépendant ou solo-entrepreneur. Vous pourrez
+                        inviter quelqu’un plus tard.
                     </p>
                 </div>
 
@@ -222,7 +243,9 @@ void load();
                         class="border-wpx-border-dark bg-wpx-navy-750 rounded-2xl border p-4"
                     >
                         <div class="flex items-center gap-3">
-                            <span class="from-wpx-blue to-wpx-cyan flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-sm font-black text-white">
+                            <span
+                                class="from-wpx-blue to-wpx-cyan flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-sm font-black text-white"
+                            >
                                 {{ initials(member) }}
                             </span>
                             <div class="min-w-0 flex-1">

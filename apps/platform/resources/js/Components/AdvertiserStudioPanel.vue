@@ -216,9 +216,12 @@ void load();
                 <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div class="max-w-xl">
                         <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Mon activité</p>
-                        <h1 class="text-wpx-white-soft mt-1 text-xl font-extrabold sm:text-2xl">Présentez simplement qui vous êtes.</h1>
+                        <h1 class="text-wpx-white-soft mt-1 text-xl font-extrabold sm:text-2xl">
+                            Présentez simplement qui vous êtes.
+                        </h1>
                         <p class="text-wpx-muted-dark mt-2 text-sm leading-relaxed">
-                            Que vous travailliez seul, avec un commerce, une entreprise ou une institution, Wasplex adapte le Studio à votre activité.
+                            Que vous travailliez seul, avec un commerce, une entreprise ou une institution, Wasplex
+                            adapte le Studio à votre activité.
                         </p>
                     </div>
                     <div v-if="profile" class="flex items-center gap-2">
@@ -269,7 +272,9 @@ void load();
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <h2 class="text-wpx-white-soft text-sm font-bold">Mes activités et marques</h2>
-                        <p class="text-wpx-muted-dark mt-0.5 text-xs">Une seule suffit pour commencer. Ajoutez-en d’autres seulement si nécessaire.</p>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                            Une seule suffit pour commencer. Ajoutez-en d’autres seulement si nécessaire.
+                        </p>
                     </div>
                     <button
                         type="button"
@@ -280,7 +285,11 @@ void load();
                     </button>
                 </div>
 
-                <form v-if="showCreateBrand" class="border-wpx-border-dark bg-wpx-navy-750 mt-4 flex gap-2 rounded-2xl border p-2" @submit.prevent="createBrand">
+                <form
+                    v-if="showCreateBrand"
+                    class="border-wpx-border-dark bg-wpx-navy-750 mt-4 flex gap-2 rounded-2xl border p-2"
+                    @submit.prevent="createBrand"
+                >
                     <input
                         v-model="newBrandName"
                         placeholder="Ex. Boutique Awa, Mon restaurant, Wasplex…"
@@ -296,10 +305,14 @@ void load();
                 </form>
 
                 <div v-if="loading" class="text-wpx-muted-dark mt-4 text-sm">Chargement…</div>
-                <div v-else-if="brands.length === 0" class="mt-4 rounded-2xl border border-dashed border-wpx-border-dark px-5 py-8 text-center">
+                <div
+                    v-else-if="brands.length === 0"
+                    class="border-wpx-border-dark mt-4 rounded-2xl border border-dashed px-5 py-8 text-center"
+                >
                     <p class="text-wpx-white-soft text-sm font-bold">Ajoutez le nom de votre activité</p>
                     <p class="text-wpx-muted-dark mx-auto mt-1 max-w-md text-xs leading-relaxed">
-                        Cela peut être votre nom, votre boutique, votre commerce, votre entreprise ou votre organisation.
+                        Cela peut être votre nom, votre boutique, votre commerce, votre entreprise ou votre
+                        organisation.
                     </p>
                     <button type="button" class="text-wpx-cyan mt-3 text-xs font-bold" @click="showCreateBrand = true">
                         + Ajouter mon activité
@@ -319,7 +332,9 @@ void load();
                         @click="selectBrand(brand.id)"
                     >
                         <div class="flex items-center gap-2.5">
-                            <span class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black">
+                            <span
+                                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black"
+                            >
                                 {{ brand.name.slice(0, 2).toUpperCase() }}
                             </span>
                             <div class="min-w-0">
@@ -333,14 +348,23 @@ void load();
                 </div>
             </section>
 
-            <section v-if="selectedBrand" class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-2xl border">
+            <section
+                v-if="selectedBrand"
+                class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-2xl border"
+            >
                 <div class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
                     <div class="min-w-0">
-                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">{{ selectedBrand.name }}</p>
+                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">
+                            {{ selectedBrand.name }}
+                        </p>
                         <h2 class="text-wpx-white-soft mt-0.5 text-base font-extrabold">Mes visuels</h2>
-                        <p class="text-wpx-muted-dark mt-0.5 text-xs">Photos et vidéos réutilisables dans vos publicités.</p>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                            Photos et vidéos réutilisables dans vos publicités.
+                        </p>
                     </div>
-                    <span class="text-wpx-muted-dark shrink-0 text-xs">{{ assets.length }} média{{ assets.length > 1 ? 's' : '' }}</span>
+                    <span class="text-wpx-muted-dark shrink-0 text-xs"
+                        >{{ assets.length }} média{{ assets.length > 1 ? 's' : '' }}</span
+                    >
                 </div>
 
                 <div class="p-4 sm:p-5">
@@ -353,23 +377,56 @@ void load();
                     >
                         <span class="bg-wpx-blue/12 flex h-11 w-11 items-center justify-center rounded-2xl">
                             <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
-                                <path d="M12 16V4M7 9l5-5 5 5" stroke="#4FA3FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                                <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="#4FA3FF" stroke-width="1.8" stroke-linecap="round" />
+                                <path
+                                    d="M12 16V4M7 9l5-5 5 5"
+                                    stroke="#4FA3FF"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                                <path
+                                    d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"
+                                    stroke="#4FA3FF"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                />
                             </svg>
                         </span>
                         <span class="text-wpx-white-soft mt-2.5 text-sm font-bold">Ajouter une photo ou une vidéo</span>
-                        <span class="text-wpx-muted-dark mt-1 text-[11px]">JPG, PNG, WEBP · 10 Mo max — MP4, MOV, WEBM · 200 Mo max</span>
-                        <input ref="fileInput" type="file" accept="image/*,video/*" class="hidden" @change="onFileInputChange" />
+                        <span class="text-wpx-muted-dark mt-1 text-[11px]"
+                            >JPG, PNG, WEBP · 10 Mo max — MP4, MOV, WEBM · 200 Mo max</span
+                        >
+                        <input
+                            ref="fileInput"
+                            type="file"
+                            accept="image/*,video/*"
+                            class="hidden"
+                            @change="onFileInputChange"
+                        />
                     </label>
                     <p v-if="uploading" class="text-wpx-cyan mt-3 text-xs font-bold">Envoi du média en cours…</p>
 
                     <div v-if="assets.length > 0" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                        <article v-for="asset in assets" :key="asset.id" class="border-wpx-border-dark bg-wpx-navy-750 overflow-hidden rounded-2xl border">
-                            <img v-if="asset.type === 'image' && asset.url" :src="asset.url" :alt="asset.filename" class="h-28 w-full object-cover" />
-                            <div v-else class="flex h-28 w-full items-center justify-center bg-wpx-navy-950 text-3xl">🎬</div>
+                        <article
+                            v-for="asset in assets"
+                            :key="asset.id"
+                            class="border-wpx-border-dark bg-wpx-navy-750 overflow-hidden rounded-2xl border"
+                        >
+                            <img
+                                v-if="asset.type === 'image' && asset.url"
+                                :src="asset.url"
+                                :alt="asset.filename"
+                                class="h-28 w-full object-cover"
+                            />
+                            <div v-else class="bg-wpx-navy-950 flex h-28 w-full items-center justify-center text-3xl">
+                                🎬
+                            </div>
                             <div class="p-2.5">
                                 <p class="text-wpx-white-soft truncate text-[11px] font-bold">{{ asset.filename }}</p>
-                                <span class="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold" :class="statusClasses(asset.moderation_status)">
+                                <span
+                                    class="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold"
+                                    :class="statusClasses(asset.moderation_status)"
+                                >
                                     {{ statusLabel(asset.moderation_status) }}
                                 </span>
                             </div>
@@ -377,10 +434,15 @@ void load();
                     </div>
 
                     <details class="border-wpx-border-dark mt-5 border-t pt-4">
-                        <summary class="text-wpx-muted-dark cursor-pointer text-xs font-bold">Options de marque avancées (facultatif)</summary>
+                        <summary class="text-wpx-muted-dark cursor-pointer text-xs font-bold">
+                            Options de marque avancées (facultatif)
+                        </summary>
                         <div class="mt-4">
                             <p class="text-wpx-white-soft text-sm font-bold">Couleurs de marque</p>
-                            <p class="text-wpx-muted-dark mt-1 text-xs">Utile surtout pour les entreprises qui souhaitent conserver une identité visuelle précise.</p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
+                                Utile surtout pour les entreprises qui souhaitent conserver une identité visuelle
+                                précise.
+                            </p>
                             <div v-if="selectedBrand.colors.length > 0" class="mt-3 flex flex-wrap gap-2">
                                 <span
                                     v-for="color in selectedBrand.colors"
@@ -392,14 +454,24 @@ void load();
                                 </span>
                             </div>
                             <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <input v-model="newColorHex" type="color" class="h-10 w-12 rounded-xl border-0 bg-transparent" />
+                                <input
+                                    v-model="newColorHex"
+                                    type="color"
+                                    class="h-10 w-12 rounded-xl border-0 bg-transparent"
+                                />
                                 <input
                                     v-model="newColorName"
                                     placeholder="Nom de la couleur"
                                     class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft placeholder:text-wpx-muted-dark min-w-40 flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none"
                                     @keyup.enter="addColor"
                                 />
-                                <button type="button" class="text-wpx-cyan px-2 py-2 text-xs font-bold" @click="addColor">Ajouter</button>
+                                <button
+                                    type="button"
+                                    class="text-wpx-cyan px-2 py-2 text-xs font-bold"
+                                    @click="addColor"
+                                >
+                                    Ajouter
+                                </button>
                             </div>
                         </div>
                     </details>
