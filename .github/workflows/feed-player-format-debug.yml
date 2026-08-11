@@ -6,7 +6,7 @@ on:
       - feat/feed-video-player
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -16,20 +16,23 @@ jobs:
         working-directory: apps/platform
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: apps/platform/package-lock.json
       - run: npm ci
-      - name: Format FeedPanel
+      - name: Format FeedPanel only
         run: npx prettier --write resources/js/Components/FeedPanel.vue
-      - name: Stage formatted file
+      - name: Commit formatted FeedPanel only
         run: |
-          mkdir -p /tmp/feed-player-format
-          cp resources/js/Components/FeedPanel.vue /tmp/feed-player-format/FeedPanel.vue
-      - uses: actions/upload-artifact@v4
-        with:
-          name: formatted-feed-panel
-          path: /tmp/feed-player-format/FeedPanel.vue
-          if-no-files-found: error
+          if git diff --quiet -- resources/js/Components/FeedPanel.vue; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/js/Components/FeedPanel.vue
+          git commit -m "style(feed): format video player"
+          git push origin HEAD:feat/feed-video-player
