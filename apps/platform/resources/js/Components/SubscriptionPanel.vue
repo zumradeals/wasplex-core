@@ -17,6 +17,7 @@ interface Plan {
 interface Subscription {
     id: string;
     status: string;
+    plan_version_id: string;
     economic_class_id: string;
     current_period_end: string | null;
 }
@@ -30,7 +31,7 @@ interface Quota {
 const STATUS_LABELS: Record<string, string> = {
     pending_payment: 'Paiement en attente',
     active: 'Actif',
-    scheduled_downgrade: 'Déclassement programmé',
+    scheduled_downgrade: 'Changement programmé',
     expired: 'Expiré',
     cancelled: 'Annulé',
 };
@@ -45,6 +46,10 @@ const error = ref<string | null>(null);
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
+const currentPlan = computed(() =>
+    subscription.value ? plans.value.find((plan) => plan.plan_version_id === subscription.value?.plan_version_id) ?? null : null,
+);
+
 const quotaPercent = computed(() => {
     if (!quota.value || quota.value.allocated === 0) {
         return 0;
@@ -57,13 +62,16 @@ async function load(): Promise<void> {
     loading.value = true;
     loadError.value = null;
     try {
-        const [plansRes, currentRes, quotaRes] = await Promise.all([
+        const [plansRes, currentRes] = await Promise.all([
             http.get('/subscriptions/plans'),
             http.get('/subscriptions/current'),
-            http.get('/subscriptions/quota'),
         ]);
         plans.value = plansRes.data.plans;
         subscription.value = currentRes.data.subscription;
+
+        // /current provisions the FREE fallback when needed. Read quota
+        // afterwards so this request always sees the initialized cycle.
+        const quotaRes = await http.get('/subscriptions/quota');
         quota.value = quotaRes.data.quota;
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
@@ -74,18 +82,25 @@ async function load(): Promise<void> {
 }
 
 async function subscribeTo(plan: Plan): Promise<void> {
+    if (subscription.value?.plan_version_id === plan.plan_version_id) {
+        return;
+    }
+
     error.value = null;
     subscribing.value = plan.plan_version_id;
     try {
-        const { data } = await http.post('/subscriptions', { plan_version_id: plan.plan_version_id });
+        const endpoint = subscription.value ? `/subscriptions/${subscription.value.id}/upgrade` : '/subscriptions';
+        const { data } = await http.post(endpoint, { plan_version_id: plan.plan_version_id });
 
         if (data.payment?.checkout_url) {
             window.open(data.payment.checkout_url, '_blank', 'noopener,noreferrer');
         }
 
         await load();
-    } catch {
-        error.value = 'La souscription a échoué.';
+    } catch (e) {
+        error.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            "Le changement d'abonnement a échoué.";
     } finally {
         subscribing.value = null;
     }
@@ -101,13 +116,19 @@ void load();
         </div>
 
         <template v-else>
-            <!-- Abonnement actuel -->
             <div class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 p-4">
                 <p class="text-wpx-muted-dark text-xs font-semibold tracking-wide uppercase">Mon abonnement</p>
                 <p v-if="loading" class="text-wpx-muted-dark mt-1 text-sm">Chargement…</p>
                 <template v-else-if="subscription">
-                    <p class="text-wpx-white-soft mt-1 text-lg font-semibold">
-                        {{ STATUS_LABELS[subscription.status] ?? subscription.status }}
+                    <div class="mt-1 flex flex-wrap items-center gap-2">
+                        <p class="text-wpx-white-soft text-lg font-semibold">{{ currentPlan?.name ?? 'Plan membre' }}</p>
+                        <span class="bg-wpx-blue/15 text-wpx-cyan rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                            {{ STATUS_LABELS[subscription.status] ?? subscription.status }}
+                        </span>
+                    </div>
+                    <p v-if="currentPlan" class="text-wpx-muted-dark mt-1 text-xs">
+                        {{ currentPlan.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(currentPlan.price_minor)} ${currentPlan.currency}` }}
+                        · {{ currentPlan.duration_days }} jours
                     </p>
                     <div v-if="quota" class="mt-3">
                         <div class="bg-wpx-navy-750 h-2 overflow-hidden rounded-full">
@@ -126,29 +147,27 @@ void load();
                 <p v-else class="text-wpx-muted-dark mt-1 text-sm">Aucun abonnement actif.</p>
             </div>
 
-            <!-- Comparatif des plans -->
             <div class="flex flex-col gap-3">
-                <h2 class="text-wpx-white-soft text-sm font-semibold">Choisir un plan</h2>
+                <div>
+                    <h2 class="text-wpx-white-soft text-sm font-semibold">Plans disponibles</h2>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">Comparez votre plan actuel et choisissez une évolution adaptée à vos besoins.</p>
+                </div>
                 <p v-if="error" class="text-wpx-danger-light text-xs">{{ error }}</p>
 
                 <div
                     v-for="plan in plans"
                     :key="plan.plan_version_id"
                     class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 border-wpx-border-dark flex flex-col gap-2 border p-4"
+                    :class="subscription?.plan_version_id === plan.plan_version_id ? 'ring-wpx-cyan/60 ring-1' : ''"
                 >
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between gap-3">
                         <span class="text-wpx-white-soft text-base font-semibold">{{ plan.name }}</span>
                         <span class="text-wpx-gold text-sm font-semibold">
-                            {{
-                                plan.price_minor === 0
-                                    ? 'Gratuit'
-                                    : `${numberFormatter.format(plan.price_minor)} ${plan.currency}`
-                            }}
+                            {{ plan.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(plan.price_minor)} ${plan.currency}` }}
                         </span>
                     </div>
                     <p class="text-wpx-muted-dark text-xs">
-                        Jusqu'à {{ numberFormatter.format(plan.quota_monthly ?? 0) }} publicités / mois ·
-                        {{ plan.duration_days }} jours
+                        Jusqu'à {{ numberFormatter.format(plan.quota_monthly ?? 0) }} publicités / mois · {{ plan.duration_days }} jours
                     </p>
                     <p class="text-wpx-muted-dark text-xs">Accès Fonds : {{ plan.fonds_eligible ? 'oui' : 'non' }}</p>
                     <p class="text-wpx-muted-dark text-[11px] italic">
@@ -157,10 +176,18 @@ void load();
                     <button
                         type="button"
                         class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 mt-1 bg-gradient-to-br px-4 py-2 text-sm font-semibold disabled:opacity-50"
-                        :disabled="subscribing === plan.plan_version_id"
+                        :disabled="subscribing === plan.plan_version_id || subscription?.plan_version_id === plan.plan_version_id"
                         @click="subscribeTo(plan)"
                     >
-                        Souscrire
+                        {{
+                            subscription?.plan_version_id === plan.plan_version_id
+                                ? 'Plan actuel'
+                                : subscribing === plan.plan_version_id
+                                  ? 'Traitement…'
+                                  : subscription
+                                    ? 'Choisir ce plan'
+                                    : 'Souscrire'
+                        }}
                     </button>
                 </div>
 

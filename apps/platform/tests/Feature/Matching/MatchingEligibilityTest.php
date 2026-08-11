@@ -72,7 +72,8 @@ function approvedCampaignForMatchingTests(string $advertiserEmail, array $audien
 {
     // A wide, already-eligible segment so quoting never fails on its own
     // "segment too small" rule, independently from the Matching decision
-    // under test.
+    // under test. Legacy economic_classes values here are intentionally
+    // ignored by the Campaign service and only help build diverse fixtures.
     foreach (($audienceConfiguration['economic_classes'] ?? ['GOLD']) as $classCode) {
         subscribeAccountToClassForMatchingTests(Account::query()->create([
             'status' => 'verified',
@@ -130,7 +131,7 @@ function approvedCampaignForMatchingTests(string $advertiserEmail, array $audien
     return ['campaign_id' => $campaignId, 'organization_id' => $organizationId];
 }
 
-it('finds a Gold subscriber in the targeted country and class eligible, with a plain-language explanation', function (): void {
+it('finds an eligible subscriber in the targeted country, with a plain-language explanation', function (): void {
     ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
         'matching-positive-advertiser@example.com',
         ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
@@ -174,6 +175,30 @@ it('matches voluntary interests only with explicit Smart Profile consent', funct
     expect($decision->reasonCodes)->toContain('profile_match');
 });
 
+it('matches one selected value inside a profile category', function (): void {
+    ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
+        'matching-or-category-advertiser@example.com',
+        [
+            'territory' => ['country_code' => 'CI'],
+            'profile_taxonomies' => ['demographic.gender.woman', 'demographic.gender.man'],
+        ],
+    );
+
+    registerAndLogin('matching-or-category-candidate@example.com', country: 'CI');
+    $candidate = accountForMatchingTests('matching-or-category-candidate@example.com');
+    subscribeAccountToClassForMatchingTests($candidate->id, 'FREE');
+
+    $woman = ProfileTaxonomy::query()->where('code', 'demographic.gender.woman')->firstOrFail();
+    test()->postJson("/api/me/smart-profile/{$woman->id}")->assertCreated();
+    test()->postJson('/api/me/consents/'.ConsentPurpose::CODE_SMART_PROFILE_USAGE.'/grant')->assertOk();
+    test()->postJson('/api/me/consents/'.ConsentPurpose::CODE_ADVERTISING_PERSONALIZATION.'/grant')->assertOk();
+
+    $decision = app(MatchingContract::class)->checkEligibility($campaignId, $candidate->id);
+
+    expect($decision->decision)->toBe('eligible');
+    expect($decision->reasonCodes)->toContain('profile_match');
+});
+
 it('does not match a profile criterion explicitly answered no', function (): void {
     ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
         'matching-interest-no-advertiser@example.com',
@@ -210,7 +235,7 @@ it('excludes a candidate outside the targeted country', function (): void {
     expect($decision->reasonCodes)->toContain('territory_mismatch');
 });
 
-it('excludes a candidate outside the targeted economic class', function (): void {
+it('does not use the member subscription class as an advertiser targeting filter', function (): void {
     ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
         'matching-class-advertiser@example.com',
         ['economic_classes' => ['PLATINUM'], 'territory' => ['country_code' => 'CI']],
@@ -223,8 +248,8 @@ it('excludes a candidate outside the targeted economic class', function (): void
 
     $decision = app(MatchingContract::class)->checkEligibility($campaignId, $candidate->id);
 
-    expect($decision->decision)->toBe('ineligible');
-    expect($decision->reasonCodes)->toContain('class_mismatch');
+    expect($decision->decision)->toBe('eligible');
+    expect($decision->reasonCodes)->not->toContain('class_mismatch');
 });
 
 it('withdrawing consent makes an otherwise-eligible candidate immediately ineligible', function (): void {

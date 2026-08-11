@@ -47,21 +47,50 @@ final class ProfileTargetingService implements ProfileTargetingContract
 
     public function accountMatchesAll(string $accountId, array $taxonomyCodes): bool
     {
-        $codes = array_values(array_unique($taxonomyCodes));
+        $codes = array_values(array_unique(array_filter($taxonomyCodes, 'is_string')));
         if ($codes === []) {
             return true;
         }
 
-        $matched = ProfileAnswer::query()
+        $taxonomies = ProfileTaxonomy::query()
+            ->where('status', ProfileTaxonomy::STATUS_ACTIVE)
+            ->whereIn('category', self::TARGETABLE_CATEGORIES)
+            ->whereIn('code', $codes)
+            ->get(['id', 'code', 'category']);
+
+        if ($taxonomies->count() !== count($codes)) {
+            return false;
+        }
+
+        $selectedByCategory = $taxonomies
+            ->groupBy('category')
+            ->map(fn ($items) => $items->pluck('code')->all());
+
+        $matchedCodes = ProfileAnswer::query()
             ->where('account_id', $accountId)
             ->where('answer_value', true)
             ->whereNull('withdrawn_at')
             ->whereHas('taxonomy', fn ($query) => $query
                 ->where('status', ProfileTaxonomy::STATUS_ACTIVE)
+                ->whereIn('category', self::TARGETABLE_CATEGORIES)
                 ->whereIn('code', $codes))
-            ->distinct('profile_taxonomy_id')
-            ->count('profile_taxonomy_id');
+            ->with('taxonomy:id,code')
+            ->get()
+            ->pluck('taxonomy.code')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
-        return $matched === count($codes);
+        // OR inside the same category, AND between different categories.
+        // Example: woman OR man, smartphone OR two-wheeler, while a selected
+        // interest AND a selected possession must both be represented.
+        foreach ($selectedByCategory as $categoryCodes) {
+            if (array_intersect($categoryCodes, $matchedCodes) === []) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

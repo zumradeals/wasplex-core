@@ -5,55 +5,40 @@ declare(strict_types=1);
 namespace App\Modules\Campaigns\Application\Services;
 
 use App\Modules\SmartProfile\Application\Contracts\ProfileTargetingContract;
-use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
 
 /**
- * docs/17-donnees-permissions-consentements-techniques-wasplex.md L103 :
- * Santé, Alertes, Fonds et KYC ne doivent jamais servir au ciblage
- * publicitaire. Le ciblage accepte le territoire, la classe économique et
- * les seules taxonomies volontaires publiées par SmartProfile. Les clés
- * sensibles ou inconnues restent structurellement rejetées.
+ * Advertising targeting only accepts understandable audience criteria.
+ * Subscription/economic classes are an internal Wasplex concern and must
+ * never be selected by an advertiser.
  */
 final class AudienceConfigurationValidator
 {
-    private const ALLOWED_KEYS = ['territory', 'economic_classes', 'profile_taxonomies'];
+    private const ALLOWED_KEYS = ['territory', 'profile_taxonomies'];
 
-    public function __construct(
-        private readonly EconomicClassCatalogContract $economicClasses,
-        private readonly ProfileTargetingContract $profileTargeting,
-    ) {}
+    public function __construct(private readonly ProfileTargetingContract $profileTargeting) {}
 
     /**
      * @param  array<string, mixed>  $configuration
      */
     public function validate(array $configuration): void
     {
+        if (array_key_exists('economic_classes', $configuration)) {
+            throw new InvalidCampaignConfigurationException(
+                "Les classes d’abonnement sont gérées automatiquement par Wasplex et ne peuvent pas servir de critère de ciblage annonceur."
+            );
+        }
+
         $unknownKeys = array_diff(array_keys($configuration), self::ALLOWED_KEYS);
 
         if ($unknownKeys !== []) {
             throw new InvalidCampaignConfigurationException(
                 'Critère de ciblage non autorisé : '.implode(', ', $unknownKeys).
-                ' — seuls le territoire, les classes économiques et les critères volontaires du profil sont acceptés.'
+                ' — seuls le territoire et les critères volontaires du profil sont acceptés.'
             );
         }
 
         if (isset($configuration['territory']) && ! is_array($configuration['territory'])) {
             throw new InvalidCampaignConfigurationException('"territory" doit être un objet avec country_code.');
-        }
-
-        if (isset($configuration['economic_classes'])) {
-            if (! is_array($configuration['economic_classes']) || $configuration['economic_classes'] === []) {
-                throw new InvalidCampaignConfigurationException('Au moins une classe économique doit être ciblée.');
-            }
-
-            $validCodes = array_map(fn ($summary) => $summary->code, $this->economicClasses->listActive());
-            $unknownClasses = array_diff($configuration['economic_classes'], $validCodes);
-
-            if ($unknownClasses !== []) {
-                throw new InvalidCampaignConfigurationException(
-                    'Classe(s) économique(s) inconnue(s) : '.implode(', ', $unknownClasses)
-                );
-            }
         }
 
         if (isset($configuration['profile_taxonomies'])) {
@@ -65,7 +50,6 @@ final class AudienceConfigurationValidator
             if ($unknown !== []) {
                 throw new InvalidCampaignConfigurationException('Critère(s) de profil inconnu(s) ou suspendu(s) : '.implode(', ', $unknown));
             }
-
         }
     }
 }

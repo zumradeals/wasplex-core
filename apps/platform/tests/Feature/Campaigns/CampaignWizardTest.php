@@ -25,6 +25,13 @@ it('lists safe profile criteria for the advertiser audience wizard', function ()
     expect(collect($criteria['demographic'] ?? [])->pluck('code'))->toContain('demographic.gender.woman');
 });
 
+it('does not expose subscription classes to the advertiser', function (): void {
+    registerAndLogin('campaign-no-economic-classes@example.com');
+    createAdvertiserOrganization();
+
+    test()->getJson('/api/advertiser/economic-classes')->assertNotFound();
+});
+
 /**
  * Directly inserts an active subscriber account in the given economic
  * class and country — bypasses the Subscriptions HTTP flow (which only
@@ -110,14 +117,14 @@ it('autosaves objective, audience and budget configuration', function (): void {
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
         'objective_code' => 'faire_connaitre',
-        'audience_configuration' => ['economic_classes' => ['GOLD'], 'profile_taxonomies' => ['interest.formation']],
+        'audience_configuration' => ['profile_taxonomies' => ['interest.formation']],
         'budget_configuration' => ['budget_amount_minor' => 100000],
     ])->assertOk()->assertJsonPath('campaign.objective_code', 'faire_connaitre');
 
     $campaign = test()->getJson("/api/advertiser/campaigns/{$campaignId}")->assertOk()->json('campaign');
     $version = collect($campaign['versions'])->sortByDesc('version_number')->first();
 
-    expect($version['audience_configuration'])->toBe(['economic_classes' => ['GOLD'], 'profile_taxonomies' => ['interest.formation']]);
+    expect($version['audience_configuration'])->toBe(['profile_taxonomies' => ['interest.formation']]);
     expect($version['budget_configuration'])->toBe(['budget_amount_minor' => 100000]);
 });
 
@@ -128,7 +135,6 @@ it('allows an advertiser to target both women and men', function (): void {
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
         'audience_configuration' => [
-            'economic_classes' => ['GOLD'],
             'profile_taxonomies' => ['demographic.gender.woman', 'demographic.gender.man'],
         ],
     ])->assertOk();
@@ -149,18 +155,23 @@ it('rejects a forbidden audience targeting key', function (): void {
     $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
-        'audience_configuration' => ['economic_classes' => ['GOLD'], 'health_status' => 'diabetic'],
+        'audience_configuration' => ['health_status' => 'diabetic'],
     ])->assertStatus(422);
 });
 
-it('rejects an unknown economic class code', function (): void {
+it('ignores legacy subscription-class filters sent by an advertiser', function (): void {
     registerAndLogin('campaign-wizard-5@example.com');
     $brandId = createBrandForCampaignTests();
     $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
-        'audience_configuration' => ['economic_classes' => ['NOT_A_CLASS']],
-    ])->assertStatus(422);
+        'audience_configuration' => ['economic_classes' => ['GOLD']],
+    ])->assertOk();
+
+    $campaign = test()->getJson("/api/advertiser/campaigns/{$campaignId}")->assertOk()->json('campaign');
+    $version = collect($campaign['versions'])->sortByDesc('version_number')->first();
+
+    expect($version['audience_configuration'])->toBe([]);
 });
 
 it('never leaks a campaign between two organizations', function (): void {
@@ -185,7 +196,7 @@ it('estimates a real audience count from active subscriptions filtered by countr
     $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
-        'audience_configuration' => ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
+        'audience_configuration' => ['territory' => ['country_code' => 'CI']],
     ])->assertOk();
 
     $estimate = test()->postJson("/api/advertiser/campaigns/{$campaignId}/estimate-audience")->assertOk()->json('estimate');

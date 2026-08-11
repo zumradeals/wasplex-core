@@ -9,6 +9,7 @@ use App\Modules\Feed\Application\ValueObjects\FeedCandidate;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Matching\Application\Contracts\MatchingContract;
 use App\Modules\Subscriptions\Application\Contracts\EconomicClassCatalogContract;
+use App\Modules\Subscriptions\Application\Services\FreeSubscriptionProvisioner;
 use Illuminate\Support\Carbon;
 
 /**
@@ -23,6 +24,7 @@ final class FeedCompositionService
         private readonly ApprovedCampaignAudienceContract $campaigns,
         private readonly MatchingContract $matching,
         private readonly EconomicClassCatalogContract $economicClasses,
+        private readonly FreeSubscriptionProvisioner $freeSubscription,
     ) {}
 
     /**
@@ -33,6 +35,11 @@ final class FeedCompositionService
      */
     public function nextCandidate(string $accountId, array $excludingCampaignIds = []): ?FeedCandidate
     {
+        // A member must never lose the Feed merely because no subscription
+        // row was created yet. FREE is the internal baseline and its quota is
+        // initialized here before the Feed needs the economic class.
+        $this->freeSubscription->ensureFor($accountId);
+
         $economicClass = $this->economicClasses->classForAccount($accountId);
 
         if ($economicClass === null) {
