@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   platform:
@@ -43,8 +43,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.head_ref }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -72,18 +71,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Normalize frontend formatting on fix branch
-        if: github.event_name == 'pull_request' && github.head_ref == 'fix/smart-profile-facets'
-        run: |
-          npm run format
-          if ! git diff --quiet -- resources; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add resources
-            git commit -m "style: format frontend"
-            git push origin HEAD:${GITHUB_HEAD_REF}
-          fi
-
       - name: Check frontend formatting
         run: npm run format:check
 
@@ -95,18 +82,6 @@ jobs:
 
       - name: Build frontend assets
         run: npm run build
-
-      - name: Normalize PHP formatting on fix branch
-        if: github.event_name == 'pull_request' && github.head_ref == 'fix/smart-profile-facets'
-        run: |
-          composer lint
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add app tests routes config database
-            git commit -m "style: format PHP"
-            git push origin HEAD:${GITHUB_HEAD_REF}
-          fi
 
       - name: Check PHP formatting
         run: composer lint:check
