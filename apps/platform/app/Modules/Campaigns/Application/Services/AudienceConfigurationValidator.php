@@ -24,7 +24,7 @@ final class AudienceConfigurationValidator
     {
         if (array_key_exists('economic_classes', $configuration)) {
             throw new InvalidCampaignConfigurationException(
-                "Les classes d’abonnement sont gérées automatiquement par Wasplex et ne peuvent pas servir de critère de ciblage annonceur."
+                'Les classes d’abonnement sont gérées automatiquement par Wasplex et ne peuvent pas servir de critère de ciblage annonceur.'
             );
         }
 

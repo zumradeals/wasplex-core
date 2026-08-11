@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\AdvertiserWallet\Http\Controllers\Admin\SupervisedDepositsController;
 use App\Modules\AdvertiserWallet\Http\Controllers\Admin\GeniusPayConfigurationController;
+use App\Modules\AdvertiserWallet\Http\Controllers\Admin\SupervisedDepositsController;
 use App\Modules\AdvertiserWallet\Http\Controllers\Advertiser\DepositsController;
 use App\Modules\AdvertiserWallet\Http\Controllers\Advertiser\WalletController;
 use App\Modules\Identity\Http\Middleware\EnsureActiveAdvertiserOrganization;
