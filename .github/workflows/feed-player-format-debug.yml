@@ -24,5 +24,12 @@ jobs:
       - run: npm ci
       - name: Format FeedPanel
         run: npx prettier --write resources/js/Components/FeedPanel.vue
-      - name: Emit formatted FeedPanel
-        run: base64 -w 0 resources/js/Components/FeedPanel.vue
+      - name: Stage formatted file
+        run: |
+          mkdir -p /tmp/feed-player-format
+          cp resources/js/Components/FeedPanel.vue /tmp/feed-player-format/FeedPanel.vue
+      - uses: actions/upload-artifact@v4
+        with:
+          name: formatted-feed-panel
+          path: /tmp/feed-player-format/FeedPanel.vue
+          if-no-files-found: error
