@@ -2,10 +2,21 @@
 
 declare(strict_types=1);
 
+$antifraudMode = strtolower((string) env('FEED_ANTIFRAUD_MODE', 'observe'));
+
+if (! in_array($antifraudMode, ['observe', 'enforce'], true)) {
+    $antifraudMode = 'observe';
+}
+
 // Seuils techniques par défaut, ajustables par déploiement — pas une
 // décision produit figée (docs/chantiers/P010-CHANTIER.md §2.3 : docs/16
 // §18 reste qualitatif, aucun seuil chiffré n'y est spécifié).
 return [
+    // Par défaut, l'antifraude observe et journalise les signaux sans bloquer
+    // le gain d'une vue complète. Passer explicitement à "enforce" réactive
+    // les retenues automatiques pour revue manuelle.
+    'antifraud_mode' => $antifraudMode,
+
     // FeedPanel.vue envoie un heartbeat toutes les 400 ms — un intervalle
     // plus court qu'une fraction de cela dénote une automatisation plutôt
     // qu'un rythme d'interface utilisateur réel.
@@ -16,9 +27,12 @@ return [
     // tentative de sur-déclaration plutôt qu'une imprécision réseau.
     'overclaim_tolerance_ms' => (int) env('FEED_OVERCLAIM_TOLERANCE_MS', 500),
 
-    // Nombre de signaux de risque accumulés sur une même livraison avant
-    // mise en attente (docs/16 §20 : preuve douteuse -> hold -> revue).
-    'risk_hold_threshold' => (int) env('FEED_RISK_HOLD_THRESHOLD', 2),
+    // En mode observation, les signaux restent enregistrés mais le seuil de
+    // retenue devient volontairement inatteignable. En mode enforce, on
+    // retrouve le seuil configurable historique.
+    'risk_hold_threshold' => $antifraudMode === 'enforce'
+        ? (int) env('FEED_RISK_HOLD_THRESHOLD', 2)
+        : PHP_INT_MAX,
 
     // Une livraison "started" sans heartbeat récent au-delà de ce multiple
     // de sa durée requise est considérée bloquée (client disparu) par la

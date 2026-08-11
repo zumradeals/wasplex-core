@@ -30,6 +30,7 @@
         <env name="DB_USERNAME" value="wasplex"/>
         <env name="DB_PASSWORD" value="wasplex_local_only"/>
         <env name="DB_URL" value=""/>
+        <env name="FEED_ANTIFRAUD_MODE" value="enforce"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <!--
