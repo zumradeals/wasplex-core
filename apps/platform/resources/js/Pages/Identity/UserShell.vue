@@ -149,7 +149,9 @@ onMounted(loadMe);
                     <div class="flex items-center justify-between px-0.5">
                         <div>
                             <h1 class="text-wpx-white-soft text-xl font-bold">Mon Espace</h1>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px]">Votre compte, vos choix, vos avantages.</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px]">
+                                Votre compte, vos choix, vos avantages.
+                            </p>
                         </div>
                         <button
                             type="button"
@@ -205,13 +207,11 @@ onMounted(loadMe);
                         </div>
 
                         <div class="border-wpx-border-dark grid grid-cols-2 border-t">
-                            <button
-                                type="button"
-                                class="px-3 py-3 text-center"
-                                @click="showSmartProfile = true"
-                            >
+                            <button type="button" class="px-3 py-3 text-center" @click="showSmartProfile = true">
                                 <p class="text-wpx-white-soft text-base font-bold">{{ smartProfilePercent }}%</p>
-                                <p class="text-wpx-muted-dark mt-0.5 text-[10px] tracking-wide uppercase">Profil intelligent</p>
+                                <p class="text-wpx-muted-dark mt-0.5 text-[10px] tracking-wide uppercase">
+                                    Profil intelligent
+                                </p>
                             </button>
                             <button
                                 type="button"
@@ -220,7 +220,9 @@ onMounted(loadMe);
                             >
                                 <p
                                     class="text-sm font-bold"
-                                    :class="page.props.auth.account.mfa_enabled ? 'text-wpx-success-light' : 'text-wpx-gold'"
+                                    :class="
+                                        page.props.auth.account.mfa_enabled ? 'text-wpx-success-light' : 'text-wpx-gold'
+                                    "
                                 >
                                     {{ page.props.auth.account.mfa_enabled ? 'Protégé' : 'À renforcer' }}
                                 </p>
@@ -237,7 +239,15 @@ onMounted(loadMe);
                         >
                             <span class="bg-wpx-blue/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect x="3" y="6" width="18" height="13" rx="3" stroke="#4FA3FF" stroke-width="1.7" />
+                                    <rect
+                                        x="3"
+                                        y="6"
+                                        width="18"
+                                        height="13"
+                                        rx="3"
+                                        stroke="#4FA3FF"
+                                        stroke-width="1.7"
+                                    />
                                     <rect x="3" y="10" width="18" height="2.4" fill="#4FA3FF" />
                                 </svg>
                             </span>
@@ -253,11 +263,18 @@ onMounted(loadMe);
                             <span class="bg-wpx-cyan/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                                     <circle cx="12" cy="8" r="3" stroke="#2BC4DE" stroke-width="1.7" />
-                                    <path d="M6 20c.8-4 3.2-6 6-6s5.2 2 6 6" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
+                                    <path
+                                        d="M6 20c.8-4 3.2-6 6-6s5.2 2 6 6"
+                                        stroke="#2BC4DE"
+                                        stroke-width="1.7"
+                                        stroke-linecap="round"
+                                    />
                                 </svg>
                             </span>
                             <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Profil intelligent</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">{{ smartProfilePercent }}% complété</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">
+                                {{ smartProfilePercent }}% complété
+                            </p>
                         </button>
 
                         <button
@@ -267,7 +284,11 @@ onMounted(loadMe);
                         >
                             <span class="bg-wpx-cyan/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="#2BC4DE" stroke-width="1.7" />
+                                    <path
+                                        d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
+                                        stroke="#2BC4DE"
+                                        stroke-width="1.7"
+                                    />
                                 </svg>
                             </span>
                             <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Identité &amp; KYC</p>
@@ -281,7 +302,15 @@ onMounted(loadMe);
                         >
                             <span class="bg-wpx-orange/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect x="3" y="5" width="18" height="12" rx="2.5" stroke="#FF9A3D" stroke-width="1.7" />
+                                    <rect
+                                        x="3"
+                                        y="5"
+                                        width="18"
+                                        height="12"
+                                        rx="2.5"
+                                        stroke="#FF9A3D"
+                                        stroke-width="1.7"
+                                    />
                                     <circle cx="12" cy="11" r="2.4" stroke="#FF9A3D" stroke-width="1.7" />
                                 </svg>
                             </span>
@@ -309,19 +338,38 @@ onMounted(loadMe);
                             <span class="flex items-center gap-3">
                                 <span class="bg-wpx-blue/12 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                                        <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="#4FA3FF" stroke-width="1.7" />
-                                        <path d="M9 12l2 2 4-4" stroke="#4FA3FF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                                        <path
+                                            d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
+                                            stroke="#4FA3FF"
+                                            stroke-width="1.7"
+                                        />
+                                        <path
+                                            d="M9 12l2 2 4-4"
+                                            stroke="#4FA3FF"
+                                            stroke-width="1.7"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
                                     </svg>
                                 </span>
                                 <span>
-                                    <span class="text-wpx-white-soft block text-sm font-bold">Compte &amp; sécurité</span>
+                                    <span class="text-wpx-white-soft block text-sm font-bold"
+                                        >Compte &amp; sécurité</span
+                                    >
                                     <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
-                                        MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} · paramètres du compte
+                                        MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} ·
+                                        paramètres du compte
                                     </span>
                                 </span>
                             </span>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path d="M9 6l6 6-6 6" stroke="#A9B7C8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                <path
+                                    d="M9 6l6 6-6 6"
+                                    stroke="#A9B7C8"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
                             </svg>
                         </button>
                     </section>
@@ -435,7 +483,9 @@ onMounted(loadMe);
                     <div class="bg-wpx-navy-950 sticky top-0 z-20 flex items-start justify-between gap-3 pb-3">
                         <div>
                             <p class="text-wpx-white-soft text-lg font-bold">Mon profil intelligent</p>
-                            <p class="text-wpx-muted-dark mt-1 text-xs">Mettez à jour uniquement ce que vous souhaitez partager.</p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
+                                Mettez à jour uniquement ce que vous souhaitez partager.
+                            </p>
                         </div>
                         <button
                             type="button"

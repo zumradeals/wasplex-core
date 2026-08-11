@@ -81,7 +81,13 @@ void load();
         <span class="bg-wpx-cyan/14 rounded-wpx-sm flex h-10 w-10 shrink-0 items-center justify-center">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
                 <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="#2BC4DE" stroke-width="1.7" />
-                <path d="M9 12l2 2 4-4" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                <path
+                    d="M9 12l2 2 4-4"
+                    stroke="#2BC4DE"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
             </svg>
         </span>
         <span class="min-w-0 flex-1">
@@ -136,7 +142,9 @@ void load();
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0 flex-1">
                                 <p class="text-wpx-white-soft text-sm font-semibold">{{ consent.name }}</p>
-                                <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">{{ consent.description }}</p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
+                                    {{ consent.description }}
+                                </p>
                                 <p
                                     class="mt-2 text-[11px] font-bold"
                                     :class="isActive(consent) ? 'text-wpx-success-light' : 'text-wpx-muted-dark'"

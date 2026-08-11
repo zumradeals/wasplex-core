@@ -54,12 +54,18 @@ void load();
                     <p class="text-wpx-white-soft text-sm font-bold">Campagnes pour vous</p>
                     <span class="text-wpx-gold text-[10px] font-bold">{{ loading ? '…' : countLabel }}</span>
                 </div>
-                <p v-if="loading" class="text-wpx-muted-dark mt-0.5 text-[11px]">Recherche des campagnes compatibles…</p>
+                <p v-if="loading" class="text-wpx-muted-dark mt-0.5 text-[11px]">
+                    Recherche des campagnes compatibles…
+                </p>
                 <p v-else-if="campaigns.length === 0" class="text-wpx-muted-dark mt-0.5 text-[11px] leading-relaxed">
                     Le Feed se met à jour automatiquement quand une campagne correspond à votre profil.
                 </p>
                 <p v-else class="text-wpx-muted-dark mt-0.5 text-[11px] leading-relaxed">
-                    {{ campaigns.length === 1 ? 'Une campagne compatible vous attend.' : 'Plusieurs campagnes compatibles vous attendent.' }}
+                    {{
+                        campaigns.length === 1
+                            ? 'Une campagne compatible vous attend.'
+                            : 'Plusieurs campagnes compatibles vous attendent.'
+                    }}
                 </p>
             </div>
         </div>
@@ -116,14 +122,23 @@ void load();
                     >
                         <div class="flex items-start justify-between gap-2">
                             <div>
-                                <p class="text-wpx-white-soft text-sm font-bold">{{ campaign.brand_name ?? 'Annonceur' }}</p>
-                                <p v-if="campaign.cta_label" class="text-wpx-gold mt-0.5 text-xs">{{ campaign.cta_label }}</p>
+                                <p class="text-wpx-white-soft text-sm font-bold">
+                                    {{ campaign.brand_name ?? 'Annonceur' }}
+                                </p>
+                                <p v-if="campaign.cta_label" class="text-wpx-gold mt-0.5 text-xs">
+                                    {{ campaign.cta_label }}
+                                </p>
                             </div>
-                            <span class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2 py-1 text-[10px] font-bold">
+                            <span
+                                class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2 py-1 text-[10px] font-bold"
+                            >
                                 Compatible
                             </span>
                         </div>
-                        <ul v-if="campaign.explanation.length > 0" class="text-wpx-muted-dark mt-2 list-disc pl-4 text-xs">
+                        <ul
+                            v-if="campaign.explanation.length > 0"
+                            class="text-wpx-muted-dark mt-2 list-disc pl-4 text-xs"
+                        >
                             <li v-for="(reason, index) in campaign.explanation" :key="index">{{ reason }}</li>
                         </ul>
                     </article>
