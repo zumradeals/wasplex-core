@@ -92,6 +92,7 @@ const OBJECTIVES = CAMPAIGN_OBJECTIVES;
 const STEPS = ['Ma publicité', 'Audience & budget', 'Envoi'] as const;
 const DEFAULT_DAILY_BUDGETS = [500, 1000, 2000, 5000, 10000] as const;
 const DEFAULT_DURATIONS = [3, 7, 14, 30] as const;
+const SAVE_TIMEOUT_MS = 12000;
 
 const campaigns = ref<Campaign[]>([]);
 const brands = ref<Brand[]>([]);
@@ -167,6 +168,23 @@ const canContinue = computed(() => {
         );
     }
     return false;
+});
+const budgetValidationMessage = computed(() => {
+    if (step.value !== 1) return null;
+    if (form.daily_budget_minor < advertisingRules.value.minimum_daily_budget_minor) {
+        return `Le minimum par jour est de ${numberFormatter.format(advertisingRules.value.minimum_daily_budget_minor)} FCFA.`;
+    }
+    if (form.duration_days < advertisingRules.value.minimum_duration_days) {
+        return `La durée minimum est de ${advertisingRules.value.minimum_duration_days} jour(s).`;
+    }
+    if (form.duration_days > advertisingRules.value.maximum_duration_days) {
+        return `La durée maximum est de ${advertisingRules.value.maximum_duration_days} jours.`;
+    }
+    if (totalBudgetMinor.value < advertisingRules.value.minimum_budget_minor) {
+        const missing = advertisingRules.value.minimum_budget_minor - totalBudgetMinor.value;
+        return `Budget minimum : ${numberFormatter.format(advertisingRules.value.minimum_budget_minor)} FCFA. Ajoute encore ${numberFormatter.format(missing)} FCFA.`;
+    }
+    return null;
 });
 
 const selectedCampaign = computed(
@@ -262,7 +280,7 @@ function hydrateFormFromCampaign(campaign: Campaign): void {
 }
 
 async function resetNewCampaign(): Promise<void> {
-    if (autosaveTimer) clearTimeout(autosaveTimer);
+    cancelPendingAutosave();
     selectedCampaignId.value = null;
     step.value = 0;
     view.value = 'create';
@@ -310,6 +328,7 @@ async function createBrandInline(): Promise<void> {
 }
 
 async function selectCampaign(campaign: Campaign): Promise<void> {
+    cancelPendingAutosave();
     selectedCampaignId.value = campaign.id;
     step.value = 0;
     view.value = 'create';
@@ -318,52 +337,115 @@ async function selectCampaign(campaign: Campaign): Promise<void> {
     await loadAssetsForBrand(campaign.brand_id);
 }
 
+type CampaignRequestError = {
+    code?: string;
+    message?: string;
+    response?: { data?: { message?: string; missing_minor?: number } };
+};
+
+function campaignRequestMessage(error: unknown, fallback: string): string {
+    const requestError = error as CampaignRequestError;
+    if (['ECONNABORTED', 'ETIMEDOUT'].includes(requestError.code ?? '')) {
+        return 'Connexion trop lente. Tes informations restent à l’écran. Réessaie.';
+    }
+    if (requestError.code === 'ERR_NETWORK' || (!requestError.response && requestError.message === 'Network Error')) {
+        return 'Connexion interrompue. Vérifie ton réseau puis réessaie.';
+    }
+    return requestError.response?.data?.message ?? fallback;
+}
+
+function applyCampaign(campaign: Campaign): void {
+    const index = campaigns.value.findIndex((item) => item.id === campaign.id);
+    if (index === -1) campaigns.value = [campaign, ...campaigns.value];
+    else campaigns.value[index] = campaign;
+}
+
+function draftPayload(): Record<string, unknown> {
+    return {
+        objective_code: form.objective_code || null,
+        creative_configuration: form.asset_id ? { asset_id: form.asset_id, title: form.title } : undefined,
+        audience_configuration: {
+            ...(form.profile_taxonomies.length > 0 ? { profile_taxonomies: form.profile_taxonomies } : {}),
+            ...(form.country_code ? { territory: { country_code: form.country_code.toUpperCase() } } : {}),
+        },
+        budget_configuration: form.daily_budget_minor
+            ? {
+                  daily_budget_minor: form.daily_budget_minor,
+                  duration_days: form.duration_days,
+                  budget_amount_minor: totalBudgetMinor.value,
+              }
+            : undefined,
+    };
+}
+
 async function ensureDraftCampaign(): Promise<void> {
     if (selectedCampaignId.value) return;
-    const { data } = await http.post('/advertiser/campaigns', { brand_id: form.brand_id });
-    campaigns.value = [data.campaign, ...campaigns.value];
+    const { data } = await http.post(
+        '/advertiser/campaigns',
+        { brand_id: form.brand_id },
+        { timeout: SAVE_TIMEOUT_MS },
+    );
+    applyCampaign(data.campaign);
     selectedCampaignId.value = data.campaign.id;
 }
 
 async function refreshSelected(): Promise<void> {
     if (!selectedCampaignId.value) return;
-    const { data } = await http.get(`/advertiser/campaigns/${selectedCampaignId.value}`);
-    const index = campaigns.value.findIndex((campaign) => campaign.id === data.campaign.id);
-    if (index !== -1) campaigns.value[index] = data.campaign;
+    const { data } = await http.get(`/advertiser/campaigns/${selectedCampaignId.value}`, {
+        timeout: SAVE_TIMEOUT_MS,
+    });
+    applyCampaign(data.campaign);
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autosaveController: AbortController | null = null;
 
-function scheduleAutosave(): void {
-    if (!selectedCampaignId.value || isReadOnlyCampaign.value) return;
+function cancelPendingAutosave(): void {
     if (autosaveTimer) clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(() => void autosave(), 550);
+    autosaveTimer = null;
+    if (autosaveController) autosaveController.abort();
+    autosaveController = null;
 }
 
-async function autosave(): Promise<void> {
+async function persistDraft(signal?: AbortSignal): Promise<void> {
     if (!selectedCampaignId.value || isReadOnlyCampaign.value) return;
-    actionError.value = null;
+    const { data } = await http.patch(`/advertiser/campaigns/${selectedCampaignId.value}`, draftPayload(), {
+        timeout: SAVE_TIMEOUT_MS,
+        signal,
+    });
+    applyCampaign(data.campaign);
+}
+
+function scheduleAutosave(): void {
+    if (!selectedCampaignId.value || isReadOnlyCampaign.value || preparingStep.value || sending.value) return;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+        autosaveTimer = null;
+        const controller = new AbortController();
+        if (autosaveController) autosaveController.abort();
+        autosaveController = controller;
+        void persistDraft(controller.signal)
+            .then(() => {
+                actionError.value = null;
+            })
+            .catch((error: unknown) => {
+                if ((error as CampaignRequestError).code === 'ERR_CANCELED') return;
+                actionError.value = campaignRequestMessage(error, "Échec de l'enregistrement automatique.");
+            })
+            .finally(() => {
+                if (autosaveController === controller) autosaveController = null;
+            });
+    }, 550);
+}
+
+async function saveBeforeAction(): Promise<boolean> {
+    cancelPendingAutosave();
     try {
-        await http.patch(`/advertiser/campaigns/${selectedCampaignId.value}`, {
-            objective_code: form.objective_code || null,
-            creative_configuration: form.asset_id ? { asset_id: form.asset_id, title: form.title } : undefined,
-            audience_configuration: {
-                ...(form.profile_taxonomies.length > 0 ? { profile_taxonomies: form.profile_taxonomies } : {}),
-                ...(form.country_code ? { territory: { country_code: form.country_code.toUpperCase() } } : {}),
-            },
-            budget_configuration: form.daily_budget_minor
-                ? {
-                      daily_budget_minor: form.daily_budget_minor,
-                      duration_days: form.duration_days,
-                      budget_amount_minor: totalBudgetMinor.value,
-                  }
-                : undefined,
-        });
-        await refreshSelected();
+        await persistDraft();
+        return true;
     } catch (error) {
-        actionError.value =
-            (error as { response?: { data?: { message?: string } } }).response?.data?.message ??
-            "Échec de l'enregistrement automatique.";
+        actionError.value = campaignRequestMessage(error, "Impossible d'enregistrer les modifications.");
+        return false;
     }
 }
 
@@ -428,8 +510,12 @@ async function runEstimate(): Promise<void> {
     estimating.value = true;
     actionError.value = null;
     try {
-        await autosave();
-        const { data } = await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/estimate-audience`);
+        if (!(await saveBeforeAction())) return;
+        const { data } = await http.post(
+            `/advertiser/campaigns/${selectedCampaignId.value}/estimate-audience`,
+            undefined,
+            { timeout: SAVE_TIMEOUT_MS },
+        );
         estimate.value = data.estimate;
     } catch (error) {
         actionError.value =
@@ -444,21 +530,20 @@ async function nextStep(): Promise<void> {
     if (!canContinue.value || preparingStep.value) return;
     preparingStep.value = true;
     actionError.value = null;
+    cancelPendingAutosave();
     try {
         if (step.value === 0) {
             await ensureDraftCampaign();
-            await autosave();
+            if (!(await saveBeforeAction())) return;
             step.value = 1;
             return;
         }
         if (step.value === 1) {
-            await autosave();
+            if (!(await saveBeforeAction())) return;
             step.value = 2;
         }
     } catch (error) {
-        actionError.value =
-            (error as { response?: { data?: { message?: string } } }).response?.data?.message ??
-            'Impossible de passer à l’étape suivante.';
+        actionError.value = campaignRequestMessage(error, 'Impossible de passer à l’étape suivante.');
     } finally {
         preparingStep.value = false;
     }
@@ -474,13 +559,15 @@ async function financeAndSubmit(): Promise<void> {
     actionError.value = null;
     walletShortfallMinor.value = null;
     try {
-        await autosave();
-        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/finance-and-submit`);
+        if (!(await saveBeforeAction())) return;
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/finance-and-submit`, undefined, {
+            timeout: SAVE_TIMEOUT_MS,
+        });
         await refreshSelected();
         walletAvailableMinor.value = Math.max(0, walletAvailableMinor.value - totalBudgetMinor.value);
     } catch (error) {
-        const data = (error as { response?: { data?: { message?: string; missing_minor?: number } } }).response?.data;
-        actionError.value = data?.message ?? 'La publicité ne peut pas encore être envoyée.';
+        const data = (error as CampaignRequestError).response?.data;
+        actionError.value = campaignRequestMessage(error, 'La publicité ne peut pas encore être envoyée.');
         walletShortfallMinor.value = data?.missing_minor ?? null;
     } finally {
         sending.value = false;
@@ -492,8 +579,10 @@ async function runResubmit(): Promise<void> {
     resubmitting.value = true;
     actionError.value = null;
     try {
-        await autosave();
-        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/resubmit`);
+        if (!(await saveBeforeAction())) return;
+        await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/resubmit`, undefined, {
+            timeout: SAVE_TIMEOUT_MS,
+        });
         await refreshSelected();
     } catch (error) {
         actionError.value =
@@ -742,7 +831,7 @@ void loadAll();
                         </div>
 
                         <p
-                            v-if="actionError"
+                            v-if="actionError && step === 2"
                             class="bg-wpx-danger/10 text-wpx-danger-light mb-4 rounded-xl p-3 text-xs"
                         >
                             {{ actionError }}
@@ -1196,32 +1285,48 @@ void loadAll();
                             </template>
                         </div>
 
-                        <div
-                            v-if="step < 2"
-                            class="border-wpx-border-dark mt-6 flex items-center justify-between gap-3 border-t pt-4"
-                        >
-                            <button
-                                type="button"
-                                class="text-wpx-muted-dark rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-30"
-                                :disabled="step === 0"
-                                @click="step--"
+                        <div v-if="step < 2" class="border-wpx-border-dark mt-6 border-t pt-4">
+                            <div
+                                v-if="actionError || (step === 1 && budgetValidationMessage)"
+                                class="mb-3 flex flex-col gap-2"
                             >
-                                ← Retour
-                            </button>
-                            <button
-                                type="button"
-                                class="bg-wpx-gold text-wpx-navy-950 rounded-xl px-5 py-3 text-xs font-black disabled:opacity-30"
-                                :disabled="!canContinue || preparingStep"
-                                @click="nextStep"
-                            >
-                                {{
-                                    preparingStep
-                                        ? 'Enregistrement…'
-                                        : step === 0
-                                          ? 'Audience & budget →'
-                                          : 'Vérifier & envoyer →'
-                                }}
-                            </button>
+                                <p
+                                    v-if="actionError"
+                                    class="bg-wpx-danger/10 text-wpx-danger-light rounded-xl p-3 text-xs"
+                                >
+                                    {{ actionError }}
+                                </p>
+                                <p
+                                    v-if="step === 1 && budgetValidationMessage"
+                                    class="bg-wpx-gold/10 text-wpx-gold rounded-xl p-3 text-xs font-semibold"
+                                >
+                                    {{ budgetValidationMessage }}
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    class="text-wpx-muted-dark rounded-xl px-3 py-3 text-xs font-bold disabled:opacity-30"
+                                    :disabled="step === 0 || preparingStep"
+                                    @click="step--"
+                                >
+                                    ← Retour
+                                </button>
+                                <button
+                                    type="button"
+                                    class="bg-wpx-gold text-wpx-navy-950 min-h-12 flex-1 rounded-xl px-5 py-3 text-sm font-black disabled:opacity-30 sm:flex-none"
+                                    :disabled="!canContinue || preparingStep"
+                                    @click="nextStep"
+                                >
+                                    {{
+                                        preparingStep
+                                            ? 'Sauvegarde…'
+                                            : step === 0
+                                              ? 'Audience & budget →'
+                                              : 'Vérifier & envoyer →'
+                                    }}
+                                </button>
+                            </div>
                         </div>
                         <div v-else class="mt-5">
                             <button type="button" class="text-wpx-muted-dark text-xs font-bold" @click="step--">
