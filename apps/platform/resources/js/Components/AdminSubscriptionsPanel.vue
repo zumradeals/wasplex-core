@@ -56,9 +56,7 @@ const orderedLevels = computed(() =>
     [...levels.value].sort((a, b) => (LEVEL_ORDER[a.code] ?? 99) - (LEVEL_ORDER[b.code] ?? 99)),
 );
 const orderedPlanVersions = computed(() =>
-    [...planVersions.value].sort(
-        (a, b) => (LEVEL_ORDER[a.plan.code] ?? 99) - (LEVEL_ORDER[b.plan.code] ?? 99),
-    ),
+    [...planVersions.value].sort((a, b) => (LEVEL_ORDER[a.plan.code] ?? 99) - (LEVEL_ORDER[b.plan.code] ?? 99)),
 );
 const freeReward = computed(() => {
     const free = levels.value.find((level) => level.code === 'FREE');
@@ -70,7 +68,9 @@ const memberEnvelope = computed(() => Math.floor(Math.max(0, simulatorBudget.val
 const wasplexEnvelope = computed(() => Math.max(0, simulatorBudget.value || 0) - memberEnvelope.value);
 
 function rewardFor(level: EconomicClass): number {
-    return rewardForms[level.id]?.reward_per_complete_view_minor ?? level.versions[0]?.reward_per_complete_view_minor ?? 0;
+    return (
+        rewardForms[level.id]?.reward_per_complete_view_minor ?? level.versions[0]?.reward_per_complete_view_minor ?? 0
+    );
 }
 
 function quotaFor(level: EconomicClass): number {
@@ -323,11 +323,11 @@ onMounted(load);
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
 
         <template v-else>
-            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
+            <section
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6"
+            >
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">
-                        Niveaux membres
-                    </p>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">Niveaux membres</p>
                     <h3 class="mt-1 text-xl font-extrabold">Récompenses & quotas</h3>
                     <p class="text-wpx-muted-dark mt-2 max-w-3xl text-sm">
                         Ce sont les deux avantages économiques de l’abonnement : gagner davantage par publicité et
@@ -414,13 +414,15 @@ onMounted(load);
                 </div>
 
                 <p class="text-wpx-muted-dark mt-4 text-xs">
-                    Le plafond théorique suppose qu’un membre reçoit toutes les publicités permises par son quota. Il
-                    ne constitue jamais une promesse de revenu : la disponibilité dépend des campagnes et de
-                    l’éligibilité du profil.
+                    Le plafond théorique suppose qu’un membre reçoit toutes les publicités permises par son quota. Il ne
+                    constitue jamais une promesse de revenu : la disponibilité dépend des campagnes et de l’éligibilité
+                    du profil.
                 </p>
             </section>
 
-            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
+            <section
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6"
+            >
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">
@@ -452,7 +454,9 @@ onMounted(load);
                         </p>
                     </div>
                     <div class="border-wpx-cyan/30 rounded-wpx-lg bg-wpx-cyan/10 border p-4">
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase">Part Wasplex correspondante</p>
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase">
+                            Part Wasplex correspondante
+                        </p>
                         <p class="text-wpx-cyan mt-1 text-2xl font-extrabold">
                             {{ formatAmount(wasplexEnvelope) }} FCFA
                         </p>
@@ -551,7 +555,9 @@ onMounted(load);
                 </button>
             </form>
 
-            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
+            <section
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6"
+            >
                 <div>
                     <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">
                         Offres commerciales
@@ -673,9 +679,7 @@ onMounted(load);
                                 <p v-else-if="version.status === 'draft'" class="text-wpx-gold text-xs font-bold">
                                     Invisible pour les membres tant qu’elle reste en brouillon.
                                 </p>
-                                <p v-else class="text-wpx-danger text-xs font-bold">
-                                    Cette offre n’est plus proposée.
-                                </p>
+                                <p v-else class="text-wpx-danger text-xs font-bold">Cette offre n’est plus proposée.</p>
                             </div>
 
                             <div class="mt-4 flex flex-wrap gap-2">
