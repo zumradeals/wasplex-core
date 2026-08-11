@@ -21,7 +21,7 @@ interface Creative {
 interface Delivery {
     id: string;
     campaign_id: string;
-    status: 'reserved' | 'started' | 'completed' | 'abandoned' | 'expired' | 'held' | 'rejected';
+    status: 'reserved' | 'started' | 'completed' | 'abandoned' | 'expired' | 'held' | 'rejected' | 'replay';
     gain_minor: number;
     required_duration_ms: number;
     visible_duration_ms: number;
@@ -39,12 +39,18 @@ interface Comment {
     created_at: string;
 }
 
+type PlaybackIndicator = 'play' | 'pause' | null;
+
+const SOUND_PREFERENCE_KEY = 'wpx-feed-sound';
+const HEARTBEAT_INTERVAL_MS = 400;
+
 const emit = defineEmits<{ balanceChanged: [balance: number] }>();
 
 const loading = ref(true);
 const noAdAvailable = ref(false);
 const feedSessionId = ref<string | null>(null);
 const delivery = ref<Delivery | null>(null);
+const prefetchedDelivery = ref<Delivery | null | undefined>(undefined);
 const explanation = ref<string[] | null>(null);
 const showComments = ref(false);
 const comments = ref<Comment[]>([]);
@@ -53,17 +59,44 @@ const gainToast = ref<number | null>(null);
 const holdNotice = ref(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const balance = ref<number | null>(null);
+const buffering = ref(false);
+const playerError = ref<string | null>(null);
+const videoPaused = ref(false);
+const isMuted = ref(true);
+const soundPreferred = ref(false);
+const playbackIndicator = ref<PlaybackIndicator>(null);
 const { notice: alertsNotice, announce: announceAlerts } = useComingSoon();
+
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let heartbeatInFlight = false;
+let accumulatedVisibleMs = 0;
+let activeSegmentStartedAt: number | null = null;
+let lastHeartbeatVisibleMs = 0;
+let startingDelivery = false;
+let completingDelivery = false;
+let touchStartY = 0;
+let lastSwipeAt = 0;
+let scrollGestureLocked = false;
+let playbackIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
+let transitionTimer: ReturnType<typeof setTimeout> | null = null;
+let prefetchPromise: Promise<void> | null = null;
+let prefetchedMedia: HTMLVideoElement | HTMLImageElement | null = null;
+let destroyed = false;
 
 async function loadBalance(): Promise<void> {
     const { data } = await http.get('/me/wallet');
     balance.value = data.balance_minor;
 }
 
-let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-let clientStartedAt = 0;
-let touchStartY = 0;
-let scrollGestureLocked = false;
+function loadSoundPreference(): void {
+    soundPreferred.value = window.localStorage.getItem(SOUND_PREFERENCE_KEY) === 'on';
+    isMuted.value = !soundPreferred.value;
+}
+
+function persistSoundPreference(enabled: boolean): void {
+    soundPreferred.value = enabled;
+    window.localStorage.setItem(SOUND_PREFERENCE_KEY, enabled ? 'on' : 'off');
+}
 
 function stopHeartbeat(): void {
     if (heartbeatTimer !== null) {
@@ -72,123 +105,405 @@ function stopHeartbeat(): void {
     }
 }
 
+function startHeartbeat(): void {
+    if (heartbeatTimer !== null || delivery.value?.status !== 'started') return;
+    heartbeatTimer = setInterval(() => void sendHeartbeat(), HEARTBEAT_INTERVAL_MS);
+}
+
+function currentVisibleDurationMs(): number {
+    if (activeSegmentStartedAt === null) return accumulatedVisibleMs;
+    return accumulatedVisibleMs + Math.max(0, Date.now() - activeSegmentStartedAt);
+}
+
+function pauseAttentionClock(): void {
+    if (activeSegmentStartedAt !== null) {
+        accumulatedVisibleMs += Math.max(0, Date.now() - activeSegmentStartedAt);
+        activeSegmentStartedAt = null;
+    }
+    stopHeartbeat();
+}
+
+function resumeAttentionClock(): void {
+    if (delivery.value?.status !== 'started' || document.visibilityState !== 'visible') return;
+    if (activeSegmentStartedAt === null) activeSegmentStartedAt = Date.now();
+    startHeartbeat();
+}
+
+function resetAttentionClock(visibleDurationMs = 0): void {
+    stopHeartbeat();
+    accumulatedVisibleMs = Math.max(0, visibleDurationMs);
+    activeSegmentStartedAt = null;
+    lastHeartbeatVisibleMs = accumulatedVisibleMs;
+    heartbeatInFlight = false;
+}
+
+function resetPlayerState(): void {
+    resetAttentionClock();
+    buffering.value = false;
+    playerError.value = null;
+    videoPaused.value = false;
+    startingDelivery = false;
+    completingDelivery = false;
+    playbackIndicator.value = null;
+    if (playbackIndicatorTimer !== null) {
+        clearTimeout(playbackIndicatorTimer);
+        playbackIndicatorTimer = null;
+    }
+}
+
 async function startSession(): Promise<void> {
     const { data } = await http.post('/feed/sessions');
     feedSessionId.value = data.feed_session.id;
 }
 
-async function loadNext(): Promise<void> {
-    stopHeartbeat();
-    loading.value = true;
-    explanation.value = null;
-
-    if (feedSessionId.value === null) {
-        await startSession();
-    }
-
+async function fetchNextDelivery(): Promise<Delivery | null> {
+    if (feedSessionId.value === null) await startSession();
     const { data } = await http.get('/feed/next', { params: { feed_session_id: feedSessionId.value } });
-    delivery.value = data.delivery;
-    noAdAvailable.value = data.delivery === null;
-    loading.value = false;
-
-    // Le gain est connu avant lecture (docs/07 §1429, docs/08 §1710) — rien
-    // n'exige un geste supplémentaire pour le déclencher : la vidéo démarre
-    // d'elle-même dès qu'elle est prête, le montant reste affiché pendant
-    // la lecture.
-    if (data.delivery !== null && data.delivery.status === 'reserved') {
-        void beginPlayback();
-    }
+    return data.delivery;
 }
 
-async function beginPlayback(): Promise<void> {
-    if (delivery.value === null) {
+function releasePrefetchedMedia(): void {
+    if (prefetchedMedia instanceof HTMLVideoElement) {
+        prefetchedMedia.removeAttribute('src');
+        prefetchedMedia.load();
+    }
+    prefetchedMedia = null;
+}
+
+function preloadCreative(next: Delivery | null): void {
+    releasePrefetchedMedia();
+    if (next?.creative?.url === undefined) return;
+
+    if (next.creative.type === 'video') {
+        const media = document.createElement('video');
+        media.preload = 'auto';
+        media.muted = true;
+        media.playsInline = true;
+        media.src = next.creative.url;
+        media.load();
+        prefetchedMedia = media;
         return;
     }
 
-    const { data } = await http.post(`/feed/deliveries/${delivery.value.id}/start`);
-    delivery.value = { ...delivery.value, ...data.delivery };
-    clientStartedAt = Date.now();
+    if (next.creative.type === 'image') {
+        const image = new Image();
+        image.src = next.creative.url;
+        prefetchedMedia = image;
+    }
+}
 
-    heartbeatTimer = setInterval(sendHeartbeat, 400);
+async function prefetchNext(): Promise<void> {
+    if (prefetchPromise !== null || prefetchedDelivery.value !== undefined || destroyed) return;
 
-    // videoRef ne pointe vers le nouvel élément qu'après le prochain rendu
-    // Vue — beginPlayback() peut désormais être appelé automatiquement dès
-    // loadNext(), dans le même tick que la mise à jour de `delivery`.
+    prefetchPromise = (async () => {
+        const next = await fetchNextDelivery();
+        if (destroyed) {
+            if (next !== null && ['reserved', 'started'].includes(next.status)) {
+                void http.post(`/feed/deliveries/${next.id}/abandon`).catch(() => undefined);
+            }
+            return;
+        }
+        prefetchedDelivery.value = next;
+        preloadCreative(next);
+    })()
+        .catch(() => {
+            prefetchedDelivery.value = undefined;
+        })
+        .finally(() => {
+            prefetchPromise = null;
+        });
+
+    await prefetchPromise;
+}
+
+async function activateDelivery(next: Delivery | null): Promise<void> {
+    videoRef.value?.pause();
+    resetPlayerState();
+    delivery.value = next;
+    noAdAvailable.value = next === null;
+    loading.value = false;
+
+    if (next === null) return;
+
     await nextTick();
-    void videoRef.value?.play();
+
+    if (next.creative?.type === 'video') {
+        void attemptAutoplay();
+        return;
+    }
+
+    if (next.status === 'reserved') {
+        await ensureDeliveryStarted();
+        if (delivery.value?.status === 'started') resumeAttentionClock();
+    }
+}
+
+async function loadNext(): Promise<void> {
+    pauseAttentionClock();
+    loading.value = true;
+    explanation.value = null;
+    playerError.value = null;
+
+    try {
+        const next = await fetchNextDelivery();
+        await activateDelivery(next);
+    } catch {
+        loading.value = false;
+        playerError.value = 'Connexion interrompue. Touchez pour réessayer.';
+    }
+}
+
+async function activatePrefetchedOrLoadNext(): Promise<void> {
+    explanation.value = null;
+    if (prefetchPromise !== null) await prefetchPromise;
+
+    if (prefetchedDelivery.value !== undefined) {
+        const next = prefetchedDelivery.value;
+        prefetchedDelivery.value = undefined;
+        releasePrefetchedMedia();
+        await activateDelivery(next);
+        return;
+    }
+
+    await loadNext();
+}
+
+async function ensureDeliveryStarted(): Promise<void> {
+    const current = delivery.value;
+    if (current === null || current.status !== 'reserved' || startingDelivery) return;
+
+    startingDelivery = true;
+    try {
+        const { data } = await http.post(`/feed/deliveries/${current.id}/start`);
+        if (delivery.value?.id !== current.id) return;
+        delivery.value = { ...delivery.value, ...data.delivery };
+        resetAttentionClock(data.delivery.visible_duration_ms ?? 0);
+    } catch {
+        playerError.value = 'Impossible de démarrer la lecture. Vérifiez votre connexion puis réessayez.';
+        videoRef.value?.pause();
+    } finally {
+        startingDelivery = false;
+    }
+}
+
+async function attemptAutoplay(): Promise<void> {
+    const video = videoRef.value;
+    if (video === null || playerError.value !== null) return;
+
+    isMuted.value = !soundPreferred.value;
+    video.muted = isMuted.value;
+    buffering.value = true;
+
+    try {
+        await video.play();
+    } catch {
+        if (!video.muted) {
+            video.muted = true;
+            isMuted.value = true;
+            try {
+                await video.play();
+            } catch {
+                buffering.value = false;
+                videoPaused.value = true;
+            }
+        } else {
+            buffering.value = false;
+            videoPaused.value = true;
+        }
+    }
+}
+
+async function onVideoPlaying(): Promise<void> {
+    buffering.value = false;
+    playerError.value = null;
+    videoPaused.value = false;
+
+    if (delivery.value?.status === 'reserved') await ensureDeliveryStarted();
+
+    if (delivery.value?.status === 'started' && videoRef.value !== null && !videoRef.value.paused) {
+        resumeAttentionClock();
+    }
+}
+
+function onVideoPause(): void {
+    videoPaused.value = true;
+    pauseAttentionClock();
+}
+
+function onVideoWaiting(): void {
+    buffering.value = true;
+    pauseAttentionClock();
+}
+
+function onVideoCanPlay(): void {
+    buffering.value = false;
+}
+
+function onVideoError(): void {
+    buffering.value = false;
+    pauseAttentionClock();
+    playerError.value = 'La vidéo ne peut pas être chargée pour le moment.';
+}
+
+function showPlaybackState(state: Exclude<PlaybackIndicator, null>): void {
+    playbackIndicator.value = state;
+    if (playbackIndicatorTimer !== null) clearTimeout(playbackIndicatorTimer);
+    playbackIndicatorTimer = setTimeout(() => {
+        playbackIndicator.value = null;
+        playbackIndicatorTimer = null;
+    }, 650);
+}
+
+async function togglePlayback(): Promise<void> {
+    if (Date.now() - lastSwipeAt < 400 || playerError.value !== null) return;
+    const video = videoRef.value;
+    if (video === null) return;
+
+    if (video.paused) {
+        try {
+            await video.play();
+            showPlaybackState('pause');
+        } catch {
+            playerError.value = 'Impossible de reprendre la vidéo. Réessayez.';
+        }
+        return;
+    }
+
+    video.pause();
+    showPlaybackState('play');
+}
+
+async function toggleSound(): Promise<void> {
+    const video = videoRef.value;
+    const enableSound = isMuted.value;
+    isMuted.value = !enableSound;
+    persistSoundPreference(enableSound);
+
+    if (video !== null) {
+        video.muted = isMuted.value;
+        if (enableSound && video.paused) {
+            try {
+                await video.play();
+            } catch {
+                isMuted.value = true;
+            }
+        }
+    }
+}
+
+async function retryPlayback(): Promise<void> {
+    playerError.value = null;
+    buffering.value = true;
+
+    const current = delivery.value;
+    if (current === null) {
+        await loadNext();
+        return;
+    }
+
+    if (current.creative?.type !== 'video') {
+        if (current.status === 'reserved') await ensureDeliveryStarted();
+        if (delivery.value?.status === 'started') resumeAttentionClock();
+        return;
+    }
+
+    const video = videoRef.value;
+    if (video === null) return;
+    if (video.error !== null) video.load();
+    await attemptAutoplay();
 }
 
 async function sendHeartbeat(): Promise<void> {
-    if (delivery.value === null) {
-        return;
-    }
+    const current = delivery.value;
+    if (current === null || current.status !== 'started' || heartbeatInFlight) return;
 
-    const visibleMs = Date.now() - clientStartedAt;
-    const { data } = await http.post(`/feed/deliveries/${delivery.value.id}/heartbeat`, {
-        visible_duration_ms: visibleMs,
-    });
-    const updated = { ...delivery.value, ...data.delivery };
-    delivery.value = updated;
+    const visibleMs = currentVisibleDurationMs();
+    if (visibleMs <= lastHeartbeatVisibleMs) return;
 
-    if (updated.progress_percent >= 100) {
-        stopHeartbeat();
-        await completeDelivery();
+    heartbeatInFlight = true;
+    try {
+        const { data } = await http.post(`/feed/deliveries/${current.id}/heartbeat`, {
+            visible_duration_ms: visibleMs,
+        });
+        if (delivery.value?.id !== current.id) return;
+
+        lastHeartbeatVisibleMs = Math.max(lastHeartbeatVisibleMs, data.delivery.visible_duration_ms ?? visibleMs);
+        delivery.value = { ...delivery.value, ...data.delivery };
+
+        if (delivery.value.progress_percent >= 100) {
+            pauseAttentionClock();
+            await completeDelivery();
+        }
+    } catch {
+        pauseAttentionClock();
+        videoRef.value?.pause();
+        playerError.value = 'Connexion interrompue. La progression est en pause. Réessayez.';
+    } finally {
+        heartbeatInFlight = false;
     }
+}
+
+function scheduleNext(delayMs: number): void {
+    if (transitionTimer !== null) clearTimeout(transitionTimer);
+    transitionTimer = setTimeout(() => {
+        transitionTimer = null;
+        gainToast.value = null;
+        holdNotice.value = false;
+        void activatePrefetchedOrLoadNext();
+    }, delayMs);
 }
 
 async function completeDelivery(): Promise<void> {
-    if (delivery.value === null) {
-        return;
+    const current = delivery.value;
+    if (current === null || completingDelivery) return;
+
+    completingDelivery = true;
+    videoRef.value?.pause();
+
+    try {
+        const { data } = await http.post(`/feed/deliveries/${current.id}/complete`);
+        if (delivery.value?.id !== current.id) return;
+
+        delivery.value = { ...delivery.value, ...data.delivery };
+        void prefetchNext();
+
+        if (delivery.value.status === 'held') {
+            holdNotice.value = true;
+            scheduleNext(1600);
+            return;
+        }
+
+        balance.value = data.balance_minor;
+        emit('balanceChanged', data.balance_minor);
+
+        if (data.gain_minor > 0) {
+            gainToast.value = data.gain_minor;
+            scheduleNext(1600);
+        } else {
+            scheduleNext(650);
+        }
+    } catch {
+        playerError.value = 'La validation de cette vue a échoué. Réessayez.';
+    } finally {
+        completingDelivery = false;
     }
-
-    const { data } = await http.post(`/feed/deliveries/${delivery.value.id}/complete`);
-    const updated = { ...delivery.value, ...data.delivery };
-    delivery.value = updated;
-
-    // Une livraison mise en attente (docs/chantiers/P010-CHANTIER.md §5)
-    // n'a reçu aucun gain — jamais présentée comme un crédit qui n'a pas eu
-    // lieu.
-    if (updated.status === 'held') {
-        holdNotice.value = true;
-        setTimeout(() => {
-            holdNotice.value = false;
-            void loadNext();
-        }, 1600);
-
-        return;
-    }
-
-    gainToast.value = data.gain_minor;
-    balance.value = data.balance_minor;
-    emit('balanceChanged', data.balance_minor);
-
-    setTimeout(() => {
-        gainToast.value = null;
-        void loadNext();
-    }, 1600);
 }
 
 async function skip(): Promise<void> {
-    stopHeartbeat();
+    pauseAttentionClock();
+    videoRef.value?.pause();
 
-    if (delivery.value !== null && delivery.value.status !== 'completed') {
+    if (delivery.value !== null && !['completed', 'held', 'rejected', 'expired', 'abandoned'].includes(delivery.value.status)) {
         await http.post(`/feed/deliveries/${delivery.value.id}/abandon`);
     }
 
     await loadNext();
 }
 
-/**
- * docs/08-feed-principal-wasplex.md §27/§83 : le défilement vertical
- * abandonne sans confirmation, exactement comme le bouton "Passer" — aucune
- * nouvelle règle serveur, juste un geste plus naturel pour déclencher le
- * même flux.
- */
 function triggerScrollGesture(): void {
-    if (scrollGestureLocked || showComments.value || loading.value || delivery.value === null) {
-        return;
-    }
+    if (scrollGestureLocked || showComments.value || loading.value || delivery.value === null) return;
 
+    lastSwipeAt = Date.now();
     scrollGestureLocked = true;
     skip().finally(() => {
         scrollGestureLocked = false;
@@ -201,62 +516,59 @@ function onTouchStart(event: TouchEvent): void {
 
 function onTouchEnd(event: TouchEvent): void {
     const endY = event.changedTouches[0]?.clientY ?? touchStartY;
-
-    if (touchStartY - endY > 60) {
-        triggerScrollGesture();
-    }
+    if (touchStartY - endY > 60) triggerScrollGesture();
 }
 
 function onWheel(event: WheelEvent): void {
-    if (event.deltaY > 40) {
-        triggerScrollGesture();
-    }
+    if (event.deltaY > 40) triggerScrollGesture();
 }
 
-async function toggleLike(): Promise<void> {
-    if (delivery.value === null) {
+function onVisibilityChange(): void {
+    if (document.visibilityState !== 'visible') {
+        pauseAttentionClock();
         return;
     }
 
+    if (delivery.value?.status !== 'started') return;
+
+    if (delivery.value.creative?.type === 'video') {
+        const video = videoRef.value;
+        if (video !== null && !video.paused && !buffering.value && playerError.value === null) resumeAttentionClock();
+        return;
+    }
+
+    resumeAttentionClock();
+}
+
+async function toggleLike(): Promise<void> {
+    if (delivery.value === null) return;
     const { data } = await http.post(`/feed/campaigns/${delivery.value.campaign_id}/like`);
     delivery.value.interactions.liked_by_me = data.active;
     delivery.value.interactions.likes = data.count;
 }
 
 async function toggleSave(): Promise<void> {
-    if (delivery.value === null) {
-        return;
-    }
-
+    if (delivery.value === null) return;
     const { data } = await http.post(`/feed/campaigns/${delivery.value.campaign_id}/save`);
     delivery.value.interactions.saved_by_me = data.active;
     delivery.value.interactions.saves = data.count;
 }
 
 async function share(): Promise<void> {
-    if (delivery.value === null) {
-        return;
-    }
-
+    if (delivery.value === null) return;
     const { data } = await http.post(`/feed/campaigns/${delivery.value.campaign_id}/share`);
     delivery.value.interactions.shares = data.count;
 }
 
 async function openComments(): Promise<void> {
-    if (delivery.value === null) {
-        return;
-    }
-
+    if (delivery.value === null) return;
     showComments.value = true;
     const { data } = await http.get(`/feed/campaigns/${delivery.value.campaign_id}/comments`);
     comments.value = data.comments;
 }
 
 async function postComment(): Promise<void> {
-    if (delivery.value === null || newComment.value.trim() === '') {
-        return;
-    }
-
+    if (delivery.value === null || newComment.value.trim() === '') return;
     await http.post(`/feed/campaigns/${delivery.value.campaign_id}/comments`, { body: newComment.value });
     newComment.value = '';
     delivery.value.interactions.comments += 1;
@@ -264,16 +576,11 @@ async function postComment(): Promise<void> {
 }
 
 async function toggleWhy(): Promise<void> {
-    if (delivery.value === null) {
-        return;
-    }
-
+    if (delivery.value === null) return;
     if (explanation.value !== null) {
         explanation.value = null;
-
         return;
     }
-
     const { data } = await http.get(`/feed/deliveries/${delivery.value.id}/why`);
     explanation.value = data.explanation;
 }
@@ -285,10 +592,25 @@ const durationLabel = computed(() =>
 );
 
 onMounted(() => {
+    loadSoundPreference();
+    document.addEventListener('visibilitychange', onVisibilityChange);
     void loadNext();
     void loadBalance();
 });
-onBeforeUnmount(stopHeartbeat);
+
+onBeforeUnmount(() => {
+    destroyed = true;
+    pauseAttentionClock();
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    if (playbackIndicatorTimer !== null) clearTimeout(playbackIndicatorTimer);
+    if (transitionTimer !== null) clearTimeout(transitionTimer);
+
+    const pending = prefetchedDelivery.value;
+    if (pending !== undefined && pending !== null && ['reserved', 'started'].includes(pending.status)) {
+        void http.post(`/feed/deliveries/${pending.id}/abandon`).catch(() => undefined);
+    }
+    releasePrefetchedMedia();
+});
 </script>
 
 <template>
@@ -298,7 +620,6 @@ onBeforeUnmount(stopHeartbeat);
         @touchend="onTouchEnd"
         @wheel.passive="onWheel"
     >
-        <!-- Immersive top header, overlaid on the content itself. -->
         <div class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-3.5 pt-3 pb-6">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3.5">
@@ -327,17 +648,23 @@ onBeforeUnmount(stopHeartbeat);
             </div>
         </div>
 
-        <!-- Content area: real creative when attached, decorative fallback otherwise. -->
         <video
             v-if="delivery?.creative?.type === 'video'"
             ref="videoRef"
             :key="delivery.id"
             :src="delivery.creative.url"
-            class="absolute inset-0 h-full w-full object-cover"
-            :muted="true"
+            class="absolute inset-0 h-full w-full cursor-pointer object-cover"
+            :muted="isMuted"
             loop
             playsinline
-            autoplay
+            preload="auto"
+            @click.stop="togglePlayback"
+            @playing="onVideoPlaying"
+            @pause="onVideoPause"
+            @waiting="onVideoWaiting"
+            @stalled="onVideoWaiting"
+            @canplay="onVideoCanPlay"
+            @error="onVideoError"
         />
         <img
             v-else-if="delivery?.creative?.type === 'image'"
@@ -360,8 +687,38 @@ onBeforeUnmount(stopHeartbeat);
             <p v-else class="px-6 text-center text-xs text-white/30">Aperçu du média — pas la publicité réelle</p>
         </div>
 
+        <div
+            v-if="buffering && !playerError && delivery?.creative?.type === 'video'"
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+        >
+            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-black/55">
+                <span class="h-6 w-6 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+            </div>
+        </div>
+
+        <div
+            v-if="playbackIndicator"
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+        >
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-black/55 text-2xl text-white">
+                {{ playbackIndicator === 'play' ? '▶' : '❚❚' }}
+            </div>
+        </div>
+
+        <div v-if="playerError" class="absolute inset-0 z-30 flex items-center justify-center bg-black/65 px-6">
+            <div class="max-w-xs text-center">
+                <p class="text-sm font-semibold text-white">{{ playerError }}</p>
+                <button
+                    type="button"
+                    class="bg-wpx-gold text-wpx-navy-950 mt-3 rounded-full px-5 py-2 text-xs font-black"
+                    @click.stop="retryPlayback"
+                >
+                    Réessayer
+                </button>
+            </div>
+        </div>
+
         <template v-if="delivery && !noAdAvailable">
-            <!-- Gain connu avant/pendant la lecture — jamais un geste requis pour démarrer. -->
             <div
                 v-if="delivery.status === 'reserved' || delivery.status === 'started'"
                 class="absolute inset-x-4 top-16 z-20 flex items-center justify-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-center"
@@ -370,7 +727,6 @@ onBeforeUnmount(stopHeartbeat);
                 <span class="text-[11px] text-white/60">· {{ durationLabel }}</span>
             </div>
 
-            <!-- Rail d'actions droit : Alertes (inerte, docs P015) + actions sociales réelles. -->
             <div class="absolute right-2 bottom-28 z-20 flex flex-col items-center gap-4">
                 <button
                     type="button"
@@ -453,6 +809,22 @@ onBeforeUnmount(stopHeartbeat);
                     >
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.shares }}</span>
                 </button>
+                <button
+                    v-if="delivery.creative?.type === 'video'"
+                    type="button"
+                    class="flex flex-col items-center gap-0.5"
+                    :aria-label="isMuted ? 'Activer le son' : 'Couper le son'"
+                    :aria-pressed="!isMuted"
+                    @click.stop="toggleSound"
+                >
+                    <span
+                        aria-hidden="true"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-lg text-white/90"
+                    >
+                        {{ isMuted ? '🔇' : '🔊' }}
+                    </span>
+                    <span class="text-[10px] text-white/80">Son</span>
+                </button>
             </div>
 
             <div
@@ -462,7 +834,6 @@ onBeforeUnmount(stopHeartbeat);
                 {{ alertsNotice }}
             </div>
 
-            <!-- Bottom brand / CTA row. -->
             <div class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 to-transparent p-3 pr-16">
                 <div class="flex items-center gap-2.5">
                     <span class="from-wpx-blue to-wpx-cyan rounded-wpx-sm h-8.5 w-8.5 shrink-0 bg-gradient-to-br" />
@@ -480,7 +851,7 @@ onBeforeUnmount(stopHeartbeat);
                         Pourquoi cette publicité ?
                     </button>
                     <button
-                        v-if="delivery.status !== 'completed'"
+                        v-if="!['completed', 'held'].includes(delivery.status)"
                         type="button"
                         class="ml-auto text-[11px] text-white/50"
                         @click="skip"
@@ -494,7 +865,6 @@ onBeforeUnmount(stopHeartbeat);
             </div>
         </template>
 
-        <!-- Gain animation. -->
         <div v-if="gainToast !== null" class="absolute inset-0 z-30 flex items-center justify-center bg-black/30">
             <div
                 class="from-wpx-orange to-wpx-gold text-wpx-navy-950 animate-bounce rounded-full bg-gradient-to-br px-6 py-3 text-lg font-bold shadow-xl"
@@ -503,7 +873,6 @@ onBeforeUnmount(stopHeartbeat);
             </div>
         </div>
 
-        <!-- Attention jugée douteuse : aucun gain décidé, en attente de vérification (docs/16 §20). -->
         <div v-if="holdNotice" class="absolute inset-0 z-30 flex items-center justify-center bg-black/30">
             <div class="bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md px-5 py-3 text-center text-sm shadow-xl">
                 Vérification en cours<br /><span class="text-wpx-muted-dark text-xs"
@@ -512,7 +881,6 @@ onBeforeUnmount(stopHeartbeat);
             </div>
         </div>
 
-        <!-- Comments bottom sheet. -->
         <div
             v-if="showComments"
             class="absolute inset-0 z-40 flex flex-col justify-end bg-black/60"
