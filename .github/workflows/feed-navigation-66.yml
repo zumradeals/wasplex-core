@@ -21,7 +21,9 @@ jobs:
           cache: npm
           cache-dependency-path: apps/platform/package-lock.json
       - name: Apply feed navigation refactor
-        run: python3 .github/scripts/feed_navigation_66.py
+        run: |
+          python3 .github/scripts/feed_navigation_66.py
+          python3 .github/scripts/feed_navigation_66_fix.py
       - name: Validate frontend
         working-directory: apps/platform
         run: |
