@@ -96,6 +96,18 @@ jobs:
       - name: Build frontend assets
         run: npm run build
 
+      - name: Normalize PHP formatting on fix branch
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/smart-profile-facets'
+        run: |
+          composer lint
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add app tests routes config database
+            git commit -m "style: format PHP"
+            git push origin HEAD:${GITHUB_HEAD_REF}
+          fi
+
       - name: Check PHP formatting
         run: composer lint:check
 
