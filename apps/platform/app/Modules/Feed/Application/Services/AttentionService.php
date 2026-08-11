@@ -15,6 +15,7 @@ use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDeliveryHold;
 use App\Modules\Matching\Application\Contracts\MatchingContract;
+use App\Modules\Subscriptions\Application\Services\FreeSubscriptionProvisioner;
 use App\Modules\Subscriptions\Application\Services\NoActiveSubscriptionException;
 use App\Modules\Subscriptions\Application\Services\QuotaExhaustedException;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
@@ -39,6 +40,7 @@ final class AttentionService
         private readonly BrandDirectoryContract $brands,
         private readonly CreativeAssetDirectoryContract $creativeAssets,
         private readonly MatchingContract $matching,
+        private readonly FreeSubscriptionProvisioner $freeSubscription,
         private readonly SubscriptionQuotaContract $quota,
         private readonly AdvertiserWalletReservationContract $advertiserReservations,
         private readonly UserWalletContract $userWallet,
@@ -58,6 +60,12 @@ final class AttentionService
         if ($pending !== null) {
             return $this->present($pending);
         }
+
+        // The quota check happens before candidate composition, so a brand-new
+        // member must receive the internal FREE baseline here. Otherwise
+        // currentCounter() throws before FeedCompositionService ever gets the
+        // chance to provision it and the real /api/feed/next path returns null.
+        $this->freeSubscription->ensureFor($accountId);
 
         try {
             if ($this->quota->currentCounter($accountId)->remaining() <= 0) {
