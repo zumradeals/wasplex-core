@@ -52,8 +52,6 @@ const countryOptions = ISO2_CODES.map((code) => ({ code, name: regionNames.of(co
     a.name.localeCompare(b.name, 'fr'),
 );
 
-const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
-
 const categories = ref<Record<string, TaxonomyEntry[]>>({});
 const countryCode = ref<string>('');
 const loading = ref(true);
