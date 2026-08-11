@@ -129,12 +129,16 @@ onBeforeUnmount(() => {
                     <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-8 w-8 object-contain" />
                     <span>Wasplex</span>
                 </a>
-                <span class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-muted-dark rounded-full border px-3 py-1.5 text-[11px] font-bold">
+                <span
+                    class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-muted-dark rounded-full border px-3 py-1.5 text-[11px] font-bold"
+                >
                     Publicité publique
                 </span>
             </header>
 
-            <section class="border-wpx-border-dark bg-black relative mx-3 overflow-hidden rounded-3xl border shadow-2xl">
+            <section
+                class="border-wpx-border-dark relative mx-3 overflow-hidden rounded-3xl border bg-black shadow-2xl"
+            >
                 <video
                     v-if="campaign.creative?.type === 'video'"
                     :src="campaign.creative.url"
@@ -151,13 +155,22 @@ onBeforeUnmount(() => {
                     :alt="campaign.title"
                     class="aspect-[9/16] max-h-[68vh] w-full object-cover"
                 />
-                <div v-else class="from-wpx-navy-750 to-wpx-navy-950 flex aspect-[9/16] max-h-[68vh] items-center justify-center bg-gradient-to-br p-8 text-center">
-                    <p class="text-wpx-muted-dark text-sm">Le média de cette publicité n'est pas disponible pour le moment.</p>
+                <div
+                    v-else
+                    class="from-wpx-navy-750 to-wpx-navy-950 flex aspect-[9/16] max-h-[68vh] items-center justify-center bg-gradient-to-br p-8 text-center"
+                >
+                    <p class="text-wpx-muted-dark text-sm">
+                        Le média de cette publicité n'est pas disponible pour le moment.
+                    </p>
                 </div>
 
-                <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-5 pt-20">
-                    <p class="text-wpx-gold text-[11px] font-extrabold tracking-[0.16em] uppercase">{{ campaign.brand_name }}</p>
-                    <h1 class="mt-1 text-xl font-black leading-tight">{{ campaign.title }}</h1>
+                <div
+                    class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent p-5 pt-20"
+                >
+                    <p class="text-wpx-gold text-[11px] font-extrabold tracking-[0.16em] uppercase">
+                        {{ campaign.brand_name }}
+                    </p>
+                    <h1 class="mt-1 text-xl leading-tight font-black">{{ campaign.title }}</h1>
                     <p v-if="campaign.cta_label" class="mt-2 text-xs font-semibold text-white/75">
                         Objectif de l'annonceur · {{ campaign.cta_label }}
                     </p>
@@ -168,7 +181,8 @@ onBeforeUnmount(() => {
                 <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4">
                     <p class="text-wpx-white-soft text-sm font-extrabold">Accessible à tous, sans compte</p>
                     <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                        Cette vue publique apporte de la visibilité à l'annonceur mais ne verse aucun WP et ne consomme aucun quota membre. Les récompenses sont réservées au Feed Wasplex authentifié.
+                        Cette vue publique apporte de la visibilité à l'annonceur mais ne verse aucun WP et ne consomme
+                        aucun quota membre. Les récompenses sont réservées au Feed Wasplex authentifié.
                     </p>
                 </div>
 
@@ -188,7 +202,8 @@ onBeforeUnmount(() => {
                 </button>
 
                 <p class="text-wpx-muted-dark px-2 text-center text-[11px] leading-relaxed">
-                    Après inscription, une éventuelle récompense dépend toujours de l'éligibilité dans le Feed. Une vue anonyme n'est jamais rémunérée rétroactivement.
+                    Après inscription, une éventuelle récompense dépend toujours de l'éligibilité dans le Feed. Une vue
+                    anonyme n'est jamais rémunérée rétroactivement.
                 </p>
                 <p v-if="trackingUnavailable" class="text-wpx-muted-dark text-center text-[10px]">
                     La mesure de portée est momentanément indisponible ; la publicité reste consultable.
