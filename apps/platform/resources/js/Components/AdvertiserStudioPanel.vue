@@ -26,10 +26,10 @@ interface Asset {
 }
 
 const ADVERTISER_TYPES = [
-    { value: 'individual', label: 'Particulier' },
-    { value: 'business', label: 'Entreprise' },
+    { value: 'individual', label: 'Particulier / activité solo' },
+    { value: 'business', label: 'Commerce / entreprise' },
     { value: 'agency', label: 'Agence' },
-    { value: 'institutional_advertiser', label: 'Institution' },
+    { value: 'institutional_advertiser', label: 'Institution / organisation' },
 ] as const;
 
 const profile = ref<Profile | null>(null);
@@ -39,7 +39,9 @@ const assets = ref<Asset[]>([]);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 const savingProfile = ref(false);
+const profileSaved = ref(false);
 const creatingBrand = ref(false);
+const showCreateBrand = ref(false);
 const uploading = ref(false);
 const newBrandName = ref('');
 const newColorName = ref('');
@@ -47,7 +49,10 @@ const newColorHex = ref('#4FA3FF');
 const fileInput = ref<HTMLInputElement | null>(null);
 const dragOver = ref(false);
 
-const selectedBrand = computed(() => brands.value.find((b) => b.id === selectedBrandId.value) ?? null);
+const selectedBrand = computed(() => brands.value.find((brand) => brand.id === selectedBrandId.value) ?? null);
+const profileTypeLabel = computed(
+    () => ADVERTISER_TYPES.find((type) => type.value === profile.value?.advertiser_type)?.label ?? 'À préciser',
+);
 
 async function load(): Promise<void> {
     loading.value = true;
@@ -64,7 +69,7 @@ async function load(): Promise<void> {
         }
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
-        loadError.value = message ?? 'Le Studio est momentanément indisponible.';
+        loadError.value = message ?? 'Les informations de votre activité sont momentanément indisponibles.';
     } finally {
         loading.value = false;
     }
@@ -74,13 +79,19 @@ async function saveProfile(): Promise<void> {
     if (!profile.value) {
         return;
     }
+
     savingProfile.value = true;
+    profileSaved.value = false;
     try {
         const { data } = await http.patch('/advertiser/profile', {
             advertiser_type: profile.value.advertiser_type,
             legal_name: profile.value.legal_name,
         });
         profile.value = data.profile;
+        profileSaved.value = true;
+        setTimeout(() => {
+            profileSaved.value = false;
+        }, 1800);
     } finally {
         savingProfile.value = false;
     }
@@ -90,11 +101,13 @@ async function createBrand(): Promise<void> {
     if (!newBrandName.value.trim()) {
         return;
     }
+
     creatingBrand.value = true;
     try {
-        const { data } = await http.post('/advertiser/brands', { name: newBrandName.value });
+        const { data } = await http.post('/advertiser/brands', { name: newBrandName.value.trim() });
         brands.value = [data.brand, ...brands.value];
         newBrandName.value = '';
+        showCreateBrand.value = false;
         await selectBrand(data.brand.id);
     } finally {
         creatingBrand.value = false;
@@ -107,7 +120,7 @@ async function selectBrand(brandId: string): Promise<void> {
         http.get(`/advertiser/brands/${brandId}`),
         http.get(`/advertiser/assets?brand_id=${brandId}`),
     ]);
-    const index = brands.value.findIndex((b) => b.id === brandId);
+    const index = brands.value.findIndex((brand) => brand.id === brandId);
     if (index !== -1) {
         brands.value[index] = brandRes.data.brand;
     }
@@ -118,12 +131,13 @@ async function addColor(): Promise<void> {
     if (!selectedBrand.value || !newColorName.value.trim()) {
         return;
     }
+
     const colors = [
-        ...selectedBrand.value.colors.map((c) => ({ name: c.name, hex: c.hex, usage: c.usage })),
-        { name: newColorName.value, hex: newColorHex.value, usage: 'accent' },
+        ...selectedBrand.value.colors.map((color) => ({ name: color.name, hex: color.hex, usage: color.usage })),
+        { name: newColorName.value.trim(), hex: newColorHex.value, usage: 'accent' },
     ];
     const { data } = await http.put(`/advertiser/brands/${selectedBrand.value.id}/colors`, { colors });
-    const index = brands.value.findIndex((b) => b.id === selectedBrandId.value);
+    const index = brands.value.findIndex((brand) => brand.id === selectedBrandId.value);
     if (index !== -1) {
         brands.value[index] = data.brand;
     }
@@ -161,175 +175,227 @@ function onDrop(event: DragEvent): void {
     void uploadFile(event.dataTransfer?.files?.[0]);
 }
 
+function statusLabel(status: string): string {
+    return (
+        {
+            verified: 'Vérifié',
+            active: 'Actif',
+            ready: 'Prêt',
+            approved: 'Validé',
+            pending: 'En validation',
+            rejected: 'Refusé',
+            restricted: 'Restreint',
+            suspended: 'Suspendu',
+            needs_changes: 'À corriger',
+        }[status] ?? status
+    );
+}
+
 function statusClasses(status: string): string {
     if (['verified', 'active', 'ready', 'approved'].includes(status)) {
-        return 'bg-wpx-success/10 text-wpx-success-light';
+        return 'bg-wpx-success/15 text-wpx-success-light';
     }
     if (['rejected', 'restricted', 'suspended', 'needs_changes'].includes(status)) {
-        return 'bg-wpx-danger/10 text-wpx-danger-light';
+        return 'bg-wpx-danger/15 text-wpx-danger-light';
     }
 
-    return 'bg-wpx-pending/10 text-wpx-warning-light';
+    return 'bg-wpx-gold/12 text-wpx-gold';
 }
 
 void load();
 </script>
 
 <template>
-    <div class="flex flex-col gap-6">
-        <div v-if="loadError" class="rounded-wpx-lg bg-wpx-danger/10 text-wpx-danger-light p-4 text-sm">
+    <div class="mx-auto flex w-full max-w-5xl flex-col gap-4 lg:gap-5">
+        <div v-if="loadError" class="bg-wpx-danger/10 text-wpx-danger-light rounded-2xl p-4 text-sm">
             {{ loadError }}
         </div>
 
         <template v-else>
-            <!-- Profil annonceur -->
-            <div v-if="profile" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex flex-col gap-3 p-4">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-wpx-text text-sm font-semibold">Profil annonceur</h2>
-                    <span
-                        class="rounded-wpx-sm px-2 py-0.5 text-xs font-semibold"
-                        :class="statusClasses(profile.status)"
-                    >
-                        {{ profile.status }}
-                    </span>
-                </div>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label class="flex flex-col gap-1 text-xs">
-                        <span class="text-wpx-text-muted">Type d'annonceur</span>
-                        <select
-                            v-model="profile.advertiser_type"
-                            class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1.5 text-sm"
-                        >
-                            <option :value="null" disabled>Choisir…</option>
-                            <option v-for="t in ADVERTISER_TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
-                        </select>
-                    </label>
-                    <label class="flex flex-col gap-1 text-xs">
-                        <span class="text-wpx-text-muted">Raison sociale</span>
-                        <input
-                            v-model="profile.legal_name"
-                            class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1.5 text-sm"
-                        />
-                    </label>
-                </div>
-                <button
-                    type="button"
-                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
-                    :disabled="savingProfile"
-                    @click="saveProfile"
-                >
-                    Enregistrer
-                </button>
-            </div>
-
-            <div class="flex flex-col gap-4 lg:flex-row">
-                <!-- Liste des marques -->
-                <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex w-full flex-col gap-3 p-4 lg:w-72">
-                    <h2 class="text-wpx-text text-sm font-semibold">Mes marques</h2>
-                    <div class="flex gap-2">
-                        <input
-                            v-model="newBrandName"
-                            placeholder="Nouvelle marque"
-                            class="rounded-wpx-sm border-wpx-border text-wpx-text w-full border px-2 py-1.5 text-sm"
-                            @keyup.enter="createBrand"
-                        />
-                        <button
-                            type="button"
-                            class="rounded-wpx-sm bg-wpx-navy-950 px-3 text-sm font-semibold text-white disabled:opacity-50"
-                            :disabled="creatingBrand"
-                            @click="createBrand"
-                        >
-                            +
-                        </button>
+            <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-5 sm:p-6">
+                <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="max-w-xl">
+                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Mon activité</p>
+                        <h1 class="text-wpx-white-soft mt-1 text-xl font-extrabold sm:text-2xl">
+                            Présentez simplement qui vous êtes.
+                        </h1>
+                        <p class="text-wpx-muted-dark mt-2 text-sm leading-relaxed">
+                            Que vous travailliez seul, avec un commerce, une entreprise ou une institution, Wasplex
+                            adapte le Studio à votre activité.
+                        </p>
                     </div>
-                    <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
-                    <ul v-else class="flex flex-col gap-1">
-                        <li v-for="brand in brands" :key="brand.id">
-                            <button
-                                type="button"
-                                class="rounded-wpx-sm flex w-full items-center justify-between px-2 py-1.5 text-left text-sm"
-                                :class="selectedBrandId === brand.id ? 'bg-wpx-canvas font-semibold' : 'text-wpx-text'"
-                                @click="selectBrand(brand.id)"
-                            >
-                                <span>{{ brand.name }}</span>
-                                <span
-                                    class="rounded-wpx-sm px-1.5 py-0.5 text-[10px] font-semibold"
-                                    :class="statusClasses(brand.status)"
-                                >
-                                    {{ brand.status }}
-                                </span>
-                            </button>
-                        </li>
-                        <li v-if="!loading && brands.length === 0" class="text-wpx-text-muted text-sm">
-                            Aucune marque encore.
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Détail de la marque -->
-                <div v-if="selectedBrand" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex-1 p-4">
-                    <h2 class="text-wpx-text mb-1 text-base font-semibold">{{ selectedBrand.name }}</h2>
-                    <p v-if="selectedBrand.slogan" class="text-wpx-text-muted mb-4 text-sm italic">
-                        « {{ selectedBrand.slogan }} »
-                    </p>
-
-                    <h3 class="text-wpx-text mb-2 text-sm font-semibold">Charte — couleurs</h3>
-                    <div class="mb-2 flex flex-wrap gap-2">
-                        <span
-                            v-for="color in selectedBrand.colors"
-                            :key="color.id"
-                            class="rounded-wpx-sm border-wpx-border flex items-center gap-1.5 border px-2 py-1 text-xs"
-                        >
-                            <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: color.hex }" />
-                            {{ color.name }} ({{ color.usage }})
+                    <div v-if="profile" class="flex items-center gap-2">
+                        <span class="rounded-full px-3 py-1.5 text-xs font-bold" :class="statusClasses(profile.status)">
+                            {{ statusLabel(profile.status) }}
                         </span>
                     </div>
-                    <div class="mb-6 flex items-center gap-2">
-                        <input v-model="newColorHex" type="color" class="h-8 w-10 rounded" />
-                        <input
-                            v-model="newColorName"
-                            placeholder="Nom de la couleur"
-                            class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1 text-sm"
-                            @keyup.enter="addColor"
-                        />
-                        <button
-                            type="button"
-                            class="text-wpx-blue-light text-xs font-semibold hover:underline"
-                            @click="addColor"
-                        >
-                            Ajouter
-                        </button>
-                    </div>
+                </div>
 
-                    <h3 class="text-wpx-text mb-2 text-sm font-semibold">Bibliothèque créative</h3>
-                    <label
-                        class="rounded-wpx-md mb-3 flex cursor-pointer flex-col items-center border-[1.5px] border-dashed p-7 text-center transition"
+                <div v-if="profile" class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="text-wpx-muted-dark text-xs font-semibold">Vous êtes…</span>
+                        <select
+                            v-model="profile.advertiser_type"
+                            class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft mt-1.5 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+                        >
+                            <option :value="null" disabled>Choisir…</option>
+                            <option v-for="type in ADVERTISER_TYPES" :key="type.value" :value="type.value">
+                                {{ type.label }}
+                            </option>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="text-wpx-muted-dark text-xs font-semibold">Nom officiel ou raison sociale</span>
+                        <input
+                            v-model="profile.legal_name"
+                            placeholder="Facultatif pour une activité informelle"
+                            class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft placeholder:text-wpx-muted-dark mt-1.5 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+                        />
+                    </label>
+                </div>
+
+                <div v-if="profile" class="mt-4 flex items-center gap-3">
+                    <button
+                        type="button"
+                        class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-extrabold disabled:opacity-50"
+                        :disabled="savingProfile"
+                        @click="saveProfile"
+                    >
+                        {{ savingProfile ? 'Enregistrement…' : 'Enregistrer' }}
+                    </button>
+                    <span v-if="profileSaved" class="text-wpx-success-light text-xs font-bold">✓ Enregistré</span>
+                    <span v-else class="text-wpx-muted-dark text-xs">{{ profileTypeLabel }}</span>
+                </div>
+            </section>
+
+            <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-wpx-white-soft text-sm font-bold">Mes activités et marques</h2>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                            Une seule suffit pour commencer. Ajoutez-en d’autres seulement si nécessaire.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="text-wpx-gold shrink-0 text-xs font-bold"
+                        @click="showCreateBrand = !showCreateBrand"
+                    >
+                        {{ showCreateBrand ? 'Annuler' : '+ Ajouter' }}
+                    </button>
+                </div>
+
+                <form
+                    v-if="showCreateBrand"
+                    class="border-wpx-border-dark bg-wpx-navy-750 mt-4 flex gap-2 rounded-2xl border p-2"
+                    @submit.prevent="createBrand"
+                >
+                    <input
+                        v-model="newBrandName"
+                        placeholder="Ex. Boutique Awa, Mon restaurant, Wasplex…"
+                        class="text-wpx-white-soft placeholder:text-wpx-muted-dark min-w-0 flex-1 bg-transparent px-2 py-2 text-sm outline-none"
+                    />
+                    <button
+                        type="submit"
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-4 text-xs font-extrabold disabled:opacity-50"
+                        :disabled="creatingBrand || !newBrandName.trim()"
+                    >
+                        Créer
+                    </button>
+                </form>
+
+                <div v-if="loading" class="text-wpx-muted-dark mt-4 text-sm">Chargement…</div>
+                <div
+                    v-else-if="brands.length === 0"
+                    class="border-wpx-border-dark mt-4 rounded-2xl border border-dashed px-5 py-8 text-center"
+                >
+                    <p class="text-wpx-white-soft text-sm font-bold">Ajoutez le nom de votre activité</p>
+                    <p class="text-wpx-muted-dark mx-auto mt-1 max-w-md text-xs leading-relaxed">
+                        Cela peut être votre nom, votre boutique, votre commerce, votre entreprise ou votre
+                        organisation.
+                    </p>
+                    <button type="button" class="text-wpx-cyan mt-3 text-xs font-bold" @click="showCreateBrand = true">
+                        + Ajouter mon activité
+                    </button>
+                </div>
+                <div v-else class="mt-4 flex gap-2 overflow-x-auto pb-1">
+                    <button
+                        v-for="brand in brands"
+                        :key="brand.id"
+                        type="button"
+                        class="min-w-44 rounded-2xl border p-3 text-left transition"
                         :class="
-                            dragOver ? 'border-wpx-blue-light bg-wpx-blue-light/5' : 'border-wpx-border bg-wpx-raised'
+                            selectedBrandId === brand.id
+                                ? 'border-wpx-cyan bg-wpx-cyan/8'
+                                : 'border-wpx-border-dark bg-wpx-navy-750'
                         "
+                        @click="selectBrand(brand.id)"
+                    >
+                        <div class="flex items-center gap-2.5">
+                            <span
+                                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-xs font-black"
+                            >
+                                {{ brand.name.slice(0, 2).toUpperCase() }}
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-wpx-white-soft truncate text-sm font-bold">{{ brand.name }}</p>
+                                <p class="mt-0.5 text-[10px] font-bold" :class="statusClasses(brand.status)">
+                                    {{ statusLabel(brand.status) }}
+                                </p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </section>
+
+            <section
+                v-if="selectedBrand"
+                class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-2xl border"
+            >
+                <div class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
+                    <div class="min-w-0">
+                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">
+                            {{ selectedBrand.name }}
+                        </p>
+                        <h2 class="text-wpx-white-soft mt-0.5 text-base font-extrabold">Mes visuels</h2>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                            Photos et vidéos réutilisables dans vos publicités.
+                        </p>
+                    </div>
+                    <span class="text-wpx-muted-dark shrink-0 text-xs"
+                        >{{ assets.length }} média{{ assets.length > 1 ? 's' : '' }}</span
+                    >
+                </div>
+
+                <div class="p-4 sm:p-5">
+                    <label
+                        class="flex cursor-pointer flex-col items-center rounded-2xl border border-dashed p-5 text-center transition sm:p-6"
+                        :class="dragOver ? 'border-wpx-cyan bg-wpx-cyan/8' : 'border-wpx-border-dark bg-wpx-navy-750'"
                         @dragover.prevent="dragOver = true"
                         @dragleave.prevent="dragOver = false"
                         @drop.prevent="onDrop"
                     >
-                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M12 16V4M7 9l5-5 5 5"
-                                stroke="#8B99AC"
-                                stroke-width="1.8"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-                            <path
-                                d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"
-                                stroke="#8B99AC"
-                                stroke-width="1.8"
-                                stroke-linecap="round"
-                            />
-                        </svg>
-                        <span class="text-wpx-text mt-2.5 text-sm font-bold">Glisse tes visuels ici</span>
-                        <span class="text-wpx-text-muted mt-0.5 text-[11px]">
-                            JPG, PNG, WEBP (10 Mo max) ou MP4, MOV, WEBM (200 Mo max)
+                        <span class="bg-wpx-blue/12 flex h-11 w-11 items-center justify-center rounded-2xl">
+                            <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+                                <path
+                                    d="M12 16V4M7 9l5-5 5 5"
+                                    stroke="#4FA3FF"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                                <path
+                                    d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"
+                                    stroke="#4FA3FF"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
                         </span>
+                        <span class="text-wpx-white-soft mt-2.5 text-sm font-bold">Ajouter une photo ou une vidéo</span>
+                        <span class="text-wpx-muted-dark mt-1 text-[11px]"
+                            >JPG, PNG, WEBP · 10 Mo max — MP4, MOV, WEBM · 200 Mo max</span
+                        >
                         <input
                             ref="fileInput"
                             type="file"
@@ -338,43 +404,79 @@ void load();
                             @change="onFileInputChange"
                         />
                     </label>
-                    <p v-if="uploading" class="text-wpx-text-muted mb-3 text-xs">Envoi en cours…</p>
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <div
+                    <p v-if="uploading" class="text-wpx-cyan mt-3 text-xs font-bold">Envoi du média en cours…</p>
+
+                    <div v-if="assets.length > 0" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                        <article
                             v-for="asset in assets"
                             :key="asset.id"
-                            class="rounded-wpx-sm border-wpx-border border p-2 text-center"
+                            class="border-wpx-border-dark bg-wpx-navy-750 overflow-hidden rounded-2xl border"
                         >
                             <img
                                 v-if="asset.type === 'image' && asset.url"
                                 :src="asset.url"
-                                class="mb-1 h-16 w-full rounded object-cover"
+                                :alt="asset.filename"
+                                class="h-28 w-full object-cover"
                             />
-                            <div
-                                v-else
-                                class="bg-wpx-canvas mb-1 flex h-16 w-full items-center justify-center rounded text-2xl"
-                            >
+                            <div v-else class="bg-wpx-navy-950 flex h-28 w-full items-center justify-center text-3xl">
                                 🎬
                             </div>
-                            <span
-                                class="rounded-wpx-sm inline-block px-1.5 py-0.5 text-[10px] font-semibold"
-                                :class="statusClasses(asset.moderation_status)"
-                            >
-                                {{ asset.moderation_status }}
-                            </span>
-                        </div>
-                        <p v-if="assets.length === 0" class="text-wpx-text-muted col-span-full text-sm">
-                            Aucun média encore.
-                        </p>
+                            <div class="p-2.5">
+                                <p class="text-wpx-white-soft truncate text-[11px] font-bold">{{ asset.filename }}</p>
+                                <span
+                                    class="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold"
+                                    :class="statusClasses(asset.moderation_status)"
+                                >
+                                    {{ statusLabel(asset.moderation_status) }}
+                                </span>
+                            </div>
+                        </article>
                     </div>
+
+                    <details class="border-wpx-border-dark mt-5 border-t pt-4">
+                        <summary class="text-wpx-muted-dark cursor-pointer text-xs font-bold">
+                            Options de marque avancées (facultatif)
+                        </summary>
+                        <div class="mt-4">
+                            <p class="text-wpx-white-soft text-sm font-bold">Couleurs de marque</p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
+                                Utile surtout pour les entreprises qui souhaitent conserver une identité visuelle
+                                précise.
+                            </p>
+                            <div v-if="selectedBrand.colors.length > 0" class="mt-3 flex flex-wrap gap-2">
+                                <span
+                                    v-for="color in selectedBrand.colors"
+                                    :key="color.id"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs"
+                                >
+                                    <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: color.hex }" />
+                                    {{ color.name }}
+                                </span>
+                            </div>
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                <input
+                                    v-model="newColorHex"
+                                    type="color"
+                                    class="h-10 w-12 rounded-xl border-0 bg-transparent"
+                                />
+                                <input
+                                    v-model="newColorName"
+                                    placeholder="Nom de la couleur"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft placeholder:text-wpx-muted-dark min-w-40 flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none"
+                                    @keyup.enter="addColor"
+                                />
+                                <button
+                                    type="button"
+                                    class="text-wpx-cyan px-2 py-2 text-xs font-bold"
+                                    @click="addColor"
+                                >
+                                    Ajouter
+                                </button>
+                            </div>
+                        </div>
+                    </details>
                 </div>
-                <div
-                    v-else
-                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex flex-1 items-center justify-center text-sm"
-                >
-                    Crée une marque pour commencer.
-                </div>
-            </div>
+            </section>
         </template>
     </div>
 </template>
