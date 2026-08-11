@@ -122,7 +122,10 @@ void load();
             {{ loadError }}
         </div>
 
-        <section v-else class="rounded-wpx-xl border-wpx-border-dark bg-wpx-navy-850 overflow-hidden border shadow-wpx-card-dark">
+        <section
+            v-else
+            class="rounded-wpx-xl border-wpx-border-dark bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border"
+        >
             <div class="from-wpx-navy-750 to-wpx-navy-850 bg-gradient-to-br p-4">
                 <div class="flex items-start justify-between gap-3">
                     <div>
@@ -130,8 +133,12 @@ void load();
                         <div v-if="loading" class="text-wpx-muted-dark mt-2 text-sm">Chargement…</div>
                         <template v-else-if="subscription">
                             <div class="mt-1 flex items-center gap-2">
-                                <h3 class="text-wpx-white-soft text-lg font-bold">{{ currentPlan?.name ?? 'Plan membre' }}</h3>
-                                <span class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2 py-0.5 text-[10px] font-bold">
+                                <h3 class="text-wpx-white-soft text-lg font-bold">
+                                    {{ currentPlan?.name ?? 'Plan membre' }}
+                                </h3>
+                                <span
+                                    class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2 py-0.5 text-[10px] font-bold"
+                                >
                                     {{ STATUS_LABELS[subscription.status] ?? subscription.status }}
                                 </span>
                             </div>
@@ -153,7 +160,8 @@ void load();
                         />
                     </div>
                     <p class="text-wpx-muted-dark mt-1.5 text-[11px]">
-                        {{ numberFormatter.format(quota.consumed) }} / {{ numberFormatter.format(quota.allocated) }} publicités utilisées ce cycle
+                        {{ numberFormatter.format(quota.consumed) }} /
+                        {{ numberFormatter.format(quota.allocated) }} publicités utilisées ce cycle
                     </p>
                 </div>
             </div>
@@ -161,7 +169,9 @@ void load();
             <div class="flex items-center justify-between gap-3 p-4 pt-3">
                 <div>
                     <p class="text-wpx-white-soft text-sm font-semibold">Envie de plus d’avantages ?</p>
-                    <p class="text-wpx-muted-dark mt-0.5 text-[11px]">Comparez les offres publiées sans quitter Mon Espace.</p>
+                    <p class="text-wpx-muted-dark mt-0.5 text-[11px]">
+                        Comparez les offres publiées sans quitter Mon Espace.
+                    </p>
                 </div>
                 <button
                     type="button"
@@ -174,12 +184,20 @@ void load();
         </section>
 
         <Teleport to="body">
-            <div v-if="showPlans" class="fixed inset-0 z-50 flex items-end justify-center bg-black/65 sm:items-center" @click.self="showPlans = false">
-                <div class="bg-wpx-navy-950 border-wpx-border-dark max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl border p-4 shadow-2xl sm:rounded-3xl">
-                    <div class="sticky top-0 z-10 bg-wpx-navy-950 flex items-start justify-between gap-3 pb-3">
+            <div
+                v-if="showPlans"
+                class="fixed inset-0 z-50 flex items-end justify-center bg-black/65 sm:items-center"
+                @click.self="showPlans = false"
+            >
+                <div
+                    class="bg-wpx-navy-950 border-wpx-border-dark max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl border p-4 shadow-2xl sm:rounded-3xl"
+                >
+                    <div class="bg-wpx-navy-950 sticky top-0 z-10 flex items-start justify-between gap-3 pb-3">
                         <div>
                             <p class="text-wpx-white-soft text-lg font-bold">Choisir mon abonnement</p>
-                            <p class="text-wpx-muted-dark mt-1 text-xs">Seules les offres validées et publiées par Wasplex sont proposées ici.</p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
+                                Seules les offres validées et publiées par Wasplex sont proposées ici.
+                            </p>
                         </div>
                         <button
                             type="button"
@@ -199,7 +217,9 @@ void load();
                         </div>
                     </div>
 
-                    <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mb-3 p-3 text-xs">{{ error }}</p>
+                    <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mb-3 p-3 text-xs">
+                        {{ error }}
+                    </p>
 
                     <div v-if="alternativePlans.length > 0" class="flex flex-col gap-3">
                         <article
@@ -217,28 +237,43 @@ void load();
                             <div class="mt-3 grid grid-cols-2 gap-2">
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
                                     <p class="text-wpx-muted-dark text-[10px] uppercase">Publicités / mois</p>
-                                    <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">{{ numberFormatter.format(plan.quota_monthly ?? 0) }}</p>
+                                    <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
+                                        {{ numberFormatter.format(plan.quota_monthly ?? 0) }}
+                                    </p>
                                 </div>
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
                                     <p class="text-wpx-muted-dark text-[10px] uppercase">Fonds Wasplex</p>
-                                    <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">{{ plan.fonds_eligible ? 'Inclus' : 'Non inclus' }}</p>
+                                    <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
+                                        {{ plan.fonds_eligible ? 'Inclus' : 'Non inclus' }}
+                                    </p>
                                 </div>
                             </div>
-                            <p class="text-wpx-muted-dark mt-2 text-[10px] italic">La quantité de publicités dépend toujours des campagnes compatibles disponibles.</p>
+                            <p class="text-wpx-muted-dark mt-2 text-[10px] italic">
+                                La quantité de publicités dépend toujours des campagnes compatibles disponibles.
+                            </p>
                             <button
                                 type="button"
                                 class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md mt-3 w-full bg-gradient-to-br px-4 py-2.5 text-sm font-bold disabled:opacity-50"
                                 :disabled="subscribing !== null"
                                 @click="subscribeTo(plan)"
                             >
-                                {{ subscribing === plan.plan_version_id ? 'Traitement…' : plan.price_minor === 0 ? 'Choisir ce plan' : 'Passer à ce plan' }}
+                                {{
+                                    subscribing === plan.plan_version_id
+                                        ? 'Traitement…'
+                                        : plan.price_minor === 0
+                                          ? 'Choisir ce plan'
+                                          : 'Passer à ce plan'
+                                }}
                             </button>
                         </article>
                     </div>
 
                     <div v-else class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-5 text-center">
                         <p class="text-wpx-white-soft text-sm font-bold">Aucune autre offre publiée pour le moment</p>
-                        <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">Les offres Premium, Gold ou Platine apparaîtront automatiquement ici dès qu’une version tarifée sera publiée.</p>
+                        <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">
+                            Les offres Premium, Gold ou Platine apparaîtront automatiquement ici dès qu’une version
+                            tarifée sera publiée.
+                        </p>
                     </div>
                 </div>
             </div>

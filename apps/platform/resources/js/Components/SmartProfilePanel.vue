@@ -42,7 +42,10 @@ const FACET_LABELS: Record<string, string> = {
     'territory.approximate_area': 'Quelle est votre zone approximative ?',
 };
 
-const ISO2_CODES = `AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW`.split(' ');
+const ISO2_CODES =
+    `AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW`.split(
+        ' ',
+    );
 
 const regionNames = new Intl.DisplayNames(['fr'], { type: 'region' });
 const countryOptions = ISO2_CODES.map((code) => ({ code, name: regionNames.of(code) ?? code })).sort((a, b) =>
@@ -116,8 +119,15 @@ function stepAnswered(step: ProfileStep): boolean {
 
 const answeredCount = computed(() => steps.value.filter(stepAnswered).length);
 const totalCount = computed(() => steps.value.length);
-const percent = computed(() => (totalCount.value === 0 ? 0 : Math.round((answeredCount.value / totalCount.value) * 100)));
-const nextSuggestions = computed(() => steps.value.filter((step) => !stepAnswered(step)).slice(0, 2).map((step) => step.label));
+const percent = computed(() =>
+    totalCount.value === 0 ? 0 : Math.round((answeredCount.value / totalCount.value) * 100),
+);
+const nextSuggestions = computed(() =>
+    steps.value
+        .filter((step) => !stepAnswered(step))
+        .slice(0, 2)
+        .map((step) => step.label),
+);
 
 defineExpose({ percent, nextSuggestions });
 
@@ -227,13 +237,14 @@ void load();
 </script>
 
 <template>
-    <div class="rounded-wpx-xl border-wpx-border-dark bg-wpx-navy-850 overflow-hidden border shadow-wpx-card-dark">
+    <div class="rounded-wpx-xl border-wpx-border-dark bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border">
         <div class="from-wpx-navy-750 to-wpx-navy-850 bg-gradient-to-br p-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <p class="text-wpx-white-soft text-sm font-bold">Profil intelligent</p>
                     <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                        Quelques choix simples pour recevoir des campagnes plus pertinentes. Tout reste facultatif et modifiable.
+                        Quelques choix simples pour recevoir des campagnes plus pertinentes. Tout reste facultatif et
+                        modifiable.
                     </p>
                 </div>
                 <span class="bg-wpx-blue/15 text-wpx-cyan rounded-full px-2.5 py-1 text-xs font-bold">
@@ -261,7 +272,7 @@ void load();
                     <span class="text-wpx-muted-dark text-[11px]">{{ currentIndex + 1 }} / {{ totalCount }}</span>
                 </div>
 
-                <h3 class="text-wpx-white-soft mt-3 text-base font-bold leading-snug">{{ currentStep.label }}</h3>
+                <h3 class="text-wpx-white-soft mt-3 text-base leading-snug font-bold">{{ currentStep.label }}</h3>
                 <p class="text-wpx-muted-dark mt-1 text-xs">
                     Votre réponse peut être mise à jour plus tard et n’est jamais montrée directement à l’annonceur.
                 </p>
@@ -298,7 +309,10 @@ void load();
                     </button>
                 </div>
 
-                <div v-else-if="currentStep.inputType === 'boolean' && currentStep.entries[0]" class="mt-4 grid grid-cols-2 gap-2">
+                <div
+                    v-else-if="currentStep.inputType === 'boolean' && currentStep.entries[0]"
+                    class="mt-4 grid grid-cols-2 gap-2"
+                >
                     <button
                         type="button"
                         class="rounded-wpx-md border px-3 py-3 text-sm font-bold transition disabled:opacity-50"
@@ -372,7 +386,11 @@ void load();
                             :key="step.key"
                             class="h-1.5 rounded-full transition-all"
                             :class="[
-                                index === currentIndex ? 'bg-wpx-cyan w-4' : stepAnswered(step) ? 'bg-wpx-success w-1.5' : 'bg-wpx-border-dark w-1.5',
+                                index === currentIndex
+                                    ? 'bg-wpx-cyan w-4'
+                                    : stepAnswered(step)
+                                      ? 'bg-wpx-success w-1.5'
+                                      : 'bg-wpx-border-dark w-1.5',
                             ]"
                         />
                     </div>
