@@ -207,12 +207,16 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="mx-auto flex max-w-5xl flex-col gap-5 text-wpx-white-soft">
-        <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+    <div class="text-wpx-white-soft mx-auto flex max-w-5xl flex-col gap-5">
+        <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
             <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold uppercase tracking-[0.16em]">Profil intelligent</p>
-                    <h2 class="mt-1 text-xl font-extrabold">Choisir les informations volontaires que Wasplex peut proposer.</h2>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">
+                        Profil intelligent
+                    </p>
+                    <h2 class="mt-1 text-xl font-extrabold">
+                        Choisir les informations volontaires que Wasplex peut proposer.
+                    </h2>
                     <p class="text-wpx-muted-dark mt-2 max-w-3xl text-sm">
                         Les membres choisissent eux-mêmes ce qu’ils partagent. Une information inactive n’est proposée à
                         personne et un annonceur ne voit jamais l’identité d’un membre.
@@ -220,7 +224,7 @@ onMounted(async () => {
                 </div>
                 <button
                     type="button"
-                    class="from-wpx-blue to-wpx-cyan rounded-wpx-md bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold text-wpx-navy-950"
+                    class="from-wpx-blue to-wpx-cyan rounded-wpx-md text-wpx-navy-950 bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold"
                     @click="creatingTaxonomy = !creatingTaxonomy"
                 >
                     {{ creatingTaxonomy ? 'Fermer' : '+ Nouvelle information' }}
@@ -241,7 +245,7 @@ onMounted(async () => {
         <template v-else>
             <form
                 v-if="creatingTaxonomy"
-                class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark"
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5"
                 @submit.prevent="submitTaxonomy"
             >
                 <h3 class="text-base font-extrabold">Ajouter une information</h3>
@@ -251,7 +255,7 @@ onMounted(async () => {
                         <input
                             v-model="newTaxonomy.label"
                             placeholder="Ex. Intéressé par la mode"
-                            class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft"
+                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm"
                             required
                         />
                     </label>
@@ -259,7 +263,7 @@ onMounted(async () => {
                         <span class="text-wpx-muted-dark font-bold">Catégorie</span>
                         <select
                             v-model="newTaxonomy.category"
-                            class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft"
+                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm"
                         >
                             <option v-for="category in categories" :key="category" :value="category">
                                 {{ CATEGORY_LABELS[category] ?? category }}
@@ -267,7 +271,11 @@ onMounted(async () => {
                         </select>
                     </label>
                 </div>
-                <button type="button" class="text-wpx-cyan mt-3 text-xs font-bold" @click="advancedMode = !advancedMode">
+                <button
+                    type="button"
+                    class="text-wpx-cyan mt-3 text-xs font-bold"
+                    @click="advancedMode = !advancedMode"
+                >
                     {{ advancedMode ? 'Masquer le code technique' : 'Options avancées' }}
                 </button>
                 <label v-if="advancedMode" class="mt-3 flex max-w-md flex-col gap-1.5 text-xs">
@@ -275,14 +283,21 @@ onMounted(async () => {
                     <input
                         v-model="newTaxonomy.code"
                         :placeholder="autoTaxonomyCode"
-                        class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2 text-sm text-wpx-white-soft"
+                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2 text-sm"
                     />
                 </label>
                 <div class="mt-4 flex gap-2">
-                    <button type="submit" class="bg-wpx-success rounded-wpx-md px-4 py-2 text-xs font-extrabold text-wpx-navy-950">
+                    <button
+                        type="submit"
+                        class="bg-wpx-success rounded-wpx-md text-wpx-navy-950 px-4 py-2 text-xs font-extrabold"
+                    >
                         Ajouter l’information
                     </button>
-                    <button type="button" class="text-wpx-muted-dark px-3 text-xs font-bold" @click="creatingTaxonomy = false">
+                    <button
+                        type="button"
+                        class="text-wpx-muted-dark px-3 text-xs font-bold"
+                        @click="creatingTaxonomy = false"
+                    >
                         Annuler
                     </button>
                 </div>
@@ -297,25 +312,39 @@ onMounted(async () => {
                     <details
                         v-for="group in groupedTaxonomies"
                         :key="group.category"
-                        class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark"
+                        class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border"
                     >
                         <summary class="flex cursor-pointer list-none items-center gap-3 px-5 py-4">
-                            <span class="bg-wpx-blue/12 text-wpx-blue flex h-9 w-9 shrink-0 items-center justify-center rounded-wpx-md">◎</span>
+                            <span
+                                class="bg-wpx-blue/12 text-wpx-blue rounded-wpx-md flex h-9 w-9 shrink-0 items-center justify-center"
+                                >◎</span
+                            >
                             <span class="min-w-0 flex-1">
                                 <span class="block text-sm font-extrabold">{{ group.label }}</span>
                                 <span class="text-wpx-muted-dark mt-0.5 block text-xs">
-                                    {{ group.items.filter((item) => item.status === 'active').length }}/{{ group.items.length }} actives
+                                    {{ group.items.filter((item) => item.status === 'active').length }}/{{
+                                        group.items.length
+                                    }}
+                                    actives
                                 </span>
                             </span>
                             <span class="text-wpx-muted-dark text-xs">Ouvrir</span>
                         </summary>
                         <div class="border-wpx-border-dark divide-wpx-border-dark divide-y border-t px-5">
-                            <div v-for="taxonomy in group.items" :key="taxonomy.id" class="flex items-center gap-3 py-3.5">
+                            <div
+                                v-for="taxonomy in group.items"
+                                :key="taxonomy.id"
+                                class="flex items-center gap-3 py-3.5"
+                            >
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm font-bold">{{ taxonomy.label }}</p>
                                     <details class="mt-1">
-                                        <summary class="text-wpx-muted-dark cursor-pointer text-[10px]">Détail technique</summary>
-                                        <p class="text-wpx-muted-dark mt-1 break-all font-mono text-[10px]">{{ taxonomy.code }}</p>
+                                        <summary class="text-wpx-muted-dark cursor-pointer text-[10px]">
+                                            Détail technique
+                                        </summary>
+                                        <p class="text-wpx-muted-dark mt-1 font-mono text-[10px] break-all">
+                                            {{ taxonomy.code }}
+                                        </p>
                                     </details>
                                 </div>
                                 <span
@@ -340,7 +369,7 @@ onMounted(async () => {
                                 <button
                                     v-else
                                     type="button"
-                                    class="bg-wpx-success rounded-wpx-md px-3 py-1.5 text-[11px] font-extrabold text-wpx-navy-950 disabled:opacity-50"
+                                    class="bg-wpx-success rounded-wpx-md text-wpx-navy-950 px-3 py-1.5 text-[11px] font-extrabold disabled:opacity-50"
                                     :disabled="busy === taxonomy.id"
                                     @click="activateTaxonomy(taxonomy)"
                                 >
@@ -349,15 +378,19 @@ onMounted(async () => {
                             </div>
                         </div>
                     </details>
-                    <p v-if="groupedTaxonomies.length === 0" class="text-wpx-muted-dark text-sm">Aucune information de profil.</p>
+                    <p v-if="groupedTaxonomies.length === 0" class="text-wpx-muted-dark text-sm">
+                        Aucune information de profil.
+                    </p>
                 </div>
             </section>
 
-            <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h3 class="text-base font-extrabold">Autorisations demandées aux utilisateurs</h3>
-                        <p class="text-wpx-muted-dark mt-1 text-xs">Les textes que le membre accepte ou refuse explicitement.</p>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">
+                            Les textes que le membre accepte ou refuse explicitement.
+                        </p>
                     </div>
                     <button type="button" class="text-wpx-cyan text-xs font-extrabold" @click="startCreatePurpose">
                         + Nouvelle autorisation
@@ -366,17 +399,26 @@ onMounted(async () => {
 
                 <form
                     v-if="creatingPurpose"
-                    class="border-wpx-border-dark mt-4 rounded-wpx-lg border bg-wpx-navy-950 p-4"
+                    class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 mt-4 border p-4"
                     @submit.prevent="submitNewPurpose"
                 >
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <label class="flex flex-col gap-1 text-xs">
                             <span class="text-wpx-muted-dark">Titre</span>
-                            <input v-model="purposeForm.name" required class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-850 px-3 py-2 text-sm" />
+                            <input
+                                v-model="purposeForm.name"
+                                required
+                                class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border px-3 py-2 text-sm"
+                            />
                         </label>
                         <label class="flex flex-col gap-1 text-xs md:col-span-2">
                             <span class="text-wpx-muted-dark">Explication affichée au membre</span>
-                            <textarea v-model="purposeForm.description" required rows="3" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-850 px-3 py-2 text-sm" />
+                            <textarea
+                                v-model="purposeForm.description"
+                                required
+                                rows="3"
+                                class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border px-3 py-2 text-sm"
+                            />
                         </label>
                     </div>
                     <label class="text-wpx-muted-dark mt-3 flex items-center gap-2 text-xs">
@@ -384,10 +426,20 @@ onMounted(async () => {
                         Demander une nouvelle décision aux membres déjà inscrits
                     </label>
                     <div class="mt-4 flex gap-2">
-                        <button type="submit" :disabled="busy === 'new-purpose'" class="bg-wpx-success rounded-wpx-md px-4 py-2 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50">
+                        <button
+                            type="submit"
+                            :disabled="busy === 'new-purpose'"
+                            class="bg-wpx-success rounded-wpx-md text-wpx-navy-950 px-4 py-2 text-xs font-extrabold disabled:opacity-50"
+                        >
                             Publier cette autorisation
                         </button>
-                        <button type="button" class="text-wpx-muted-dark px-3 text-xs font-bold" @click="cancelPurposeForm">Annuler</button>
+                        <button
+                            type="button"
+                            class="text-wpx-muted-dark px-3 text-xs font-bold"
+                            @click="cancelPurposeForm"
+                        >
+                            Annuler
+                        </button>
                     </div>
                 </form>
 
@@ -395,48 +447,95 @@ onMounted(async () => {
                     <article
                         v-for="purpose in purposes"
                         :key="purpose.id"
-                        class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-950 p-4"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 border p-4"
                     >
                         <template v-if="editingPurposeId !== purpose.id">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <p class="text-sm font-extrabold">{{ publishedVersion(purpose)?.name ?? draftVersion(purpose)?.name ?? purpose.code }}</p>
+                                        <p class="text-sm font-extrabold">
+                                            {{
+                                                publishedVersion(purpose)?.name ??
+                                                draftVersion(purpose)?.name ??
+                                                purpose.code
+                                            }}
+                                        </p>
                                         <span
                                             class="rounded-wpx-full px-2.5 py-1 text-[10px] font-extrabold"
-                                            :class="publishedVersion(purpose) ? 'bg-wpx-success/15 text-wpx-success' : 'bg-wpx-warning/15 text-wpx-gold'"
+                                            :class="
+                                                publishedVersion(purpose)
+                                                    ? 'bg-wpx-success/15 text-wpx-success'
+                                                    : 'bg-wpx-warning/15 text-wpx-gold'
+                                            "
                                         >
                                             {{ publishedVersion(purpose) ? 'En vigueur' : 'Brouillon' }}
                                         </span>
                                     </div>
                                     <p class="text-wpx-muted-dark mt-1 text-xs">
-                                        {{ publishedVersion(purpose)?.description ?? draftVersion(purpose)?.description ?? 'Aucune description.' }}
+                                        {{
+                                            publishedVersion(purpose)?.description ??
+                                            draftVersion(purpose)?.description ??
+                                            'Aucune description.'
+                                        }}
                                     </p>
                                 </div>
-                                <button type="button" class="text-wpx-cyan text-xs font-extrabold" @click="startEditPurpose(purpose)">Modifier le texte</button>
+                                <button
+                                    type="button"
+                                    class="text-wpx-cyan text-xs font-extrabold"
+                                    @click="startEditPurpose(purpose)"
+                                >
+                                    Modifier le texte
+                                </button>
                             </div>
                         </template>
 
                         <form v-else class="flex flex-col gap-3" @submit.prevent="submitPurposeEdit(purpose)">
                             <label class="flex flex-col gap-1 text-xs">
                                 <span class="text-wpx-muted-dark">Titre</span>
-                                <input v-model="purposeForm.name" required class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-850 px-3 py-2 text-sm" />
+                                <input
+                                    v-model="purposeForm.name"
+                                    required
+                                    class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border px-3 py-2 text-sm"
+                                />
                             </label>
                             <label class="flex flex-col gap-1 text-xs">
                                 <span class="text-wpx-muted-dark">Explication</span>
-                                <textarea v-model="purposeForm.description" required rows="3" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-850 px-3 py-2 text-sm" />
+                                <textarea
+                                    v-model="purposeForm.description"
+                                    required
+                                    rows="3"
+                                    class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border px-3 py-2 text-sm"
+                                />
                             </label>
                             <label class="text-wpx-muted-dark flex items-center gap-2 text-xs">
-                                <input v-model="purposeForm.requires_new_decision" type="checkbox" class="accent-wpx-cyan" />
+                                <input
+                                    v-model="purposeForm.requires_new_decision"
+                                    type="checkbox"
+                                    class="accent-wpx-cyan"
+                                />
                                 Demander une nouvelle décision aux membres
                             </label>
                             <div class="flex gap-2">
-                                <button type="submit" :disabled="busy === purpose.id" class="bg-wpx-success rounded-wpx-md px-4 py-2 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50">Publier la nouvelle version</button>
-                                <button type="button" class="text-wpx-muted-dark px-3 text-xs font-bold" @click="cancelPurposeForm">Annuler</button>
+                                <button
+                                    type="submit"
+                                    :disabled="busy === purpose.id"
+                                    class="bg-wpx-success rounded-wpx-md text-wpx-navy-950 px-4 py-2 text-xs font-extrabold disabled:opacity-50"
+                                >
+                                    Publier la nouvelle version
+                                </button>
+                                <button
+                                    type="button"
+                                    class="text-wpx-muted-dark px-3 text-xs font-bold"
+                                    @click="cancelPurposeForm"
+                                >
+                                    Annuler
+                                </button>
                             </div>
                         </form>
                     </article>
-                    <p v-if="purposes.length === 0" class="text-wpx-muted-dark text-sm">Aucune autorisation configurée.</p>
+                    <p v-if="purposes.length === 0" class="text-wpx-muted-dark text-sm">
+                        Aucune autorisation configurée.
+                    </p>
                 </div>
             </section>
         </template>

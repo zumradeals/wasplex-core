@@ -23,7 +23,8 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 const REASON_EXPLANATIONS: Record<string, string> = {
-    heartbeat_rate_abuse: 'Le rythme des confirmations envoyées par le lecteur ne ressemble pas à un visionnage normal.',
+    heartbeat_rate_abuse:
+        'Le rythme des confirmations envoyées par le lecteur ne ressemble pas à un visionnage normal.',
     overclaimed_duration: 'Le temps déclaré comme visionné dépasse ce que Wasplex a réellement observé.',
     risk_signal_threshold: 'Plusieurs contrôles de sécurité se sont déclenchés sur ce visionnage.',
 };
@@ -85,10 +86,12 @@ onMounted(load);
 </script>
 
 <template>
-    <section class="border-wpx-border-dark overflow-hidden rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark">
-        <div class="border-wpx-border-dark flex flex-col gap-2 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border">
+        <div
+            class="border-wpx-border-dark flex flex-col gap-2 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+        >
             <div>
-                <h2 class="text-base font-extrabold text-wpx-white-soft">Décisions antifraude</h2>
+                <h2 class="text-wpx-white-soft text-base font-extrabold">Décisions antifraude</h2>
                 <p class="text-wpx-muted-dark mt-1 text-xs">
                     Wasplex ne verse jamais automatiquement une récompense suspecte. Une décision humaine est requise.
                 </p>
@@ -101,7 +104,9 @@ onMounted(load);
             </span>
         </div>
 
-        <p v-if="actionError" class="bg-wpx-danger/15 text-wpx-danger m-4 rounded-wpx-md p-3 text-xs">{{ actionError }}</p>
+        <p v-if="actionError" class="bg-wpx-danger/15 text-wpx-danger rounded-wpx-md m-4 p-3 text-xs">
+            {{ actionError }}
+        </p>
         <p v-if="loading" class="text-wpx-muted-dark p-5 text-sm">Chargement…</p>
 
         <div v-else-if="holds.length" class="divide-wpx-border-dark divide-y">
@@ -109,17 +114,27 @@ onMounted(load);
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="bg-wpx-danger/15 text-wpx-danger flex h-8 w-8 items-center justify-center rounded-wpx-md font-extrabold">!</span>
-                            <h3 class="text-sm font-extrabold text-wpx-white-soft">{{ REASON_LABELS[hold.reason_code] ?? 'Visionnage à vérifier' }}</h3>
+                            <span
+                                class="bg-wpx-danger/15 text-wpx-danger rounded-wpx-md flex h-8 w-8 items-center justify-center font-extrabold"
+                                >!</span
+                            >
+                            <h3 class="text-wpx-white-soft text-sm font-extrabold">
+                                {{ REASON_LABELS[hold.reason_code] ?? 'Visionnage à vérifier' }}
+                            </h3>
                         </div>
                         <p class="text-wpx-muted-dark mt-2 max-w-2xl text-xs">
-                            {{ REASON_EXPLANATIONS[hold.reason_code] ?? 'Un contrôle de sécurité a retenu cette récompense.' }}
+                            {{
+                                REASON_EXPLANATIONS[hold.reason_code] ??
+                                'Un contrôle de sécurité a retenu cette récompense.'
+                            }}
                         </p>
                         <div class="mt-3 flex flex-wrap gap-2 text-xs">
                             <span class="bg-wpx-gold/12 text-wpx-gold rounded-wpx-full px-2.5 py-1 font-extrabold">
                                 {{ numberFormatter.format(hold.amount_minor) }} WP en attente
                             </span>
-                            <span class="border-wpx-border-dark text-wpx-muted-dark rounded-wpx-full border px-2.5 py-1">
+                            <span
+                                class="border-wpx-border-dark text-wpx-muted-dark rounded-wpx-full border px-2.5 py-1"
+                            >
                                 {{ new Date(hold.opened_at).toLocaleString('fr-FR') }}
                             </span>
                         </div>
@@ -128,7 +143,7 @@ onMounted(load);
                     <div class="flex shrink-0 flex-wrap gap-2">
                         <button
                             type="button"
-                            class="bg-wpx-success rounded-wpx-md px-4 py-2 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50"
+                            class="bg-wpx-success rounded-wpx-md text-wpx-navy-950 px-4 py-2 text-xs font-extrabold disabled:opacity-50"
                             :disabled="busy === hold.id"
                             @click="release(hold)"
                         >
@@ -145,8 +160,10 @@ onMounted(load);
                     </div>
                 </div>
 
-                <details class="border-wpx-border-dark mt-4 rounded-wpx-md border bg-wpx-navy-950 p-3">
-                    <summary class="text-wpx-muted-dark cursor-pointer text-[11px] font-extrabold">Voir les détails techniques</summary>
+                <details class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 mt-4 border p-3">
+                    <summary class="text-wpx-muted-dark cursor-pointer text-[11px] font-extrabold">
+                        Voir les détails techniques
+                    </summary>
                     <div class="text-wpx-muted-dark mt-3 grid grid-cols-1 gap-2 font-mono text-[10px] sm:grid-cols-2">
                         <p>signaux : {{ hold.evidence?.risk_signal_count ?? '—' }}</p>
                         <p>durée visible : {{ hold.evidence?.visible_duration_ms ?? '—' }} ms</p>
@@ -159,7 +176,9 @@ onMounted(load);
 
         <div v-else class="p-8 text-center">
             <p class="text-wpx-success text-sm font-extrabold">✓ Rien à examiner</p>
-            <p class="text-wpx-muted-dark mt-1 text-xs">Aucune récompense n’est actuellement retenue par l’antifraude.</p>
+            <p class="text-wpx-muted-dark mt-1 text-xs">
+                Aucune récompense n’est actuellement retenue par l’antifraude.
+            </p>
         </div>
     </section>
 </template>
