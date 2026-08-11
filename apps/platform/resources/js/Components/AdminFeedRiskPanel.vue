@@ -17,9 +17,15 @@ interface Hold {
 }
 
 const REASON_LABELS: Record<string, string> = {
-    heartbeat_rate_abuse: 'Rythme de heartbeat anormal',
-    overclaimed_duration: 'Durée déclarée supérieure au temps réel',
-    risk_signal_threshold: 'Seuil de signaux atteint',
+    heartbeat_rate_abuse: 'Visionnage inhabituel détecté',
+    overclaimed_duration: 'Durée de visionnage incohérente',
+    risk_signal_threshold: 'Plusieurs signaux suspects détectés',
+};
+
+const REASON_EXPLANATIONS: Record<string, string> = {
+    heartbeat_rate_abuse: 'Le rythme des confirmations envoyées par le lecteur ne ressemble pas à un visionnage normal.',
+    overclaimed_duration: 'Le temps déclaré comme visionné dépasse ce que Wasplex a réellement observé.',
+    risk_signal_threshold: 'Plusieurs contrôles de sécurité se sont déclenchés sur ce visionnage.',
 };
 
 const emit = defineEmits<{ resolved: [] }>();
@@ -42,7 +48,7 @@ async function load(): Promise<void> {
 }
 
 async function release(hold: Hold): Promise<void> {
-    const note = window.prompt('Note de vérification (optionnelle) avant de créditer le gain :') ?? undefined;
+    const note = window.prompt('Note de vérification (optionnelle) avant de verser la récompense :') ?? undefined;
     busy.value = hold.id;
     actionError.value = null;
     try {
@@ -51,14 +57,15 @@ async function release(hold: Hold): Promise<void> {
         emit('resolved');
     } catch (e) {
         actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Libération impossible.';
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'La récompense ne peut pas être libérée.';
     } finally {
         busy.value = null;
     }
 }
 
 async function reject(hold: Hold): Promise<void> {
-    const note = window.prompt('Motif du rejet (optionnel) :') ?? undefined;
+    const note = window.prompt('Motif du refus (optionnel) :') ?? undefined;
     busy.value = hold.id;
     actionError.value = null;
     try {
@@ -67,7 +74,8 @@ async function reject(hold: Hold): Promise<void> {
         emit('resolved');
     } catch (e) {
         actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Rejet impossible.';
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'Le refus ne peut pas être enregistré.';
     } finally {
         busy.value = null;
     }
@@ -77,59 +85,81 @@ onMounted(load);
 </script>
 
 <template>
-    <div class="flex flex-col gap-4">
-        <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-4">
-            <h2 class="text-wpx-text mb-1 text-sm font-semibold">Retenues antifraude Feed ({{ holds.length }})</h2>
-            <p class="text-wpx-text-muted mb-3 text-xs">
-                Une publicité suspecte n'est jamais créditée automatiquement : elle attend ici une décision humaine —
-                libérer le gain, ou le rejeter sans aucun versement.
-            </p>
+    <section class="border-wpx-border-dark overflow-hidden rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark">
+        <div class="border-wpx-border-dark flex flex-col gap-2 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-base font-extrabold text-wpx-white-soft">Décisions antifraude</h2>
+                <p class="text-wpx-muted-dark mt-1 text-xs">
+                    Wasplex ne verse jamais automatiquement une récompense suspecte. Une décision humaine est requise.
+                </p>
+            </div>
+            <span
+                class="rounded-wpx-full px-3 py-1 text-xs font-extrabold"
+                :class="holds.length ? 'bg-wpx-danger/15 text-wpx-danger' : 'bg-wpx-success/15 text-wpx-success'"
+            >
+                {{ holds.length ? `${holds.length} à examiner` : 'Aucune retenue' }}
+            </span>
+        </div>
 
-            <p v-if="actionError" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-sm mb-3 p-2 text-xs">
-                {{ actionError }}
-            </p>
+        <p v-if="actionError" class="bg-wpx-danger/15 text-wpx-danger m-4 rounded-wpx-md p-3 text-xs">{{ actionError }}</p>
+        <p v-if="loading" class="text-wpx-muted-dark p-5 text-sm">Chargement…</p>
 
-            <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
-            <ul v-else class="flex flex-col gap-2">
-                <li v-for="hold in holds" :key="hold.id" class="rounded-wpx-sm bg-wpx-canvas p-3 text-sm">
-                    <div class="mb-2 flex items-center justify-between">
-                        <span class="text-wpx-text font-semibold">
-                            {{ REASON_LABELS[hold.reason_code] ?? hold.reason_code }}
-                        </span>
-                        <span class="text-wpx-text-muted text-xs">{{ new Date(hold.opened_at).toLocaleString() }}</span>
+        <div v-else-if="holds.length" class="divide-wpx-border-dark divide-y">
+            <article v-for="hold in holds" :key="hold.id" class="p-5">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="bg-wpx-danger/15 text-wpx-danger flex h-8 w-8 items-center justify-center rounded-wpx-md font-extrabold">!</span>
+                            <h3 class="text-sm font-extrabold text-wpx-white-soft">{{ REASON_LABELS[hold.reason_code] ?? 'Visionnage à vérifier' }}</h3>
+                        </div>
+                        <p class="text-wpx-muted-dark mt-2 max-w-2xl text-xs">
+                            {{ REASON_EXPLANATIONS[hold.reason_code] ?? 'Un contrôle de sécurité a retenu cette récompense.' }}
+                        </p>
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                            <span class="bg-wpx-gold/12 text-wpx-gold rounded-wpx-full px-2.5 py-1 font-extrabold">
+                                {{ numberFormatter.format(hold.amount_minor) }} WP en attente
+                            </span>
+                            <span class="border-wpx-border-dark text-wpx-muted-dark rounded-wpx-full border px-2.5 py-1">
+                                {{ new Date(hold.opened_at).toLocaleString('fr-FR') }}
+                            </span>
+                        </div>
                     </div>
-                    <p class="text-wpx-text-muted mb-2 text-xs">
-                        Gain suspendu : {{ numberFormatter.format(hold.amount_minor) }} WP · campagne
-                        {{ hold.campaign_id ?? '—' }}
-                    </p>
-                    <p v-if="hold.evidence" class="text-wpx-text-muted mb-2 font-mono text-[11px]">
-                        signaux : {{ hold.evidence.risk_signal_count ?? '—' }} · durée visible :
-                        {{ hold.evidence.visible_duration_ms ?? '—' }} ms / requise
-                        {{ hold.evidence.required_duration_ms ?? '—' }} ms
-                    </p>
-                    <div class="flex gap-2">
+
+                    <div class="flex shrink-0 flex-wrap gap-2">
                         <button
                             type="button"
-                            class="rounded-wpx-sm bg-wpx-success text-wpx-navy-950 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                            class="bg-wpx-success rounded-wpx-md px-4 py-2 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50"
                             :disabled="busy === hold.id"
                             @click="release(hold)"
                         >
-                            Libérer le gain
+                            Verser les {{ numberFormatter.format(hold.amount_minor) }} WP
                         </button>
                         <button
                             type="button"
-                            class="rounded-wpx-sm bg-wpx-danger px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                            class="border-wpx-danger/50 text-wpx-danger rounded-wpx-md border px-4 py-2 text-xs font-extrabold disabled:opacity-50"
                             :disabled="busy === hold.id"
                             @click="reject(hold)"
                         >
-                            Rejeter sans gain
+                            Refuser la récompense
                         </button>
                     </div>
-                </li>
-                <li v-if="!loading && holds.length === 0" class="text-wpx-text-muted text-sm">
-                    Aucune retenue en attente.
-                </li>
-            </ul>
+                </div>
+
+                <details class="border-wpx-border-dark mt-4 rounded-wpx-md border bg-wpx-navy-950 p-3">
+                    <summary class="text-wpx-muted-dark cursor-pointer text-[11px] font-extrabold">Voir les détails techniques</summary>
+                    <div class="text-wpx-muted-dark mt-3 grid grid-cols-1 gap-2 font-mono text-[10px] sm:grid-cols-2">
+                        <p>signaux : {{ hold.evidence?.risk_signal_count ?? '—' }}</p>
+                        <p>durée visible : {{ hold.evidence?.visible_duration_ms ?? '—' }} ms</p>
+                        <p>durée requise : {{ hold.evidence?.required_duration_ms ?? '—' }} ms</p>
+                        <p class="break-all">campagne : {{ hold.campaign_id ?? '—' }}</p>
+                    </div>
+                </details>
+            </article>
         </div>
-    </div>
+
+        <div v-else class="p-8 text-center">
+            <p class="text-wpx-success text-sm font-extrabold">✓ Rien à examiner</p>
+            <p class="text-wpx-muted-dark mt-1 text-xs">Aucune récompense n’est actuellement retenue par l’antifraude.</p>
+        </div>
+    </section>
 </template>
