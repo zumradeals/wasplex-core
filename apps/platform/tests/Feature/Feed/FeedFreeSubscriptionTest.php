@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Feed\Application\Services\FeedCompositionService;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
 use App\Modules\Subscriptions\Infrastructure\Models\EconomicClass;
@@ -14,7 +13,7 @@ beforeEach(function (): void {
     Artisan::call('matching:seed-configuration');
 });
 
-it('provisions the free baseline before composing the feed', function (): void {
+it('provisions the free baseline before the real feed quota check', function (): void {
     $email = 'feed-auto-free@example.com';
     registerAndLogin($email, country: 'CI');
 
@@ -24,9 +23,13 @@ it('provisions the free baseline before composing the feed', function (): void {
 
     expect(UserSubscription::query()->where('account_id', $account->id)->count())->toBe(0);
 
-    // No approved campaign is required for this regression test: the Feed
-    // must establish the member baseline before it starts candidate lookup.
-    expect(app(FeedCompositionService::class)->nextCandidate($account->id))->toBeNull();
+    $sessionId = test()->postJson('/api/feed/sessions')
+        ->assertCreated()
+        ->json('feed_session.id');
+
+    test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
+        ->assertOk()
+        ->assertJsonPath('delivery', null);
 
     $subscription = UserSubscription::query()
         ->where('account_id', $account->id)
