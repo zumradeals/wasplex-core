@@ -36,14 +36,17 @@ const createForm = reactive({
 const editForm = reactive({ price_minor: 0, duration_days: 30 });
 const rewardForms = reactive<Record<string, { quota_monthly: number; reward_per_complete_view_minor: number }>>({});
 const numberFormatter = new Intl.NumberFormat('fr-FR');
+
 const freeReward = computed(() => {
     const free = levels.value.find((level) => level.code === 'FREE');
     return free ? (rewardForms[free.id]?.reward_per_complete_view_minor ?? 30) : 30;
 });
+const publishedCount = computed(() => planVersions.value.filter((version) => version.status === 'published').length);
+const draftCount = computed(() => planVersions.value.filter((version) => version.status === 'draft').length);
 
 function rewardAdvantage(level: EconomicClass): string {
     const reward = rewardForms[level.id]?.reward_per_complete_view_minor ?? freeReward.value;
-    if (level.code === 'FREE' || freeReward.value <= 0) return 'Récompense normale';
+    if (level.code === 'FREE' || freeReward.value <= 0) return 'Récompense de base';
     return `+${Math.round(((reward - freeReward.value) / freeReward.value) * 100)} % par rapport au Gratuit`;
 }
 
@@ -66,7 +69,7 @@ async function load(): Promise<void> {
     } catch (e) {
         error.value =
             (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
-            'Impossible de charger les abonnements.';
+            'Impossible de charger les offres.';
     } finally {
         loading.value = false;
     }
@@ -85,7 +88,7 @@ async function saveReward(level: EconomicClass): Promise<void> {
     } catch (e) {
         error.value =
             (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
-            'Modification du gain impossible.';
+            'Modification de la récompense impossible.';
     } finally {
         busy.value = null;
     }
@@ -113,7 +116,7 @@ async function createPlan(): Promise<void> {
     } catch (e) {
         error.value =
             (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
-            'Création du plan impossible.';
+            'Création de l’offre impossible.';
     } finally {
         busy.value = null;
     }
@@ -144,6 +147,9 @@ async function saveEdit(version: PlanVersion): Promise<void> {
 }
 
 async function publish(version: PlanVersion): Promise<void> {
+    const confirmed = window.confirm(`Publier l’offre ${version.plan.name} ? Elle deviendra visible par les membres.`);
+    if (!confirmed) return;
+
     busy.value = version.id;
     try {
         await http.post(`/admin/subscriptions/plans/${version.id}/publish`);
@@ -154,7 +160,7 @@ async function publish(version: PlanVersion): Promise<void> {
 }
 
 async function suspend(version: PlanVersion): Promise<void> {
-    if (!window.confirm(`Suspendre le plan ${version.plan.name} ?`)) return;
+    if (!window.confirm(`Suspendre l’offre ${version.plan.name} ? Elle ne sera plus proposée aux membres.`)) return;
     busy.value = version.id;
     try {
         await http.post(`/admin/subscriptions/plans/${version.id}/suspend`);
@@ -165,233 +171,169 @@ async function suspend(version: PlanVersion): Promise<void> {
 }
 
 function statusLabel(status: string): string {
-    return { draft: 'Brouillon', published: 'Actif', suspended: 'Suspendu' }[status] ?? status;
+    return { draft: 'Brouillon', published: 'Publié', suspended: 'Suspendu' }[status] ?? status;
 }
 
 function statusClasses(status: string): string {
-    if (status === 'published') return 'bg-wpx-success/10 text-wpx-success-light';
-    if (status === 'suspended') return 'bg-wpx-danger/10 text-wpx-danger-light';
-    return 'bg-wpx-pending/10 text-wpx-warning-light';
+    if (status === 'published') return 'bg-wpx-success/15 text-wpx-success';
+    if (status === 'suspended') return 'bg-wpx-danger/15 text-wpx-danger';
+    return 'bg-wpx-warning/15 text-wpx-gold';
 }
 
 onMounted(load);
 </script>
 
 <template>
-    <div class="flex flex-col gap-5">
-        <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-5">
-            <h2 class="text-wpx-text text-base font-bold">Récompenses par vidéo entièrement vue</h2>
-            <p class="text-wpx-text-muted mt-1 mb-4 text-sm">
-                Le montant final reste connu avant chaque vidéo. Les pourcentages indiquent seulement l’avantage par
-                rapport au plan Gratuit — ils ne divisent pas le budget en enveloppes fixes.
-            </p>
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <div v-for="level in levels" :key="level.id" class="border-wpx-border rounded-xl border p-4">
-                    <p class="text-wpx-text mb-3 font-bold">{{ level.code }}</p>
-                    <p class="text-wpx-blue-light mb-3 text-xs font-semibold">{{ rewardAdvantage(level) }}</p>
-                    <label class="text-wpx-text-muted block text-xs"
-                        >Gain par vue complète (WP)
-                        <input
-                            v-model.number="rewardForms[level.id].reward_per_complete_view_minor"
-                            type="number"
-                            min="1"
-                            class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                        />
-                    </label>
-                    <label class="text-wpx-text-muted mt-3 block text-xs"
-                        >Maximum de publicités par mois
-                        <input
-                            v-model.number="rewardForms[level.id].quota_monthly"
-                            type="number"
-                            min="1"
-                            class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                        />
-                    </label>
-                    <button
-                        type="button"
-                        :disabled="busy === level.id"
-                        class="text-wpx-blue-light mt-3 text-sm font-bold disabled:opacity-50"
-                        @click="saveReward(level)"
-                    >
-                        Enregistrer
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-5">
-            <div class="mb-4 flex items-start justify-between gap-4">
+    <div class="flex flex-col gap-5 text-wpx-white-soft">
+        <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark md:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h2 class="text-wpx-text text-base font-bold">Abonnements Wasplex</h2>
-                    <p class="text-wpx-text-muted mt-1 text-sm">
-                        Configurez directement le prix et la durée de chaque abonnement.
+                    <p class="text-wpx-cyan text-[11px] font-extrabold uppercase tracking-[0.16em]">Offres Wasplex</p>
+                    <h2 class="mt-1 text-2xl font-extrabold">Ce que les membres peuvent réellement choisir.</h2>
+                    <p class="text-wpx-muted-dark mt-2 max-w-3xl text-sm">
+                        Une offre <strong class="text-wpx-white-soft">Publié</strong> est visible par les membres. Une offre
+                        <strong class="text-wpx-white-soft">Brouillon</strong> reste invisible tant que tu ne la publies pas.
                     </p>
                 </div>
                 <button
                     type="button"
-                    class="rounded-wpx-md bg-wpx-blue-light px-4 py-2 text-sm font-bold text-white"
+                    class="from-wpx-blue to-wpx-cyan rounded-wpx-md bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold text-wpx-navy-950"
                     @click="showCreate = !showCreate"
                 >
-                    {{ showCreate ? 'Annuler' : 'Créer un plan' }}
+                    {{ showCreate ? 'Fermer' : '+ Créer une offre' }}
                 </button>
             </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <span class="bg-wpx-success/15 text-wpx-success rounded-wpx-full px-3 py-1 text-xs font-extrabold">
+                    {{ publishedCount }} publiée{{ publishedCount > 1 ? 's' : '' }}
+                </span>
+                <span class="bg-wpx-warning/15 text-wpx-gold rounded-wpx-full px-3 py-1 text-xs font-extrabold">
+                    {{ draftCount }} brouillon{{ draftCount > 1 ? 's' : '' }}
+                </span>
+            </div>
+        </section>
 
-            <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light mb-4 rounded p-3 text-sm">{{ error }}</p>
+        <p v-if="error" class="bg-wpx-danger/15 text-wpx-danger rounded-wpx-md p-3 text-sm">{{ error }}</p>
+        <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
 
+        <template v-else>
             <form
                 v-if="showCreate"
-                class="bg-wpx-canvas mb-5 grid gap-3 rounded-xl p-4 md:grid-cols-5"
+                class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark"
                 @submit.prevent="createPlan"
             >
-                <label class="text-wpx-text text-xs font-semibold"
-                    >Nom
-                    <input
-                        v-model="createForm.plan_name"
-                        required
-                        class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                        placeholder="Ex. Premium"
-                    />
-                </label>
-                <label class="text-wpx-text text-xs font-semibold"
-                    >Code
-                    <input
-                        v-model="createForm.plan_code"
-                        required
-                        class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                        placeholder="PREMIUM"
-                    />
-                </label>
-                <label class="text-wpx-text text-xs font-semibold"
-                    >Niveau de gain
-                    <select
-                        v-model="createForm.economic_class_id"
-                        required
-                        class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                    >
-                        <option value="" disabled>Choisir</option>
-                        <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.code }}</option>
-                    </select>
-                </label>
-                <label class="text-wpx-text text-xs font-semibold"
-                    >Prix (FCFA)
-                    <input
-                        v-model.number="createForm.price_minor"
-                        type="number"
-                        min="0"
-                        required
-                        class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                    />
-                </label>
-                <label class="text-wpx-text text-xs font-semibold"
-                    >Durée (jours)
-                    <input
-                        v-model.number="createForm.duration_days"
-                        type="number"
-                        min="1"
-                        required
-                        class="border-wpx-border mt-1 w-full rounded border p-2 text-sm"
-                    />
-                </label>
-                <div class="md:col-span-5">
-                    <button
-                        type="submit"
-                        :disabled="busy === 'create'"
-                        class="rounded-wpx-md bg-wpx-success px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                    >
-                        Enregistrer le nouveau plan
-                    </button>
+                <h3 class="text-base font-extrabold">Nouvelle offre</h3>
+                <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+                    <label class="flex flex-col gap-1.5 text-xs">
+                        <span class="text-wpx-muted-dark font-bold">Nom</span>
+                        <input v-model="createForm.plan_name" required placeholder="Premium" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm" />
+                    </label>
+                    <label class="flex flex-col gap-1.5 text-xs">
+                        <span class="text-wpx-muted-dark font-bold">Code</span>
+                        <input v-model="createForm.plan_code" required placeholder="PREMIUM" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm" />
+                    </label>
+                    <label class="flex flex-col gap-1.5 text-xs">
+                        <span class="text-wpx-muted-dark font-bold">Niveau de récompense</span>
+                        <select v-model="createForm.economic_class_id" required class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm">
+                            <option value="" disabled>Choisir</option>
+                            <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.code }}</option>
+                        </select>
+                    </label>
+                    <label class="flex flex-col gap-1.5 text-xs">
+                        <span class="text-wpx-muted-dark font-bold">Prix (FCFA)</span>
+                        <input v-model.number="createForm.price_minor" type="number" min="0" required class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm" />
+                    </label>
+                    <label class="flex flex-col gap-1.5 text-xs">
+                        <span class="text-wpx-muted-dark font-bold">Durée (jours)</span>
+                        <input v-model.number="createForm.duration_days" type="number" min="1" required class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm" />
+                    </label>
                 </div>
+                <button type="submit" :disabled="busy === 'create'" class="bg-wpx-success mt-4 rounded-wpx-md px-4 py-2.5 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50">
+                    Créer le brouillon
+                </button>
             </form>
 
-            <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
-                            <th class="p-2">Plan</th>
-                            <th class="p-2">Prix</th>
-                            <th class="p-2">Durée</th>
-                            <th class="p-2">Statut</th>
-                            <th class="p-2 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="v in planVersions" :key="v.id" class="border-wpx-border text-wpx-text border-b">
-                            <td class="p-2 font-semibold">{{ v.plan.name }}</td>
-                            <td class="p-2">
-                                <input
-                                    v-if="editing === v.id"
-                                    v-model.number="editForm.price_minor"
-                                    type="number"
-                                    min="0"
-                                    class="border-wpx-border w-32 rounded border p-1.5"
-                                />
-                                <template v-else>{{
-                                    v.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(v.price_minor)} FCFA`
-                                }}</template>
-                            </td>
-                            <td class="p-2">
-                                <input
-                                    v-if="editing === v.id"
-                                    v-model.number="editForm.duration_days"
-                                    type="number"
-                                    min="1"
-                                    class="border-wpx-border w-20 rounded border p-1.5"
-                                />
-                                <template v-else>{{ v.duration_days }} jours</template>
-                            </td>
-                            <td class="p-2">
-                                <span
-                                    class="rounded px-2 py-1 text-xs font-semibold"
-                                    :class="statusClasses(v.status)"
-                                    >{{ statusLabel(v.status) }}</span
-                                >
-                            </td>
-                            <td class="p-2 text-right whitespace-nowrap">
-                                <template v-if="editing === v.id">
-                                    <button
-                                        class="text-wpx-success-light mr-3 font-semibold"
-                                        :disabled="busy === v.id"
-                                        @click="saveEdit(v)"
-                                    >
-                                        Enregistrer
-                                    </button>
-                                    <button class="text-wpx-text-muted" @click="editing = null">Annuler</button>
-                                </template>
-                                <template v-else>
-                                    <button
-                                        v-if="v.status === 'draft'"
-                                        class="text-wpx-blue-light mr-3 font-semibold"
-                                        @click="startEdit(v)"
-                                    >
-                                        Modifier
-                                    </button>
-                                    <button
-                                        v-if="v.status === 'draft'"
-                                        class="text-wpx-success-light mr-3 font-semibold"
-                                        :disabled="busy === v.id"
-                                        @click="publish(v)"
-                                    >
-                                        Activer
-                                    </button>
-                                    <button
-                                        v-if="v.status === 'published'"
-                                        class="text-wpx-danger-light font-semibold"
-                                        :disabled="busy === v.id"
-                                        @click="suspend(v)"
-                                    >
-                                        Suspendre
-                                    </button>
-                                </template>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <p class="text-wpx-text-muted mt-4 text-xs">
-                Les paramètres internes de calcul ne sont plus affichés ici. Les gains WP par vue complète feront
-                l’objet d’un réglage simple et séparé.
-            </p>
-        </div>
+            <section>
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <article
+                        v-for="version in planVersions"
+                        :key="version.id"
+                        class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-lg font-extrabold">{{ version.plan.name }}</p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">{{ version.plan.code }}</p>
+                            </div>
+                            <span class="rounded-wpx-full px-2.5 py-1 text-[10px] font-extrabold" :class="statusClasses(version.status)">
+                                {{ statusLabel(version.status) }}
+                            </span>
+                        </div>
+
+                        <template v-if="editing === version.id">
+                            <div class="mt-4 flex flex-col gap-3">
+                                <label class="flex flex-col gap-1 text-xs">
+                                    <span class="text-wpx-muted-dark">Prix (FCFA)</span>
+                                    <input v-model.number="editForm.price_minor" type="number" min="0" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2 text-sm" />
+                                </label>
+                                <label class="flex flex-col gap-1 text-xs">
+                                    <span class="text-wpx-muted-dark">Durée (jours)</span>
+                                    <input v-model.number="editForm.duration_days" type="number" min="1" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2 text-sm" />
+                                </label>
+                                <div class="flex gap-2">
+                                    <button type="button" :disabled="busy === version.id" class="bg-wpx-success rounded-wpx-md px-3 py-2 text-xs font-extrabold text-wpx-navy-950" @click="saveEdit(version)">Enregistrer</button>
+                                    <button type="button" class="text-wpx-muted-dark px-2 text-xs font-bold" @click="editing = null">Annuler</button>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template v-else>
+                            <div class="mt-5">
+                                <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Prix</p>
+                                <p class="mt-1 text-2xl font-extrabold">
+                                    {{ version.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(version.price_minor)} FCFA` }}
+                                </p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">{{ version.duration_days }} jours</p>
+                            </div>
+                            <div class="border-wpx-border-dark mt-4 border-t pt-4">
+                                <p v-if="version.status === 'published'" class="text-wpx-success text-xs font-bold">Visible actuellement dans Mon Espace.</p>
+                                <p v-else-if="version.status === 'draft'" class="text-wpx-gold text-xs font-bold">Invisible pour les membres tant qu’elle reste en brouillon.</p>
+                                <p v-else class="text-wpx-danger text-xs font-bold">Cette offre n’est plus proposée.</p>
+                            </div>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <button v-if="version.status === 'draft'" type="button" class="border-wpx-border-dark text-wpx-cyan rounded-wpx-md border px-3 py-2 text-xs font-bold" @click="startEdit(version)">Modifier</button>
+                                <button v-if="version.status === 'draft'" type="button" :disabled="busy === version.id" class="bg-wpx-success rounded-wpx-md px-3 py-2 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50" @click="publish(version)">Publier</button>
+                                <button v-if="version.status === 'published'" type="button" :disabled="busy === version.id" class="border-wpx-danger/40 text-wpx-danger rounded-wpx-md border px-3 py-2 text-xs font-bold disabled:opacity-50" @click="suspend(version)">Suspendre</button>
+                            </div>
+                        </template>
+                    </article>
+                </div>
+            </section>
+
+            <details class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark">
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
+                    <div>
+                        <p class="text-base font-extrabold">Récompenses & quotas</p>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">Réglages économiques avancés associés aux niveaux Gratuit, Premium, Gold et Platine.</p>
+                    </div>
+                    <span class="text-wpx-cyan text-xs font-extrabold">Ouvrir</span>
+                </summary>
+                <div class="border-wpx-border-dark grid grid-cols-1 gap-3 border-t p-5 md:grid-cols-2 xl:grid-cols-4">
+                    <div v-for="level in levels" :key="level.id" class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-950 p-4">
+                        <p class="font-extrabold">{{ level.code }}</p>
+                        <p class="text-wpx-cyan mt-1 text-xs font-bold">{{ rewardAdvantage(level) }}</p>
+                        <label class="mt-4 block text-xs">
+                            <span class="text-wpx-muted-dark">Gain par vue complète (WP)</span>
+                            <input v-model.number="rewardForms[level.id].reward_per_complete_view_minor" type="number" min="1" class="border-wpx-border-dark mt-1 w-full rounded-wpx-md border bg-wpx-navy-850 px-3 py-2 text-sm" />
+                        </label>
+                        <label class="mt-3 block text-xs">
+                            <span class="text-wpx-muted-dark">Publicités maximum / mois</span>
+                            <input v-model.number="rewardForms[level.id].quota_monthly" type="number" min="1" class="border-wpx-border-dark mt-1 w-full rounded-wpx-md border bg-wpx-navy-850 px-3 py-2 text-sm" />
+                        </label>
+                        <button type="button" :disabled="busy === level.id" class="text-wpx-cyan mt-3 text-xs font-extrabold disabled:opacity-50" @click="saveReward(level)">Enregistrer</button>
+                    </div>
+                </div>
+            </details>
+        </template>
     </div>
 </template>
