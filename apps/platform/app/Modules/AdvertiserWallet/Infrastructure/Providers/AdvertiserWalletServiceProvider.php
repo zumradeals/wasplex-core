@@ -9,6 +9,7 @@ use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReconcilab
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReservationService;
 use App\Modules\AdvertiserWallet\Infrastructure\Models\GeniusPayConfiguration;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -27,16 +28,26 @@ final class AdvertiserWalletServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../../Database/Migrations');
 
-        if (Schema::hasTable('geniuspay_configurations')) {
-            $configuration = GeniusPayConfiguration::query()->latest('updated_at')->first();
-            if ($configuration !== null) {
-                config([
-                    'services.geniuspay.environment' => 'sandbox',
-                    'services.geniuspay.api_key' => $configuration->api_key,
-                    'services.geniuspay.api_secret' => $configuration->api_secret,
-                    'services.geniuspay.webhook_secret' => $configuration->webhook_secret,
-                ]);
+        // Composer's package:discover boots providers before CI has prepared
+        // its database credentials. Database-backed GeniusPay settings are an
+        // optional override, so an unavailable database must simply fall back
+        // to services.geniuspay values from the environment.
+        try {
+            if (Schema::hasTable('geniuspay_configurations')) {
+                $configuration = GeniusPayConfiguration::query()->latest('updated_at')->first();
+                if ($configuration !== null) {
+                    config([
+                        'services.geniuspay.environment' => 'sandbox',
+                        'services.geniuspay.api_key' => $configuration->api_key,
+                        'services.geniuspay.api_secret' => $configuration->api_secret,
+                        'services.geniuspay.webhook_secret' => $configuration->webhook_secret,
+                    ]);
+                }
             }
+        } catch (QueryException) {
+            // Database not available yet (notably during Composer discovery).
+            // Keep the environment configuration and let normal runtime boot
+            // load the database override once PostgreSQL is reachable.
         }
 
         RateLimiter::for('geniuspay-webhook', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));

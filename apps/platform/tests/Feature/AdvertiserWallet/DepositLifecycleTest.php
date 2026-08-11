@@ -83,8 +83,7 @@ test('uses the documented GeniusPay sandbox headers and nested response', functi
     expect($deposit->provider_reference)->toBe('MTX-SANDBOX-DOC');
     expect($deposit->checkout_url)->toBe('https://pay.genius.ci/checkout/MTX-SANDBOX-DOC');
 
-    Http::assertSent(fn ($request): bool =>
-        $request->hasHeader('X-API-Key', 'sandbox_test_key')
+    Http::assertSent(fn ($request): bool => $request->hasHeader('X-API-Key', 'sandbox_test_key')
         && $request->hasHeader('X-API-Secret', 'sandbox_test_secret_key')
         && $request['amount'] === 5000
         && $request['metadata']['deposit_id'] === $deposit->id

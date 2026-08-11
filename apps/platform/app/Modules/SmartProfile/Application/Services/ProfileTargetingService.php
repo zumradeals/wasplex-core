@@ -62,8 +62,8 @@ final class ProfileTargetingService implements ProfileTargetingContract
             return false;
         }
 
-        $selectedByCategory = $taxonomies
-            ->groupBy('category')
+        $selectedByFacet = $taxonomies
+            ->groupBy(fn (ProfileTaxonomy $taxonomy) => $this->facetFor($taxonomy))
             ->map(fn ($items) => $items->pluck('code')->all());
 
         $matchedCodes = ProfileAnswer::query()
@@ -82,15 +82,36 @@ final class ProfileTargetingService implements ProfileTargetingContract
             ->values()
             ->all();
 
-        // OR inside the same category, AND between different categories.
-        // Example: woman OR man, smartphone OR two-wheeler, while a selected
-        // interest AND a selected possession must both be represented.
-        foreach ($selectedByCategory as $categoryCodes) {
-            if (array_intersect($categoryCodes, $matchedCodes) === []) {
+        // OR is reserved for alternatives of the same real-world facet,
+        // e.g. woman OR man, Orange OR MTN as primary network, or one of
+        // several approximate areas. Independent facts such as owning a
+        // smartphone, a two-wheeler and a car are separate facets, so when
+        // an advertiser deliberately selects several of them they are ANDed.
+        foreach ($selectedByFacet as $facetCodes) {
+            if (array_intersect($facetCodes, $matchedCodes) === []) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private function facetFor(ProfileTaxonomy $taxonomy): string
+    {
+        $code = $taxonomy->code;
+
+        if (str_starts_with($code, 'demographic.gender.')) {
+            return 'demographic.gender';
+        }
+
+        if (str_starts_with($code, 'usage.reseau_')) {
+            return 'usage.primary_network';
+        }
+
+        if (str_starts_with($code, 'territory.')) {
+            return 'territory.approximate_area';
+        }
+
+        return $code;
     }
 }
