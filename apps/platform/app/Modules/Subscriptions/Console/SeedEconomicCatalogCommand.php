@@ -12,33 +12,27 @@ use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionPlanVersion;
 use Illuminate\Console\Command;
 
 /**
- * Docs/03-abonnements-et-classes-economiques-wasplex.md §28 ("décision
- * finale") gives exact, non-negotiable quota/weight values — safe to seed
- * as data. §13's coefficients are explicitly "illustratif" but are the
- * only concrete numbers in the corpus, seeded as the starting point of an
- * administrable, versioned value (never hardcoded in matching logic,
- * which doesn't exist yet anyway).
+ * Catalogue économique V1 approuvé :
+ * - récompense fixe par vue complète et quota mensuel par niveau ;
+ * - prix de lancement des offres commerciales ;
+ * - publication explicite des offres payantes par un administrateur.
  *
- * Deliberately NOT seeded: real commercial prices for Premium/Gold/Platine.
- * No FCFA amount for any paid plan exists anywhere in docs/ — inventing one
- * would be a silent product decision (CLAUDE.md §2). Paid plans are seeded
- * as a single `draft` version at price 0, structurally complete but never
- * auto-published; a founder/admin must set the real price via
- * PATCH /api/admin/subscriptions/plans/{id} before publishing. The Gratuit
- * plan is the only one seeded `published`, since 0 is its actual price.
+ * Le partage publicitaire 50/50 reste appliqué au moment de la capture d'une
+ * vue complète par le module Campaigns/AdvertiserWallet. Les montants ci-dessous
+ * ne sont jamais des pourcentages du budget total de l'annonceur.
  */
 final class SeedEconomicCatalogCommand extends Command
 {
     protected $signature = 'subscriptions:seed-catalog';
 
-    protected $description = 'Initialise les classes économiques et les plans commerciaux (idempotent).';
+    protected $description = 'Initialise les niveaux membres et les offres commerciales Wasplex (idempotent).';
 
-    /** @var array<int, array{code: string, name: string, quota: int, reward: int}> */
+    /** @var array<int, array{code: string, name: string, quota: int, reward: int, price: int}> */
     private const CLASSES = [
-        ['code' => EconomicClass::CODE_FREE, 'name' => 'Gratuit', 'quota' => 120, 'reward' => 30],
-        ['code' => EconomicClass::CODE_PREMIUM, 'name' => 'Premium', 'quota' => 300, 'reward' => 40],
-        ['code' => EconomicClass::CODE_GOLD, 'name' => 'Gold', 'quota' => 600, 'reward' => 50],
-        ['code' => EconomicClass::CODE_PLATINUM, 'name' => 'Platine', 'quota' => 900, 'reward' => 60],
+        ['code' => EconomicClass::CODE_FREE, 'name' => 'Gratuit', 'quota' => 120, 'reward' => 30, 'price' => 0],
+        ['code' => EconomicClass::CODE_PREMIUM, 'name' => 'Premium', 'quota' => 300, 'reward' => 40, 'price' => 1500],
+        ['code' => EconomicClass::CODE_GOLD, 'name' => 'Gold', 'quota' => 600, 'reward' => 50, 'price' => 4000],
+        ['code' => EconomicClass::CODE_PLATINUM, 'name' => 'Platine', 'quota' => 900, 'reward' => 60, 'price' => 7500],
     ];
 
     public function handle(): int
@@ -73,30 +67,51 @@ final class SeedEconomicCatalogCommand extends Command
                 ['name' => $definition['name']],
             );
 
-            $hasVersion = SubscriptionPlanVersion::query()->where('plan_id', $plan->id)->exists();
+            $latestVersion = SubscriptionPlanVersion::query()
+                ->where('plan_id', $plan->id)
+                ->latest('created_at')
+                ->first();
 
-            if (! $hasVersion) {
+            if ($latestVersion === null) {
                 $isFree = $definition['code'] === EconomicClass::CODE_FREE;
 
-                $version = SubscriptionPlanVersion::query()->create([
+                $latestVersion = SubscriptionPlanVersion::query()->create([
                     'plan_id' => $plan->id,
-                    'status' => $isFree ? SubscriptionPlanVersion::STATUS_PUBLISHED : SubscriptionPlanVersion::STATUS_DRAFT,
-                    'price_minor' => 0,
+                    'status' => $isFree
+                        ? SubscriptionPlanVersion::STATUS_PUBLISHED
+                        : SubscriptionPlanVersion::STATUS_DRAFT,
+                    'price_minor' => $definition['price'],
                     'currency' => 'XOF',
                     'duration_days' => 30,
-                    'services_snapshot' => $isFree ? null : ['note' => 'Prix à définir par le fondateur avant publication.'],
+                    'services_snapshot' => $isFree
+                        ? null
+                        : ['note' => 'Prix de lancement approuvé — publication manuelle requise.'],
                     'effective_from' => $isFree ? now() : null,
                 ]);
 
                 PlanEconomicClassLink::query()->create([
-                    'plan_version_id' => $version->id,
+                    'plan_version_id' => $latestVersion->id,
                     'economic_class_id' => $economicClass->id,
                 ]);
+
+                continue;
+            }
+
+            // Mise à niveau sûre des anciens brouillons créés avant la décision
+            // commerciale : un prix déjà modifié par un administrateur n'est
+            // jamais écrasé, et aucune offre payante n'est publiée automatiquement.
+            if (
+                $definition['code'] !== EconomicClass::CODE_FREE
+                && $latestVersion->status === SubscriptionPlanVersion::STATUS_DRAFT
+                && (int) $latestVersion->price_minor === 0
+            ) {
+                $latestVersion->update(['price_minor' => $definition['price']]);
             }
         }
 
-        $this->info('Classes économiques et plans initialisés : '.implode(', ', array_column(self::CLASSES, 'code')));
-        $this->warn('Premium/Gold/Platine restent en brouillon (prix à définir) — voir docs/chantiers/P004-RAPPORT.md.');
+        $this->info('Catalogue V1 prêt : Gratuit, Premium, Gold et Platine.');
+        $this->info('Prix de lancement : Premium 1 500, Gold 4 000, Platine 7 500 FCFA / 30 jours.');
+        $this->warn('Les offres payantes restent en brouillon tant qu’un administrateur ne les publie pas.');
 
         return self::SUCCESS;
     }
