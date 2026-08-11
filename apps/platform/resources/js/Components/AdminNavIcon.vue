@@ -19,15 +19,33 @@ const color = computed(() => (props.active ? '#2BC4DE' : '#A9B7C8'));
         <circle cx="18" cy="9" r="2.4" :stroke="color" stroke-width="1.6" />
         <path d="M15.5 20c.3-2.6 2.1-4.5 4.5-4.5" :stroke="color" stroke-width="1.6" />
     </svg>
-    <svg v-else-if="section === 'capabilities'" width="16" height="16" viewBox="0 0 24 24" fill="none">
-        <rect x="4" y="10" width="16" height="10" rx="2" :stroke="color" stroke-width="1.7" />
-        <path d="M8 10V7a4 4 0 018 0v3" :stroke="color" stroke-width="1.7" />
+    <svg
+        v-else-if="['capabilities', 'settings'].includes(section)"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+    >
+        <circle cx="12" cy="12" r="3" :stroke="color" stroke-width="1.6" />
+        <path
+            d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"
+            :stroke="color"
+            stroke-width="1.6"
+            stroke-linecap="round"
+        />
     </svg>
-    <svg v-else-if="section === 'ledger'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg v-else-if="['ledger', 'finance'].includes(section)" width="16" height="16" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="6" width="18" height="13" rx="3" :stroke="color" stroke-width="1.7" />
-        <rect x="3" y="10" width="18" height="2.4" :fill="color" />
+        <path d="M3 10h18" :stroke="color" stroke-width="1.7" />
+        <circle cx="17" cy="15" r="1.5" :fill="color" />
     </svg>
-    <svg v-else-if="section === 'subscriptions'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg
+        v-else-if="['subscriptions', 'offers'].includes(section)"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+    >
         <path
             d="M12 3l2.4 5 5.6.6-4.1 3.8 1.1 5.5L12 15.2 7 17.9l1.1-5.5-4.1-3.8L9.6 8z"
             :stroke="color"
@@ -35,7 +53,13 @@ const color = computed(() => (props.active ? '#2BC4DE' : '#A9B7C8'));
             stroke-linejoin="round"
         />
     </svg>
-    <svg v-else-if="section === 'advertisers'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg
+        v-else-if="['advertisers', 'advertising'].includes(section)"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+    >
         <path d="M3 10l14-6-4 16-3-6-6-4z" :stroke="color" stroke-width="1.7" stroke-linejoin="round" />
     </svg>
     <svg v-else-if="section === 'campaign-reviews'" width="16" height="16" viewBox="0 0 24 24" fill="none">

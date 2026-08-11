@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdminCampaignsPanel from '@/Components/AdminCampaignsPanel.vue';
@@ -19,28 +19,48 @@ import type { AuthShared } from '@/types/identity';
 const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
-    { key: 'dashboard', label: "Vue d'ensemble" },
-    { key: 'users', label: 'Utilisateurs' },
-    { key: 'capabilities', label: 'Permissions' },
-    { key: 'ledger', label: 'Wallet & Grand livre' },
-    { key: 'subscriptions', label: 'Abonnements' },
-    { key: 'advertisers', label: 'Annonceurs & campagnes' },
-    { key: 'smartprofile', label: 'Informations de profil' },
-    { key: 'matching', label: 'Ciblage publicitaire' },
-    { key: 'feed', label: 'Feed' },
-    { key: 'organizations', label: 'Organisations' },
-    { key: 'audit', label: 'Audit' },
+    { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
+    { key: 'users', label: 'Utilisateurs', helper: 'Comptes et accès' },
+    { key: 'advertising', label: 'Publicité', helper: 'Campagnes et diffusion' },
+    { key: 'finance', label: 'Finance', helper: 'Wallet et Grand Livre' },
+    { key: 'offers', label: 'Offres', helper: 'Abonnements et gains' },
+    { key: 'settings', label: 'Réglages', helper: 'Équipe et configuration' },
 ] as const;
 
-const activeSection = ref<(typeof nav)[number]['key']>('dashboard');
+type SectionKey = (typeof nav)[number]['key'];
+type AdvertisingTab = 'advertisers' | 'feed' | 'matching' | 'smartprofile';
+type SettingsTab = 'capabilities' | 'organizations' | 'audit';
+
+const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
+    { key: 'advertisers', label: 'Campagnes & annonceurs' },
+    { key: 'feed', label: 'Antifraude' },
+    { key: 'matching', label: 'Diffusion & ciblage' },
+    { key: 'smartprofile', label: 'Profil intelligent' },
+];
+
+const settingsTabs: Array<{ key: SettingsTab; label: string }> = [
+    { key: 'capabilities', label: 'Équipe & permissions' },
+    { key: 'organizations', label: 'Organisations' },
+    { key: 'audit', label: 'Audit & sécurité' },
+];
+
+const activeSection = ref<SectionKey>('dashboard');
+const activeAdvertisingTab = ref<AdvertisingTab>('advertisers');
+const activeSettingsTab = ref<SettingsTab>('capabilities');
 const feedPanel = ref<InstanceType<typeof AdminFeedPanel> | null>(null);
+
+const activeNavItem = computed(() => nav.find((item) => item.key === activeSection.value) ?? nav[0]);
 
 function onFeedHoldResolved(): void {
     void feedPanel.value?.load();
 }
 
-function selectSection(key: (typeof nav)[number]['key']): void {
+function selectSection(key: SectionKey): void {
     activeSection.value = key;
+}
+
+function navigateFromDashboard(section: 'users' | 'advertising' | 'finance' | 'offers'): void {
+    activeSection.value = section;
 }
 
 async function logout(): Promise<void> {
@@ -50,89 +70,165 @@ async function logout(): Promise<void> {
 </script>
 
 <template>
-    <div class="bg-wpx-canvas flex min-h-screen">
-        <aside class="bg-wpx-navy-950 flex w-56 flex-col py-5">
-            <div class="flex items-center gap-2.5 px-[18px] pt-0 pb-5.5">
-                <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-6.5 w-6.5 object-contain" />
-                <span class="text-wpx-white-soft text-sm font-bold">Administration</span>
+    <div class="bg-wpx-navy-950 text-wpx-white-soft min-h-screen md:flex">
+        <aside class="border-wpx-border-dark bg-wpx-navy-950 hidden w-64 shrink-0 flex-col border-r md:flex">
+            <div class="border-wpx-border-dark flex items-center gap-3 border-b px-5 py-5">
+                <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-8 w-8 object-contain" />
+                <div>
+                    <p class="text-sm font-extrabold">Administration</p>
+                    <p class="text-wpx-muted-dark text-[11px]">Console fondateur</p>
+                </div>
             </div>
-            <nav class="flex flex-1 flex-col gap-px">
+
+            <nav class="flex flex-1 flex-col gap-1.5 p-3">
                 <button
                     v-for="item in nav"
                     :key="item.key"
-                    class="flex items-center gap-2.5 px-[18px] py-2.5 text-left text-[13px] font-semibold"
+                    type="button"
+                    class="rounded-wpx-md flex items-center gap-3 px-3.5 py-3 text-left transition"
                     :class="
                         activeSection === item.key
-                            ? 'bg-wpx-navy-850 border-wpx-cyan text-wpx-white-soft border-l-[3px]'
-                            : 'text-wpx-muted-dark border-l-[3px] border-transparent'
+                            ? 'border-wpx-border-dark bg-wpx-navy-750 shadow-wpx-card-dark border'
+                            : 'text-wpx-muted-dark hover:bg-wpx-navy-850 hover:text-wpx-white-soft'
                     "
                     @click="selectSection(item.key)"
                 >
-                    <span class="flex h-4 w-4 shrink-0 items-center justify-center">
+                    <span
+                        class="rounded-wpx-sm flex h-9 w-9 shrink-0 items-center justify-center"
+                        :class="activeSection === item.key ? 'bg-wpx-cyan/12' : 'bg-wpx-navy-850'"
+                    >
                         <AdminNavIcon :section="item.key" :active="activeSection === item.key" />
                     </span>
-                    {{ item.label }}
+                    <span class="min-w-0">
+                        <span class="block text-[13px] font-bold">{{ item.label }}</span>
+                        <span class="text-wpx-muted-dark block truncate text-[10px]">{{ item.helper }}</span>
+                    </span>
                 </button>
             </nav>
+
+            <div class="border-wpx-border-dark border-t p-4">
+                <p class="text-wpx-muted-dark text-[10px] tracking-[0.16em] uppercase">Wasplex Core</p>
+                <p class="mt-1 text-xs font-semibold">Piloter sans jargon technique</p>
+            </div>
         </aside>
 
-        <div class="flex flex-1 flex-col">
-            <header class="bg-wpx-surface border-wpx-border flex items-center justify-between border-b px-7 py-4">
-                <span class="text-wpx-text text-[17px] font-bold">
-                    {{ nav.find((n) => n.key === activeSection)?.label }}
-                </span>
-                <div class="flex items-center gap-4">
-                    <SpaceSwitcher
-                        :spaces="page.props.auth.spaces"
-                        :active-space-id="page.props.auth.active_space_id"
-                    />
-                    <button class="text-wpx-danger-light text-xs font-semibold" @click="logout">Déconnexion</button>
+        <div class="bg-wpx-navy-950 min-w-0 flex-1">
+            <header
+                class="border-wpx-border-dark bg-wpx-navy-950/95 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur md:px-7"
+            >
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="truncate text-lg font-extrabold">{{ activeNavItem.label }}</p>
+                        <p class="text-wpx-muted-dark hidden text-xs sm:block">{{ activeNavItem.helper }}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="hidden sm:block">
+                            <SpaceSwitcher
+                                :spaces="page.props.auth.spaces"
+                                :active-space-id="page.props.auth.active_space_id"
+                            />
+                        </div>
+                        <button class="text-wpx-danger shrink-0 text-xs font-bold" @click="logout">Sortir</button>
+                    </div>
                 </div>
+
+                <nav class="mt-3 flex gap-2 overflow-x-auto pb-1 md:hidden">
+                    <button
+                        v-for="item in nav"
+                        :key="item.key"
+                        type="button"
+                        class="rounded-wpx-full shrink-0 border px-3 py-2 text-xs font-bold"
+                        :class="
+                            activeSection === item.key
+                                ? 'border-wpx-cyan bg-wpx-cyan/10 text-wpx-cyan'
+                                : 'border-wpx-border-dark text-wpx-muted-dark'
+                        "
+                        @click="selectSection(item.key)"
+                    >
+                        {{ item.label }}
+                    </button>
+                </nav>
             </header>
 
-            <main class="flex-1 p-6">
-                <section v-if="activeSection === 'capabilities'">
-                    <AdminPermissionsPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'ledger'">
-                    <AdminWalletLedgerPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'subscriptions'">
-                    <AdminSubscriptionsPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'advertisers'">
-                    <AdminCampaignsPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'smartprofile'">
-                    <AdminSmartProfilePanel />
-                </section>
-
-                <section v-else-if="activeSection === 'matching'">
-                    <AdminMatchingPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'feed'" class="flex flex-col gap-4">
-                    <AdminFeedPanel ref="feedPanel" />
-                    <AdminFeedRiskPanel @resolved="onFeedHoldResolved" />
-                </section>
-
-                <section v-else-if="activeSection === 'dashboard'">
-                    <AdminDashboardPanel @navigate="selectSection" />
+            <main class="mx-auto w-full max-w-[1500px] p-4 pb-10 md:p-6 lg:p-8">
+                <section v-if="activeSection === 'dashboard'">
+                    <AdminDashboardPanel @navigate="navigateFromDashboard" />
                 </section>
 
                 <section v-else-if="activeSection === 'users'">
                     <AdminUsersPanel />
                 </section>
 
-                <section
-                    v-else
-                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex h-64 items-center justify-center text-sm"
-                >
-                    {{ nav.find((n) => n.key === activeSection)?.label }} — bientôt disponible
+                <section v-else-if="activeSection === 'advertising'" class="flex flex-col gap-5">
+                    <div
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
+                    >
+                        <button
+                            v-for="tab in advertisingTabs"
+                            :key="tab.key"
+                            type="button"
+                            class="rounded-wpx-md shrink-0 px-4 py-2.5 text-xs font-bold"
+                            :class="
+                                activeAdvertisingTab === tab.key
+                                    ? 'bg-wpx-white-soft text-wpx-navy-950'
+                                    : 'text-wpx-muted-dark hover:text-wpx-white-soft'
+                            "
+                            @click="activeAdvertisingTab = tab.key"
+                        >
+                            {{ tab.label }}
+                        </button>
+                    </div>
+
+                    <AdminCampaignsPanel v-if="activeAdvertisingTab === 'advertisers'" />
+                    <div v-else-if="activeAdvertisingTab === 'feed'" class="flex flex-col gap-4">
+                        <AdminFeedPanel ref="feedPanel" />
+                        <AdminFeedRiskPanel @resolved="onFeedHoldResolved" />
+                    </div>
+                    <AdminMatchingPanel v-else-if="activeAdvertisingTab === 'matching'" />
+                    <AdminSmartProfilePanel v-else />
+                </section>
+
+                <section v-else-if="activeSection === 'finance'">
+                    <AdminWalletLedgerPanel />
+                </section>
+
+                <section v-else-if="activeSection === 'offers'">
+                    <AdminSubscriptionsPanel />
+                </section>
+
+                <section v-else class="flex flex-col gap-5">
+                    <div
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
+                    >
+                        <button
+                            v-for="tab in settingsTabs"
+                            :key="tab.key"
+                            type="button"
+                            class="rounded-wpx-md shrink-0 px-4 py-2.5 text-xs font-bold"
+                            :class="
+                                activeSettingsTab === tab.key
+                                    ? 'bg-wpx-white-soft text-wpx-navy-950'
+                                    : 'text-wpx-muted-dark hover:text-wpx-white-soft'
+                            "
+                            @click="activeSettingsTab = tab.key"
+                        >
+                            {{ tab.label }}
+                        </button>
+                    </div>
+
+                    <AdminPermissionsPanel v-if="activeSettingsTab === 'capabilities'" />
+                    <div
+                        v-else
+                        class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-8 text-center"
+                    >
+                        <p class="text-lg font-extrabold">
+                            {{ activeSettingsTab === 'organizations' ? 'Organisations' : 'Audit & sécurité' }}
+                        </p>
+                        <p class="text-wpx-muted-dark mx-auto mt-2 max-w-xl text-sm">
+                            Cette zone sera enrichie dans la dernière étape de la refonte. Les fonctions déjà actives
+                            restent accessibles ailleurs dans la console.
+                        </p>
+                    </div>
                 </section>
             </main>
         </div>
