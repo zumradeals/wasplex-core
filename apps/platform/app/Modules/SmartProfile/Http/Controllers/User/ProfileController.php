@@ -12,11 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
-/**
- * docs/09-compte-universel-et-mon-espace-intelligent-wasplex.md Phase 4 :
- * self-service, aucune capacité spéciale requise au-delà d'une session
- * authentifiée valide (même discipline que docs/03 §24).
- */
 final class ProfileController extends Controller
 {
     public function __construct(private readonly ProfileAnswerService $answers) {}
@@ -26,7 +21,24 @@ final class ProfileController extends Controller
         /** @var Account $account */
         $account = $request->user();
 
-        return response()->json(['categories' => $this->answers->viewForAccount($account->id)]);
+        return response()->json([
+            'country_code' => $account->country_code,
+            'categories' => $this->answers->viewForAccount($account->id),
+        ]);
+    }
+
+    public function updateCountry(Request $request): JsonResponse
+    {
+        /** @var Account $account */
+        $account = $request->user();
+
+        $data = $request->validate([
+            'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
+        ]);
+
+        $account->update(['country_code' => strtoupper($data['country_code'])]);
+
+        return response()->json(['country_code' => $account->country_code]);
     }
 
     public function declare(Request $request, string $taxonomy): JsonResponse
