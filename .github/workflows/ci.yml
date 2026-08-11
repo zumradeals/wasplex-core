@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   platform:
@@ -43,8 +43,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: true
-          ref: refactor/admin-founder-dashboard
+          persist-credentials: false
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -72,22 +71,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Format admin founder files
-        run: npx prettier --write resources/js/Pages/Identity/AdminShell.vue resources/js/Components/AdminDashboardPanel.vue resources/js/Components/AdminNavIcon.vue
-
-      - name: Commit formatter output
-        working-directory: .
-        run: |
-          if git diff --quiet -- apps/platform/resources/js/Pages/Identity/AdminShell.vue apps/platform/resources/js/Components/AdminDashboardPanel.vue apps/platform/resources/js/Components/AdminNavIcon.vue; then
-            echo "No formatter changes"
-          else
-            git config user.name "zumradeals"
-            git config user.email "zumradeals@gmail.com"
-            git add -- apps/platform/resources/js/Pages/Identity/AdminShell.vue apps/platform/resources/js/Components/AdminDashboardPanel.vue apps/platform/resources/js/Components/AdminNavIcon.vue
-            git commit -m "style(admin): format founder console"
-            git push origin HEAD:refactor/admin-founder-dashboard
-          fi
-
       - name: Check frontend formatting
         run: npm run format:check
 
@@ -114,3 +97,8 @@ jobs:
           DB_PASSWORD: wasplex_ci_only
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+
+      # TODO(P001+): réactiver "composer types:check" (Larastan/PHPStan)
+      # dès que le paquet larastan/larastan est ajouté à composer.json depuis
+      # un poste disposant d'un accès réseau complet à GitHub — voir le
+      # rapport P000 pour le détail du blocage réseau rencontré en sandbox.
