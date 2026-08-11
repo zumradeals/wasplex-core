@@ -141,18 +141,20 @@ onMounted(search);
 </script>
 
 <template>
-    <div class="flex flex-col gap-5 text-wpx-white-soft">
-        <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+    <div class="text-wpx-white-soft flex flex-col gap-5">
+        <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
             <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold uppercase tracking-[0.16em]">Utilisateurs</p>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">Utilisateurs</p>
                     <h2 class="mt-1 text-xl font-extrabold">Comprendre un compte avant d’agir.</h2>
                     <p class="text-wpx-muted-dark mt-1 max-w-2xl text-sm">
-                        Recherche une personne par téléphone ou email. Son wallet, son abonnement et ses organisations sont
-                        regroupés dans une seule fiche.
+                        Recherche une personne par téléphone ou email. Son wallet, son abonnement et ses organisations
+                        sont regroupés dans une seule fiche.
                     </p>
                 </div>
-                <div class="border-wpx-border-dark flex items-center gap-2 rounded-wpx-md border bg-wpx-navy-950 px-3.5 py-2.5 md:w-96">
+                <div
+                    class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 flex items-center gap-2 border px-3.5 py-2.5 md:w-96"
+                >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="shrink-0">
                         <circle cx="11" cy="11" r="7" stroke="#A9B7C8" stroke-width="1.8" />
                         <path d="M21 21l-4.3-4.3" stroke="#A9B7C8" stroke-width="1.8" stroke-linecap="round" />
@@ -160,7 +162,7 @@ onMounted(search);
                     <input
                         v-model="searchQuery"
                         placeholder="Téléphone ou email…"
-                        class="placeholder:text-wpx-muted-dark min-w-0 flex-1 bg-transparent text-sm text-wpx-white-soft outline-none"
+                        class="placeholder:text-wpx-muted-dark text-wpx-white-soft min-w-0 flex-1 bg-transparent text-sm outline-none"
                         @keyup.enter="search"
                     />
                     <button type="button" class="text-wpx-cyan text-xs font-extrabold" @click="search">Chercher</button>
@@ -169,7 +171,9 @@ onMounted(search);
         </section>
 
         <div class="grid min-h-[520px] grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <aside class="border-wpx-border-dark overflow-hidden rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark">
+            <aside
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border"
+            >
                 <div class="border-wpx-border-dark flex items-center justify-between border-b px-4 py-3.5">
                     <p class="text-sm font-extrabold">Comptes</p>
                     <span class="text-wpx-muted-dark text-xs">{{ accounts.length }}</span>
@@ -184,7 +188,7 @@ onMounted(search);
                         :class="
                             selectedDetail?.account.id === account.id
                                 ? 'border-wpx-cyan/40 bg-wpx-navy-750'
-                                : 'border-transparent hover:bg-wpx-navy-750/60'
+                                : 'hover:bg-wpx-navy-750/60 border-transparent'
                         "
                         @click="selectAccount(account.id)"
                     >
@@ -208,10 +212,10 @@ onMounted(search);
             </aside>
 
             <section v-if="selectedDetail" class="min-w-0">
-                <div class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+                <div class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
                     <div class="flex flex-col gap-4 xl:flex-row xl:items-center">
                         <span
-                            class="from-wpx-orange to-wpx-gold flex h-16 w-16 shrink-0 items-center justify-center rounded-wpx-lg bg-gradient-to-br text-xl font-extrabold text-wpx-navy-950"
+                            class="from-wpx-orange to-wpx-gold rounded-wpx-lg text-wpx-navy-950 flex h-16 w-16 shrink-0 items-center justify-center bg-gradient-to-br text-xl font-extrabold"
                         >
                             {{ initials(primaryIdentifier) }}
                         </span>
@@ -228,10 +232,13 @@ onMounted(search);
                                 >
                                     {{ selectedDetail.account.is_restricted ? 'Restreint' : 'Actif' }}
                                 </span>
-                                <span v-if="selectedDetail.is_online" class="text-wpx-success text-[11px] font-bold">● En ligne</span>
+                                <span v-if="selectedDetail.is_online" class="text-wpx-success text-[11px] font-bold"
+                                    >● En ligne</span
+                                >
                             </div>
                             <p class="text-wpx-muted-dark mt-1 text-xs">
-                                {{ selectedDetail.account.country_code ?? 'Pays non renseigné' }} · membre depuis {{ memberSince }}
+                                {{ selectedDetail.account.country_code ?? 'Pays non renseigné' }} · membre depuis
+                                {{ memberSince }}
                             </p>
                         </div>
                         <button
@@ -245,35 +252,53 @@ onMounted(search);
                             :disabled="busy"
                             @click="toggleRestriction"
                         >
-                            {{ selectedDetail.account.is_restricted ? 'Restaurer le compte' : 'Protéger / restreindre' }}
+                            {{
+                                selectedDetail.account.is_restricted ? 'Restaurer le compte' : 'Protéger / restreindre'
+                            }}
                         </button>
                     </div>
 
                     <p
                         v-if="actionMessage"
-                        class="border-wpx-border-dark mt-4 rounded-wpx-md border bg-wpx-navy-950 p-3 text-xs text-wpx-muted-dark"
+                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-muted-dark mt-4 border p-3 text-xs"
                     >
                         {{ actionMessage }}
                     </p>
 
-                    <div class="mt-5 grid grid-cols-2 gap-3 border-t border-wpx-border-dark pt-5 xl:grid-cols-4">
+                    <div class="border-wpx-border-dark mt-5 grid grid-cols-2 gap-3 border-t pt-5 xl:grid-cols-4">
                         <div>
-                            <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Wallet</p>
-                            <p class="mt-1 text-lg font-extrabold">{{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} WP</p>
-                            <p class="text-wpx-muted-dark text-[10px]">≈ {{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} FCFA</p>
-                        </div>
-                        <div>
-                            <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Abonnement</p>
+                            <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">Wallet</p>
                             <p class="mt-1 text-lg font-extrabold">
-                                {{ selectedDetail.economic_class_code ? economicClassLabel(selectedDetail.economic_class_code) : 'Aucun' }}
+                                {{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} WP
+                            </p>
+                            <p class="text-wpx-muted-dark text-[10px]">
+                                ≈ {{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} FCFA
                             </p>
                         </div>
                         <div>
-                            <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Espace annonceur</p>
-                            <p class="mt-1 truncate text-lg font-extrabold">{{ selectedDetail.advertiser_organization_name ?? 'Aucun' }}</p>
+                            <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                                Abonnement
+                            </p>
+                            <p class="mt-1 text-lg font-extrabold">
+                                {{
+                                    selectedDetail.economic_class_code
+                                        ? economicClassLabel(selectedDetail.economic_class_code)
+                                        : 'Aucun'
+                                }}
+                            </p>
                         </div>
                         <div>
-                            <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Organisations</p>
+                            <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                                Espace annonceur
+                            </p>
+                            <p class="mt-1 truncate text-lg font-extrabold">
+                                {{ selectedDetail.advertiser_organization_name ?? 'Aucun' }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                                Organisations
+                            </p>
                             <p class="mt-1 text-lg font-extrabold">{{ selectedDetail.organizations.length }}</p>
                         </div>
                     </div>
@@ -296,72 +321,101 @@ onMounted(search);
                     </button>
                 </div>
 
-                <div class="border-wpx-border-dark mt-3 rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+                <div class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark mt-3 border p-5">
                     <template v-if="activeTab === 'Vue d’ensemble'">
                         <h4 class="text-base font-extrabold">Protection du compte</h4>
                         <p class="text-wpx-muted-dark mt-1 max-w-2xl text-sm">
-                            La restriction globale est active aujourd’hui. Les restrictions ciblées seront ajoutées plus tard
-                            pour éviter de bloquer tout le compte lorsqu’un seul usage pose problème.
+                            La restriction globale est active aujourd’hui. Les restrictions ciblées seront ajoutées plus
+                            tard pour éviter de bloquer tout le compte lorsqu’un seul usage pose problème.
                         </p>
-                        <div class="border-wpx-border-dark mt-4 rounded-wpx-lg border bg-wpx-navy-950 p-4">
+                        <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 mt-4 border p-4">
                             <p class="text-sm font-bold">Restrictions ciblées prévues</p>
                             <p class="text-wpx-muted-dark mt-1 text-xs">
                                 Connexion · retraits · publication de publicités · réception de récompenses.
                             </p>
-                            <span class="bg-wpx-warning/15 text-wpx-gold mt-3 inline-flex rounded-wpx-full px-2.5 py-1 text-[10px] font-extrabold">
+                            <span
+                                class="bg-wpx-warning/15 text-wpx-gold rounded-wpx-full mt-3 inline-flex px-2.5 py-1 text-[10px] font-extrabold"
+                            >
                                 En préparation
                             </span>
                         </div>
 
-                        <details class="border-wpx-border-dark mt-4 rounded-wpx-lg border p-4">
-                            <summary class="cursor-pointer text-xs font-extrabold text-wpx-muted-dark">Détails techniques</summary>
-                            <p class="mt-3 break-all font-mono text-[11px] text-wpx-muted-dark">ID : {{ selectedDetail.account.id }}</p>
-                            <p class="mt-1 text-xs text-wpx-muted-dark">
+                        <details class="border-wpx-border-dark rounded-wpx-lg mt-4 border p-4">
+                            <summary class="text-wpx-muted-dark cursor-pointer text-xs font-extrabold">
+                                Détails techniques
+                            </summary>
+                            <p class="text-wpx-muted-dark mt-3 font-mono text-[11px] break-all">
+                                ID : {{ selectedDetail.account.id }}
+                            </p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
                                 Identifiants : {{ selectedDetail.account.identifiers.join(' · ') }}
                             </p>
                         </details>
                     </template>
 
                     <template v-else-if="activeTab === 'Wallet'">
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Solde actuel</p>
-                        <p class="mt-1 text-3xl font-extrabold">{{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} WP</p>
-                        <p class="text-wpx-muted-dark mt-1 text-xs">≈ {{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} FCFA</p>
-                        <p class="text-wpx-muted-dark mt-4 text-xs">L’historique financier détaillé sera accessible depuis Finance.</p>
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                            Solde actuel
+                        </p>
+                        <p class="mt-1 text-3xl font-extrabold">
+                            {{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} WP
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">
+                            ≈ {{ numberFormatter.format(selectedDetail.wallet_balance_minor) }} FCFA
+                        </p>
+                        <p class="text-wpx-muted-dark mt-4 text-xs">
+                            L’historique financier détaillé sera accessible depuis Finance.
+                        </p>
                     </template>
 
                     <template v-else-if="activeTab === 'Abonnement'">
-                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase tracking-wide">Offre actuelle</p>
-                        <p class="mt-1 text-2xl font-extrabold">
-                            {{ selectedDetail.economic_class_code ? economicClassLabel(selectedDetail.economic_class_code) : 'Aucun abonnement actif' }}
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                            Offre actuelle
                         </p>
-                        <p class="text-wpx-muted-dark mt-3 text-xs">Les offres publiées se gèrent depuis le module Offres.</p>
+                        <p class="mt-1 text-2xl font-extrabold">
+                            {{
+                                selectedDetail.economic_class_code
+                                    ? economicClassLabel(selectedDetail.economic_class_code)
+                                    : 'Aucun abonnement actif'
+                            }}
+                        </p>
+                        <p class="text-wpx-muted-dark mt-3 text-xs">
+                            Les offres publiées se gèrent depuis le module Offres.
+                        </p>
                     </template>
 
                     <template v-else-if="activeTab === 'Organisations'">
                         <div class="mb-4">
                             <h4 class="text-base font-extrabold">Activités & organisations</h4>
                             <p class="text-wpx-muted-dark mt-1 text-xs">
-                                Les espaces auxquels cette personne appartient sont regroupés ici ; aucun écran séparé n’est nécessaire.
+                                Les espaces auxquels cette personne appartient sont regroupés ici ; aucun écran séparé
+                                n’est nécessaire.
                             </p>
                         </div>
                         <div v-if="selectedDetail.organizations.length" class="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div
                                 v-for="org in selectedDetail.organizations"
                                 :key="org.id"
-                                class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-950 p-4"
+                                class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 border p-4"
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-extrabold">{{ org.name }}</p>
-                                        <p class="text-wpx-muted-dark mt-1 text-xs">{{ organizationTypeLabel(org.type) }}</p>
+                                        <p class="text-wpx-muted-dark mt-1 text-xs">
+                                            {{ organizationTypeLabel(org.type) }}
+                                        </p>
                                     </div>
-                                    <span class="bg-wpx-success/15 text-wpx-success rounded-wpx-full px-2.5 py-1 text-[10px] font-extrabold">
+                                    <span
+                                        class="bg-wpx-success/15 text-wpx-success rounded-wpx-full px-2.5 py-1 text-[10px] font-extrabold"
+                                    >
                                         {{ statusLabel(org.status) }}
                                     </span>
                                 </div>
                                 <details class="mt-3">
-                                    <summary class="cursor-pointer text-[10px] font-bold text-wpx-muted-dark">ID technique</summary>
-                                    <p class="mt-1 break-all font-mono text-[10px] text-wpx-muted-dark">{{ org.id }}</p>
+                                    <summary class="text-wpx-muted-dark cursor-pointer text-[10px] font-bold">
+                                        ID technique
+                                    </summary>
+                                    <p class="text-wpx-muted-dark mt-1 font-mono text-[10px] break-all">{{ org.id }}</p>
                                 </details>
                             </div>
                         </div>
@@ -376,7 +430,7 @@ onMounted(search);
 
             <div
                 v-else
-                class="border-wpx-border-dark flex min-h-72 items-center justify-center rounded-wpx-xl border bg-wpx-navy-850 p-8 text-center text-sm text-wpx-muted-dark shadow-wpx-card-dark"
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 text-wpx-muted-dark shadow-wpx-card-dark flex min-h-72 items-center justify-center border p-8 text-center text-sm"
             >
                 Aucun compte à afficher.
             </div>

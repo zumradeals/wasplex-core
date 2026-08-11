@@ -162,20 +162,22 @@ onMounted(loadGrants);
 </script>
 
 <template>
-    <div class="mx-auto flex max-w-5xl flex-col gap-5 text-wpx-white-soft">
-        <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+    <div class="text-wpx-white-soft mx-auto flex max-w-5xl flex-col gap-5">
+        <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold uppercase tracking-[0.16em]">Équipe d’administration</p>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">
+                        Équipe d’administration
+                    </p>
                     <h2 class="mt-1 text-xl font-extrabold">Donner le bon accès à la bonne personne.</h2>
                     <p class="text-wpx-muted-dark mt-1 max-w-2xl text-sm">
-                        Chacun utilise son propre compte Wasplex. Tu choisis simplement son rôle ; les permissions techniques
-                        restent cachées sauf en mode avancé.
+                        Chacun utilise son propre compte Wasplex. Tu choisis simplement son rôle ; les permissions
+                        techniques restent cachées sauf en mode avancé.
                     </p>
                 </div>
                 <button
                     type="button"
-                    class="from-wpx-blue to-wpx-cyan rounded-wpx-md bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold text-wpx-navy-950"
+                    class="from-wpx-blue to-wpx-cyan rounded-wpx-md text-wpx-navy-950 bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold"
                     @click="inviting = !inviting"
                 >
                     {{ inviting ? 'Fermer' : '+ Ajouter une personne' }}
@@ -187,18 +189,20 @@ onMounted(loadGrants);
 
         <form
             v-if="inviting"
-            class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark"
+            class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5"
             @submit.prevent="submitInvite"
         >
             <h3 class="text-base font-extrabold">Ajouter un accès</h3>
-            <p class="text-wpx-muted-dark mt-1 text-xs">Entre le téléphone ou l’email de la personne, puis choisis son rôle.</p>
+            <p class="text-wpx-muted-dark mt-1 text-xs">
+                Entre le téléphone ou l’email de la personne, puis choisis son rôle.
+            </p>
             <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px_auto] md:items-end">
                 <label class="flex flex-col gap-1.5 text-xs">
                     <span class="text-wpx-muted-dark font-bold">Téléphone ou email</span>
                     <input
                         v-model="inviteForm.account_identifier"
                         placeholder="Ex. +225… ou nom@exemple.com"
-                        class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft outline-none"
+                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm outline-none"
                         required
                     />
                 </label>
@@ -206,14 +210,14 @@ onMounted(loadGrants);
                     <span class="text-wpx-muted-dark font-bold">Rôle</span>
                     <select
                         v-model="inviteForm.role_code"
-                        class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft"
+                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm"
                     >
                         <option v-for="role in ADMIN_ROLES" :key="role.code" :value="role.code">{{ role.name }}</option>
                     </select>
                 </label>
                 <button
                     type="submit"
-                    class="bg-wpx-success rounded-wpx-md px-4 py-2.5 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50"
+                    class="bg-wpx-success rounded-wpx-md text-wpx-navy-950 px-4 py-2.5 text-xs font-extrabold disabled:opacity-50"
                     :disabled="busy === 'invite'"
                 >
                     Donner l’accès
@@ -221,16 +225,24 @@ onMounted(loadGrants);
             </div>
         </form>
 
-        <section class="border-wpx-border-dark overflow-hidden rounded-wpx-xl border bg-wpx-navy-850 shadow-wpx-card-dark">
+        <section
+            class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border"
+        >
             <div class="border-wpx-border-dark flex items-center justify-between border-b px-5 py-4">
                 <div>
                     <h3 class="text-base font-extrabold">Qui peut administrer Wasplex ?</h3>
-                    <p class="text-wpx-muted-dark mt-0.5 text-xs">{{ team.length }} compte{{ team.length > 1 ? 's' : '' }} avec un accès.</p>
+                    <p class="text-wpx-muted-dark mt-0.5 text-xs">
+                        {{ team.length }} compte{{ team.length > 1 ? 's' : '' }} avec un accès.
+                    </p>
                 </div>
             </div>
             <p v-if="loading" class="text-wpx-muted-dark p-5 text-sm">Chargement…</p>
             <div v-else class="divide-wpx-border-dark divide-y">
-                <div v-for="member in team" :key="member.accountId" class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                <div
+                    v-for="member in team"
+                    :key="member.accountId"
+                    class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+                >
                     <span
                         class="from-wpx-blue to-wpx-cyan flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-extrabold text-white"
                     >
@@ -239,7 +251,11 @@ onMounted(loadGrants);
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
                             <p class="truncate text-sm font-extrabold">{{ memberLabel(member) }}</p>
-                            <span v-if="member.accountId === page.props.auth.account.id" class="text-wpx-cyan text-[10px] font-extrabold">TOI</span>
+                            <span
+                                v-if="member.accountId === page.props.auth.account.id"
+                                class="text-wpx-cyan text-[10px] font-extrabold"
+                                >TOI</span
+                            >
                         </div>
                         <p class="text-wpx-muted-dark mt-0.5 text-xs">
                             {{ member.role?.description ?? `${member.grants.length} permissions personnalisées` }}
@@ -265,7 +281,9 @@ onMounted(loadGrants);
                         Retirer l’accès
                     </button>
                 </div>
-                <p v-if="team.length === 0" class="text-wpx-muted-dark p-5 text-sm">Aucun accès administration trouvé.</p>
+                <p v-if="team.length === 0" class="text-wpx-muted-dark p-5 text-sm">
+                    Aucun accès administration trouvé.
+                </p>
             </div>
         </section>
 
@@ -276,10 +294,13 @@ onMounted(loadGrants);
                 <div
                     v-for="role in ADMIN_ROLES"
                     :key="role.code"
-                    class="border-wpx-border-dark rounded-wpx-lg border bg-wpx-navy-850 p-4 shadow-wpx-card-dark"
+                    class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 shadow-wpx-card-dark border p-4"
                 >
                     <div class="flex items-start gap-3">
-                        <span class="bg-wpx-blue/12 text-wpx-blue flex h-9 w-9 shrink-0 items-center justify-center rounded-wpx-md">◎</span>
+                        <span
+                            class="bg-wpx-blue/12 text-wpx-blue rounded-wpx-md flex h-9 w-9 shrink-0 items-center justify-center"
+                            >◎</span
+                        >
                         <div>
                             <p class="text-sm font-extrabold">{{ role.name }}</p>
                             <p class="text-wpx-muted-dark mt-1 text-xs">{{ role.description }}</p>
@@ -289,44 +310,74 @@ onMounted(loadGrants);
             </div>
         </section>
 
-        <button type="button" class="text-wpx-cyan self-start text-xs font-extrabold" @click="advancedMode = !advancedMode">
+        <button
+            type="button"
+            class="text-wpx-cyan self-start text-xs font-extrabold"
+            @click="advancedMode = !advancedMode"
+        >
             {{ advancedMode ? 'Masquer les permissions techniques' : 'Mode avancé — permissions techniques' }}
         </button>
 
-        <section v-if="advancedMode" class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
-            <div class="rounded-wpx-md bg-wpx-warning/10 p-3 text-xs text-wpx-gold">
+        <section
+            v-if="advancedMode"
+            class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5"
+        >
+            <div class="rounded-wpx-md bg-wpx-warning/10 text-wpx-gold p-3 text-xs">
                 Réservé aux cas particuliers. Pour la plupart des personnes, utilise simplement un rôle ci-dessus.
             </div>
-            <form class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end" @submit.prevent="grantCapability">
+            <form
+                class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end"
+                @submit.prevent="grantCapability"
+            >
                 <label class="flex flex-col gap-1 text-xs">
                     <span class="text-wpx-muted-dark">ID du compte</span>
-                    <input v-model="newGrant.account_id" class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2 text-sm text-wpx-white-soft" />
+                    <input
+                        v-model="newGrant.account_id"
+                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2 text-sm"
+                    />
                 </label>
                 <label class="flex flex-col gap-1 text-xs">
                     <span class="text-wpx-muted-dark">Permission</span>
                     <input
                         v-model="newGrant.capability_code"
                         placeholder="admin.audit.view"
-                        class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2 text-sm text-wpx-white-soft"
+                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2 text-sm"
                     />
                 </label>
-                <button type="submit" class="bg-wpx-cyan rounded-wpx-md px-4 py-2 text-xs font-extrabold text-wpx-navy-950">Accorder</button>
+                <button
+                    type="submit"
+                    class="bg-wpx-cyan rounded-wpx-md text-wpx-navy-950 px-4 py-2 text-xs font-extrabold"
+                >
+                    Accorder
+                </button>
             </form>
 
             <div class="mt-5 overflow-x-auto">
-                <table class="min-w-[760px] w-full text-sm">
+                <table class="w-full min-w-[760px] text-sm">
                     <thead>
-                        <tr class="border-wpx-border-dark text-wpx-muted-dark border-b text-left text-[10px] uppercase tracking-wide">
-                            <th class="p-2">Compte</th><th class="p-2">Permission</th><th class="p-2">Périmètre</th><th class="p-2">Expiration</th><th class="p-2"></th>
+                        <tr
+                            class="border-wpx-border-dark text-wpx-muted-dark border-b text-left text-[10px] tracking-wide uppercase"
+                        >
+                            <th class="p-2">Compte</th>
+                            <th class="p-2">Permission</th>
+                            <th class="p-2">Périmètre</th>
+                            <th class="p-2">Expiration</th>
+                            <th class="p-2"></th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="grant in grants" :key="grant.id" class="border-wpx-border-dark border-b">
                             <td class="p-2 text-xs">{{ accountLabels[grant.account_id] ?? grant.account_id }}</td>
                             <td class="p-2 font-mono text-xs">{{ grant.capability_code }}</td>
-                            <td class="text-wpx-muted-dark p-2 text-xs">{{ grant.scope_type ? `${grant.scope_type}:${grant.scope_id}` : 'global' }}</td>
+                            <td class="text-wpx-muted-dark p-2 text-xs">
+                                {{ grant.scope_type ? `${grant.scope_type}:${grant.scope_id}` : 'global' }}
+                            </td>
                             <td class="text-wpx-muted-dark p-2 text-xs">{{ grant.expires_at ?? '—' }}</td>
-                            <td class="p-2 text-right"><button class="text-wpx-danger text-xs font-bold" @click="revoke(grant)">Révoquer</button></td>
+                            <td class="p-2 text-right">
+                                <button class="text-wpx-danger text-xs font-bold" @click="revoke(grant)">
+                                    Révoquer
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
