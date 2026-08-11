@@ -3,17 +3,19 @@ import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdminAdvertisingOverviewPanel from '@/Components/AdminAdvertisingOverviewPanel.vue';
+import AdminAuditSecurityPanel from '@/Components/AdminAuditSecurityPanel.vue';
 import AdminCampaignsPanel from '@/Components/AdminCampaignsPanel.vue';
 import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
+import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminNavIcon from '@/Components/AdminNavIcon.vue';
+import AdminPaymentsSettingsPanel from '@/Components/AdminPaymentsSettingsPanel.vue';
 import AdminPermissionsPanel from '@/Components/AdminPermissionsPanel.vue';
 import AdminSmartProfilePanel from '@/Components/AdminSmartProfilePanel.vue';
 import AdminSubscriptionsPanel from '@/Components/AdminSubscriptionsPanel.vue';
 import AdminUsersPanel from '@/Components/AdminUsersPanel.vue';
-import AdminWalletLedgerPanel from '@/Components/AdminWalletLedgerPanel.vue';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
 
@@ -23,14 +25,14 @@ const nav = [
     { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
     { key: 'users', label: 'Utilisateurs', helper: 'Comptes et organisations' },
     { key: 'advertising', label: 'Publicité', helper: 'Campagnes et diffusion' },
-    { key: 'finance', label: 'Finance', helper: 'Wallet et Grand Livre' },
+    { key: 'finance', label: 'Finance', helper: 'Situation et Grand Livre' },
     { key: 'offers', label: 'Offres', helper: 'Abonnements et gains' },
-    { key: 'settings', label: 'Réglages', helper: 'Équipe et configuration' },
+    { key: 'settings', label: 'Réglages', helper: 'Équipe et intégrations' },
 ] as const;
 
 type SectionKey = (typeof nav)[number]['key'];
 type AdvertisingTab = 'overview' | 'advertisers' | 'feed' | 'matching' | 'smartprofile';
-type SettingsTab = 'capabilities' | 'organizations' | 'audit';
+type SettingsTab = 'capabilities' | 'payments' | 'audit';
 
 const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
     { key: 'overview', label: 'Vue d’ensemble' },
@@ -42,7 +44,7 @@ const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
 
 const settingsTabs: Array<{ key: SettingsTab; label: string }> = [
     { key: 'capabilities', label: 'Équipe & permissions' },
-    { key: 'organizations', label: 'Organisations' },
+    { key: 'payments', label: 'Paiements & intégrations' },
     { key: 'audit', label: 'Audit & sécurité' },
 ];
 
@@ -200,7 +202,7 @@ async function logout(): Promise<void> {
                 </section>
 
                 <section v-else-if="activeSection === 'finance'">
-                    <AdminWalletLedgerPanel />
+                    <AdminFinanceOverviewPanel />
                 </section>
 
                 <section v-else-if="activeSection === 'offers'">
@@ -228,18 +230,8 @@ async function logout(): Promise<void> {
                     </div>
 
                     <AdminPermissionsPanel v-if="activeSettingsTab === 'capabilities'" />
-                    <div
-                        v-else
-                        class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-8 text-center"
-                    >
-                        <p class="text-lg font-extrabold">
-                            {{ activeSettingsTab === 'organizations' ? 'Organisations' : 'Audit & sécurité' }}
-                        </p>
-                        <p class="text-wpx-muted-dark mx-auto mt-2 max-w-xl text-sm">
-                            Cette zone sera enrichie dans la dernière étape de la refonte. Les fonctions déjà actives
-                            restent accessibles ailleurs dans la console.
-                        </p>
-                    </div>
+                    <AdminPaymentsSettingsPanel v-else-if="activeSettingsTab === 'payments'" />
+                    <AdminAuditSecurityPanel v-else />
                 </section>
             </main>
         </div>
