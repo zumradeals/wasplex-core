@@ -28,6 +28,7 @@ final class SeedCatalogCommand extends Command
         ['code' => 'demographic.gender.man', 'category' => 'demographic', 'label' => 'Genre déclaré : homme'],
         ['code' => 'possession.smartphone', 'category' => 'possession', 'label' => 'Possède un smartphone'],
         ['code' => 'possession.deux_roues', 'category' => 'possession', 'label' => 'Possède un deux-roues'],
+        ['code' => 'possession.voiture', 'category' => 'possession', 'label' => 'Possède une voiture'],
         ['code' => 'usage.reseau_orange', 'category' => 'usage', 'label' => 'Utilise principalement le réseau Orange'],
         ['code' => 'usage.reseau_mtn', 'category' => 'usage', 'label' => 'Utilise principalement le réseau MTN'],
         ['code' => 'usage.transport_public', 'category' => 'usage', 'label' => 'Utilise les transports en commun'],
@@ -46,7 +47,7 @@ final class SeedCatalogCommand extends Command
         [
             'code' => ConsentPurpose::CODE_ADVERTISING_PERSONALIZATION,
             'name' => 'Personnalisation publicitaire',
-            'description' => 'Permet à Wasplex de vous proposer des campagnes en fonction de votre classe, de votre pays et des informations que vous choisissez de partager. Sans cet accord, vous ne recevez aucune publicité personnalisée.',
+            'description' => 'Permet à Wasplex de vous proposer des campagnes en fonction de votre pays et des informations que vous choisissez de partager. Sans cet accord, vous ne recevez aucune publicité personnalisée.',
         ],
         [
             'code' => ConsentPurpose::CODE_SMART_PROFILE_USAGE,
