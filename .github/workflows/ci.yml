@@ -16,9 +16,9 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB=wasplex_test
-          POSTGRES_USER=wasplex
-          POSTGRES_PASSWORD=wasplex_ci_only
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_ci_only
         ports:
           - 5432:5432
         options: >-
