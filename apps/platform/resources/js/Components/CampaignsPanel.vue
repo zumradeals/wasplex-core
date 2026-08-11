@@ -18,6 +18,7 @@ interface Asset {
     id: string;
     type: string;
     filename: string;
+    moderation_status?: string;
     url?: string;
 }
 
@@ -88,27 +89,9 @@ interface AdvertisingRules {
 }
 
 const OBJECTIVES = CAMPAIGN_OBJECTIVES;
-
-const STEPS = ['Publicité', 'Audience', 'Budget', 'Envoi'] as const;
-
-const STEP_META = [
-    {
-        title: 'Prépare ta publicité',
-        subtitle: 'Choisis l’objectif, le média et le message associés à ta marque.',
-    },
-    {
-        title: 'Qui veux-tu toucher ?',
-        subtitle: 'Choisis une audience large ou quelques critères facultatifs.',
-    },
-    {
-        title: 'Quel budget veux-tu investir ?',
-        subtitle: 'Définis un montant quotidien et une durée. Wasplex calcule automatiquement le total.',
-    },
-    {
-        title: 'Vérifie et envoie',
-        subtitle: 'Wasplex finance et transmet la campagne à l’administration en une seule action.',
-    },
-] as const;
+const STEPS = ['Ma publicité', 'Audience & budget', 'Envoi'] as const;
+const DEFAULT_DAILY_BUDGETS = [500, 1000, 2000, 5000, 10000] as const;
+const DEFAULT_DURATIONS = [3, 7, 14, 30] as const;
 
 const campaigns = ref<Campaign[]>([]);
 const brands = ref<Brand[]>([]);
@@ -123,6 +106,7 @@ const advertisingRules = ref<AdvertisingRules>({
 });
 const selectedCampaignId = ref<string | null>(null);
 const step = ref(0);
+const view = ref<'create' | 'history'>('create');
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
@@ -130,8 +114,16 @@ const estimating = ref(false);
 const estimate = ref<{ estimated_min: number; estimated_max: number; too_small: boolean } | null>(null);
 const sending = ref(false);
 const resubmitting = ref(false);
+const preparingStep = ref(false);
 const walletAvailableMinor = ref(0);
 const walletShortfallMinor = ref<number | null>(null);
+const showAdvancedTargeting = ref(false);
+const showBrandCreator = ref(false);
+const newBrandName = ref('');
+const creatingBrand = ref(false);
+const uploading = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
+const dragOver = ref(false);
 
 const form = reactive({
     brand_id: '',
@@ -144,13 +136,28 @@ const form = reactive({
     duration_days: 7,
 });
 
+const numberFormatter = new Intl.NumberFormat('fr-FR');
+
 const totalBudgetMinor = computed(
     () => Math.max(0, Number(form.daily_budget_minor) || 0) * Math.max(0, Number(form.duration_days) || 0),
 );
+const hasEnoughWallet = computed(() => walletAvailableMinor.value >= totalBudgetMinor.value);
+const budgetOptions = computed(() =>
+    [...new Set([advertisingRules.value.minimum_daily_budget_minor, ...DEFAULT_DAILY_BUDGETS])]
+        .filter((amount) => amount >= advertisingRules.value.minimum_daily_budget_minor)
+        .sort((a, b) => a - b),
+);
+const durationOptions = computed(() =>
+    [...new Set([advertisingRules.value.duration_days, ...DEFAULT_DURATIONS])]
+        .filter(
+            (days) =>
+                days >= advertisingRules.value.minimum_duration_days && days <= advertisingRules.value.maximum_duration_days,
+        )
+        .sort((a, b) => a - b),
+);
 const canContinue = computed(() => {
-    if (step.value === 0) return Boolean(form.objective_code && form.asset_id);
-    if (step.value === 1) return true;
-    if (step.value === 2) {
+    if (step.value === 0) return Boolean(form.brand_id && form.objective_code && form.asset_id);
+    if (step.value === 1) {
         return (
             form.daily_budget_minor >= advertisingRules.value.minimum_daily_budget_minor &&
             form.duration_days >= advertisingRules.value.minimum_duration_days &&
@@ -161,40 +168,45 @@ const canContinue = computed(() => {
     return false;
 });
 
-const selectedCampaign = computed(() => campaigns.value.find((c) => c.id === selectedCampaignId.value) ?? null);
+const selectedCampaign = computed(() => campaigns.value.find((campaign) => campaign.id === selectedCampaignId.value) ?? null);
 const currentVersion = computed<CampaignVersion | null>(() => {
     const campaign = selectedCampaign.value;
-    if (!campaign || campaign.versions.length === 0) {
-        return null;
-    }
+    if (!campaign || campaign.versions.length === 0) return null;
     return [...campaign.versions].sort((a, b) => b.version_number - a.version_number)[0];
 });
 const latestQuote = computed<Quote | null>(() => {
     const version = currentVersion.value;
-    if (!version?.quotes || version.quotes.length === 0) {
-        return null;
-    }
+    if (!version?.quotes || version.quotes.length === 0) return null;
     return version.quotes[version.quotes.length - 1];
 });
 const latestReviewCase = computed<ReviewCase | null>(() => {
     const cases = selectedCampaign.value?.review_cases ?? [];
     return cases.length > 0 ? cases[0] : null;
 });
-const selectedAsset = computed(() => assets.value.find((a) => a.id === form.asset_id) ?? null);
+const selectedAsset = computed(() => assets.value.find((asset) => asset.id === form.asset_id) ?? null);
+const selectedBrand = computed(() => brands.value.find((brand) => brand.id === form.brand_id) ?? null);
 const ctaLabel = computed(() => (form.objective_code ? OBJECTIVES[form.objective_code] : null));
 const gainLabel = computed(() => {
     const quote = latestQuote.value;
-    if (!quote) {
-        return null;
-    }
+    if (!quote) return null;
     const gains = Object.values(quote.class_breakdown ?? {})
         .map((breakdown) => breakdown.gain_unitaire_minor)
         .filter((value): value is number => typeof value === 'number');
-    if (gains.length === 0) {
-        return null;
-    }
+    if (gains.length === 0) return null;
     return `+${Math.min(...gains)} WP`;
 });
+const isReadOnlyCampaign = computed(() =>
+    ['submitted', 'approved', 'rejected', 'suspended'].includes(selectedCampaign.value?.status ?? ''),
+);
+
+async function loadAssetsForBrand(brandId: string): Promise<void> {
+    if (!brandId) {
+        assets.value = [];
+        return;
+    }
+    const { data } = await http.get(`/advertiser/assets?brand_id=${brandId}`);
+    assets.value = data.assets;
+}
 
 async function loadAll(): Promise<void> {
     loading.value = true;
@@ -212,9 +224,16 @@ async function loadAll(): Promise<void> {
         profileCriteria.value = criteriaRes.data.profile_criteria;
         if (rulesRes.data.advertising_rules) advertisingRules.value = rulesRes.data.advertising_rules;
         walletAvailableMinor.value = walletRes.data.wallet.available_minor;
-    } catch (e) {
-        const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
-        loadError.value = message ?? 'Les campagnes sont momentanément indisponibles.';
+        form.daily_budget_minor = advertisingRules.value.minimum_daily_budget_minor;
+        form.duration_days = advertisingRules.value.duration_days;
+
+        if (brands.value.length === 1) {
+            form.brand_id = brands.value[0].id;
+            await loadAssetsForBrand(form.brand_id);
+        }
+    } catch (error) {
+        const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+        loadError.value = message ?? 'Le Studio publicitaire est momentanément indisponible.';
     } finally {
         loading.value = false;
     }
@@ -236,52 +255,90 @@ function hydrateFormFromCampaign(campaign: Campaign): void {
             Math.floor((version?.budget_configuration?.budget_amount_minor ?? 0) / Math.max(1, form.duration_days)),
         );
     estimate.value = null;
+    showAdvancedTargeting.value = form.profile_taxonomies.length > 0;
+}
+
+async function resetNewCampaign(): Promise<void> {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    selectedCampaignId.value = null;
+    step.value = 0;
+    view.value = 'create';
+    actionError.value = null;
+    estimate.value = null;
+    walletShortfallMinor.value = null;
+    showAdvancedTargeting.value = false;
+    form.brand_id = brands.value.length === 1 ? brands.value[0].id : '';
+    form.objective_code = '';
+    form.asset_id = '';
+    form.title = '';
+    form.country_code = '';
+    form.profile_taxonomies = [];
+    form.daily_budget_minor = advertisingRules.value.minimum_daily_budget_minor;
+    form.duration_days = advertisingRules.value.duration_days;
+    await loadAssetsForBrand(form.brand_id);
+}
+
+async function selectBrandForNewCampaign(brandId: string): Promise<void> {
+    if (selectedCampaignId.value) return;
+    form.brand_id = brandId;
+    form.asset_id = '';
+    actionError.value = null;
+    await loadAssetsForBrand(brandId);
+}
+
+async function createBrandInline(): Promise<void> {
+    const name = newBrandName.value.trim();
+    if (!name) return;
+    creatingBrand.value = true;
+    actionError.value = null;
+    try {
+        const { data } = await http.post('/advertiser/brands', { name });
+        brands.value = [data.brand, ...brands.value];
+        newBrandName.value = '';
+        showBrandCreator.value = false;
+        await selectBrandForNewCampaign(data.brand.id);
+    } catch (error) {
+        actionError.value =
+            (error as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            "Impossible de créer l'activité pour le moment.";
+    } finally {
+        creatingBrand.value = false;
+    }
 }
 
 async function selectCampaign(campaign: Campaign): Promise<void> {
     selectedCampaignId.value = campaign.id;
     step.value = 0;
+    view.value = 'create';
+    actionError.value = null;
     hydrateFormFromCampaign(campaign);
-    if (campaign.brand_id) {
-        const { data } = await http.get(`/advertiser/assets?brand_id=${campaign.brand_id}`);
-        assets.value = data.assets;
-    }
+    await loadAssetsForBrand(campaign.brand_id);
 }
 
-async function createCampaign(brandId: string): Promise<void> {
-    actionError.value = null;
-    const { data } = await http.post('/advertiser/campaigns', { brand_id: brandId });
+async function ensureDraftCampaign(): Promise<void> {
+    if (selectedCampaignId.value) return;
+    const { data } = await http.post('/advertiser/campaigns', { brand_id: form.brand_id });
     campaigns.value = [data.campaign, ...campaigns.value];
-    await selectCampaign(data.campaign);
+    selectedCampaignId.value = data.campaign.id;
 }
 
 async function refreshSelected(): Promise<void> {
-    if (!selectedCampaignId.value) {
-        return;
-    }
+    if (!selectedCampaignId.value) return;
     const { data } = await http.get(`/advertiser/campaigns/${selectedCampaignId.value}`);
-    const index = campaigns.value.findIndex((c) => c.id === data.campaign.id);
-    if (index !== -1) {
-        campaigns.value[index] = data.campaign;
-    }
+    const index = campaigns.value.findIndex((campaign) => campaign.id === data.campaign.id);
+    if (index !== -1) campaigns.value[index] = data.campaign;
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleAutosave(): void {
-    if (!selectedCampaignId.value) {
-        return;
-    }
-    if (autosaveTimer) {
-        clearTimeout(autosaveTimer);
-    }
-    autosaveTimer = setTimeout(() => void autosave(), 500);
+    if (!selectedCampaignId.value || isReadOnlyCampaign.value) return;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => void autosave(), 550);
 }
 
 async function autosave(): Promise<void> {
-    if (!selectedCampaignId.value) {
-        return;
-    }
+    if (!selectedCampaignId.value || isReadOnlyCampaign.value) return;
     actionError.value = null;
     try {
         await http.patch(`/advertiser/campaigns/${selectedCampaignId.value}`, {
@@ -300,9 +357,9 @@ async function autosave(): Promise<void> {
                 : undefined,
         });
         await refreshSelected();
-    } catch (e) {
+    } catch (error) {
         actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            (error as { response?: { data?: { message?: string } } }).response?.data?.message ??
             "Échec de l'enregistrement automatique.";
     }
 }
@@ -327,26 +384,86 @@ function toggleProfileCriterion(code: string): void {
     estimate.value = null;
 }
 
-async function runEstimate(): Promise<void> {
-    if (!selectedCampaignId.value) {
+async function uploadFile(file: File | undefined): Promise<void> {
+    if (!file) return;
+    if (!form.brand_id) {
+        actionError.value = "Choisis d'abord l'activité que tu veux promouvoir.";
         return;
     }
+    uploading.value = true;
+    actionError.value = null;
+    try {
+        const payload = new FormData();
+        payload.append('brand_id', form.brand_id);
+        payload.append('file', file);
+        const { data } = await http.post('/advertiser/assets', payload, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        assets.value = [data.asset, ...assets.value];
+        form.asset_id = data.asset.id;
+    } catch (error) {
+        actionError.value =
+            (error as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            "Le visuel n'a pas pu être envoyé.";
+    } finally {
+        uploading.value = false;
+        if (fileInput.value) fileInput.value.value = '';
+    }
+}
+
+function onFileInputChange(event: Event): void {
+    void uploadFile((event.target as HTMLInputElement).files?.[0]);
+}
+
+function onDrop(event: DragEvent): void {
+    dragOver.value = false;
+    void uploadFile(event.dataTransfer?.files?.[0]);
+}
+
+async function runEstimate(): Promise<void> {
+    if (!selectedCampaignId.value) return;
     estimating.value = true;
     actionError.value = null;
     try {
         await autosave();
         const { data } = await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/estimate-audience`);
         estimate.value = data.estimate;
-    } catch (e) {
+    } catch (error) {
         actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Estimation impossible.';
+            (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Estimation impossible.';
     } finally {
         estimating.value = false;
     }
 }
 
+async function nextStep(): Promise<void> {
+    if (!canContinue.value || preparingStep.value) return;
+    preparingStep.value = true;
+    actionError.value = null;
+    try {
+        if (step.value === 0) {
+            await ensureDraftCampaign();
+            await autosave();
+            step.value = 1;
+            return;
+        }
+        if (step.value === 1) {
+            await autosave();
+            step.value = 2;
+        }
+    } catch (error) {
+        actionError.value =
+            (error as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'Impossible de passer à l’étape suivante.';
+    } finally {
+        preparingStep.value = false;
+    }
+}
+
 async function financeAndSubmit(): Promise<void> {
-    if (!selectedCampaignId.value) {
+    if (!selectedCampaignId.value) return;
+    if (!hasEnoughWallet.value) {
+        walletShortfallMinor.value = totalBudgetMinor.value - walletAvailableMinor.value;
         return;
     }
     sending.value = true;
@@ -357,9 +474,9 @@ async function financeAndSubmit(): Promise<void> {
         await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/finance-and-submit`);
         await refreshSelected();
         walletAvailableMinor.value = Math.max(0, walletAvailableMinor.value - totalBudgetMinor.value);
-    } catch (e) {
-        const data = (e as { response?: { data?: { message?: string; missing_minor?: number } } }).response?.data;
-        actionError.value = data?.message ?? 'La campagne ne peut pas encore être envoyée.';
+    } catch (error) {
+        const data = (error as { response?: { data?: { message?: string; missing_minor?: number } } }).response?.data;
+        actionError.value = data?.message ?? 'La publicité ne peut pas encore être envoyée.';
         walletShortfallMinor.value = data?.missing_minor ?? null;
     } finally {
         sending.value = false;
@@ -367,17 +484,16 @@ async function financeAndSubmit(): Promise<void> {
 }
 
 async function runResubmit(): Promise<void> {
-    if (!selectedCampaignId.value) {
-        return;
-    }
+    if (!selectedCampaignId.value) return;
     resubmitting.value = true;
     actionError.value = null;
     try {
+        await autosave();
         await http.post(`/advertiser/campaigns/${selectedCampaignId.value}/resubmit`);
         await refreshSelected();
-    } catch (e) {
+    } catch (error) {
         actionError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Resoumission impossible.';
+            (error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Resoumission impossible.';
     } finally {
         resubmitting.value = false;
     }
@@ -387,14 +503,44 @@ function statusLabel(status: string): string {
     return (
         {
             draft: 'Brouillon',
-            quoted: 'Devisée',
+            quoted: 'Prête à financer',
             funded: 'Financée',
-            submitted: 'Soumise',
-            changes_requested: 'Correction demandée',
-            approved: 'Approuvée',
-            rejected: 'Rejetée',
+            submitted: 'En vérification',
+            changes_requested: 'À corriger',
+            approved: 'Active',
+            rejected: 'Refusée',
             suspended: 'Suspendue',
         }[status] ?? status
+    );
+}
+
+function statusClasses(status: string): string {
+    if (status === 'approved') return 'bg-wpx-success/12 text-wpx-success-light';
+    if (status === 'rejected' || status === 'suspended') return 'bg-wpx-danger/12 text-wpx-danger-light';
+    if (status === 'submitted') return 'bg-wpx-blue/12 text-wpx-blue-light';
+    return 'bg-wpx-gold/12 text-wpx-gold';
+}
+
+function campaignTitle(campaign: Campaign): string {
+    const version = [...campaign.versions].sort((a, b) => b.version_number - a.version_number)[0];
+    return (
+        (version?.creative_configuration?.title as string | undefined)?.trim() ||
+        (campaign.objective_code ? OBJECTIVES[campaign.objective_code] : null) ||
+        'Nouvelle publicité'
+    );
+}
+
+function categoryLabel(category: string): string {
+    return (
+        {
+            demographic: 'Profil',
+            interest: 'Centres d’intérêt',
+            usage: 'Usages',
+            possession: 'Équipement',
+            project: 'Projets',
+            situation: 'Situation',
+            territory: 'Zone approximative',
+        }[category] ?? category
     );
 }
 
@@ -402,406 +548,474 @@ void loadAll();
 </script>
 
 <template>
-    <div class="flex flex-col gap-6">
-        <div v-if="loadError" class="rounded-wpx-lg bg-wpx-danger/10 text-wpx-danger-light p-4 text-sm">
+    <div class="mx-auto flex w-full max-w-6xl flex-col gap-4">
+        <div v-if="loadError" class="bg-wpx-danger/10 text-wpx-danger-light rounded-2xl p-4 text-sm">
             {{ loadError }}
         </div>
 
         <template v-else>
-            <div class="flex flex-col gap-4 lg:flex-row">
-                <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex w-full flex-col gap-3 p-4 lg:w-64">
-                    <h2 class="text-wpx-text text-sm font-semibold">Mes campagnes</h2>
-                    <div class="flex flex-col gap-1">
-                        <label v-if="brands.length > 0" class="text-wpx-text-muted text-xs"
-                            >Créer une campagne pour :</label
-                        >
-                        <select
-                            v-if="brands.length > 0"
-                            class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1.5 text-sm"
-                            @change="(e) => createCampaign((e.target as HTMLSelectElement).value)"
-                        >
-                            <option value="" disabled selected>Choisir une marque…</option>
-                            <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
-                        </select>
-                        <p v-else class="text-wpx-text-muted text-xs">
-                            Créez d'abord une marque dans l'onglet Marques.
+            <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-wpx-gold text-[11px] font-extrabold tracking-[0.18em] uppercase">Studio publicitaire</p>
+                        <h1 class="text-wpx-white-soft mt-1 text-xl font-extrabold sm:text-2xl">Fais connaître ton activité</h1>
+                        <p class="text-wpx-muted-dark mt-1 max-w-2xl text-xs leading-relaxed sm:text-sm">
+                            Prépare, cible et finance ta publicité avec ton solde Wasplex. Le parcours est pensé pour être
+                            terminé en moins de 5 minutes.
                         </p>
                     </div>
-                    <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
-                    <ul v-else class="flex flex-col gap-1">
-                        <li v-for="campaign in campaigns" :key="campaign.id">
-                            <button
-                                type="button"
-                                class="rounded-wpx-sm flex w-full items-center justify-between px-2 py-1.5 text-left text-sm"
-                                :class="
-                                    selectedCampaignId === campaign.id ? 'bg-wpx-canvas font-semibold' : 'text-wpx-text'
-                                "
-                                @click="selectCampaign(campaign)"
-                            >
-                                <span>{{
-                                    campaign.objective_code ? OBJECTIVES[campaign.objective_code] : 'Campagne'
-                                }}</span>
-                                <span class="text-wpx-text-muted text-[10px]">{{ statusLabel(campaign.status) }}</span>
-                            </button>
-                        </li>
-                        <li v-if="!loading && campaigns.length === 0" class="text-wpx-text-muted text-sm">
-                            Aucune campagne encore.
-                        </li>
-                    </ul>
+                    <div class="flex gap-2">
+                        <button
+                            type="button"
+                            class="rounded-xl px-3 py-2 text-xs font-bold"
+                            :class="view === 'create' ? 'bg-wpx-gold text-wpx-navy-950' : 'bg-wpx-navy-750 text-wpx-muted-dark'"
+                            @click="resetNewCampaign"
+                        >
+                            + Nouvelle publicité
+                        </button>
+                        <button
+                            type="button"
+                            class="bg-wpx-navy-750 text-wpx-muted-dark rounded-xl px-3 py-2 text-xs font-bold"
+                            @click="view = 'history'"
+                        >
+                            Mes publicités ({{ campaigns.length }})
+                        </button>
+                    </div>
                 </div>
+            </section>
 
-                <div v-if="selectedCampaign" class="flex flex-1 flex-col gap-4 lg:flex-row">
-                    <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex-1 p-4">
-                        <div class="mb-6 flex items-center overflow-x-auto pb-1">
-                            <template v-for="(label, i) in STEPS" :key="label">
-                                <div class="flex flex-col items-center gap-1.5">
-                                    <span
-                                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                                        :class="
-                                            i <= step
-                                                ? 'bg-wpx-blue-light text-white'
-                                                : 'border-wpx-border text-wpx-text-muted border-[1.5px] bg-white'
-                                        "
-                                    >
-                                        {{ i + 1 }}
-                                    </span>
-                                    <span
-                                        class="text-[11px] font-semibold whitespace-nowrap"
-                                        :class="i === step ? 'text-wpx-blue-light' : 'text-wpx-text-muted'"
-                                    >
-                                        {{ label }}
-                                    </span>
+            <section v-if="view === 'history'" class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+                <div class="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-wpx-white-soft text-base font-bold">Mes publicités</h2>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">Retrouve tes brouillons, publicités en vérification et campagnes actives.</p>
+                    </div>
+                    <button type="button" class="text-wpx-gold text-xs font-bold" @click="resetNewCampaign">Créer →</button>
+                </div>
+                <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
+                <div v-else-if="campaigns.length > 0" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <button
+                        v-for="campaign in campaigns"
+                        :key="campaign.id"
+                        type="button"
+                        class="border-wpx-border-dark bg-wpx-navy-750 rounded-xl border p-3.5 text-left transition hover:-translate-y-0.5"
+                        @click="selectCampaign(campaign)"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-wpx-white-soft truncate text-sm font-bold">{{ campaignTitle(campaign) }}</p>
+                                <p class="text-wpx-muted-dark mt-1 truncate text-[11px]">
+                                    {{ brands.find((brand) => brand.id === campaign.brand_id)?.name ?? 'Mon activité' }}
+                                </p>
+                            </div>
+                            <span class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold" :class="statusClasses(campaign.status)">
+                                {{ statusLabel(campaign.status) }}
+                            </span>
+                        </div>
+                    </button>
+                </div>
+                <div v-else class="border-wpx-border-dark rounded-xl border border-dashed p-8 text-center">
+                    <p class="text-wpx-white-soft text-sm font-bold">Aucune publicité pour le moment</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">Ta première publicité peut être prête en quelques minutes.</p>
+                    <button type="button" class="text-wpx-gold mt-3 text-xs font-bold" @click="resetNewCampaign">Créer ma première publicité →</button>
+                </div>
+            </section>
+
+            <template v-else>
+                <section
+                    v-if="selectedCampaign && isReadOnlyCampaign"
+                    class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5"
+                >
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="statusClasses(selectedCampaign.status)">
+                                {{ statusLabel(selectedCampaign.status) }}
+                            </span>
+                            <h2 class="text-wpx-white-soft mt-3 text-xl font-extrabold">{{ campaignTitle(selectedCampaign) }}</h2>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
+                                {{ selectedBrand?.name ?? 'Mon activité' }} · {{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA
+                            </p>
+                            <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-muted-dark mt-4 max-w-xl text-sm">
+                                Ta publicité est bien envoyée. Wasplex la vérifie avant sa mise en diffusion.
+                            </p>
+                            <p v-else-if="selectedCampaign.status === 'approved'" class="text-wpx-success-light mt-4 text-sm font-semibold">
+                                Ta publicité est active et peut être diffusée aux membres éligibles.
+                            </p>
+                            <p v-else-if="selectedCampaign.status === 'rejected'" class="text-wpx-danger-light mt-4 text-sm font-semibold">
+                                Cette publicité a été refusée.
+                            </p>
+                            <p v-else class="text-wpx-gold mt-4 text-sm font-semibold">Cette publicité est actuellement suspendue.</p>
+                            <p v-if="latestReviewCase?.reason" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-muted-dark mt-3 rounded-xl border p-3 text-xs">
+                                {{ latestReviewCase.reason }}
+                            </p>
+                        </div>
+                        <button type="button" class="bg-wpx-gold text-wpx-navy-950 rounded-xl px-4 py-2 text-xs font-extrabold" @click="resetNewCampaign">
+                            + Nouvelle publicité
+                        </button>
+                    </div>
+                    <CampaignPerformancePanel
+                        v-if="selectedCampaign.status === 'approved' || selectedCampaign.status === 'suspended'"
+                        :campaign-id="selectedCampaign.id"
+                        class="mt-5"
+                    />
+                </section>
+
+                <div v-else class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px]">
+                    <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+                        <div class="mb-5 flex items-center justify-between gap-2">
+                            <template v-for="(label, index) in STEPS" :key="label">
+                                <div class="flex min-w-0 flex-1 items-center gap-2 last:flex-none">
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <span
+                                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-extrabold"
+                                            :class="index <= step ? 'bg-wpx-gold text-wpx-navy-950' : 'bg-wpx-navy-750 text-wpx-muted-dark'"
+                                        >
+                                            {{ index + 1 }}
+                                        </span>
+                                        <span class="hidden text-[11px] font-bold sm:block" :class="index === step ? 'text-wpx-white-soft' : 'text-wpx-muted-dark'">
+                                            {{ label }}
+                                        </span>
+                                    </div>
+                                    <span v-if="index < STEPS.length - 1" class="bg-wpx-border-dark h-px flex-1" />
                                 </div>
-                                <div v-if="i < STEPS.length - 1" class="bg-wpx-border mx-1.5 mb-4 h-0.5 w-9 shrink-0" />
                             </template>
                         </div>
 
-                        <p
-                            v-if="actionError"
-                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-sm mb-3 p-2 text-xs"
-                        >
+                        <p v-if="actionError" class="bg-wpx-danger/10 text-wpx-danger-light mb-4 rounded-xl p-3 text-xs">
                             {{ actionError }}
                         </p>
 
-                        <div class="mb-4.5">
-                            <p class="text-wpx-text text-[15px] font-bold">{{ STEP_META[step].title }}</p>
-                            <p class="text-wpx-text-muted mt-1 text-xs">{{ STEP_META[step].subtitle }}</p>
-                        </div>
-
                         <div v-if="step === 0" class="flex flex-col gap-5">
-                            <div
-                                class="border-wpx-blue-light bg-wpx-blue-light/5 rounded-wpx-md flex max-w-xs items-center gap-3.5 border-[1.5px] p-3.5"
-                            >
-                                <span
-                                    class="from-wpx-blue to-wpx-cyan flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-extrabold text-white"
-                                >
-                                    {{
-                                        (brands.find((b) => b.id === form.brand_id)?.name ?? '??')
-                                            .slice(0, 2)
-                                            .toUpperCase()
-                                    }}
-                                </span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="text-wpx-text block truncate text-sm font-bold">{{
-                                        brands.find((b) => b.id === form.brand_id)?.name
-                                    }}</span>
-                                    <span class="text-wpx-text-muted block text-xs">Marque de cette campagne</span>
-                                </span>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="shrink-0">
-                                    <path
-                                        d="M5 13l4 4L19 7"
-                                        stroke="#075CCF"
-                                        stroke-width="2.2"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    />
-                                </svg>
-                            </div>
                             <div>
-                                <span class="text-wpx-text text-xs font-semibold">Objectif de la publicité</span>
-                                <div class="mt-2 grid grid-cols-2 gap-2.5">
+                                <p class="text-wpx-white-soft text-lg font-extrabold">Qu’est-ce que tu veux promouvoir ?</p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">Choisis ton activité, ton objectif et ton visuel. C’est tout pour cette étape.</p>
+                            </div>
+
+                            <div>
+                                <div class="mb-2 flex items-center justify-between gap-3">
+                                    <label class="text-wpx-white-soft text-xs font-bold">Mon activité</label>
+                                    <button
+                                        v-if="brands.length > 0 && !selectedCampaignId"
+                                        type="button"
+                                        class="text-wpx-gold text-[11px] font-bold"
+                                        @click="showBrandCreator = !showBrandCreator"
+                                    >
+                                        + Ajouter une activité
+                                    </button>
+                                </div>
+                                <select
+                                    v-if="brands.length > 0"
+                                    :value="form.brand_id"
+                                    :disabled="Boolean(selectedCampaignId)"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft w-full rounded-xl border px-3 py-3 text-sm disabled:opacity-60"
+                                    @change="selectBrandForNewCampaign((($event.target as HTMLSelectElement).value))"
+                                >
+                                    <option value="" disabled>Choisir mon activité…</option>
+                                    <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
+                                </select>
+                                <div
+                                    v-if="brands.length === 0 || showBrandCreator"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 mt-2 flex flex-col gap-2 rounded-xl border p-3 sm:flex-row"
+                                >
+                                    <input
+                                        v-model="newBrandName"
+                                        class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-sm"
+                                        placeholder="Ex. Boutique Awa, Chez Moussa, DG Afrique…"
+                                        @keyup.enter="createBrandInline"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="bg-wpx-gold text-wpx-navy-950 rounded-lg px-4 py-2.5 text-xs font-extrabold disabled:opacity-50"
+                                        :disabled="creatingBrand || !newBrandName.trim()"
+                                        @click="createBrandInline"
+                                    >
+                                        {{ creatingBrand ? 'Création…' : 'Continuer' }}
+                                    </button>
+                                </div>
+                                <p v-if="brands.length === 0" class="text-wpx-muted-dark mt-2 text-[11px]">
+                                    Pas besoin d’être une entreprise : indique simplement le nom sous lequel les clients te connaissent.
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="text-wpx-white-soft text-xs font-bold">Que veux-tu que les gens fassent ?</p>
+                                <div class="mt-2 grid gap-2 sm:grid-cols-2">
                                     <button
                                         v-for="(label, code) in OBJECTIVES"
                                         :key="code"
                                         type="button"
-                                        class="rounded-wpx-md flex items-center justify-between border-[1.5px] p-3 text-left text-sm font-semibold"
-                                        :class="
-                                            form.objective_code === code
-                                                ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text'
-                                                : 'border-wpx-border text-wpx-text'
-                                        "
+                                        class="rounded-xl border p-3 text-left text-sm font-bold transition"
+                                        :class="form.objective_code === code ? 'border-wpx-gold bg-wpx-gold/10 text-wpx-white-soft' : 'border-wpx-border-dark bg-wpx-navy-750 text-wpx-muted-dark'"
                                         @click="form.objective_code = code"
                                     >
-                                        {{ label }}
-                                        <span v-if="form.objective_code === code" class="text-wpx-blue-light">✓</span>
+                                        <span class="flex items-center justify-between gap-2">
+                                            {{ label }}
+                                            <span v-if="form.objective_code === code" class="text-wpx-gold">✓</span>
+                                        </span>
                                     </button>
                                 </div>
                             </div>
-                            <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Visuel à diffuser</span>
-                                <select
-                                    v-model="form.asset_id"
-                                    class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
+
+                            <div>
+                                <p class="text-wpx-white-soft text-xs font-bold">Ton visuel</p>
+                                <label
+                                    class="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-5 text-center transition"
+                                    :class="dragOver ? 'border-wpx-gold bg-wpx-gold/5' : 'border-wpx-border-dark bg-wpx-navy-750'"
+                                    @dragover.prevent="dragOver = true"
+                                    @dragleave.prevent="dragOver = false"
+                                    @drop.prevent="onDrop"
                                 >
-                                    <option :value="null" disabled>Choisir dans ma bibliothèque…</option>
-                                    <option v-for="asset in assets" :key="asset.id" :value="asset.id">
-                                        {{ asset.filename }}
-                                    </option>
-                                </select>
-                            </label>
-                            <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Titre de la publicité</span>
+                                    <span class="bg-wpx-cyan/12 text-wpx-cyan flex h-10 w-10 items-center justify-center rounded-xl text-xl">↑</span>
+                                    <span class="text-wpx-white-soft mt-2 text-sm font-bold">{{ uploading ? 'Envoi du visuel…' : 'Ajouter une photo ou une vidéo' }}</span>
+                                    <span class="text-wpx-muted-dark mt-1 text-[11px]">JPG, PNG, WEBP, MP4, MOV ou WEBM</span>
+                                    <input ref="fileInput" type="file" accept="image/*,video/*" class="hidden" @change="onFileInputChange" />
+                                </label>
+
+                                <div v-if="assets.length > 0" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                                    <button
+                                        v-for="asset in assets"
+                                        :key="asset.id"
+                                        type="button"
+                                        class="relative overflow-hidden rounded-xl border p-1.5"
+                                        :class="form.asset_id === asset.id ? 'border-wpx-gold bg-wpx-gold/10' : 'border-wpx-border-dark bg-wpx-navy-750'"
+                                        @click="form.asset_id = asset.id"
+                                    >
+                                        <img v-if="asset.type === 'image' && asset.url" :src="asset.url" class="h-16 w-full rounded-lg object-cover" />
+                                        <span v-else class="text-wpx-muted-dark flex h-16 items-center justify-center rounded-lg text-2xl">▶</span>
+                                        <span v-if="form.asset_id === asset.id" class="bg-wpx-gold text-wpx-navy-950 absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black">✓</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <label class="flex flex-col gap-1.5">
+                                <span class="text-wpx-white-soft text-xs font-bold">Petit titre <span class="text-wpx-muted-dark font-normal">(facultatif)</span></span>
                                 <input
                                     v-model="form.title"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-xl border px-3 py-3 text-sm"
                                     placeholder="Ex. Livraison gratuite ce week-end"
-                                    class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
                                 />
                             </label>
                         </div>
 
-                        <div v-else-if="step === 1" class="flex flex-col gap-4">
-                            <div class="rounded-wpx-md border-wpx-border bg-wpx-canvas border p-3">
-                                <p class="text-wpx-text text-xs font-semibold">Ciblage simple et compréhensible</p>
-                                <p class="text-wpx-text-muted mt-1 text-xs">
-                                    L’abonnement des membres n’est pas un critère de ciblage. Choisis seulement la zone
-                                    et, si utile, quelques critères volontaires de profil.
-                                </p>
+                        <div v-else-if="step === 1" class="flex flex-col gap-5">
+                            <div>
+                                <p class="text-wpx-white-soft text-lg font-extrabold">À qui montrer ta publicité ?</p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">Le réglage recommandé est simple : audience large, puis tu choisis ton budget.</p>
                             </div>
-                            <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Pays ciblé (optionnel)</span>
-                                <select
-                                    v-model="form.country_code"
-                                    class="rounded-wpx-sm border-wpx-border w-full max-w-sm border px-2 py-2 text-sm"
-                                >
-                                    <option value="">Tous les pays</option>
-                                    <option v-for="country in TARGET_COUNTRIES" :key="country[0]" :value="country[0]">
-                                        {{ country[1] }} ({{ country[0] }})
-                                    </option>
-                                </select>
-                            </label>
-                            <div v-for="(criteria, category) in profileCriteria" :key="category">
-                                <span class="text-wpx-text text-xs font-semibold">
-                                    {{
-                                        {
-                                            demographic: 'Genre déclaré',
-                                            interest: 'Centres d’intérêt',
-                                            usage: 'Usages',
-                                            possession: 'Équipement',
-                                            project: 'Projets',
-                                            situation: 'Situation',
-                                            territory: 'Zone approximative',
-                                        }[category] ?? category
-                                    }}
-                                </span>
-                                <div class="mt-2 flex flex-wrap gap-2">
+
+                            <div class="border-wpx-border-dark bg-wpx-navy-750 rounded-xl border p-3.5">
+                                <div class="flex items-start gap-3">
+                                    <span class="bg-wpx-success/12 text-wpx-success-light flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">✓</span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-wpx-white-soft text-sm font-bold">Audience large recommandée</p>
+                                        <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">Wasplex cherche les membres éligibles. Tu peux préciser un pays ou affiner seulement si ton offre l’exige.</p>
+                                    </div>
+                                </div>
+
+                                <label class="mt-3 flex flex-col gap-1.5">
+                                    <span class="text-wpx-muted-dark text-[11px] font-bold">Pays <span class="font-normal">(facultatif)</span></span>
+                                    <select v-model="form.country_code" class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft rounded-lg border px-3 py-2.5 text-sm">
+                                        <option value="">Tous les pays disponibles</option>
+                                        <option v-for="country in TARGET_COUNTRIES" :key="country[0]" :value="country[0]">{{ country[1] }}</option>
+                                    </select>
+                                </label>
+
+                                <button type="button" class="text-wpx-cyan mt-3 text-xs font-bold" @click="showAdvancedTargeting = !showAdvancedTargeting">
+                                    {{ showAdvancedTargeting ? '− Masquer les critères avancés' : '+ Affiner mon audience (facultatif)' }}
+                                </button>
+
+                                <div v-if="showAdvancedTargeting" class="border-wpx-border-dark mt-3 flex flex-col gap-4 border-t pt-3">
+                                    <div v-for="(criteria, category) in profileCriteria" :key="category">
+                                        <p class="text-wpx-white-soft text-[11px] font-bold">{{ categoryLabel(category) }}</p>
+                                        <div class="mt-2 flex flex-wrap gap-1.5">
+                                            <button
+                                                v-for="criterion in criteria"
+                                                :key="criterion.code"
+                                                type="button"
+                                                class="rounded-full border px-2.5 py-1.5 text-[11px] font-semibold"
+                                                :class="form.profile_taxonomies.includes(criterion.code) ? 'border-wpx-cyan bg-wpx-cyan/10 text-wpx-cyan' : 'border-wpx-border-dark text-wpx-muted-dark'"
+                                                @click="toggleProfileCriterion(criterion.code)"
+                                            >
+                                                {{ form.profile_taxonomies.includes(criterion.code) ? '✓ ' : '+ ' }}{{ criterion.label }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="bg-wpx-navy-950 text-wpx-cyan self-start rounded-lg px-3 py-2 text-[11px] font-bold disabled:opacity-50" :disabled="estimating" @click="runEstimate">
+                                        {{ estimating ? 'Estimation…' : 'Estimer cette audience' }}
+                                    </button>
+                                    <p v-if="estimate" class="text-wpx-muted-dark text-xs">
+                                        <template v-if="estimate.too_small">Audience encore limitée. La diffusion progressera avec les membres éligibles.</template>
+                                        <template v-else>Audience estimée : <strong class="text-wpx-white-soft">{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong> comptes.</template>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="text-wpx-white-soft text-sm font-bold">Combien veux-tu investir par jour ?</p>
+                                <p class="text-wpx-muted-dark mt-1 text-[11px]">Tu peux commencer petit. Wasplex calcule immédiatement le budget total.</p>
+                                <div class="mt-3 flex flex-wrap gap-2">
                                     <button
-                                        v-for="criterion in criteria"
-                                        :key="criterion.code"
+                                        v-for="amount in budgetOptions"
+                                        :key="amount"
                                         type="button"
-                                        class="rounded-full border px-3 py-1.5 text-xs font-medium"
-                                        :class="
-                                            form.profile_taxonomies.includes(criterion.code)
-                                                ? 'border-wpx-blue bg-wpx-blue/10 text-wpx-blue'
-                                                : 'border-wpx-border text-wpx-text'
-                                        "
-                                        @click="toggleProfileCriterion(criterion.code)"
+                                        class="rounded-xl border px-3 py-2 text-xs font-bold"
+                                        :class="form.daily_budget_minor === amount ? 'border-wpx-gold bg-wpx-gold/10 text-wpx-gold' : 'border-wpx-border-dark bg-wpx-navy-750 text-wpx-muted-dark'"
+                                        @click="form.daily_budget_minor = amount"
                                     >
-                                        {{ form.profile_taxonomies.includes(criterion.code) ? '✓ ' : '+ '
-                                        }}{{ criterion.label }}
+                                        {{ numberFormatter.format(amount) }} FCFA
+                                    </button>
+                                </div>
+                                <label class="mt-3 flex max-w-xs flex-col gap-1.5">
+                                    <span class="text-wpx-muted-dark text-[11px]">Autre montant par jour</span>
+                                    <input
+                                        v-model.number="form.daily_budget_minor"
+                                        type="number"
+                                        :min="advertisingRules.minimum_daily_budget_minor"
+                                        step="100"
+                                        class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-xl border px-3 py-2.5 text-sm"
+                                    />
+                                </label>
+                            </div>
+
+                            <div>
+                                <p class="text-wpx-white-soft text-sm font-bold">Pendant combien de jours ?</p>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                        v-for="days in durationOptions"
+                                        :key="days"
+                                        type="button"
+                                        class="rounded-xl border px-3 py-2 text-xs font-bold"
+                                        :class="form.duration_days === days ? 'border-wpx-cyan bg-wpx-cyan/10 text-wpx-cyan' : 'border-wpx-border-dark bg-wpx-navy-750 text-wpx-muted-dark'"
+                                        @click="form.duration_days = days"
+                                    >
+                                        {{ days }} jour{{ days > 1 ? 's' : '' }}
                                     </button>
                                 </div>
                             </div>
-                            <p class="text-wpx-text-muted text-xs">
-                                Les critères de profil sont déclarés volontairement par les utilisateurs. Wasplex ne
-                                révèle jamais leur identité à l’annonceur.
-                            </p>
-                            <button
-                                type="button"
-                                class="rounded-wpx-md bg-wpx-navy-950 self-start px-3.5 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                                :disabled="estimating"
-                                @click="runEstimate"
-                            >
-                                Estimer l'audience
-                            </button>
-                            <p v-if="estimate" class="text-wpx-text text-sm">
-                                <template v-if="estimate.too_small">
-                                    <strong>Audience encore limitée.</strong> La diffusion progressera à mesure que de
-                                    nouveaux utilisateurs éligibles rejoignent Wasplex. Aucun budget n’est débité sans
-                                    vue complète.
-                                </template>
-                                <template v-else>
-                                    Audience estimée :
-                                    <strong>{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong>
-                                    comptes.
-                                </template>
-                            </p>
-                        </div>
 
-                        <div v-else-if="step === 2" class="flex flex-col gap-4">
-                            <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Budget quotidien (FCFA)</span>
-                                <input
-                                    v-model.number="form.daily_budget_minor"
-                                    type="number"
-                                    :min="advertisingRules.minimum_daily_budget_minor"
-                                    step="100"
-                                    placeholder="Ex. 2000"
-                                    class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
-                                />
-                            </label>
-                            <label class="flex flex-col gap-1 text-xs">
-                                <span class="text-wpx-text font-semibold">Nombre de jours de diffusion</span>
-                                <input
-                                    v-model.number="form.duration_days"
-                                    type="number"
-                                    :min="advertisingRules.minimum_duration_days"
-                                    :max="advertisingRules.maximum_duration_days"
-                                    class="rounded-wpx-sm border-wpx-border w-40 border px-2 py-1.5 text-sm"
-                                />
-                            </label>
-                            <div class="rounded-wpx-md bg-wpx-canvas border-wpx-border max-w-md border p-4">
-                                <p class="text-wpx-text-muted text-xs">Budget total de la campagne</p>
-                                <p class="text-wpx-text mt-1 text-xl font-bold">
-                                    {{ form.daily_budget_minor }} FCFA × {{ form.duration_days }} jours =
-                                    {{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA
-                                </p>
-                                <p class="text-wpx-text-muted mt-2 text-xs">
-                                    Solde disponible : {{ walletAvailableMinor.toLocaleString('fr-FR') }} WP
-                                </p>
+                            <div class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-2xl bg-gradient-to-r p-4">
+                                <p class="text-[11px] font-bold uppercase opacity-70">Budget total</p>
+                                <p class="mt-1 text-2xl font-black">{{ numberFormatter.format(totalBudgetMinor) }} FCFA</p>
+                                <p class="mt-1 text-xs font-semibold opacity-75">{{ numberFormatter.format(form.daily_budget_minor) }} FCFA × {{ form.duration_days }} jour{{ form.duration_days > 1 ? 's' : '' }}</p>
+                                <div class="mt-3 border-t border-black/10 pt-3 text-xs font-bold">
+                                    Solde disponible : {{ numberFormatter.format(walletAvailableMinor) }} FCFA
+                                </div>
                             </div>
-                            <p class="text-wpx-text-muted text-xs">
-                                Tu choisis librement entre {{ advertisingRules.minimum_duration_days }} et
-                                {{ advertisingRules.maximum_duration_days }} jours, avec au moins
-                                {{ advertisingRules.minimum_daily_budget_minor }} FCFA par jour et
-                                {{ advertisingRules.minimum_budget_minor }} FCFA au total.
+                            <p v-if="!hasEnoughWallet" class="bg-wpx-danger/10 text-wpx-danger-light rounded-xl p-3 text-xs">
+                                Il manque {{ numberFormatter.format(totalBudgetMinor - walletAvailableMinor) }} FCFA. Tu pourras recharger ton solde avant l’envoi.
                             </p>
                         </div>
 
-                        <div v-else-if="step === 3" class="flex flex-col gap-3 text-sm">
-                            <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-success-light">
-                                Campagne soumise — en attente de revue administrative.
-                            </p>
-                            <p v-else-if="selectedCampaign.status === 'approved'" class="text-wpx-success-light">
-                                Campagne approuvée.
-                            </p>
-                            <p v-else-if="selectedCampaign.status === 'suspended'" class="text-wpx-warning-light">
-                                Campagne suspendue par l'administration.
-                            </p>
-                            <template v-else-if="selectedCampaign.status === 'rejected'">
-                                <p class="text-wpx-danger-light">Campagne rejetée.</p>
-                                <p v-if="latestReviewCase?.reason" class="text-wpx-text-muted">
-                                    Motif : {{ latestReviewCase.reason }}
-                                </p>
-                            </template>
-                            <template v-else-if="selectedCampaign.status === 'changes_requested'">
-                                <p class="text-wpx-warning-light">Correction demandée par l'administration.</p>
-                                <p
-                                    v-if="latestReviewCase?.reason"
-                                    class="bg-wpx-canvas rounded-wpx-sm text-wpx-text p-2"
-                                >
-                                    {{ latestReviewCase.reason }}
-                                </p>
-                                <p class="text-wpx-text-muted text-xs">
-                                    Corrigez le contenu, l'audience ou le budget ci-dessus puis resoumettez — le budget
-                                    déjà réservé reste verrouillé, aucun nouveau financement n'est nécessaire.
-                                </p>
-                                <button
-                                    type="button"
-                                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
-                                    :disabled="resubmitting"
-                                    @click="runResubmit"
-                                >
-                                    Resoumettre la campagne
+                        <div v-else class="flex flex-col gap-4">
+                            <div>
+                                <p class="text-wpx-white-soft text-lg font-extrabold">Vérifie et envoie</p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">Tout est prêt. Le budget sera réservé sur ton solde, puis la publicité partira en vérification.</p>
+                            </div>
+
+                            <div class="border-wpx-border-dark bg-wpx-navy-750 grid gap-3 rounded-xl border p-4 sm:grid-cols-2">
+                                <div>
+                                    <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Activité</p>
+                                    <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ selectedBrand?.name ?? '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Objectif</p>
+                                    <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ ctaLabel ?? '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Audience</p>
+                                    <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ form.country_code || 'Large' }}<span v-if="form.profile_taxonomies.length"> · {{ form.profile_taxonomies.length }} critère(s)</span></p>
+                                </div>
+                                <div>
+                                    <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Budget</p>
+                                    <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ numberFormatter.format(totalBudgetMinor) }} FCFA</p>
+                                </div>
+                            </div>
+
+                            <template v-if="selectedCampaign?.status === 'changes_requested'">
+                                <div class="bg-wpx-gold/10 text-wpx-gold rounded-xl p-3 text-xs">
+                                    <p class="font-bold">Wasplex demande une correction.</p>
+                                    <p v-if="latestReviewCase?.reason" class="mt-1 opacity-90">{{ latestReviewCase.reason }}</p>
+                                </div>
+                                <p class="text-wpx-muted-dark text-xs">Le budget déjà réservé reste verrouillé : aucune nouvelle recharge n’est nécessaire pour resoumettre.</p>
+                                <button type="button" class="bg-wpx-gold text-wpx-navy-950 rounded-xl px-4 py-3 text-sm font-extrabold disabled:opacity-50" :disabled="resubmitting" @click="runResubmit">
+                                    {{ resubmitting ? 'Resoumission…' : 'Resoumettre ma publicité' }}
                                 </button>
                             </template>
+
                             <template v-else>
-                                <div
-                                    class="rounded-wpx-md bg-wpx-canvas border-wpx-border grid gap-2 border p-4 sm:grid-cols-2"
-                                >
-                                    <p>
-                                        Durée : <strong>{{ form.duration_days }} jours</strong>
-                                    </p>
-                                    <p>
-                                        Par jour :
-                                        <strong>{{ form.daily_budget_minor.toLocaleString('fr-FR') }} FCFA</strong>
-                                    </p>
-                                    <p>
-                                        Budget total :
-                                        <strong>{{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA</strong>
-                                    </p>
-                                    <p>
-                                        Wallet : <strong>{{ walletAvailableMinor.toLocaleString('fr-FR') }} WP</strong>
-                                    </p>
+                                <div class="border-wpx-border-dark bg-wpx-navy-950 rounded-xl border p-4">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Mon solde</p>
+                                            <p class="text-wpx-white-soft mt-1 text-xl font-black">{{ numberFormatter.format(walletAvailableMinor) }} FCFA</p>
+                                        </div>
+                                        <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="hasEnoughWallet ? 'bg-wpx-success/12 text-wpx-success-light' : 'bg-wpx-danger/12 text-wpx-danger-light'">
+                                            {{ hasEnoughWallet ? 'Solde suffisant' : 'À recharger' }}
+                                        </span>
+                                    </div>
                                 </div>
-                                <p class="text-wpx-text-muted text-xs">
-                                    En continuant, Wasplex réserve le budget et transmet immédiatement la campagne à
-                                    l’administration. Aucun débit publicitaire n’a lieu sans vue complète.
-                                </p>
+
                                 <button
+                                    v-if="hasEnoughWallet"
                                     type="button"
-                                    class="rounded-wpx-sm from-wpx-blue to-wpx-cyan text-wpx-navy-950 self-start bg-gradient-to-br px-4 py-1.5 text-sm font-semibold disabled:opacity-50"
+                                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-4 py-3.5 text-sm font-black shadow-lg disabled:opacity-50"
                                     :disabled="sending || totalBudgetMinor < advertisingRules.minimum_budget_minor"
                                     @click="financeAndSubmit"
                                 >
-                                    {{ sending ? 'Envoi en cours…' : 'Financer et envoyer à Wasplex' }}
+                                    {{ sending ? 'Envoi en cours…' : `Réserver ${numberFormatter.format(totalBudgetMinor)} FCFA et envoyer` }}
                                 </button>
                                 <button
-                                    v-if="walletShortfallMinor !== null"
+                                    v-else
                                     type="button"
-                                    class="text-wpx-blue-light self-start text-sm font-bold"
+                                    class="bg-wpx-gold text-wpx-navy-950 rounded-xl px-4 py-3.5 text-sm font-black"
                                     @click="emit('navigateWallet')"
                                 >
-                                    Ajouter {{ walletShortfallMinor.toLocaleString('fr-FR') }} FCFA au Wallet →
+                                    Recharger mon solde de {{ numberFormatter.format(totalBudgetMinor - walletAvailableMinor) }} FCFA
                                 </button>
+                                <p class="text-wpx-muted-dark text-center text-[11px] leading-relaxed">
+                                    Le budget est réservé, pas dépensé d’un coup. La facturation publicitaire suit les vues complètes effectivement diffusées.
+                                </p>
                             </template>
                         </div>
 
-                        <CampaignPerformancePanel
-                            v-if="selectedCampaign.status === 'approved' || selectedCampaign.status === 'suspended'"
-                            :campaign-id="selectedCampaign.id"
-                            class="mt-4"
-                        />
-
-                        <div class="mt-5 flex justify-between">
+                        <div v-if="step < 2" class="border-wpx-border-dark mt-6 flex items-center justify-between gap-3 border-t pt-4">
                             <button
                                 type="button"
-                                class="rounded-wpx-md border-wpx-border text-wpx-text border-[1.5px] bg-white px-4 py-2 text-xs font-semibold disabled:opacity-30"
+                                class="text-wpx-muted-dark rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-30"
                                 :disabled="step === 0"
                                 @click="step--"
                             >
-                                ← Précédent
+                                ← Retour
                             </button>
                             <button
                                 type="button"
-                                class="rounded-wpx-md bg-wpx-blue-light px-6 py-2 text-xs font-bold text-white disabled:opacity-30"
-                                :disabled="step === STEPS.length - 1 || !canContinue"
-                                @click="step++"
+                                class="bg-wpx-gold text-wpx-navy-950 rounded-xl px-5 py-3 text-xs font-black disabled:opacity-30"
+                                :disabled="!canContinue || preparingStep"
+                                @click="nextStep"
                             >
-                                Suivant →
+                                {{ preparingStep ? 'Enregistrement…' : step === 0 ? 'Audience & budget →' : 'Vérifier & envoyer →' }}
                             </button>
                         </div>
-                    </div>
+                        <div v-else class="mt-5">
+                            <button type="button" class="text-wpx-muted-dark text-xs font-bold" @click="step--">← Modifier l’audience ou le budget</button>
+                        </div>
+                    </section>
 
-                    <div class="lg:w-56">
-                        <CampaignPreviewPhone
-                            :brand-name="brands.find((b) => b.id === form.brand_id)?.name ?? null"
-                            :title="form.title || null"
-                            :cta-label="ctaLabel"
-                            :asset-url="selectedAsset?.url ?? null"
-                            :asset-type="selectedAsset?.type ?? null"
-                            :gain-label="gainLabel"
-                            :progress-percent="((step + 1) / STEPS.length) * 100"
-                        />
-                    </div>
+                    <aside class="hidden lg:block">
+                        <div class="sticky top-24">
+                            <CampaignPreviewPhone
+                                :brand-name="selectedBrand?.name ?? null"
+                                :title="form.title || null"
+                                :cta-label="ctaLabel"
+                                :asset-url="selectedAsset?.url ?? null"
+                                :asset-type="selectedAsset?.type ?? null"
+                                :gain-label="gainLabel"
+                                :progress-percent="((step + 1) / STEPS.length) * 100"
+                            />
+                        </div>
+                    </aside>
                 </div>
-
-                <div
-                    v-else
-                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex flex-1 items-center justify-center p-4 text-sm"
-                >
-                    Choisissez une marque pour créer une campagne.
-                </div>
-            </div>
+            </template>
         </template>
     </div>
 </template>
