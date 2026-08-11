@@ -12,12 +12,12 @@ interface Deposit {
     created_at: string;
 }
 
-const QUICK_AMOUNTS = [2500, 5000, 10000, 25000, 50000] as const;
-
 interface CampaignReport {
     status: string;
     budget_captured_minor: number;
 }
+
+const QUICK_AMOUNTS = [2500, 5000, 10000, 25000, 50000] as const;
 
 const wallet = ref<{ available_minor: number; currency: string } | null>(null);
 const deposits = ref<Deposit[]>([]);
@@ -25,7 +25,7 @@ const campaignReports = ref<CampaignReport[]>([]);
 const loading = ref(true);
 const showRecharge = ref(false);
 const selectedAmount = ref<number>(QUICK_AMOUNTS[1]);
-const customAmount = ref<string>('');
+const customAmount = ref('');
 const creatingDeposit = ref(false);
 const pendingDeposit = ref<Deposit | null>(null);
 const justCredited = ref(false);
@@ -35,10 +35,14 @@ const loadError = ref<string | null>(null);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
+const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+});
 
-const totalSpentMinor = computed(() => campaignReports.value.reduce((total, r) => total + r.budget_captured_minor, 0));
-const activeCampaignsCount = computed(() => campaignReports.value.filter((r) => r.status === 'approved').length);
-
+const totalSpentMinor = computed(() => campaignReports.value.reduce((total, report) => total + report.budget_captured_minor, 0));
+const activeCampaignsCount = computed(() => campaignReports.value.filter((report) => report.status === 'approved').length);
 const effectiveAmount = computed<number>(() => {
     const custom = Number.parseInt(customAmount.value, 10);
     return Number.isFinite(custom) && custom > 0 ? custom : selectedAmount.value;
@@ -58,7 +62,7 @@ async function load(): Promise<void> {
         campaignReports.value = reportsRes.data.reports;
     } catch (e) {
         const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
-        loadError.value = message ?? 'Le Wallet annonceur est momentanément indisponible.';
+        loadError.value = message ?? 'Votre solde publicitaire est momentanément indisponible.';
     } finally {
         loading.value = false;
     }
@@ -67,6 +71,18 @@ async function load(): Promise<void> {
 function pickQuickAmount(amount: number): void {
     selectedAmount.value = amount;
     customAmount.value = '';
+}
+
+function openRecharge(): void {
+    error.value = null;
+    pendingDeposit.value = null;
+    showRecharge.value = true;
+}
+
+function closeRecharge(): void {
+    if (!creatingDeposit.value) {
+        showRecharge.value = false;
+    }
 }
 
 async function startRecharge(): Promise<void> {
@@ -88,7 +104,7 @@ async function startRecharge(): Promise<void> {
     } catch (e) {
         error.value =
             (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
-            'La création du dépôt a échoué.';
+            'La recharge n’a pas pu être démarrée.';
     } finally {
         creatingDeposit.value = false;
     }
@@ -100,11 +116,10 @@ function beginPolling(depositId: string): void {
     let attempts = 0;
     pollTimer = setInterval(async () => {
         attempts += 1;
-
         const { data } = await http.get(`/advertiser/wallet/deposits/${depositId}`);
         pendingDeposit.value = data.deposit;
 
-        const index = deposits.value.findIndex((d) => d.id === depositId);
+        const index = deposits.value.findIndex((deposit) => deposit.id === depositId);
         if (index !== -1) {
             deposits.value[index] = data.deposit;
         }
@@ -134,9 +149,9 @@ function statusLabel(status: string): string {
     return (
         {
             created: 'Initié',
-            awaiting_payment: 'En attente de paiement',
+            awaiting_payment: 'Paiement en attente',
             confirmed: 'Confirmé',
-            credited: 'Crédité',
+            credited: 'Ajouté au solde',
             rejected: 'Refusé',
             expired: 'Expiré',
         }[status] ?? status
@@ -145,175 +160,197 @@ function statusLabel(status: string): string {
 
 function statusClasses(status: string): string {
     if (status === 'credited' || status === 'confirmed') {
-        return 'bg-wpx-success/10 text-wpx-success-light';
+        return 'bg-wpx-success/15 text-wpx-success-light';
     }
     if (status === 'rejected' || status === 'expired') {
-        return 'bg-wpx-danger/10 text-wpx-danger-light';
+        return 'bg-wpx-danger/15 text-wpx-danger-light';
     }
 
-    return 'bg-wpx-pending/10 text-wpx-warning-light';
+    return 'bg-wpx-gold/12 text-wpx-gold';
+}
+
+function formatDate(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date);
 }
 
 onBeforeUnmount(stopPolling);
-
 void load();
 </script>
 
 <template>
-    <div class="flex flex-col gap-6">
-        <div v-if="loadError" class="rounded-wpx-lg bg-wpx-danger/10 text-wpx-danger-light p-4 text-sm">
+    <div class="mx-auto flex w-full max-w-5xl flex-col gap-4 lg:gap-5">
+        <div v-if="loadError" class="bg-wpx-danger/10 text-wpx-danger-light rounded-2xl p-4 text-sm">
             {{ loadError }}
         </div>
 
-        <!-- Solde + statistiques -->
-        <div v-else class="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1.3fr_1fr]">
-            <div
-                class="rounded-wpx-xl from-wpx-orange to-wpx-gold ease-wpx-reward relative overflow-hidden bg-gradient-to-br p-6 transition-shadow duration-700"
-                :class="justCredited ? 'shadow-wpx-reward' : 'shadow-wpx-card'"
+        <template v-else>
+            <section
+                class="from-wpx-orange to-wpx-gold shadow-wpx-card-dark relative overflow-hidden rounded-3xl bg-gradient-to-br p-5 sm:p-6"
+                :class="justCredited ? 'shadow-wpx-reward' : ''"
             >
-                <p class="text-wpx-navy-950/70 text-xs font-semibold tracking-wide uppercase">Solde disponible</p>
-                <p class="text-wpx-navy-950 mt-1 text-4xl font-bold [font-variant-numeric:tabular-nums]">
-                    <span v-if="loading">—</span>
-                    <span v-else>{{ numberFormatter.format(wallet?.available_minor ?? 0) }} WP</span>
-                </p>
-                <p class="text-wpx-navy-950/70 mt-1 text-xs">
-                    ≈ {{ numberFormatter.format(wallet?.available_minor ?? 0) }} FCFA — 1 WP = 1 FCFA
-                </p>
-
-                <button
-                    type="button"
-                    class="bg-wpx-navy-950 text-wpx-gold rounded-wpx-md mt-4 px-4 py-2 text-sm font-semibold shadow"
-                    @click="showRecharge = !showRecharge"
-                >
-                    {{ showRecharge ? 'Annuler' : 'Recharger le Wallet' }}
-                </button>
-
-                <div v-if="justCredited" class="text-wpx-navy-950 absolute top-4 right-4 text-xs font-semibold">
-                    ✨ Dépôt confirmé
+                <div class="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="text-wpx-navy-950/65 text-xs font-extrabold tracking-wide uppercase">Mon solde publicitaire</p>
+                        <p class="text-wpx-navy-950 mt-1 text-4xl font-black [font-variant-numeric:tabular-nums] sm:text-5xl">
+                            <span v-if="loading">—</span>
+                            <span v-else>{{ numberFormatter.format(wallet?.available_minor ?? 0) }} FCFA</span>
+                        </p>
+                        <p class="text-wpx-navy-950/65 mt-1 text-xs">Disponible pour financer vos prochaines publicités.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="bg-wpx-navy-950 text-wpx-gold flex min-h-12 items-center justify-center rounded-2xl px-5 py-3 text-sm font-extrabold shadow-lg"
+                        @click="openRecharge"
+                    >
+                        + Recharger mon solde
+                    </button>
                 </div>
-            </div>
+                <div v-if="justCredited" class="text-wpx-navy-950 absolute top-4 right-4 rounded-full bg-white/35 px-3 py-1 text-xs font-bold">
+                    ✓ Recharge confirmée
+                </div>
+            </section>
 
-            <div
-                class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface border-wpx-border flex flex-col justify-between border p-5"
-            >
-                <div>
-                    <p class="text-wpx-text-muted text-xs font-bold">Dépensé au total</p>
-                    <p class="text-wpx-text mt-1 text-[22px] font-bold">
-                        {{ numberFormatter.format(totalSpentMinor) }} WP
+            <section class="grid grid-cols-2 gap-3">
+                <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4">
+                    <p class="text-wpx-muted-dark text-[10px] font-bold tracking-wide uppercase">Dépensé en publicité</p>
+                    <p class="text-wpx-white-soft mt-1.5 text-xl font-extrabold">
+                        {{ numberFormatter.format(totalSpentMinor) }} FCFA
                     </p>
                 </div>
-                <div class="bg-wpx-border my-3.5 h-px" />
-                <div>
-                    <p class="text-wpx-text-muted text-xs font-bold">Campagnes actives</p>
-                    <p class="text-wpx-text mt-1 text-[22px] font-bold">{{ activeCampaignsCount }}</p>
+                <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4">
+                    <p class="text-wpx-muted-dark text-[10px] font-bold tracking-wide uppercase">Publicités actives</p>
+                    <p class="text-wpx-white-soft mt-1.5 text-xl font-extrabold">{{ activeCampaignsCount }}</p>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- Recharge -->
+            <section class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-2xl border">
+                <div class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
+                    <div>
+                        <h2 class="text-wpx-white-soft text-sm font-bold">Mes recharges</h2>
+                        <p class="text-wpx-muted-dark mt-0.5 text-xs">Suivez simplement l’argent ajouté à votre solde.</p>
+                    </div>
+                    <button type="button" class="text-wpx-cyan text-xs font-bold" @click="openRecharge">Recharger</button>
+                </div>
+
+                <div v-if="loading" class="text-wpx-muted-dark p-5 text-sm">Chargement…</div>
+                <div v-else-if="deposits.length === 0" class="px-5 py-9 text-center">
+                    <span class="bg-wpx-blue/12 mx-auto flex h-12 w-12 items-center justify-center rounded-2xl">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="6" width="18" height="13" rx="3" stroke="#4FA3FF" stroke-width="1.7" />
+                            <path d="M3 10h18" stroke="#4FA3FF" stroke-width="1.7" />
+                        </svg>
+                    </span>
+                    <p class="text-wpx-white-soft mt-3 text-sm font-bold">Aucune recharge pour le moment</p>
+                    <p class="text-wpx-muted-dark mx-auto mt-1 max-w-sm text-xs leading-relaxed">
+                        Ajoutez un montant lorsque vous êtes prêt à financer votre première publicité.
+                    </p>
+                    <button type="button" class="text-wpx-cyan mt-3 text-xs font-bold" @click="openRecharge">
+                        Faire ma première recharge →
+                    </button>
+                </div>
+
+                <div v-else class="divide-wpx-border-dark divide-y">
+                    <article v-for="deposit in deposits" :key="deposit.id" class="flex items-center gap-3 px-4 py-4 sm:px-5">
+                        <span class="bg-wpx-navy-750 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 4v12M7.5 8.5L12 4l4.5 4.5" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-wpx-white-soft text-sm font-extrabold">
+                                + {{ numberFormatter.format(deposit.amount_minor) }} FCFA
+                            </p>
+                            <p class="text-wpx-muted-dark mt-0.5 truncate text-[11px]">
+                                {{ formatDate(deposit.created_at) }}
+                                <template v-if="deposit.provider_reference"> · {{ deposit.provider_reference }}</template>
+                            </p>
+                        </div>
+                        <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="statusClasses(deposit.status)">
+                            {{ statusLabel(deposit.status) }}
+                        </span>
+                    </article>
+                </div>
+            </section>
+        </template>
+
         <div
-            v-if="!loadError && showRecharge"
-            class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex flex-col gap-4 p-5"
+            v-if="showRecharge"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4"
+            @click.self="closeRecharge"
         >
-            <div class="flex items-center justify-between gap-3">
-                <h3 class="text-wpx-text text-sm font-semibold">Choisir un montant (FCFA)</h3>
-                <span class="bg-wpx-warning/10 text-wpx-warning-light rounded-full px-2.5 py-1 text-[11px] font-bold">
-                    GeniusPay · Sandbox
-                </span>
-            </div>
-            <p class="text-wpx-text-muted text-xs">
-                Mode test : aucune transaction réelle ne sera débitée. GeniusPay ouvrira sa page sécurisée pour simuler
-                le paiement.
-            </p>
-            <div class="flex flex-wrap gap-2">
+            <section class="border-wpx-border-dark bg-wpx-navy-850 w-full max-w-lg rounded-t-3xl border p-5 shadow-2xl sm:rounded-3xl sm:p-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Recharger mon solde</p>
+                        <h2 class="text-wpx-white-soft mt-1 text-xl font-extrabold">Quel montant voulez-vous ajouter ?</h2>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">Le montant sera disponible pour financer vos publicités.</p>
+                    </div>
+                    <button
+                        type="button"
+                        class="bg-wpx-navy-750 text-wpx-white-soft flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg"
+                        aria-label="Fermer"
+                        @click="closeRecharge"
+                    >
+                        ×
+                    </button>
+                </div>
+
+                <div class="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                    <button
+                        v-for="amount in QUICK_AMOUNTS"
+                        :key="amount"
+                        type="button"
+                        class="rounded-2xl border px-3 py-3 text-sm font-extrabold"
+                        :class="
+                            effectiveAmount === amount && customAmount === ''
+                                ? 'border-wpx-gold bg-wpx-gold/12 text-wpx-gold'
+                                : 'border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft'
+                        "
+                        @click="pickQuickAmount(amount)"
+                    >
+                        {{ numberFormatter.format(amount) }} FCFA
+                    </button>
+                </div>
+
+                <label class="mt-4 block">
+                    <span class="text-wpx-muted-dark text-xs font-semibold">Autre montant</span>
+                    <div class="border-wpx-border-dark bg-wpx-navy-750 mt-1.5 flex items-center rounded-2xl border px-4">
+                        <input
+                            v-model="customAmount"
+                            type="number"
+                            min="200"
+                            placeholder="Ex. 15 000"
+                            class="text-wpx-white-soft placeholder:text-wpx-muted-dark min-w-0 flex-1 bg-transparent py-3 text-base font-bold outline-none"
+                        />
+                        <span class="text-wpx-muted-dark text-xs font-bold">FCFA</span>
+                    </div>
+                </label>
+
+                <div class="bg-wpx-gold/8 border-wpx-gold/20 mt-4 rounded-2xl border p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-wpx-muted-dark text-xs">Montant à ajouter</span>
+                        <strong class="text-wpx-gold text-base">{{ numberFormatter.format(effectiveAmount) }} FCFA</strong>
+                    </div>
+                    <p class="text-wpx-muted-dark mt-1 text-[11px]">GeniusPay · environnement de test actuel</p>
+                </div>
+
+                <p v-if="error" class="text-wpx-danger-light mt-3 text-xs">{{ error }}</p>
+                <div v-if="pendingDeposit?.status === 'awaiting_payment'" class="text-wpx-muted-dark mt-3 flex items-center gap-2 text-xs">
+                    <span class="border-wpx-border-dark h-3.5 w-3.5 animate-spin rounded-full border-2 border-t-transparent" />
+                    Vérification du paiement en cours…
+                </div>
+
                 <button
-                    v-for="amount in QUICK_AMOUNTS"
-                    :key="amount"
                     type="button"
-                    class="rounded-wpx-full border px-4 py-1.5 text-sm font-medium"
-                    :class="
-                        effectiveAmount === amount && customAmount === ''
-                            ? 'border-wpx-orange bg-wpx-orange/10 text-wpx-orange-light'
-                            : 'border-wpx-border text-wpx-text'
-                    "
-                    @click="pickQuickAmount(amount)"
+                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-5 w-full rounded-2xl bg-gradient-to-r px-5 py-3.5 text-sm font-extrabold disabled:opacity-50"
+                    :disabled="creatingDeposit || effectiveAmount < 200"
+                    @click="startRecharge"
                 >
-                    {{ numberFormatter.format(amount) }}
+                    {{ creatingDeposit ? 'Préparation…' : `Continuer avec ${numberFormatter.format(effectiveAmount)} FCFA` }}
                 </button>
-            </div>
-
-            <label class="flex flex-col gap-1 text-xs">
-                <span class="text-wpx-text-muted">Ou montant personnalisé</span>
-                <input
-                    v-model="customAmount"
-                    type="number"
-                    min="200"
-                    placeholder="Ex. 15000"
-                    class="rounded-wpx-sm border-wpx-border border px-3 py-2 text-sm"
-                />
-            </label>
-
-            <button
-                type="button"
-                class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 bg-gradient-to-br px-4 py-2 text-sm font-semibold disabled:opacity-50"
-                :disabled="creatingDeposit"
-                @click="startRecharge"
-            >
-                Continuer vers GeniusPay ({{ numberFormatter.format(effectiveAmount) }} FCFA)
-            </button>
-
-            <p v-if="error" class="text-wpx-danger-light text-xs">{{ error }}</p>
-
-            <div
-                v-if="pendingDeposit && pendingDeposit.status === 'awaiting_payment'"
-                class="text-wpx-text-muted flex items-center gap-2 text-xs"
-            >
-                <span class="border-wpx-border h-3 w-3 animate-spin rounded-full border-2 border-t-transparent"></span>
-                Vérification du paiement en cours…
-            </div>
-        </div>
-
-        <!-- Historique -->
-        <div v-if="!loadError" class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface p-5">
-            <h3 class="text-wpx-text mb-3 text-sm font-semibold">Historique des dépôts</h3>
-            <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
-            <div v-else-if="deposits.length === 0" class="flex flex-col items-center gap-2 py-7 text-center">
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-                    <rect x="3" y="6" width="18" height="13" rx="3" stroke="#CBD5E1" stroke-width="1.6" />
-                    <path d="M3 10h18" stroke="#CBD5E1" stroke-width="1.6" />
-                </svg>
-                <p class="text-wpx-text-muted text-sm">Aucun dépôt pour le moment.</p>
-                <button type="button" class="text-wpx-blue-light text-xs font-bold" @click="showRecharge = true">
-                    Faire mon premier dépôt
-                </button>
-            </div>
-            <table v-else class="w-full text-sm">
-                <thead>
-                    <tr class="text-wpx-text-muted border-wpx-border border-b text-left text-xs">
-                        <th class="p-2">Référence</th>
-                        <th class="p-2">Montant</th>
-                        <th class="p-2">Statut</th>
-                        <th class="p-2">Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="deposit in deposits" :key="deposit.id" class="border-wpx-border text-wpx-text border-b">
-                        <td class="p-2 font-mono text-xs">{{ deposit.provider_reference ?? '—' }}</td>
-                        <td class="p-2 [font-variant-numeric:tabular-nums]">
-                            {{ numberFormatter.format(deposit.amount_minor) }} {{ deposit.currency }}
-                        </td>
-                        <td class="p-2">
-                            <span
-                                class="rounded-wpx-sm px-2 py-0.5 text-xs font-semibold"
-                                :class="statusClasses(deposit.status)"
-                            >
-                                {{ statusLabel(deposit.status) }}
-                            </span>
-                        </td>
-                        <td class="text-wpx-text-muted p-2 text-xs">{{ deposit.created_at }}</td>
-                    </tr>
-                </tbody>
-            </table>
+            </section>
         </div>
     </div>
 </template>
