@@ -107,11 +107,17 @@ it('includes car ownership as an independent boolean question', function (): voi
         ->and($car->label)->toBe('Possède une voiture');
 });
 
-it('suspends country-specific mobile operators from the international default catalog', function (): void {
-    expect(ProfileTaxonomy::query()->where('code', 'usage.reseau_orange')->value('status'))
-        ->toBe(ProfileTaxonomy::STATUS_SUSPENDED)
-        ->and(ProfileTaxonomy::query()->where('code', 'usage.reseau_mtn')->value('status'))
-        ->toBe(ProfileTaxonomy::STATUS_SUSPENDED);
+it('does not expose hard-coded country-specific mobile operators', function (): void {
+    expect(ProfileTaxonomy::query()
+        ->whereIn('code', ['usage.reseau_orange', 'usage.reseau_mtn'])
+        ->where('status', ProfileTaxonomy::STATUS_ACTIVE)
+        ->count())->toBe(0);
+
+    $catalog = app(ProfileTargetingContract::class)->targetableCatalog();
+    $usageCodes = collect($catalog[ProfileTaxonomy::CATEGORY_USAGE] ?? [])->pluck('code')->all();
+
+    expect($usageCodes)->not->toContain('usage.reseau_orange')
+        ->and($usageCodes)->not->toContain('usage.reseau_mtn');
 });
 
 it('lets a member update the country used by targeting', function (): void {
