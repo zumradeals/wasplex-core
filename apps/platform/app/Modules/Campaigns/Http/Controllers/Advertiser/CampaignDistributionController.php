@@ -10,12 +10,14 @@ use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 final class CampaignDistributionController extends Controller
 {
-    public function __construct(private readonly PublicCampaignService $publicCampaigns) {}
+    public function __construct(
+        private readonly PublicCampaignService $publicCampaigns,
+    ) {}
 
     public function update(Request $request, string $campaign): JsonResponse
     {
