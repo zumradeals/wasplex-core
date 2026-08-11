@@ -101,8 +101,9 @@ async function load(): Promise<void> {
 const totalViews = computed(() => rows.value.reduce((total, row) => total + row.views, 0));
 const totalSpent = computed(() => rows.value.reduce((total, row) => total + row.budgetCapturedMinor, 0));
 const activeCount = computed(() => rows.value.filter((row) => row.status === 'approved').length);
-const waitingCount = computed(() =>
-    rows.value.filter((row) => ['submitted', 'funded', 'quoted', 'changes_requested'].includes(row.status)).length,
+const waitingCount = computed(
+    () =>
+        rows.value.filter((row) => ['submitted', 'funded', 'quoted', 'changes_requested'].includes(row.status)).length,
 );
 const draftCount = computed(() => rows.value.filter((row) => row.status === 'draft').length);
 const recentRows = computed(() => rows.value.slice(0, 3));
@@ -136,12 +137,15 @@ void load();
             >
                 <div class="p-5 sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8">
                     <div class="max-w-xl">
-                        <p class="text-wpx-cyan text-xs font-bold tracking-wide uppercase">{{ props.organizationName }}</p>
+                        <p class="text-wpx-cyan text-xs font-bold tracking-wide uppercase">
+                            {{ props.organizationName }}
+                        </p>
                         <h1 class="text-wpx-white-soft mt-2 text-2xl font-extrabold sm:text-3xl">
                             Faites connaître votre activité simplement.
                         </h1>
                         <p class="text-wpx-muted-dark mt-2 text-sm leading-relaxed">
-                            Créez, financez et envoyez une publicité à Wasplex en quelques minutes, sans connaissances techniques.
+                            Créez, financez et envoyez une publicité à Wasplex en quelques minutes, sans connaissances
+                            techniques.
                         </p>
                     </div>
 
@@ -156,15 +160,13 @@ void load();
                 </div>
 
                 <div class="border-wpx-border-dark grid grid-cols-3 border-t">
-                    <button
-                        type="button"
-                        class="px-2 py-3.5 text-center sm:px-4"
-                        @click="emit('navigate', 'wallet')"
-                    >
+                    <button type="button" class="px-2 py-3.5 text-center sm:px-4" @click="emit('navigate', 'wallet')">
                         <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">
                             {{ numberFormatter.format(wallet?.available_minor ?? 0) }}
                         </p>
-                        <p class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]">
+                        <p
+                            class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]"
+                        >
                             FCFA disponibles
                         </p>
                     </button>
@@ -174,13 +176,19 @@ void load();
                         @click="emit('navigate', 'campaigns')"
                     >
                         <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">{{ activeCount }}</p>
-                        <p class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]">
+                        <p
+                            class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]"
+                        >
                             Pub{{ activeCount > 1 ? 's' : '' }} active{{ activeCount > 1 ? 's' : '' }}
                         </p>
                     </button>
                     <div class="px-2 py-3.5 text-center sm:px-4">
-                        <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">{{ numberFormatter.format(totalViews) }}</p>
-                        <p class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]">
+                        <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">
+                            {{ numberFormatter.format(totalViews) }}
+                        </p>
+                        <p
+                            class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]"
+                        >
                             Vues obtenues
                         </p>
                     </div>
@@ -200,7 +208,9 @@ void load();
                         </svg>
                     </span>
                     <p class="text-wpx-white-soft mt-2.5 text-xs font-bold sm:text-sm">Mon solde</p>
-                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">Recharger et suivre mes dépenses</p>
+                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">
+                        Recharger et suivre mes dépenses
+                    </p>
                 </button>
 
                 <button
@@ -210,7 +220,12 @@ void load();
                 >
                     <span class="bg-wpx-gold/14 flex h-9 w-9 items-center justify-center rounded-xl">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                            <path d="M3 10l14-6-4 16-3-6-6-4z" stroke="#F2C14E" stroke-width="1.7" stroke-linejoin="round" />
+                            <path
+                                d="M3 10l14-6-4 16-3-6-6-4z"
+                                stroke="#F2C14E"
+                                stroke-width="1.7"
+                                stroke-linejoin="round"
+                            />
                         </svg>
                     </span>
                     <p class="text-wpx-white-soft mt-2.5 text-xs font-bold sm:text-sm">Mes publicités</p>
@@ -226,12 +241,18 @@ void load();
                 >
                     <span class="bg-wpx-cyan/14 flex h-9 w-9 items-center justify-center rounded-xl">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                            <path d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z" stroke="#2BC4DE" stroke-width="1.7" />
+                            <path
+                                d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z"
+                                stroke="#2BC4DE"
+                                stroke-width="1.7"
+                            />
                             <path d="M9 5V3.5h6V5M3 10h18" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
                         </svg>
                     </span>
                     <p class="text-wpx-white-soft mt-2.5 text-xs font-bold sm:text-sm">Mon activité</p>
-                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">Identité, visuels et informations utiles</p>
+                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">
+                        Identité, visuels et informations utiles
+                    </p>
                 </button>
             </section>
 
@@ -241,7 +262,9 @@ void load();
                         <p class="text-wpx-white-soft text-sm font-bold">Créer une pub, c’est simple</p>
                         <p class="text-wpx-muted-dark mt-1 text-xs">Trois décisions suffisent pour commencer.</p>
                     </div>
-                    <span class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2.5 py-1 text-[10px] font-bold">
+                    <span
+                        class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2.5 py-1 text-[10px] font-bold"
+                    >
                         &lt; 5 min
                     </span>
                 </div>
@@ -255,32 +278,44 @@ void load();
                     <div class="bg-wpx-navy-750/60 rounded-xl p-3">
                         <span class="text-wpx-cyan text-xs font-extrabold">02</span>
                         <p class="text-wpx-white-soft mt-1 text-xs font-bold">Les personnes à toucher</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[11px]">Une zone simple, puis des options seulement si nécessaire.</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                            Une zone simple, puis des options seulement si nécessaire.
+                        </p>
                     </div>
                     <div class="bg-wpx-navy-750/60 rounded-xl p-3">
                         <span class="text-wpx-orange text-xs font-extrabold">03</span>
                         <p class="text-wpx-white-soft mt-1 text-xs font-bold">Votre budget</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[11px]">Choisissez un montant, Wasplex calcule le reste.</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                            Choisissez un montant, Wasplex calcule le reste.
+                        </p>
                     </div>
                 </div>
             </section>
 
             <section class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-2xl border">
-                <div class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5">
+                <div
+                    class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5"
+                >
                     <div>
                         <p class="text-wpx-white-soft text-sm font-bold">Vos publicités récentes</p>
                         <p class="text-wpx-muted-dark mt-0.5 text-[11px]">
                             {{ numberFormatter.format(totalSpent) }} FCFA dépensés au total
                         </p>
                     </div>
-                    <button type="button" class="text-wpx-blue text-xs font-bold" @click="emit('navigate', 'campaigns')">
+                    <button
+                        type="button"
+                        class="text-wpx-blue text-xs font-bold"
+                        @click="emit('navigate', 'campaigns')"
+                    >
                         Tout voir ›
                     </button>
                 </div>
 
                 <div v-if="recentRows.length === 0" class="px-4 py-8 text-center sm:px-5">
                     <p class="text-wpx-white-soft text-sm font-bold">Aucune publicité pour le moment</p>
-                    <p class="text-wpx-muted-dark mt-1 text-xs">Votre première campagne peut être prête en quelques minutes.</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">
+                        Votre première campagne peut être prête en quelques minutes.
+                    </p>
                     <button
                         type="button"
                         class="text-wpx-gold mt-3 text-xs font-bold"
@@ -300,13 +335,19 @@ void load();
                     >
                         <span class="bg-wpx-navy-750 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <path d="M3 10l14-6-4 16-3-6-6-4z" stroke="#F2C14E" stroke-width="1.7" stroke-linejoin="round" />
+                                <path
+                                    d="M3 10l14-6-4 16-3-6-6-4z"
+                                    stroke="#F2C14E"
+                                    stroke-width="1.7"
+                                    stroke-linejoin="round"
+                                />
                             </svg>
                         </span>
                         <span class="min-w-0 flex-1">
                             <span class="text-wpx-white-soft block truncate text-sm font-bold">{{ row.name }}</span>
                             <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
-                                {{ numberFormatter.format(row.budgetAmountMinor) }} FCFA · {{ numberFormatter.format(row.views) }} vue{{ row.views > 1 ? 's' : '' }}
+                                {{ numberFormatter.format(row.budgetAmountMinor) }} FCFA ·
+                                {{ numberFormatter.format(row.views) }} vue{{ row.views > 1 ? 's' : '' }}
                             </span>
                         </span>
                         <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="statusClasses(row.status)">

@@ -45,8 +45,14 @@ async function logout(): Promise<void> {
             <aside class="border-wpx-border-dark bg-wpx-navy-950 hidden w-64 shrink-0 flex-col border-r lg:flex">
                 <div class="border-wpx-border-dark border-b px-5 py-5">
                     <div class="flex items-center gap-3">
-                        <span class="from-wpx-orange to-wpx-gold flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br">
-                            <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-7 w-7 object-contain" />
+                        <span
+                            class="from-wpx-orange to-wpx-gold flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br"
+                        >
+                            <img
+                                src="/brand/wasplex-logo-transparent.png"
+                                alt="Wasplex"
+                                class="h-7 w-7 object-contain"
+                            />
                         </span>
                         <div class="min-w-0">
                             <p class="text-wpx-white-soft text-sm font-bold">Studio Wasplex</p>
@@ -84,25 +90,102 @@ async function logout(): Promise<void> {
                             :class="activeSection === item.key ? 'bg-wpx-cyan/14' : 'bg-wpx-navy-850'"
                         >
                             <svg v-if="item.key === 'dashboard'" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7" />
-                                <rect x="14" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7" />
-                                <rect x="3" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7" />
-                                <rect x="14" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.7" />
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <rect
+                                    x="14"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <rect
+                                    x="3"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <rect
+                                    x="14"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
                             </svg>
-                            <svg v-else-if="item.key === 'campaigns'" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <path d="M3 10l14-6-4 16-3-6-6-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                            <svg
+                                v-else-if="item.key === 'campaigns'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M3 10l14-6-4 16-3-6-6-4z"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linejoin="round"
+                                />
                             </svg>
-                            <svg v-else-if="item.key === 'wallet'" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" stroke-width="1.7" />
+                            <svg
+                                v-else-if="item.key === 'wallet'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <rect
+                                    x="3"
+                                    y="6"
+                                    width="18"
+                                    height="13"
+                                    rx="3"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
                                 <path d="M3 10h18" stroke="currentColor" stroke-width="1.7" />
                             </svg>
-                            <svg v-else-if="item.key === 'brands'" width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <path d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z" stroke="currentColor" stroke-width="1.7" />
-                                <path d="M9 5V3.5h6V5M3 10h18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                            <svg
+                                v-else-if="item.key === 'brands'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <path
+                                    d="M9 5V3.5h6V5M3 10h18"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
                             </svg>
                             <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none">
                                 <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7" />
-                                <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                                <path
+                                    d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
                                 <circle cx="18" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
                             </svg>
                         </span>
@@ -116,7 +199,11 @@ async function logout(): Promise<void> {
                         :spaces="page.props.auth.spaces"
                         :active-space-id="page.props.auth.active_space_id"
                     />
-                    <button type="button" class="text-wpx-danger mt-3 w-full text-left text-xs font-bold" @click="logout">
+                    <button
+                        type="button"
+                        class="text-wpx-danger mt-3 w-full text-left text-xs font-bold"
+                        @click="logout"
+                    >
                         Déconnexion
                     </button>
                 </div>
@@ -126,12 +213,22 @@ async function logout(): Promise<void> {
                 <header class="border-wpx-border-dark bg-wpx-navy-850 sticky top-0 z-30 border-b px-4 py-3 lg:px-6">
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex min-w-0 items-center gap-2.5">
-                            <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-7 w-7 object-contain lg:hidden" />
+                            <img
+                                src="/brand/wasplex-logo-transparent.png"
+                                alt="Wasplex"
+                                class="h-7 w-7 object-contain lg:hidden"
+                            />
                             <div class="min-w-0">
                                 <p class="text-wpx-white-soft truncate text-sm font-bold lg:text-base">
-                                    {{ activeSection === 'dashboard' ? 'Studio annonceur' : nav.find((n) => n.key === activeSection)?.label }}
+                                    {{
+                                        activeSection === 'dashboard'
+                                            ? 'Studio annonceur'
+                                            : nav.find((n) => n.key === activeSection)?.label
+                                    }}
                                 </p>
-                                <p class="text-wpx-muted-dark hidden truncate text-[11px] sm:block">{{ organizationName }}</p>
+                                <p class="text-wpx-muted-dark hidden truncate text-[11px] sm:block">
+                                    {{ organizationName }}
+                                </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -188,22 +285,88 @@ async function logout(): Promise<void> {
                         </span>
                         <span v-else class="flex h-8 w-8 items-center justify-center">
                             <svg v-if="item.key === 'dashboard'" width="21" height="21" viewBox="0 0 24 24" fill="none">
-                                <rect x="3" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6" />
-                                <rect x="14" y="3" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6" />
-                                <rect x="3" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6" />
-                                <rect x="14" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6" />
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <rect
+                                    x="14"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <rect
+                                    x="3"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <rect
+                                    x="14"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
                             </svg>
-                            <svg v-else-if="item.key === 'wallet'" width="21" height="21" viewBox="0 0 24 24" fill="none">
-                                <rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" stroke-width="1.6" />
+                            <svg
+                                v-else-if="item.key === 'wallet'"
+                                width="21"
+                                height="21"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <rect
+                                    x="3"
+                                    y="6"
+                                    width="18"
+                                    height="13"
+                                    rx="3"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
                                 <path d="M3 10h18" stroke="currentColor" stroke-width="1.6" />
                             </svg>
-                            <svg v-else-if="item.key === 'brands'" width="21" height="21" viewBox="0 0 24 24" fill="none">
-                                <path d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z" stroke="currentColor" stroke-width="1.6" />
-                                <path d="M9 5V3.5h6V5M3 10h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                            <svg
+                                v-else-if="item.key === 'brands'"
+                                width="21"
+                                height="21"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <path
+                                    d="M9 5V3.5h6V5M3 10h18"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linecap="round"
+                                />
                             </svg>
                             <svg v-else width="21" height="21" viewBox="0 0 24 24" fill="none">
                                 <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6" />
-                                <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                <path
+                                    d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linecap="round"
+                                />
                                 <circle cx="18" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
                             </svg>
                         </span>
