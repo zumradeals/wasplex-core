@@ -10,12 +10,9 @@ use App\Modules\SmartProfile\Infrastructure\Models\ProfileTaxonomy;
 use Illuminate\Console\Command;
 
 /**
- * Contenu de départ, explicitement ajustable par l'administration — pas
- * une décision produit figée (docs/chantiers/P008-CHANTIER.md). Les
- * taxonomies couvrent délibérément plusieurs secteurs (télécom, mobilité,
- * mode, éducation, entrepreneuriat, géographie) : leçon retenue de
- * `P008-R-REFONTE-PROFIL-INTELLIGENT.md` §1, qui identifie un catalogue
- * mono-secteur comme une erreur de conception à ne pas reproduire.
+ * Starter catalogue only. The member experience is driven by explicit facet
+ * and input metadata so that mutually-exclusive choices are not rendered as
+ * unrelated yes/no questions.
  */
 final class SeedCatalogCommand extends Command
 {
@@ -24,23 +21,36 @@ final class SeedCatalogCommand extends Command
     protected $description = 'Initialise un catalogue de départ de taxonomies et de finalités de consentement (idempotent).';
 
     private const TAXONOMIES = [
-        ['code' => 'demographic.gender.woman', 'category' => 'demographic', 'label' => 'Genre déclaré : femme'],
-        ['code' => 'demographic.gender.man', 'category' => 'demographic', 'label' => 'Genre déclaré : homme'],
-        ['code' => 'possession.smartphone', 'category' => 'possession', 'label' => 'Possède un smartphone'],
-        ['code' => 'possession.deux_roues', 'category' => 'possession', 'label' => 'Possède un deux-roues'],
-        ['code' => 'possession.voiture', 'category' => 'possession', 'label' => 'Possède une voiture'],
-        ['code' => 'usage.reseau_orange', 'category' => 'usage', 'label' => 'Utilise principalement le réseau Orange'],
-        ['code' => 'usage.reseau_mtn', 'category' => 'usage', 'label' => 'Utilise principalement le réseau MTN'],
-        ['code' => 'usage.transport_public', 'category' => 'usage', 'label' => 'Utilise les transports en commun'],
-        ['code' => 'interest.internet_mobile', 'category' => 'interest', 'label' => 'Intéressé par les offres Internet mobile'],
-        ['code' => 'interest.mode_beaute', 'category' => 'interest', 'label' => 'Intéressé par la mode et la beauté'],
-        ['code' => 'interest.formation', 'category' => 'interest', 'label' => 'Intéressé par la formation et les compétences'],
-        ['code' => 'project.achat_vehicule', 'category' => 'project', 'label' => 'Projette d\'acheter un véhicule'],
-        ['code' => 'project.creation_entreprise', 'category' => 'project', 'label' => 'Projette de créer une entreprise'],
-        ['code' => 'situation.etudiant', 'category' => 'situation', 'label' => 'Situation actuelle : étudiant'],
-        ['code' => 'situation.entrepreneur', 'category' => 'situation', 'label' => 'Situation actuelle : entrepreneur'],
-        ['code' => 'territory.ci.abidjan.cocody', 'category' => 'territory', 'label' => 'Zone approximative : Abidjan, Cocody'],
-        ['code' => 'territory.ci.abidjan.yopougon', 'category' => 'territory', 'label' => 'Zone approximative : Abidjan, Yopougon'],
+        ['code' => 'demographic.gender.woman', 'category' => 'demographic', 'facet' => 'demographic.gender', 'input_type' => 'single_choice', 'label' => 'Femme'],
+        ['code' => 'demographic.gender.man', 'category' => 'demographic', 'facet' => 'demographic.gender', 'input_type' => 'single_choice', 'label' => 'Homme'],
+        ['code' => 'demographic.age.18_24', 'category' => 'demographic', 'facet' => 'demographic.age_band', 'input_type' => 'single_choice', 'label' => '18–24 ans'],
+        ['code' => 'demographic.age.25_34', 'category' => 'demographic', 'facet' => 'demographic.age_band', 'input_type' => 'single_choice', 'label' => '25–34 ans'],
+        ['code' => 'demographic.age.35_44', 'category' => 'demographic', 'facet' => 'demographic.age_band', 'input_type' => 'single_choice', 'label' => '35–44 ans'],
+        ['code' => 'demographic.age.45_54', 'category' => 'demographic', 'facet' => 'demographic.age_band', 'input_type' => 'single_choice', 'label' => '45–54 ans'],
+        ['code' => 'demographic.age.55_plus', 'category' => 'demographic', 'facet' => 'demographic.age_band', 'input_type' => 'single_choice', 'label' => '55 ans et plus'],
+        ['code' => 'possession.smartphone', 'category' => 'possession', 'facet' => 'possession.smartphone', 'input_type' => 'boolean', 'label' => 'Possède un smartphone'],
+        ['code' => 'possession.deux_roues', 'category' => 'possession', 'facet' => 'possession.deux_roues', 'input_type' => 'boolean', 'label' => 'Possède un deux-roues'],
+        ['code' => 'possession.voiture', 'category' => 'possession', 'facet' => 'possession.voiture', 'input_type' => 'boolean', 'label' => 'Possède une voiture'],
+        ['code' => 'usage.transport_public', 'category' => 'usage', 'facet' => 'usage.transport_public', 'input_type' => 'boolean', 'label' => 'Utilise les transports en commun'],
+        ['code' => 'interest.internet_mobile', 'category' => 'interest', 'facet' => 'interest', 'input_type' => 'multi_choice', 'label' => 'Internet mobile'],
+        ['code' => 'interest.mode_beaute', 'category' => 'interest', 'facet' => 'interest', 'input_type' => 'multi_choice', 'label' => 'Mode et beauté'],
+        ['code' => 'interest.formation', 'category' => 'interest', 'facet' => 'interest', 'input_type' => 'multi_choice', 'label' => 'Formation et compétences'],
+        ['code' => 'project.achat_vehicule', 'category' => 'project', 'facet' => 'project', 'input_type' => 'multi_choice', 'label' => 'Acheter un véhicule'],
+        ['code' => 'project.creation_entreprise', 'category' => 'project', 'facet' => 'project', 'input_type' => 'multi_choice', 'label' => 'Créer une entreprise'],
+        ['code' => 'situation.etudiant', 'category' => 'situation', 'facet' => 'situation', 'input_type' => 'multi_choice', 'label' => 'Étudiant(e)'],
+        ['code' => 'situation.entrepreneur', 'category' => 'situation', 'facet' => 'situation', 'input_type' => 'multi_choice', 'label' => 'Entrepreneur(e)'],
+        ['code' => 'territory.ci.abidjan.cocody', 'category' => 'territory', 'facet' => 'territory.approximate_area', 'input_type' => 'single_choice', 'label' => 'Abidjan, Cocody'],
+        ['code' => 'territory.ci.abidjan.yopougon', 'category' => 'territory', 'facet' => 'territory.approximate_area', 'input_type' => 'single_choice', 'label' => 'Abidjan, Yopougon'],
+    ];
+
+    /**
+     * Country-specific mobile operators must not be part of the international
+     * default catalogue. They can return later through a country-aware
+     * operator catalogue instead of hard-coded global assumptions.
+     */
+    private const LEGACY_OPERATOR_CODES = [
+        'usage.reseau_orange',
+        'usage.reseau_mtn',
     ];
 
     private const CONSENT_PURPOSES = [
@@ -64,11 +74,28 @@ final class SeedCatalogCommand extends Command
     public function handle(ConsentPurposeService $purposes): int
     {
         foreach (self::TAXONOMIES as $data) {
-            ProfileTaxonomy::query()->firstOrCreate(
+            $taxonomy = ProfileTaxonomy::query()->firstOrCreate(
                 ['code' => $data['code']],
-                ['category' => $data['category'], 'label' => $data['label'], 'status' => ProfileTaxonomy::STATUS_ACTIVE],
+                [
+                    'category' => $data['category'],
+                    'facet' => $data['facet'],
+                    'input_type' => $data['input_type'],
+                    'label' => $data['label'],
+                    'status' => ProfileTaxonomy::STATUS_ACTIVE,
+                ],
             );
+
+            $taxonomy->forceFill([
+                'category' => $data['category'],
+                'facet' => $data['facet'],
+                'input_type' => $data['input_type'],
+                'label' => $data['label'],
+            ])->save();
         }
+
+        ProfileTaxonomy::query()
+            ->whereIn('code', self::LEGACY_OPERATOR_CODES)
+            ->update(['status' => ProfileTaxonomy::STATUS_SUSPENDED]);
 
         foreach (self::CONSENT_PURPOSES as $data) {
             $purpose = ConsentPurpose::query()->where('code', $data['code'])->first();
@@ -82,7 +109,7 @@ final class SeedCatalogCommand extends Command
         }
 
         $this->info('Catalogue SmartProfile initialisé : '.count(self::TAXONOMIES).' taxonomies, '.count(self::CONSENT_PURPOSES).' finalités de consentement.');
-        $this->warn('Contenu de départ ajustable par l\'administration — pas une décision produit figée.');
+        $this->warn('Les opérateurs mobiles codés en dur sont suspendus : un catalogue opérateur devra être contextualisé par pays.');
 
         return self::SUCCESS;
     }

@@ -9,19 +9,17 @@ use App\Modules\SmartProfile\Infrastructure\Models\ProfileTaxonomy;
 use Illuminate\Support\Carbon;
 
 /**
- * docs/09-compte-universel-et-mon-espace-intelligent-wasplex.md Phase 4 :
- * réponses volontaires, facultatives, corrigibles. Chaque taxonomie est un
- * fait déclaratif booléen autonome (déclaré/retiré) — pas de groupe à
- * choix unique (docs/chantiers/P008-CHANTIER.md §3.6). Aucun score de
- * complétude n'est calculé (leçon de P008-R-REFONTE-PROFIL-INTELLIGENT.md
- * §1 : un pourcentage arbitraire donne une fausse promesse).
+ * Voluntary, optional and editable member profile answers. Taxonomies carry
+ * their own interaction semantics: boolean facts remain independent, a
+ * single-choice facet replaces its previous choice, and multi-choice facets
+ * can keep several selected options.
  */
 final class ProfileAnswerService
 {
     public function __construct(private readonly ProfileTaxonomyService $taxonomies) {}
 
     /**
-     * @return array<string, array<int, array{id: string, code: string, label: string, answer: ?bool, declared: bool, declared_at: ?string}>>
+     * @return array<string, array<int, array{id: string, code: string, label: string, facet: string, input_type: string, answer: ?bool, declared: bool, declared_at: ?string}>>
      */
     public function viewForAccount(string $accountId): array
     {
@@ -42,6 +40,8 @@ final class ProfileAnswerService
                 'id' => $taxonomy->id,
                 'code' => $taxonomy->code,
                 'label' => $taxonomy->label,
+                'facet' => $taxonomy->facet ?: $taxonomy->code,
+                'input_type' => $taxonomy->input_type ?: ProfileTaxonomy::INPUT_BOOLEAN,
                 'answer' => $answer?->answer_value,
                 'declared' => $answer?->answer_value === true,
                 'declared_at' => $answer?->declared_at?->toIso8601String(),
@@ -77,12 +77,15 @@ final class ProfileAnswerService
             $existing->update(['withdrawn_at' => Carbon::now('UTC')]);
         }
 
-        if ($value && str_starts_with($taxonomy->code, 'demographic.gender.')) {
+        if ($value && $taxonomy->input_type === ProfileTaxonomy::INPUT_SINGLE_CHOICE) {
+            $facet = $taxonomy->facet ?: $taxonomy->code;
+
             ProfileAnswer::query()
                 ->where('account_id', $accountId)
                 ->whereNull('withdrawn_at')
                 ->whereHas('taxonomy', fn ($query) => $query
-                    ->where('code', 'like', 'demographic.gender.%')
+                    ->where('facet', $facet)
+                    ->where('input_type', ProfileTaxonomy::INPUT_SINGLE_CHOICE)
                     ->where('id', '!=', $taxonomyId))
                 ->update(['withdrawn_at' => Carbon::now('UTC')]);
         }

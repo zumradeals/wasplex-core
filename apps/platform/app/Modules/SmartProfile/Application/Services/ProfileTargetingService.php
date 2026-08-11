@@ -30,6 +30,8 @@ final class ProfileTargetingService implements ProfileTargetingContract
             ->map(fn ($items) => $items->map(fn (ProfileTaxonomy $taxonomy) => [
                 'code' => $taxonomy->code,
                 'label' => $taxonomy->label,
+                'facet' => $taxonomy->facet ?: $taxonomy->code,
+                'input_type' => $taxonomy->input_type ?: ProfileTaxonomy::INPUT_BOOLEAN,
             ])->values()->all())
             ->all();
     }
@@ -56,14 +58,14 @@ final class ProfileTargetingService implements ProfileTargetingContract
             ->where('status', ProfileTaxonomy::STATUS_ACTIVE)
             ->whereIn('category', self::TARGETABLE_CATEGORIES)
             ->whereIn('code', $codes)
-            ->get(['id', 'code', 'category']);
+            ->get(['id', 'code', 'category', 'facet', 'input_type']);
 
         if ($taxonomies->count() !== count($codes)) {
             return false;
         }
 
         $selectedByFacet = $taxonomies
-            ->groupBy(fn (ProfileTaxonomy $taxonomy) => $this->facetFor($taxonomy))
+            ->groupBy(fn (ProfileTaxonomy $taxonomy) => $taxonomy->facet ?: $taxonomy->code)
             ->map(fn ($items) => $items->pluck('code')->all());
 
         $matchedCodes = ProfileAnswer::query()
@@ -82,11 +84,9 @@ final class ProfileTargetingService implements ProfileTargetingContract
             ->values()
             ->all();
 
-        // OR is reserved for alternatives of the same real-world facet,
-        // e.g. woman OR man, Orange OR MTN as primary network, or one of
-        // several approximate areas. Independent facts such as owning a
-        // smartphone, a two-wheeler and a car are separate facets, so when
-        // an advertiser deliberately selects several of them they are ANDed.
+        // OR applies between options of the same declared facet. Different
+        // facets remain ANDed. This lets an advertiser target Woman OR Man,
+        // while Smartphone AND Car remain two independent requirements.
         foreach ($selectedByFacet as $facetCodes) {
             if (array_intersect($facetCodes, $matchedCodes) === []) {
                 return false;
@@ -94,24 +94,5 @@ final class ProfileTargetingService implements ProfileTargetingContract
         }
 
         return true;
-    }
-
-    private function facetFor(ProfileTaxonomy $taxonomy): string
-    {
-        $code = $taxonomy->code;
-
-        if (str_starts_with($code, 'demographic.gender.')) {
-            return 'demographic.gender';
-        }
-
-        if (str_starts_with($code, 'usage.reseau_')) {
-            return 'usage.primary_network';
-        }
-
-        if (str_starts_with($code, 'territory.')) {
-            return 'territory.approximate_area';
-        }
-
-        return $code;
     }
 }

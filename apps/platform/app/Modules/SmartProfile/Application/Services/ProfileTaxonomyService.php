@@ -7,12 +7,6 @@ namespace App\Modules\SmartProfile\Application\Services;
 use App\Modules\SmartProfile\Infrastructure\Models\ProfileTaxonomy;
 use Illuminate\Database\Eloquent\Collection;
 
-/**
- * Catalogue plat, sans versionnage JSON (docs/chantiers/P008-CHANTIER.md
- * §5) : chaque taxonomie est éditable individuellement pendant `draft`
- * puis seulement activable/suspendable — le pattern le plus simple pour un
- * administrateur non technicien (exigence explicite du fondateur).
- */
 final class ProfileTaxonomyService
 {
     /**
@@ -20,7 +14,7 @@ final class ProfileTaxonomyService
      */
     public function listAll(): Collection
     {
-        return ProfileTaxonomy::query()->orderBy('category')->orderBy('label')->get();
+        return ProfileTaxonomy::query()->orderBy('category')->orderBy('facet')->orderBy('label')->get();
     }
 
     /**
@@ -31,12 +25,13 @@ final class ProfileTaxonomyService
         return ProfileTaxonomy::query()
             ->where('status', ProfileTaxonomy::STATUS_ACTIVE)
             ->orderBy('category')
+            ->orderBy('facet')
             ->orderBy('label')
             ->get();
     }
 
     /**
-     * @param  array{code: string, category: string, label: string, freshness_days?: int|null}  $data
+     * @param  array{code: string, category: string, label: string, facet?: string|null, input_type?: string, freshness_days?: int|null}  $data
      */
     public function create(array $data): ProfileTaxonomy
     {
@@ -44,9 +39,14 @@ final class ProfileTaxonomyService
             throw new InvalidProfileTaxonomyCategoryException($data['category']);
         }
 
+        $inputType = $data['input_type'] ?? ProfileTaxonomy::INPUT_BOOLEAN;
+        $facet = trim((string) ($data['facet'] ?? '')) ?: $data['code'];
+
         return ProfileTaxonomy::query()->create([
             'code' => $data['code'],
             'category' => $data['category'],
+            'facet' => $facet,
+            'input_type' => $inputType,
             'label' => $data['label'],
             'freshness_days' => $data['freshness_days'] ?? null,
             'status' => ProfileTaxonomy::STATUS_DRAFT,
@@ -54,16 +54,17 @@ final class ProfileTaxonomyService
     }
 
     /**
-     * Category is immutable after creation — it carries the taxonomy's
-     * meaning (docs/04 §9 : distinctions obligatoires). Only the label and
-     * freshness may be corrected.
-     *
-     * @param  array{label?: string, freshness_days?: int|null}  $data
+     * @param  array{label?: string, facet?: string|null, input_type?: string, freshness_days?: int|null}  $data
      */
     public function update(string $taxonomyId, array $data): ProfileTaxonomy
     {
         $taxonomy = $this->find($taxonomyId);
-        $taxonomy->fill(array_intersect_key($data, array_flip(['label', 'freshness_days'])));
+        $taxonomy->fill(array_intersect_key($data, array_flip(['label', 'facet', 'input_type', 'freshness_days'])));
+
+        if (array_key_exists('facet', $data) && trim((string) $taxonomy->facet) === '') {
+            $taxonomy->facet = $taxonomy->code;
+        }
+
         $taxonomy->save();
 
         return $taxonomy;

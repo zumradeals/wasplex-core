@@ -36,6 +36,18 @@ final class ProfileTaxonomy extends Model
         self::CATEGORY_TERRITORY,
     ];
 
+    public const INPUT_BOOLEAN = 'boolean';
+
+    public const INPUT_SINGLE_CHOICE = 'single_choice';
+
+    public const INPUT_MULTI_CHOICE = 'multi_choice';
+
+    public const INPUT_TYPES = [
+        self::INPUT_BOOLEAN,
+        self::INPUT_SINGLE_CHOICE,
+        self::INPUT_MULTI_CHOICE,
+    ];
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_ACTIVE = 'active';
@@ -44,7 +56,15 @@ final class ProfileTaxonomy extends Model
 
     protected $table = 'profile_taxonomies';
 
-    protected $fillable = ['code', 'category', 'label', 'status', 'freshness_days'];
+    protected $fillable = [
+        'code',
+        'category',
+        'facet',
+        'input_type',
+        'label',
+        'status',
+        'freshness_days',
+    ];
 
     protected function casts(): array
     {
