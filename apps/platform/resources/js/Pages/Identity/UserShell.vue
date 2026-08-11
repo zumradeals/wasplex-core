@@ -24,7 +24,6 @@ const tabs = [
     { key: 'feed', label: 'Feed' },
     { key: 'fonds', label: 'Fonds' },
     { key: 'wallet', label: 'Wallet' },
-    { key: 'alertes', label: 'Alertes' },
     { key: 'espace', label: 'Mon Espace' },
 ] as const;
 
@@ -379,17 +378,14 @@ onMounted(loadMe);
                     v-else
                     class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 text-wpx-muted-dark flex h-64 flex-col items-center justify-center gap-2 text-sm"
                 >
-                    <span
-                        class="flex h-12 w-12 items-center justify-center rounded-full text-2xl"
-                        :class="activeTab === 'fonds' ? 'bg-wpx-gold/10' : 'bg-wpx-danger/10'"
-                    >
-                        {{ activeTab === 'fonds' ? '🎯' : '🔔' }}
+                    <span class="bg-wpx-gold/10 flex h-12 w-12 items-center justify-center rounded-full text-2xl">
+                        🎯
                     </span>
                     {{ tabs.find((t) => t.key === activeTab)?.label }} — bientôt disponible
                 </div>
             </main>
 
-            <nav class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-5 items-end border-t px-1 pt-1 pb-2">
+            <nav class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-4 items-end border-t px-1 pt-1 pb-2">
                 <button
                     v-for="tab in tabs"
                     :key="tab.key"
@@ -436,19 +432,6 @@ onMounted(loadMe);
                                 stroke-width="1.6"
                             />
                             <circle cx="12" cy="12" r="1" :fill="activeTab === 'fonds' ? '#F2C14E' : '#A9B7C8'" />
-                        </svg>
-                        <svg v-else-if="tab.key === 'alertes'" width="22" height="22" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M12 4a5 5 0 015 5v3l1.5 3h-13L7 12V9a5 5 0 015-5z"
-                                :stroke="activeTab === 'alertes' ? '#F2C14E' : '#A9B7C8'"
-                                stroke-width="1.6"
-                                stroke-linejoin="round"
-                            />
-                            <path
-                                d="M10 18a2 2 0 004 0"
-                                :stroke="activeTab === 'alertes' ? '#F2C14E' : '#A9B7C8'"
-                                stroke-width="1.6"
-                            />
                         </svg>
                         <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">
                             <circle
