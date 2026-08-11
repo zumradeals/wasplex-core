@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdvertiserDashboardPanel from '@/Components/AdvertiserDashboardPanel.vue';
@@ -13,19 +13,24 @@ import type { AuthShared } from '@/types/identity';
 const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
-    { key: 'dashboard', label: 'Tableau de bord' },
-    { key: 'brands', label: 'Marques' },
-    { key: 'campaigns', label: 'Campagnes' },
-    { key: 'wallet', label: 'Wallet annonceur' },
-    { key: 'team', label: 'Équipe' },
+    { key: 'dashboard', label: 'Accueil', shortLabel: 'Accueil' },
+    { key: 'campaigns', label: 'Mes publicités', shortLabel: 'Publicités' },
+    { key: 'wallet', label: 'Mon solde', shortLabel: 'Solde' },
+    { key: 'brands', label: 'Mon activité', shortLabel: 'Activité' },
+    { key: 'team', label: 'Équipe & accès', shortLabel: 'Équipe' },
 ] as const;
 
-const activeSection = ref<(typeof nav)[number]['key']>('dashboard');
+type SectionKey = (typeof nav)[number]['key'];
 
-const organizationId = page.props.auth.spaces.find((s) => s.space_type === 'advertiser')?.organization_id ?? null;
+const activeSection = ref<SectionKey>('dashboard');
 
-function selectSection(key: (typeof nav)[number]['key']): void {
+const advertiserSpace = computed(() => page.props.auth.spaces.find((s) => s.space_type === 'advertiser') ?? null);
+const organizationId = computed(() => advertiserSpace.value?.organization_id ?? null);
+const organizationName = computed(() => advertiserSpace.value?.organization_name?.trim() || 'Mon activité');
+
+function selectSection(key: SectionKey): void {
     activeSection.value = key;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function logout(): Promise<void> {
@@ -35,158 +40,340 @@ async function logout(): Promise<void> {
 </script>
 
 <template>
-    <div class="bg-wpx-canvas flex min-h-screen">
-        <aside class="bg-wpx-navy-950 border-wpx-border-dark hidden w-56 flex-col border-r md:flex">
-            <div class="flex items-center gap-2.5 px-[18px] pt-5 pb-5.5">
-                <img src="/brand/wasplex-logo-transparent.png" alt="Wasplex" class="h-6.5 w-6.5 object-contain" />
-                <span class="text-wpx-white-soft text-sm font-bold">Studio Annonceur</span>
-            </div>
-            <nav class="flex flex-1 flex-col gap-px">
-                <button
-                    v-for="item in nav"
-                    :key="item.key"
-                    class="flex items-center gap-2.5 px-[18px] py-2.5 text-left text-[13px] font-semibold"
-                    :class="
-                        activeSection === item.key
-                            ? 'bg-wpx-navy-850 border-wpx-cyan text-wpx-white-soft border-l-[3px]'
-                            : 'text-wpx-muted-dark border-l-[3px] border-transparent'
-                    "
-                    @click="selectSection(item.key)"
-                >
-                    <span class="flex h-4 w-4 shrink-0 items-center justify-center">
-                        <svg v-if="item.key === 'dashboard'" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <rect
-                                x="3"
-                                y="3"
-                                width="8"
-                                height="8"
-                                rx="2"
-                                :stroke="activeSection === 'dashboard' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.7"
-                            />
-                            <rect
-                                x="13"
-                                y="3"
-                                width="8"
-                                height="8"
-                                rx="2"
-                                :stroke="activeSection === 'dashboard' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.7"
-                            />
-                            <rect
-                                x="3"
-                                y="13"
-                                width="8"
-                                height="8"
-                                rx="2"
-                                :stroke="activeSection === 'dashboard' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.7"
-                            />
-                            <rect
-                                x="13"
-                                y="13"
-                                width="8"
-                                height="8"
-                                rx="2"
-                                :stroke="activeSection === 'dashboard' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.7"
-                            />
-                        </svg>
-                        <svg v-else-if="item.key === 'brands'" width="16" height="16" viewBox="0 0 24 24">
-                            <path d="M12 2l8 8-9 9-8-8z" :fill="activeSection === 'brands' ? '#2BC4DE' : '#A9B7C8'" />
-                            <circle cx="9" cy="8" r="1.6" fill="#07182D" />
-                        </svg>
-                        <svg
-                            v-else-if="item.key === 'campaigns'"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
+    <div class="bg-wpx-navy-950 min-h-screen">
+        <div class="mx-auto flex min-h-screen w-full max-w-[1500px]">
+            <aside class="border-wpx-border-dark bg-wpx-navy-950 hidden w-64 shrink-0 flex-col border-r lg:flex">
+                <div class="border-wpx-border-dark border-b px-5 py-5">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="from-wpx-orange to-wpx-gold flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br"
                         >
-                            <path
-                                d="M3 10l14-6-4 16-3-6-6-4z"
-                                :stroke="activeSection === 'campaigns' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.7"
-                                stroke-linejoin="round"
+                            <img
+                                src="/brand/wasplex-logo-transparent.png"
+                                alt="Wasplex"
+                                class="h-7 w-7 object-contain"
                             />
-                        </svg>
-                        <svg v-else-if="item.key === 'wallet'" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <rect
-                                x="3"
-                                y="6"
-                                width="18"
-                                height="13"
-                                rx="3"
-                                :stroke="activeSection === 'wallet' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.7"
-                            />
-                            <rect
-                                x="3"
-                                y="10"
-                                width="18"
-                                height="2.4"
-                                :fill="activeSection === 'wallet' ? '#2BC4DE' : '#A9B7C8'"
-                            />
-                        </svg>
-                        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <circle
-                                cx="9"
-                                cy="8"
-                                r="3"
-                                :stroke="activeSection === 'team' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.6"
-                            />
-                            <path
-                                d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
-                                :stroke="activeSection === 'team' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.6"
-                            />
-                            <circle
-                                cx="18"
-                                cy="9"
-                                r="2.4"
-                                :stroke="activeSection === 'team' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.6"
-                            />
-                            <path
-                                d="M15.5 20c.3-2.6 2.1-4.5 4.5-4.5"
-                                :stroke="activeSection === 'team' ? '#2BC4DE' : '#A9B7C8'"
-                                stroke-width="1.6"
-                            />
-                        </svg>
-                    </span>
-                    {{ item.label }}
-                </button>
-            </nav>
-        </aside>
+                        </span>
+                        <div class="min-w-0">
+                            <p class="text-wpx-white-soft text-sm font-bold">Studio Wasplex</p>
+                            <p class="text-wpx-muted-dark mt-0.5 truncate text-[11px]">{{ organizationName }}</p>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="flex flex-1 flex-col">
-            <header class="bg-wpx-surface border-wpx-border flex items-center justify-between border-b px-7 py-4">
-                <select
-                    v-model="activeSection"
-                    class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1 text-sm md:hidden"
-                >
-                    <option v-for="item in nav" :key="item.key" :value="item.key">{{ item.label }}</option>
-                </select>
-                <span class="text-wpx-text hidden text-[17px] font-bold md:inline">
-                    {{ nav.find((n) => n.key === activeSection)?.label }}
-                </span>
-                <div class="flex items-center gap-4">
+                <div class="px-4 pt-5 pb-3">
+                    <button
+                        type="button"
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 shadow-wpx-card-dark flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold"
+                        @click="selectSection('campaigns')"
+                    >
+                        <span class="text-lg leading-none">+</span>
+                        Créer une publicité
+                    </button>
+                </div>
+
+                <nav class="flex flex-1 flex-col gap-1 px-3 py-2">
+                    <button
+                        v-for="item in nav"
+                        :key="item.key"
+                        type="button"
+                        class="flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition-colors"
+                        :class="
+                            activeSection === item.key
+                                ? 'bg-wpx-navy-750 text-wpx-white-soft'
+                                : 'text-wpx-muted-dark hover:bg-wpx-navy-850 hover:text-wpx-white-soft'
+                        "
+                        @click="selectSection(item.key)"
+                    >
+                        <span
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                            :class="activeSection === item.key ? 'bg-wpx-cyan/14' : 'bg-wpx-navy-850'"
+                        >
+                            <svg v-if="item.key === 'dashboard'" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <rect
+                                    x="14"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <rect
+                                    x="3"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <rect
+                                    x="14"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                            </svg>
+                            <svg
+                                v-else-if="item.key === 'campaigns'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M3 10l14-6-4 16-3-6-6-4z"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+                            <svg
+                                v-else-if="item.key === 'wallet'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <rect
+                                    x="3"
+                                    y="6"
+                                    width="18"
+                                    height="13"
+                                    rx="3"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <path d="M3 10h18" stroke="currentColor" stroke-width="1.7" />
+                            </svg>
+                            <svg
+                                v-else-if="item.key === 'brands'"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <path
+                                    d="M9 5V3.5h6V5M3 10h18"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7" />
+                                <path
+                                    d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
+                                <circle cx="18" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
+                            </svg>
+                        </span>
+                        {{ item.label }}
+                    </button>
+                </nav>
+
+                <div class="border-wpx-border-dark border-t p-4">
                     <SpaceSwitcher
+                        variant="dark"
                         :spaces="page.props.auth.spaces"
                         :active-space-id="page.props.auth.active_space_id"
                     />
-                    <button class="text-wpx-danger-light text-xs font-semibold" @click="logout">Déconnexion</button>
+                    <button
+                        type="button"
+                        class="text-wpx-danger mt-3 w-full text-left text-xs font-bold"
+                        @click="logout"
+                    >
+                        Déconnexion
+                    </button>
                 </div>
-            </header>
+            </aside>
 
-            <main class="flex-1 p-7">
-                <AdvertiserDashboardPanel v-if="activeSection === 'dashboard'" />
-                <AdvertiserWalletPanel v-else-if="activeSection === 'wallet'" />
-                <AdvertiserStudioPanel v-else-if="activeSection === 'brands'" />
-                <CampaignsPanel v-else-if="activeSection === 'campaigns'" @navigate-wallet="selectSection('wallet')" />
-                <TeamPanel v-else-if="activeSection === 'team'" :organization-id="organizationId" />
-            </main>
+            <div class="flex min-w-0 flex-1 flex-col">
+                <header class="border-wpx-border-dark bg-wpx-navy-850 sticky top-0 z-30 border-b px-4 py-3 lg:px-6">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex min-w-0 items-center gap-2.5">
+                            <img
+                                src="/brand/wasplex-logo-transparent.png"
+                                alt="Wasplex"
+                                class="h-7 w-7 object-contain lg:hidden"
+                            />
+                            <div class="min-w-0">
+                                <p class="text-wpx-white-soft truncate text-sm font-bold lg:text-base">
+                                    {{
+                                        activeSection === 'dashboard'
+                                            ? 'Studio annonceur'
+                                            : nav.find((n) => n.key === activeSection)?.label
+                                    }}
+                                </p>
+                                <p class="text-wpx-muted-dark hidden truncate text-[11px] sm:block">
+                                    {{ organizationName }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <SpaceSwitcher
+                                variant="dark"
+                                :spaces="page.props.auth.spaces"
+                                :active-space-id="page.props.auth.active_space_id"
+                            />
+                            <button
+                                type="button"
+                                class="text-wpx-danger hidden text-xs font-bold sm:inline"
+                                @click="logout"
+                            >
+                                Sortir
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <main class="flex-1 px-3 pt-4 pb-24 sm:px-5 lg:px-6 lg:pt-6 lg:pb-8">
+                    <AdvertiserDashboardPanel
+                        v-if="activeSection === 'dashboard'"
+                        :organization-name="organizationName"
+                        @navigate="selectSection"
+                    />
+                    <CampaignsPanel
+                        v-else-if="activeSection === 'campaigns'"
+                        @navigate-wallet="selectSection('wallet')"
+                    />
+                    <AdvertiserWalletPanel v-else-if="activeSection === 'wallet'" />
+                    <AdvertiserStudioPanel v-else-if="activeSection === 'brands'" />
+                    <TeamPanel v-else-if="activeSection === 'team'" :organization-id="organizationId" />
+                </main>
+
+                <nav
+                    class="border-wpx-border-dark bg-wpx-navy-850 fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full grid-cols-5 border-t px-1 pt-1 pb-2 lg:hidden"
+                >
+                    <button
+                        v-for="item in nav"
+                        :key="item.key"
+                        type="button"
+                        class="flex min-w-0 flex-col items-center gap-1 py-1 text-[10px] font-semibold"
+                        :class="activeSection === item.key ? 'text-wpx-gold' : 'text-wpx-muted-dark'"
+                        @click="selectSection(item.key)"
+                    >
+                        <span
+                            v-if="item.key === 'campaigns'"
+                            class="from-wpx-orange to-wpx-gold shadow-wpx-card-dark -mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br"
+                            :class="activeSection === 'campaigns' ? 'ring-wpx-gold ring-2' : ''"
+                        >
+                            <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 5v14M5 12h14" stroke="#07182D" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </span>
+                        <span v-else class="flex h-8 w-8 items-center justify-center">
+                            <svg v-if="item.key === 'dashboard'" width="21" height="21" viewBox="0 0 24 24" fill="none">
+                                <rect
+                                    x="3"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <rect
+                                    x="14"
+                                    y="3"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <rect
+                                    x="3"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <rect
+                                    x="14"
+                                    y="14"
+                                    width="7"
+                                    height="7"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <svg
+                                v-else-if="item.key === 'wallet'"
+                                width="21"
+                                height="21"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <rect
+                                    x="3"
+                                    y="6"
+                                    width="18"
+                                    height="13"
+                                    rx="3"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <path d="M3 10h18" stroke="currentColor" stroke-width="1.6" />
+                            </svg>
+                            <svg
+                                v-else-if="item.key === 'brands'"
+                                width="21"
+                                height="21"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <path
+                                    d="M9 5V3.5h6V5M3 10h18"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linecap="round"
+                                />
+                            </svg>
+                            <svg v-else width="21" height="21" viewBox="0 0 24 24" fill="none">
+                                <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6" />
+                                <path
+                                    d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linecap="round"
+                                />
+                                <circle cx="18" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5" />
+                            </svg>
+                        </span>
+                        <span class="max-w-full truncate">{{ item.shortLabel }}</span>
+                    </button>
+                </nav>
+            </div>
         </div>
     </div>
 </template>

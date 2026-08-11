@@ -3,6 +3,14 @@ import { computed, ref } from 'vue';
 import http from '@/lib/http';
 import { campaignDisplayName } from '@/lib/campaignObjectives';
 
+const props = defineProps<{
+    organizationName: string;
+}>();
+
+const emit = defineEmits<{
+    navigate: [section: 'dashboard' | 'campaigns' | 'wallet' | 'brands' | 'team'];
+}>();
+
 interface CampaignVersion {
     version_number: number;
     creative_configuration: Record<string, unknown> | null;
@@ -33,16 +41,17 @@ interface Row {
 
 const STATUS_LABELS: Record<string, string> = {
     draft: 'Brouillon',
-    quoted: 'Devisée',
+    quoted: 'Budget calculé',
     funded: 'Financée',
-    submitted: 'Soumise',
-    changes_requested: 'Correction demandée',
+    submitted: 'En validation',
+    changes_requested: 'À corriger',
     approved: 'Active',
-    rejected: 'Rejetée',
+    rejected: 'Refusée',
     suspended: 'Suspendue',
 };
 
 const rows = ref<Row[]>([]);
+const wallet = ref<{ available_minor: number; currency: string } | null>(null);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 
@@ -56,16 +65,21 @@ function latestTitle(campaign: Campaign): string | null {
 async function load(): Promise<void> {
     loading.value = true;
     loadError.value = null;
+
     try {
-        const [campaignsRes, reportsRes] = await Promise.all([
+        const [campaignsRes, reportsRes, walletRes] = await Promise.all([
             http.get('/advertiser/campaigns'),
             http.get('/advertiser/campaigns/report'),
+            http.get('/advertiser/wallet'),
         ]);
+
         const campaigns: Campaign[] = campaignsRes.data.campaigns;
         const reports: CampaignReport[] = reportsRes.data.reports;
 
+        wallet.value = walletRes.data.wallet;
         rows.value = reports.map((report) => {
-            const campaign = campaigns.find((c) => c.id === report.campaign_id);
+            const campaign = campaigns.find((item) => item.id === report.campaign_id);
+
             return {
                 campaignId: report.campaign_id,
                 name: campaignDisplayName(campaign?.objective_code ?? null, campaign ? latestTitle(campaign) : null),
@@ -76,196 +90,272 @@ async function load(): Promise<void> {
             };
         });
     } catch (e) {
-        const message = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
-        loadError.value = message ?? 'Le tableau de bord est momentanément indisponible.';
+        loadError.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'Le Studio annonceur est momentanément indisponible.';
     } finally {
         loading.value = false;
     }
 }
 
-const totalBudgetAllocated = computed(() => rows.value.reduce((total, r) => total + r.budgetAmountMinor, 0));
-const totalBudgetCaptured = computed(() => rows.value.reduce((total, r) => total + r.budgetCapturedMinor, 0));
-const totalViews = computed(() => rows.value.reduce((total, r) => total + r.views, 0));
-const activeCount = computed(() => rows.value.filter((r) => r.status === 'approved').length);
-const draftCount = computed(() => rows.value.filter((r) => ['draft', 'quoted', 'funded'].includes(r.status)).length);
-const costPerView = computed(() =>
-    totalViews.value === 0 ? 0 : Math.round((totalBudgetCaptured.value / totalViews.value) * 10) / 10,
+const totalViews = computed(() => rows.value.reduce((total, row) => total + row.views, 0));
+const totalSpent = computed(() => rows.value.reduce((total, row) => total + row.budgetCapturedMinor, 0));
+const activeCount = computed(() => rows.value.filter((row) => row.status === 'approved').length);
+const waitingCount = computed(
+    () =>
+        rows.value.filter((row) => ['submitted', 'funded', 'quoted', 'changes_requested'].includes(row.status)).length,
 );
+const draftCount = computed(() => rows.value.filter((row) => row.status === 'draft').length);
+const recentRows = computed(() => rows.value.slice(0, 3));
 
 function statusClasses(status: string): string {
-    if (status === 'approved') {
-        return 'bg-wpx-success/10 text-wpx-success-light';
-    }
-    if (status === 'rejected' || status === 'suspended') {
-        return 'bg-wpx-danger/10 text-wpx-danger-light';
+    if (status === 'approved') return 'bg-wpx-success/15 text-wpx-success-light';
+    if (status === 'rejected' || status === 'suspended') return 'bg-wpx-danger/15 text-wpx-danger-light';
+    if (status === 'submitted' || status === 'funded' || status === 'quoted') {
+        return 'bg-wpx-cyan/12 text-wpx-cyan';
     }
 
-    return 'bg-wpx-pending/10 text-wpx-warning-light';
+    return 'bg-wpx-gold/12 text-wpx-gold';
 }
 
 void load();
 </script>
 
 <template>
-    <div class="flex flex-col gap-5">
-        <div v-if="loadError" class="rounded-wpx-lg bg-wpx-danger/10 text-wpx-danger-light p-4 text-sm">
+    <div class="mx-auto flex w-full max-w-5xl flex-col gap-4 lg:gap-5">
+        <div v-if="loadError" class="bg-wpx-danger/10 text-wpx-danger-light rounded-2xl p-4 text-sm">
             {{ loadError }}
         </div>
-        <p v-else-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
+
+        <div v-else-if="loading" class="text-wpx-muted-dark flex min-h-64 items-center justify-center text-sm">
+            Chargement du Studio…
+        </div>
 
         <template v-else>
-            <!-- Cartes de métriques -->
-            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <div class="rounded-wpx-md shadow-wpx-card bg-wpx-surface border-wpx-border border p-4.5">
-                    <div class="flex items-center gap-2">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                            <rect x="3" y="6" width="18" height="13" rx="3" stroke="#FF9A3D" stroke-width="1.8" />
-                            <rect x="3" y="10" width="18" height="2.4" fill="#FF9A3D" />
-                        </svg>
-                        <p class="text-wpx-text-muted text-[11px] font-bold tracking-wide uppercase">Budget consommé</p>
+            <section
+                class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 border-wpx-border-dark shadow-wpx-card-dark overflow-hidden rounded-3xl border bg-gradient-to-br"
+            >
+                <div class="p-5 sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-8">
+                    <div class="max-w-xl">
+                        <p class="text-wpx-cyan text-xs font-bold tracking-wide uppercase">
+                            {{ props.organizationName }}
+                        </p>
+                        <h1 class="text-wpx-white-soft mt-2 text-2xl font-extrabold sm:text-3xl">
+                            Faites connaître votre activité simplement.
+                        </h1>
+                        <p class="text-wpx-muted-dark mt-2 text-sm leading-relaxed">
+                            Créez, financez et envoyez une publicité à Wasplex en quelques minutes, sans connaissances
+                            techniques.
+                        </p>
                     </div>
-                    <p class="text-wpx-text mt-2.5 text-2xl font-extrabold">
-                        {{ numberFormatter.format(totalBudgetCaptured) }}
-                        <span class="text-wpx-text-muted text-[13px] font-bold">WP</span>
-                    </p>
-                    <p class="text-wpx-success-light mt-1 text-[11px] font-bold">
-                        sur {{ numberFormatter.format(totalBudgetAllocated) }} WP alloués
-                    </p>
+
+                    <button
+                        type="button"
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 shadow-wpx-card-dark mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r px-5 py-4 text-base font-extrabold lg:mt-0 lg:w-auto lg:min-w-56"
+                        @click="emit('navigate', 'campaigns')"
+                    >
+                        <span class="text-xl leading-none">+</span>
+                        Créer une publicité
+                    </button>
                 </div>
-                <div class="rounded-wpx-md shadow-wpx-card bg-wpx-surface border-wpx-border border p-4.5">
-                    <div class="flex items-center gap-2">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+
+                <div class="border-wpx-border-dark grid grid-cols-3 border-t">
+                    <button type="button" class="px-2 py-3.5 text-center sm:px-4" @click="emit('navigate', 'wallet')">
+                        <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">
+                            {{ numberFormatter.format(wallet?.available_minor ?? 0) }}
+                        </p>
+                        <p
+                            class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]"
+                        >
+                            FCFA disponibles
+                        </p>
+                    </button>
+                    <button
+                        type="button"
+                        class="border-wpx-border-dark border-x px-2 py-3.5 text-center sm:px-4"
+                        @click="emit('navigate', 'campaigns')"
+                    >
+                        <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">{{ activeCount }}</p>
+                        <p
+                            class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]"
+                        >
+                            Pub{{ activeCount > 1 ? 's' : '' }} active{{ activeCount > 1 ? 's' : '' }}
+                        </p>
+                    </button>
+                    <div class="px-2 py-3.5 text-center sm:px-4">
+                        <p class="text-wpx-white-soft text-base font-extrabold sm:text-lg">
+                            {{ numberFormatter.format(totalViews) }}
+                        </p>
+                        <p
+                            class="text-wpx-muted-dark mt-0.5 text-[9px] font-semibold tracking-wide uppercase sm:text-[10px]"
+                        >
+                            Vues obtenues
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-3 gap-2.5 sm:gap-3">
+                <button
+                    type="button"
+                    class="bg-wpx-navy-850 border-wpx-border-dark rounded-2xl border p-3.5 text-left sm:p-4"
+                    @click="emit('navigate', 'wallet')"
+                >
+                    <span class="bg-wpx-blue/14 flex h-9 w-9 items-center justify-center rounded-xl">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="6" width="18" height="13" rx="3" stroke="#4FA3FF" stroke-width="1.7" />
+                            <path d="M3 10h18" stroke="#4FA3FF" stroke-width="1.7" />
+                        </svg>
+                    </span>
+                    <p class="text-wpx-white-soft mt-2.5 text-xs font-bold sm:text-sm">Mon solde</p>
+                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">
+                        Recharger et suivre mes dépenses
+                    </p>
+                </button>
+
+                <button
+                    type="button"
+                    class="bg-wpx-navy-850 border-wpx-border-dark rounded-2xl border p-3.5 text-left sm:p-4"
+                    @click="emit('navigate', 'campaigns')"
+                >
+                    <span class="bg-wpx-gold/14 flex h-9 w-9 items-center justify-center rounded-xl">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                             <path
                                 d="M3 10l14-6-4 16-3-6-6-4z"
-                                stroke="#075CCF"
-                                stroke-width="1.8"
+                                stroke="#F2C14E"
+                                stroke-width="1.7"
                                 stroke-linejoin="round"
                             />
                         </svg>
-                        <p class="text-wpx-text-muted text-[11px] font-bold tracking-wide uppercase">
-                            Campagnes actives
-                        </p>
-                    </div>
-                    <p class="text-wpx-text mt-2.5 text-2xl font-extrabold">{{ activeCount }}</p>
-                    <p class="text-wpx-text-muted mt-1 text-[11px]">{{ draftCount }} en brouillon</p>
-                </div>
-                <div class="rounded-wpx-md shadow-wpx-card bg-wpx-surface border-wpx-border border p-4.5">
-                    <div class="flex items-center gap-2">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    </span>
+                    <p class="text-wpx-white-soft mt-2.5 text-xs font-bold sm:text-sm">Mes publicités</p>
+                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">
+                        {{ waitingCount }} en validation · {{ draftCount }} brouillon{{ draftCount > 1 ? 's' : '' }}
+                    </p>
+                </button>
+
+                <button
+                    type="button"
+                    class="bg-wpx-navy-850 border-wpx-border-dark rounded-2xl border p-3.5 text-left sm:p-4"
+                    @click="emit('navigate', 'brands')"
+                >
+                    <span class="bg-wpx-cyan/14 flex h-9 w-9 items-center justify-center rounded-xl">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                             <path
-                                d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"
+                                d="M4 7.5A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V19H4V7.5z"
                                 stroke="#2BC4DE"
                                 stroke-width="1.7"
                             />
-                            <circle cx="12" cy="12" r="3" stroke="#2BC4DE" stroke-width="1.7" />
+                            <path d="M9 5V3.5h6V5M3 10h18" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
                         </svg>
-                        <p class="text-wpx-text-muted text-[11px] font-bold tracking-wide uppercase">Vues</p>
-                    </div>
-                    <p class="text-wpx-text mt-2.5 text-2xl font-extrabold">{{ numberFormatter.format(totalViews) }}</p>
-                    <p class="text-wpx-text-muted mt-1 text-[11px]">Attention qualifiée, toutes campagnes</p>
-                </div>
-                <div class="rounded-wpx-md shadow-wpx-card bg-wpx-surface border-wpx-border border p-4.5">
-                    <div class="flex items-center gap-2">
-                        <svg width="15" height="15" viewBox="0 0 24 24">
-                            <path
-                                d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.3l7.1-.7z"
-                                fill="#F2C14E"
-                            />
-                        </svg>
-                        <p class="text-wpx-text-muted text-[11px] font-bold tracking-wide uppercase">Coût par vue</p>
-                    </div>
-                    <p class="text-wpx-text mt-2.5 text-2xl font-extrabold">
-                        {{ numberFormatter.format(costPerView) }}
-                        <span class="text-wpx-text-muted text-[13px] font-bold">WP</span>
+                    </span>
+                    <p class="text-wpx-white-soft mt-2.5 text-xs font-bold sm:text-sm">Mon activité</p>
+                    <p class="text-wpx-muted-dark mt-1 hidden text-[11px] leading-tight sm:block">
+                        Identité, visuels et informations utiles
                     </p>
-                    <p class="text-wpx-text-muted mt-1 text-[11px]">Moyenne, toutes campagnes actives</p>
-                </div>
-            </div>
+                </button>
+            </section>
 
-            <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
-                <!-- Vues totales (pas de ventilation quotidienne aujourd'hui) -->
-                <div
-                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface border-wpx-border flex flex-col items-center justify-center border p-6 text-center"
-                >
-                    <p class="text-wpx-text-muted text-[11px] font-bold tracking-wide uppercase">Vues totales</p>
-                    <p class="text-wpx-text mt-2 text-4xl font-extrabold">{{ numberFormatter.format(totalViews) }}</p>
-                    <p class="text-wpx-text-muted mt-2 text-xs">Répartition quotidienne bientôt disponible.</p>
+            <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-wpx-white-soft text-sm font-bold">Créer une pub, c’est simple</p>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">Trois décisions suffisent pour commencer.</p>
+                    </div>
+                    <span
+                        class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2.5 py-1 text-[10px] font-bold"
+                    >
+                        &lt; 5 min
+                    </span>
                 </div>
 
-                <!-- Répartition du budget -->
-                <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface border-wpx-border border p-5.5">
-                    <p class="text-wpx-text mb-3.5 text-sm font-bold">Répartition du budget</p>
-                    <div class="flex flex-col gap-3.5">
-                        <div v-for="row in rows" :key="row.campaignId">
-                            <div class="mb-1.5 flex justify-between text-xs">
-                                <span class="text-wpx-text font-bold">{{ row.name }}</span>
-                                <span class="text-wpx-text-muted">
-                                    {{ numberFormatter.format(row.budgetCapturedMinor) }} WP
-                                </span>
-                            </div>
-                            <div class="bg-wpx-raised h-1.75 overflow-hidden rounded-full">
-                                <div
-                                    class="bg-wpx-blue-light h-full"
-                                    :style="{
-                                        width: `${row.budgetAmountMinor === 0 ? 0 : Math.min(100, (row.budgetCapturedMinor / row.budgetAmountMinor) * 100)}%`,
-                                    }"
-                                />
-                            </div>
-                        </div>
-                        <p v-if="rows.length === 0" class="text-wpx-text-muted text-sm">Aucune campagne encore.</p>
+                <div class="mt-4 grid gap-2.5 sm:grid-cols-3">
+                    <div class="bg-wpx-navy-750/60 rounded-xl p-3">
+                        <span class="text-wpx-gold text-xs font-extrabold">01</span>
+                        <p class="text-wpx-white-soft mt-1 text-xs font-bold">Votre publicité</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">Un visuel, un message et l’action souhaitée.</p>
+                    </div>
+                    <div class="bg-wpx-navy-750/60 rounded-xl p-3">
+                        <span class="text-wpx-cyan text-xs font-extrabold">02</span>
+                        <p class="text-wpx-white-soft mt-1 text-xs font-bold">Les personnes à toucher</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                            Une zone simple, puis des options seulement si nécessaire.
+                        </p>
+                    </div>
+                    <div class="bg-wpx-navy-750/60 rounded-xl p-3">
+                        <span class="text-wpx-orange text-xs font-extrabold">03</span>
+                        <p class="text-wpx-white-soft mt-1 text-xs font-bold">Votre budget</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                            Choisissez un montant, Wasplex calcule le reste.
+                        </p>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Mes campagnes -->
-            <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface border-wpx-border overflow-hidden border">
-                <p class="text-wpx-text border-wpx-border border-b px-5.5 py-4 text-sm font-bold">Mes campagnes</p>
-                <table v-if="rows.length > 0" class="w-full text-sm">
-                    <thead>
-                        <tr
-                            class="text-wpx-text-muted border-wpx-border border-b text-left text-[11px] font-bold tracking-wide uppercase"
-                        >
-                            <th class="px-5.5 py-2.5">Campagne</th>
-                            <th class="px-5.5 py-2.5">Statut</th>
-                            <th class="px-5.5 py-2.5">Budget</th>
-                            <th class="px-5.5 py-2.5">Vues</th>
-                            <th class="px-5.5 py-2.5">Coût / vue</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="row in rows"
-                            :key="row.campaignId"
-                            class="border-wpx-border text-wpx-text border-b last:border-0"
-                        >
-                            <td class="px-5.5 py-3.5 font-bold">{{ row.name }}</td>
-                            <td class="px-5.5 py-3.5">
-                                <span
-                                    class="rounded-full px-2.5 py-1 text-[11px] font-bold"
-                                    :class="statusClasses(row.status)"
-                                >
-                                    {{ STATUS_LABELS[row.status] ?? row.status }}
-                                </span>
-                            </td>
-                            <td class="px-5.5 py-3.5">{{ numberFormatter.format(row.budgetAmountMinor) }} WP</td>
-                            <td class="px-5.5 py-3.5">{{ numberFormatter.format(row.views) }}</td>
-                            <td class="px-5.5 py-3.5">
-                                {{
-                                    row.views === 0
-                                        ? '—'
-                                        : numberFormatter.format(
-                                              Math.round((row.budgetCapturedMinor / row.views) * 10) / 10,
-                                          )
-                                }}
-                                WP
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p v-else class="text-wpx-text-muted p-5.5 text-sm">
-                    Aucune campagne encore — créez-en une dans l'onglet Campagnes.
-                </p>
-            </div>
+            <section class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-2xl border">
+                <div
+                    class="border-wpx-border-dark flex items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5"
+                >
+                    <div>
+                        <p class="text-wpx-white-soft text-sm font-bold">Vos publicités récentes</p>
+                        <p class="text-wpx-muted-dark mt-0.5 text-[11px]">
+                            {{ numberFormatter.format(totalSpent) }} FCFA dépensés au total
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="text-wpx-blue text-xs font-bold"
+                        @click="emit('navigate', 'campaigns')"
+                    >
+                        Tout voir ›
+                    </button>
+                </div>
+
+                <div v-if="recentRows.length === 0" class="px-4 py-8 text-center sm:px-5">
+                    <p class="text-wpx-white-soft text-sm font-bold">Aucune publicité pour le moment</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">
+                        Votre première campagne peut être prête en quelques minutes.
+                    </p>
+                    <button
+                        type="button"
+                        class="text-wpx-gold mt-3 text-xs font-bold"
+                        @click="emit('navigate', 'campaigns')"
+                    >
+                        Créer ma première publicité →
+                    </button>
+                </div>
+
+                <div v-else class="divide-wpx-border-dark divide-y">
+                    <button
+                        v-for="row in recentRows"
+                        :key="row.campaignId"
+                        type="button"
+                        class="flex w-full items-center gap-3 px-4 py-3.5 text-left sm:px-5"
+                        @click="emit('navigate', 'campaigns')"
+                    >
+                        <span class="bg-wpx-navy-750 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path
+                                    d="M3 10l14-6-4 16-3-6-6-4z"
+                                    stroke="#F2C14E"
+                                    stroke-width="1.7"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="text-wpx-white-soft block truncate text-sm font-bold">{{ row.name }}</span>
+                            <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
+                                {{ numberFormatter.format(row.budgetAmountMinor) }} FCFA ·
+                                {{ numberFormatter.format(row.views) }} vue{{ row.views > 1 ? 's' : '' }}
+                            </span>
+                        </span>
+                        <span class="rounded-full px-2.5 py-1 text-[10px] font-bold" :class="statusClasses(row.status)">
+                            {{ STATUS_LABELS[row.status] ?? row.status }}
+                        </span>
+                    </button>
+                </div>
+            </section>
         </template>
     </div>
 </template>
