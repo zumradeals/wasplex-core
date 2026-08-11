@@ -47,7 +47,9 @@ const error = ref<string | null>(null);
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
 const currentPlan = computed(() =>
-    subscription.value ? plans.value.find((plan) => plan.plan_version_id === subscription.value?.plan_version_id) ?? null : null,
+    subscription.value
+        ? (plans.value.find((plan) => plan.plan_version_id === subscription.value?.plan_version_id) ?? null)
+        : null,
 );
 
 const quotaPercent = computed(() => {
@@ -121,13 +123,19 @@ void load();
                 <p v-if="loading" class="text-wpx-muted-dark mt-1 text-sm">Chargement…</p>
                 <template v-else-if="subscription">
                     <div class="mt-1 flex flex-wrap items-center gap-2">
-                        <p class="text-wpx-white-soft text-lg font-semibold">{{ currentPlan?.name ?? 'Plan membre' }}</p>
+                        <p class="text-wpx-white-soft text-lg font-semibold">
+                            {{ currentPlan?.name ?? 'Plan membre' }}
+                        </p>
                         <span class="bg-wpx-blue/15 text-wpx-cyan rounded-full px-2 py-0.5 text-[11px] font-semibold">
                             {{ STATUS_LABELS[subscription.status] ?? subscription.status }}
                         </span>
                     </div>
                     <p v-if="currentPlan" class="text-wpx-muted-dark mt-1 text-xs">
-                        {{ currentPlan.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(currentPlan.price_minor)} ${currentPlan.currency}` }}
+                        {{
+                            currentPlan.price_minor === 0
+                                ? 'Gratuit'
+                                : `${numberFormatter.format(currentPlan.price_minor)} ${currentPlan.currency}`
+                        }}
                         · {{ currentPlan.duration_days }} jours
                     </p>
                     <div v-if="quota" class="mt-3">
@@ -150,7 +158,9 @@ void load();
             <div class="flex flex-col gap-3">
                 <div>
                     <h2 class="text-wpx-white-soft text-sm font-semibold">Plans disponibles</h2>
-                    <p class="text-wpx-muted-dark mt-1 text-xs">Comparez votre plan actuel et choisissez une évolution adaptée à vos besoins.</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">
+                        Comparez votre plan actuel et choisissez une évolution adaptée à vos besoins.
+                    </p>
                 </div>
                 <p v-if="error" class="text-wpx-danger-light text-xs">{{ error }}</p>
 
@@ -163,11 +173,16 @@ void load();
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-wpx-white-soft text-base font-semibold">{{ plan.name }}</span>
                         <span class="text-wpx-gold text-sm font-semibold">
-                            {{ plan.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(plan.price_minor)} ${plan.currency}` }}
+                            {{
+                                plan.price_minor === 0
+                                    ? 'Gratuit'
+                                    : `${numberFormatter.format(plan.price_minor)} ${plan.currency}`
+                            }}
                         </span>
                     </div>
                     <p class="text-wpx-muted-dark text-xs">
-                        Jusqu'à {{ numberFormatter.format(plan.quota_monthly ?? 0) }} publicités / mois · {{ plan.duration_days }} jours
+                        Jusqu'à {{ numberFormatter.format(plan.quota_monthly ?? 0) }} publicités / mois ·
+                        {{ plan.duration_days }} jours
                     </p>
                     <p class="text-wpx-muted-dark text-xs">Accès Fonds : {{ plan.fonds_eligible ? 'oui' : 'non' }}</p>
                     <p class="text-wpx-muted-dark text-[11px] italic">
@@ -176,7 +191,10 @@ void load();
                     <button
                         type="button"
                         class="rounded-wpx-md from-wpx-blue to-wpx-cyan text-wpx-navy-950 mt-1 bg-gradient-to-br px-4 py-2 text-sm font-semibold disabled:opacity-50"
-                        :disabled="subscribing === plan.plan_version_id || subscription?.plan_version_id === plan.plan_version_id"
+                        :disabled="
+                            subscribing === plan.plan_version_id ||
+                            subscription?.plan_version_id === plan.plan_version_id
+                        "
                         @click="subscribeTo(plan)"
                     >
                         {{

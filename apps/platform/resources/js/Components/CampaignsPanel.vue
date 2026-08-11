@@ -412,7 +412,9 @@ void loadAll();
                 <div class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface flex w-full flex-col gap-3 p-4 lg:w-64">
                     <h2 class="text-wpx-text text-sm font-semibold">Mes campagnes</h2>
                     <div class="flex flex-col gap-1">
-                        <label v-if="brands.length > 0" class="text-wpx-text-muted text-xs">Créer une campagne pour :</label>
+                        <label v-if="brands.length > 0" class="text-wpx-text-muted text-xs"
+                            >Créer une campagne pour :</label
+                        >
                         <select
                             v-if="brands.length > 0"
                             class="rounded-wpx-sm border-wpx-border text-wpx-text border px-2 py-1.5 text-sm"
@@ -421,7 +423,9 @@ void loadAll();
                             <option value="" disabled selected>Choisir une marque…</option>
                             <option v-for="brand in brands" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
                         </select>
-                        <p v-else class="text-wpx-text-muted text-xs">Créez d'abord une marque dans l'onglet Marques.</p>
+                        <p v-else class="text-wpx-text-muted text-xs">
+                            Créez d'abord une marque dans l'onglet Marques.
+                        </p>
                     </div>
                     <p v-if="loading" class="text-wpx-text-muted text-sm">Chargement…</p>
                     <ul v-else class="flex flex-col gap-1">
@@ -429,14 +433,20 @@ void loadAll();
                             <button
                                 type="button"
                                 class="rounded-wpx-sm flex w-full items-center justify-between px-2 py-1.5 text-left text-sm"
-                                :class="selectedCampaignId === campaign.id ? 'bg-wpx-canvas font-semibold' : 'text-wpx-text'"
+                                :class="
+                                    selectedCampaignId === campaign.id ? 'bg-wpx-canvas font-semibold' : 'text-wpx-text'
+                                "
                                 @click="selectCampaign(campaign)"
                             >
-                                <span>{{ campaign.objective_code ? OBJECTIVES[campaign.objective_code] : 'Campagne' }}</span>
+                                <span>{{
+                                    campaign.objective_code ? OBJECTIVES[campaign.objective_code] : 'Campagne'
+                                }}</span>
                                 <span class="text-wpx-text-muted text-[10px]">{{ statusLabel(campaign.status) }}</span>
                             </button>
                         </li>
-                        <li v-if="!loading && campaigns.length === 0" class="text-wpx-text-muted text-sm">Aucune campagne encore.</li>
+                        <li v-if="!loading && campaigns.length === 0" class="text-wpx-text-muted text-sm">
+                            Aucune campagne encore.
+                        </li>
                     </ul>
                 </div>
 
@@ -447,7 +457,11 @@ void loadAll();
                                 <div class="flex flex-col items-center gap-1.5">
                                     <span
                                         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                                        :class="i <= step ? 'bg-wpx-blue-light text-white' : 'border-wpx-border text-wpx-text-muted border-[1.5px] bg-white'"
+                                        :class="
+                                            i <= step
+                                                ? 'bg-wpx-blue-light text-white'
+                                                : 'border-wpx-border text-wpx-text-muted border-[1.5px] bg-white'
+                                        "
                                     >
                                         {{ i + 1 }}
                                     </span>
@@ -462,7 +476,10 @@ void loadAll();
                             </template>
                         </div>
 
-                        <p v-if="actionError" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-sm mb-3 p-2 text-xs">
+                        <p
+                            v-if="actionError"
+                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-sm mb-3 p-2 text-xs"
+                        >
                             {{ actionError }}
                         </p>
 
@@ -472,16 +489,32 @@ void loadAll();
                         </div>
 
                         <div v-if="step === 0" class="flex flex-col gap-5">
-                            <div class="border-wpx-blue-light bg-wpx-blue-light/5 rounded-wpx-md flex max-w-xs items-center gap-3.5 border-[1.5px] p-3.5">
-                                <span class="from-wpx-blue to-wpx-cyan flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-extrabold text-white">
-                                    {{ (brands.find((b) => b.id === form.brand_id)?.name ?? '??').slice(0, 2).toUpperCase() }}
+                            <div
+                                class="border-wpx-blue-light bg-wpx-blue-light/5 rounded-wpx-md flex max-w-xs items-center gap-3.5 border-[1.5px] p-3.5"
+                            >
+                                <span
+                                    class="from-wpx-blue to-wpx-cyan flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-extrabold text-white"
+                                >
+                                    {{
+                                        (brands.find((b) => b.id === form.brand_id)?.name ?? '??')
+                                            .slice(0, 2)
+                                            .toUpperCase()
+                                    }}
                                 </span>
                                 <span class="min-w-0 flex-1">
-                                    <span class="text-wpx-text block truncate text-sm font-bold">{{ brands.find((b) => b.id === form.brand_id)?.name }}</span>
+                                    <span class="text-wpx-text block truncate text-sm font-bold">{{
+                                        brands.find((b) => b.id === form.brand_id)?.name
+                                    }}</span>
                                     <span class="text-wpx-text-muted block text-xs">Marque de cette campagne</span>
                                 </span>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="shrink-0">
-                                    <path d="M5 13l4 4L19 7" stroke="#075CCF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path
+                                        d="M5 13l4 4L19 7"
+                                        stroke="#075CCF"
+                                        stroke-width="2.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
                                 </svg>
                             </div>
                             <div>
@@ -492,7 +525,11 @@ void loadAll();
                                         :key="code"
                                         type="button"
                                         class="rounded-wpx-md flex items-center justify-between border-[1.5px] p-3 text-left text-sm font-semibold"
-                                        :class="form.objective_code === code ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text' : 'border-wpx-border text-wpx-text'"
+                                        :class="
+                                            form.objective_code === code
+                                                ? 'border-wpx-blue-light bg-wpx-blue-light/5 text-wpx-text'
+                                                : 'border-wpx-border text-wpx-text'
+                                        "
                                         @click="form.objective_code = code"
                                     >
                                         {{ label }}
@@ -502,9 +539,14 @@ void loadAll();
                             </div>
                             <label class="flex flex-col gap-1 text-xs">
                                 <span class="text-wpx-text font-semibold">Visuel à diffuser</span>
-                                <select v-model="form.asset_id" class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm">
+                                <select
+                                    v-model="form.asset_id"
+                                    class="rounded-wpx-sm border-wpx-border border px-2 py-1.5 text-sm"
+                                >
                                     <option :value="null" disabled>Choisir dans ma bibliothèque…</option>
-                                    <option v-for="asset in assets" :key="asset.id" :value="asset.id">{{ asset.filename }}</option>
+                                    <option v-for="asset in assets" :key="asset.id" :value="asset.id">
+                                        {{ asset.filename }}
+                                    </option>
                                 </select>
                             </label>
                             <label class="flex flex-col gap-1 text-xs">
@@ -521,12 +563,16 @@ void loadAll();
                             <div class="rounded-wpx-md border-wpx-border bg-wpx-canvas border p-3">
                                 <p class="text-wpx-text text-xs font-semibold">Ciblage simple et compréhensible</p>
                                 <p class="text-wpx-text-muted mt-1 text-xs">
-                                    L’abonnement des membres n’est pas un critère de ciblage. Choisis seulement la zone et, si utile, quelques critères volontaires de profil.
+                                    L’abonnement des membres n’est pas un critère de ciblage. Choisis seulement la zone
+                                    et, si utile, quelques critères volontaires de profil.
                                 </p>
                             </div>
                             <label class="flex flex-col gap-1 text-xs">
                                 <span class="text-wpx-text font-semibold">Pays ciblé (optionnel)</span>
-                                <select v-model="form.country_code" class="rounded-wpx-sm border-wpx-border w-full max-w-sm border px-2 py-2 text-sm">
+                                <select
+                                    v-model="form.country_code"
+                                    class="rounded-wpx-sm border-wpx-border w-full max-w-sm border px-2 py-2 text-sm"
+                                >
                                     <option value="">Tous les pays</option>
                                     <option v-for="country in TARGET_COUNTRIES" :key="country[0]" :value="country[0]">
                                         {{ country[1] }} ({{ country[0] }})
@@ -553,15 +599,21 @@ void loadAll();
                                         :key="criterion.code"
                                         type="button"
                                         class="rounded-full border px-3 py-1.5 text-xs font-medium"
-                                        :class="form.profile_taxonomies.includes(criterion.code) ? 'border-wpx-blue bg-wpx-blue/10 text-wpx-blue' : 'border-wpx-border text-wpx-text'"
+                                        :class="
+                                            form.profile_taxonomies.includes(criterion.code)
+                                                ? 'border-wpx-blue bg-wpx-blue/10 text-wpx-blue'
+                                                : 'border-wpx-border text-wpx-text'
+                                        "
                                         @click="toggleProfileCriterion(criterion.code)"
                                     >
-                                        {{ form.profile_taxonomies.includes(criterion.code) ? '✓ ' : '+ ' }}{{ criterion.label }}
+                                        {{ form.profile_taxonomies.includes(criterion.code) ? '✓ ' : '+ '
+                                        }}{{ criterion.label }}
                                     </button>
                                 </div>
                             </div>
                             <p class="text-wpx-text-muted text-xs">
-                                Les critères de profil sont déclarés volontairement par les utilisateurs. Wasplex ne révèle jamais leur identité à l’annonceur.
+                                Les critères de profil sont déclarés volontairement par les utilisateurs. Wasplex ne
+                                révèle jamais leur identité à l’annonceur.
                             </p>
                             <button
                                 type="button"
@@ -573,10 +625,14 @@ void loadAll();
                             </button>
                             <p v-if="estimate" class="text-wpx-text text-sm">
                                 <template v-if="estimate.too_small">
-                                    <strong>Audience encore limitée.</strong> La diffusion progressera à mesure que de nouveaux utilisateurs éligibles rejoignent Wasplex. Aucun budget n’est débité sans vue complète.
+                                    <strong>Audience encore limitée.</strong> La diffusion progressera à mesure que de
+                                    nouveaux utilisateurs éligibles rejoignent Wasplex. Aucun budget n’est débité sans
+                                    vue complète.
                                 </template>
                                 <template v-else>
-                                    Audience estimée : <strong>{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong> comptes.
+                                    Audience estimée :
+                                    <strong>{{ estimate.estimated_min }} – {{ estimate.estimated_max }}</strong>
+                                    comptes.
                                 </template>
                             </p>
                         </div>
@@ -606,28 +662,48 @@ void loadAll();
                             <div class="rounded-wpx-md bg-wpx-canvas border-wpx-border max-w-md border p-4">
                                 <p class="text-wpx-text-muted text-xs">Budget total de la campagne</p>
                                 <p class="text-wpx-text mt-1 text-xl font-bold">
-                                    {{ form.daily_budget_minor }} FCFA × {{ form.duration_days }} jours = {{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA
+                                    {{ form.daily_budget_minor }} FCFA × {{ form.duration_days }} jours =
+                                    {{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA
                                 </p>
-                                <p class="text-wpx-text-muted mt-2 text-xs">Solde disponible : {{ walletAvailableMinor.toLocaleString('fr-FR') }} WP</p>
+                                <p class="text-wpx-text-muted mt-2 text-xs">
+                                    Solde disponible : {{ walletAvailableMinor.toLocaleString('fr-FR') }} WP
+                                </p>
                             </div>
                             <p class="text-wpx-text-muted text-xs">
-                                Tu choisis librement entre {{ advertisingRules.minimum_duration_days }} et {{ advertisingRules.maximum_duration_days }} jours, avec au moins {{ advertisingRules.minimum_daily_budget_minor }} FCFA par jour et {{ advertisingRules.minimum_budget_minor }} FCFA au total.
+                                Tu choisis librement entre {{ advertisingRules.minimum_duration_days }} et
+                                {{ advertisingRules.maximum_duration_days }} jours, avec au moins
+                                {{ advertisingRules.minimum_daily_budget_minor }} FCFA par jour et
+                                {{ advertisingRules.minimum_budget_minor }} FCFA au total.
                             </p>
                         </div>
 
                         <div v-else-if="step === 3" class="flex flex-col gap-3 text-sm">
-                            <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-success-light">Campagne soumise — en attente de revue administrative.</p>
-                            <p v-else-if="selectedCampaign.status === 'approved'" class="text-wpx-success-light">Campagne approuvée.</p>
-                            <p v-else-if="selectedCampaign.status === 'suspended'" class="text-wpx-warning-light">Campagne suspendue par l'administration.</p>
+                            <p v-if="selectedCampaign.status === 'submitted'" class="text-wpx-success-light">
+                                Campagne soumise — en attente de revue administrative.
+                            </p>
+                            <p v-else-if="selectedCampaign.status === 'approved'" class="text-wpx-success-light">
+                                Campagne approuvée.
+                            </p>
+                            <p v-else-if="selectedCampaign.status === 'suspended'" class="text-wpx-warning-light">
+                                Campagne suspendue par l'administration.
+                            </p>
                             <template v-else-if="selectedCampaign.status === 'rejected'">
                                 <p class="text-wpx-danger-light">Campagne rejetée.</p>
-                                <p v-if="latestReviewCase?.reason" class="text-wpx-text-muted">Motif : {{ latestReviewCase.reason }}</p>
+                                <p v-if="latestReviewCase?.reason" class="text-wpx-text-muted">
+                                    Motif : {{ latestReviewCase.reason }}
+                                </p>
                             </template>
                             <template v-else-if="selectedCampaign.status === 'changes_requested'">
                                 <p class="text-wpx-warning-light">Correction demandée par l'administration.</p>
-                                <p v-if="latestReviewCase?.reason" class="bg-wpx-canvas rounded-wpx-sm text-wpx-text p-2">{{ latestReviewCase.reason }}</p>
+                                <p
+                                    v-if="latestReviewCase?.reason"
+                                    class="bg-wpx-canvas rounded-wpx-sm text-wpx-text p-2"
+                                >
+                                    {{ latestReviewCase.reason }}
+                                </p>
                                 <p class="text-wpx-text-muted text-xs">
-                                    Corrigez le contenu, l'audience ou le budget ci-dessus puis resoumettez — le budget déjà réservé reste verrouillé, aucun nouveau financement n'est nécessaire.
+                                    Corrigez le contenu, l'audience ou le budget ci-dessus puis resoumettez — le budget
+                                    déjà réservé reste verrouillé, aucun nouveau financement n'est nécessaire.
                                 </p>
                                 <button
                                     type="button"
@@ -639,14 +715,27 @@ void loadAll();
                                 </button>
                             </template>
                             <template v-else>
-                                <div class="rounded-wpx-md bg-wpx-canvas border-wpx-border grid gap-2 border p-4 sm:grid-cols-2">
-                                    <p>Durée : <strong>{{ form.duration_days }} jours</strong></p>
-                                    <p>Par jour : <strong>{{ form.daily_budget_minor.toLocaleString('fr-FR') }} FCFA</strong></p>
-                                    <p>Budget total : <strong>{{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA</strong></p>
-                                    <p>Wallet : <strong>{{ walletAvailableMinor.toLocaleString('fr-FR') }} WP</strong></p>
+                                <div
+                                    class="rounded-wpx-md bg-wpx-canvas border-wpx-border grid gap-2 border p-4 sm:grid-cols-2"
+                                >
+                                    <p>
+                                        Durée : <strong>{{ form.duration_days }} jours</strong>
+                                    </p>
+                                    <p>
+                                        Par jour :
+                                        <strong>{{ form.daily_budget_minor.toLocaleString('fr-FR') }} FCFA</strong>
+                                    </p>
+                                    <p>
+                                        Budget total :
+                                        <strong>{{ totalBudgetMinor.toLocaleString('fr-FR') }} FCFA</strong>
+                                    </p>
+                                    <p>
+                                        Wallet : <strong>{{ walletAvailableMinor.toLocaleString('fr-FR') }} WP</strong>
+                                    </p>
                                 </div>
                                 <p class="text-wpx-text-muted text-xs">
-                                    En continuant, Wasplex réserve le budget et transmet immédiatement la campagne à l’administration. Aucun débit publicitaire n’a lieu sans vue complète.
+                                    En continuant, Wasplex réserve le budget et transmet immédiatement la campagne à
+                                    l’administration. Aucun débit publicitaire n’a lieu sans vue complète.
                                 </p>
                                 <button
                                     type="button"
@@ -706,7 +795,10 @@ void loadAll();
                     </div>
                 </div>
 
-                <div v-else class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex flex-1 items-center justify-center p-4 text-sm">
+                <div
+                    v-else
+                    class="rounded-wpx-lg shadow-wpx-card bg-wpx-surface text-wpx-text-muted flex flex-1 items-center justify-center p-4 text-sm"
+                >
                     Choisissez une marque pour créer une campagne.
                 </div>
             </div>
