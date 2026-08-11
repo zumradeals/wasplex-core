@@ -185,16 +185,18 @@ it('rejects completion before the required attention duration is reached', funct
     test()->postJson("/api/feed/deliveries/{$delivery['id']}/complete")->assertStatus(422);
 });
 
-it('excludes a campaign from delivery once its envelope for the class is exhausted', function (): void {
+it('excludes a campaign from delivery once its reward envelope is exhausted', function (): void {
     ['campaign_id' => $campaignId] = approvedCampaignForMatchingTests(
         'feed-exhausted-advertiser@example.com',
         ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
     );
 
     $quote = CampaignQuote::query()->whereHas('campaignVersion', fn ($q) => $q->where('campaign_id', $campaignId))->firstOrFail();
-    $breakdown = $quote->class_breakdown;
-    $breakdown['GOLD']['events'] = 1;
-    $quote->update(['class_breakdown' => $breakdown]);
+    $goldGainMinor = (int) $quote->class_breakdown['GOLD']['gain_unitaire_minor'];
+    $quote->update([
+        'gross_amount_minor' => $goldGainMinor * 2,
+        'net_distributable_amount_minor' => $goldGainMinor * 2,
+    ]);
 
     readyFeedCandidate('feed-exhausted-candidate-1@example.com', 'GOLD');
     $session1 = startFeedSession();
