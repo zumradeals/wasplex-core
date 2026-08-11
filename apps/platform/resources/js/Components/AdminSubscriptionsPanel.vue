@@ -18,6 +18,20 @@ interface PlanVersion {
     economic_class_link: { economic_class: { id: string; code: string } } | null;
 }
 
+const LAUNCH_PRICES: Record<string, number> = {
+    FREE: 0,
+    PREMIUM: 1500,
+    GOLD: 4000,
+    PLATINUM: 7500,
+};
+
+const LEVEL_ORDER: Record<string, number> = {
+    FREE: 0,
+    PREMIUM: 1,
+    GOLD: 2,
+    PLATINUM: 3,
+};
+
 const levels = ref<EconomicClass[]>([]);
 const planVersions = ref<PlanVersion[]>([]);
 const loading = ref(true);
@@ -25,6 +39,7 @@ const busy = ref<string | null>(null);
 const error = ref<string | null>(null);
 const showCreate = ref(false);
 const editing = ref<string | null>(null);
+const simulatorBudget = ref(100000);
 
 const createForm = reactive({
     plan_code: '',
@@ -37,17 +52,75 @@ const editForm = reactive({ price_minor: 0, duration_days: 30 });
 const rewardForms = reactive<Record<string, { quota_monthly: number; reward_per_complete_view_minor: number }>>({});
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
+const orderedLevels = computed(() =>
+    [...levels.value].sort((a, b) => (LEVEL_ORDER[a.code] ?? 99) - (LEVEL_ORDER[b.code] ?? 99)),
+);
+const orderedPlanVersions = computed(() =>
+    [...planVersions.value].sort(
+        (a, b) => (LEVEL_ORDER[a.plan.code] ?? 99) - (LEVEL_ORDER[b.plan.code] ?? 99),
+    ),
+);
 const freeReward = computed(() => {
     const free = levels.value.find((level) => level.code === 'FREE');
     return free ? (rewardForms[free.id]?.reward_per_complete_view_minor ?? 30) : 30;
 });
 const publishedCount = computed(() => planVersions.value.filter((version) => version.status === 'published').length);
 const draftCount = computed(() => planVersions.value.filter((version) => version.status === 'draft').length);
+const memberEnvelope = computed(() => Math.floor(Math.max(0, simulatorBudget.value || 0) / 2));
+const wasplexEnvelope = computed(() => Math.max(0, simulatorBudget.value || 0) - memberEnvelope.value);
+
+function rewardFor(level: EconomicClass): number {
+    return rewardForms[level.id]?.reward_per_complete_view_minor ?? level.versions[0]?.reward_per_complete_view_minor ?? 0;
+}
+
+function quotaFor(level: EconomicClass): number {
+    return rewardForms[level.id]?.quota_monthly ?? level.versions[0]?.quota_monthly ?? 0;
+}
 
 function rewardAdvantage(level: EconomicClass): string {
-    const reward = rewardForms[level.id]?.reward_per_complete_view_minor ?? freeReward.value;
+    const reward = rewardFor(level);
     if (level.code === 'FREE' || freeReward.value <= 0) return 'Récompense de base';
-    return `+${Math.round(((reward - freeReward.value) / freeReward.value) * 100)} % par rapport au Gratuit`;
+    return `×${(reward / freeReward.value).toFixed(2).replace('.', ',')} · +${Math.round(
+        ((reward - freeReward.value) / freeReward.value) * 100,
+    )} %`;
+}
+
+function advertiserCostPerView(level: EconomicClass): number {
+    return rewardFor(level) * 2;
+}
+
+function monthlyCeiling(level: EconomicClass): number {
+    return rewardFor(level) * quotaFor(level);
+}
+
+function simulatedViews(level: EconomicClass): number {
+    const reward = rewardFor(level);
+    return reward > 0 ? Math.floor(memberEnvelope.value / reward) : 0;
+}
+
+function simulatedConsumed(level: EconomicClass): number {
+    return simulatedViews(level) * advertiserCostPerView(level);
+}
+
+function simulatedRemainder(level: EconomicClass): number {
+    return Math.max(0, Math.max(0, simulatorBudget.value || 0) - simulatedConsumed(level));
+}
+
+function planForLevel(level: EconomicClass): PlanVersion | undefined {
+    return planVersions.value.find(
+        (version) =>
+            version.economic_class_link?.economic_class.id === level.id ||
+            version.economic_class_link?.economic_class.code === level.code ||
+            version.plan.code === level.code,
+    );
+}
+
+function launchPrice(code: string): number | null {
+    return Object.prototype.hasOwnProperty.call(LAUNCH_PRICES, code) ? LAUNCH_PRICES[code] : null;
+}
+
+function formatAmount(value: number): string {
+    return numberFormatter.format(Math.max(0, value || 0));
 }
 
 async function load(): Promise<void> {
@@ -128,6 +201,11 @@ function startEdit(version: PlanVersion): void {
     editForm.duration_days = version.duration_days;
 }
 
+function useLaunchPrice(version: PlanVersion): void {
+    const approvedPrice = launchPrice(version.plan.code);
+    if (approvedPrice !== null) editForm.price_minor = approvedPrice;
+}
+
 async function saveEdit(version: PlanVersion): Promise<void> {
     busy.value = version.id;
     error.value = null;
@@ -185,15 +263,19 @@ onMounted(load);
 
 <template>
     <div class="text-wpx-white-soft flex flex-col gap-5">
-        <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <section
+            class="border-wpx-border-dark from-wpx-navy-850 to-wpx-navy-950 rounded-wpx-xl shadow-wpx-card-dark border bg-gradient-to-br p-5 md:p-6"
+        >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">Offres Wasplex</p>
-                    <h2 class="mt-1 text-2xl font-extrabold">Ce que les membres peuvent réellement choisir.</h2>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">
+                        Offres & modèle économique
+                    </p>
+                    <h2 class="mt-1 text-2xl font-extrabold">Comprendre, régler et publier les offres Wasplex.</h2>
                     <p class="text-wpx-muted-dark mt-2 max-w-3xl text-sm">
-                        Une offre <strong class="text-wpx-white-soft">Publié</strong> est visible par les membres. Une
-                        offre <strong class="text-wpx-white-soft">Brouillon</strong> reste invisible tant que tu ne la
-                        publies pas.
+                        Une vue complète partage sa valeur à parts égales : <strong>50 % au membre</strong> et
+                        <strong>50 % à Wasplex</strong>. Le membre reçoit un montant fixe selon son niveau, jamais un
+                        pourcentage du budget total de l’annonceur.
                     </p>
                 </div>
                 <button
@@ -204,6 +286,29 @@ onMounted(load);
                     {{ showCreate ? 'Fermer' : '+ Créer une offre' }}
                 </button>
             </div>
+
+            <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950/80 border p-4">
+                    <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">Part membres</p>
+                    <p class="text-wpx-success mt-1 text-2xl font-extrabold">50 %</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">Financée uniquement par les vues complètes.</p>
+                </div>
+                <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950/80 border p-4">
+                    <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">Part Wasplex</p>
+                    <p class="text-wpx-cyan mt-1 text-2xl font-extrabold">50 %</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">Comptabilisée au même moment que la récompense.</p>
+                </div>
+                <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950/80 border p-4">
+                    <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                        Revenus abonnements
+                    </p>
+                    <p class="text-wpx-gold mt-1 text-lg font-extrabold">Séparés de la publicité</p>
+                    <p class="text-wpx-muted-dark mt-1 text-xs">
+                        Le prix Premium, Gold ou Platine est un revenu commercial distinct.
+                    </p>
+                </div>
+            </div>
+
             <div class="mt-4 flex flex-wrap gap-2">
                 <span class="bg-wpx-success/15 text-wpx-success rounded-wpx-full px-3 py-1 text-xs font-extrabold">
                     {{ publishedCount }} publiée{{ publishedCount > 1 ? 's' : '' }}
@@ -218,12 +323,172 @@ onMounted(load);
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
 
         <template v-else>
+            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
+                <div>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">
+                        Niveaux membres
+                    </p>
+                    <h3 class="mt-1 text-xl font-extrabold">Récompenses & quotas</h3>
+                    <p class="text-wpx-muted-dark mt-2 max-w-3xl text-sm">
+                        Ce sont les deux avantages économiques de l’abonnement : gagner davantage par publicité et
+                        pouvoir recevoir davantage de publicités dans le mois.
+                    </p>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <article
+                        v-for="level in orderedLevels"
+                        :key="level.id"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 border p-4"
+                    >
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-lg font-extrabold">{{ planForLevel(level)?.plan.name ?? level.code }}</p>
+                                <p class="text-wpx-cyan mt-1 text-xs font-bold">{{ rewardAdvantage(level) }}</p>
+                            </div>
+                            <span
+                                v-if="planForLevel(level)"
+                                class="rounded-wpx-full px-2.5 py-1 text-[10px] font-extrabold"
+                                :class="statusClasses(planForLevel(level)?.status ?? '')"
+                            >
+                                {{ statusLabel(planForLevel(level)?.status ?? '') }}
+                            </span>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-2 gap-2">
+                            <div class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border p-3">
+                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Membre / vue</p>
+                                <p class="mt-1 text-xl font-extrabold">{{ formatAmount(rewardFor(level)) }} WP</p>
+                            </div>
+                            <div class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border p-3">
+                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Coût annonceur / vue</p>
+                                <p class="mt-1 text-xl font-extrabold">
+                                    {{ formatAmount(advertiserCostPerView(level)) }} WP
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-xs">
+                            <p class="flex items-center justify-between gap-3">
+                                <span class="text-wpx-muted-dark">Publicités max / mois</span>
+                                <strong>{{ formatAmount(quotaFor(level)) }}</strong>
+                            </p>
+                            <p class="mt-2 flex items-center justify-between gap-3">
+                                <span class="text-wpx-muted-dark">Plafond théorique membre</span>
+                                <strong>{{ formatAmount(monthlyCeiling(level)) }} WP</strong>
+                            </p>
+                        </div>
+
+                        <div class="border-wpx-border-dark mt-4 border-t pt-4">
+                            <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
+                                Modifier ce niveau
+                            </p>
+                            <label class="mt-3 block text-xs">
+                                <span class="text-wpx-muted-dark">Gain par vue complète (WP)</span>
+                                <input
+                                    v-model.number="rewardForms[level.id].reward_per_complete_view_minor"
+                                    type="number"
+                                    min="1"
+                                    class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 mt-1 w-full border px-3 py-2 text-sm"
+                                />
+                            </label>
+                            <label class="mt-3 block text-xs">
+                                <span class="text-wpx-muted-dark">Publicités maximum / mois</span>
+                                <input
+                                    v-model.number="rewardForms[level.id].quota_monthly"
+                                    type="number"
+                                    min="1"
+                                    class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 mt-1 w-full border px-3 py-2 text-sm"
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                :disabled="busy === level.id"
+                                class="text-wpx-cyan mt-3 text-xs font-extrabold disabled:opacity-50"
+                                @click="saveReward(level)"
+                            >
+                                Enregistrer récompense & quota
+                            </button>
+                        </div>
+                    </article>
+                </div>
+
+                <p class="text-wpx-muted-dark mt-4 text-xs">
+                    Le plafond théorique suppose qu’un membre reçoit toutes les publicités permises par son quota. Il
+                    ne constitue jamais une promesse de revenu : la disponibilité dépend des campagnes et de
+                    l’éligibilité du profil.
+                </p>
+            </section>
+
+            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">
+                            Simulateur économique
+                        </p>
+                        <h3 class="mt-1 text-xl font-extrabold">Que devient un budget annonceur ?</h3>
+                        <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm">
+                            Le calcul montre la capacité maximale si toutes les vues rémunérées appartenaient au même
+                            niveau membre.
+                        </p>
+                    </div>
+                    <label class="w-full max-w-xs text-xs">
+                        <span class="text-wpx-muted-dark font-bold">Budget campagne (FCFA)</span>
+                        <input
+                            v-model.number="simulatorBudget"
+                            type="number"
+                            min="0"
+                            step="1000"
+                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 mt-1 w-full border px-3 py-2.5 text-sm"
+                        />
+                    </label>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div class="border-wpx-success/30 rounded-wpx-lg bg-wpx-success/10 border p-4">
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase">Enveloppe membres</p>
+                        <p class="text-wpx-success mt-1 text-2xl font-extrabold">
+                            {{ formatAmount(memberEnvelope) }} FCFA
+                        </p>
+                    </div>
+                    <div class="border-wpx-cyan/30 rounded-wpx-lg bg-wpx-cyan/10 border p-4">
+                        <p class="text-wpx-muted-dark text-[10px] font-extrabold uppercase">Part Wasplex correspondante</p>
+                        <p class="text-wpx-cyan mt-1 text-2xl font-extrabold">
+                            {{ formatAmount(wasplexEnvelope) }} FCFA
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div
+                        v-for="level in orderedLevels"
+                        :key="`sim-${level.id}`"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 border p-4"
+                    >
+                        <p class="font-extrabold">{{ planForLevel(level)?.plan.name ?? level.code }}</p>
+                        <p class="text-wpx-cyan mt-2 text-2xl font-extrabold">
+                            ≈ {{ formatAmount(simulatedViews(level)) }} vues
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">
+                            {{ formatAmount(rewardFor(level)) }} WP membre + {{ formatAmount(rewardFor(level)) }} WP
+                            Wasplex par vue.
+                        </p>
+                        <p v-if="simulatedRemainder(level) > 0" class="text-wpx-muted-dark mt-2 text-[11px]">
+                            Reste non consommé par ce scénario : {{ formatAmount(simulatedRemainder(level)) }}.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <form
                 v-if="showCreate"
                 class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5"
                 @submit.prevent="createPlan"
             >
-                <h3 class="text-base font-extrabold">Nouvelle offre</h3>
+                <h3 class="text-base font-extrabold">Nouvelle offre commerciale</h3>
+                <p class="text-wpx-muted-dark mt-1 text-xs">
+                    Une nouvelle offre reste en brouillon jusqu’à sa publication explicite.
+                </p>
                 <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
                     <label class="flex flex-col gap-1.5 text-xs">
                         <span class="text-wpx-muted-dark font-bold">Nom</span>
@@ -251,7 +516,9 @@ onMounted(load);
                             class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 border px-3 py-2.5 text-sm"
                         >
                             <option value="" disabled>Choisir</option>
-                            <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.code }}</option>
+                            <option v-for="level in orderedLevels" :key="level.id" :value="level.id">
+                                {{ level.code }}
+                            </option>
                         </select>
                     </label>
                     <label class="flex flex-col gap-1.5 text-xs">
@@ -284,12 +551,23 @@ onMounted(load);
                 </button>
             </form>
 
-            <section>
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5 md:p-6">
+                <div>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.14em] uppercase">
+                        Offres commerciales
+                    </p>
+                    <h3 class="mt-1 text-xl font-extrabold">Prix, durée et publication</h3>
+                    <p class="text-wpx-muted-dark mt-2 max-w-3xl text-sm">
+                        Le prix de l’abonnement est distinct de la récompense publicitaire. Les prix de lancement
+                        approuvés sont Gratuit 0, Premium 1 500, Gold 4 000 et Platine 7 500 FCFA pour 30 jours.
+                    </p>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <article
-                        v-for="version in planVersions"
+                        v-for="version in orderedPlanVersions"
                         :key="version.id"
-                        class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5"
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 border p-4"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -312,16 +590,25 @@ onMounted(load);
                                         v-model.number="editForm.price_minor"
                                         type="number"
                                         min="0"
-                                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 border px-3 py-2 text-sm"
+                                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border px-3 py-2 text-sm"
                                     />
                                 </label>
+                                <button
+                                    v-if="launchPrice(version.plan.code) !== null"
+                                    type="button"
+                                    class="text-wpx-gold text-left text-xs font-bold"
+                                    @click="useLaunchPrice(version)"
+                                >
+                                    Appliquer le prix de lancement :
+                                    {{ formatAmount(launchPrice(version.plan.code) ?? 0) }} FCFA
+                                </button>
                                 <label class="flex flex-col gap-1 text-xs">
                                     <span class="text-wpx-muted-dark">Durée (jours)</span>
                                     <input
                                         v-model.number="editForm.duration_days"
                                         type="number"
                                         min="1"
-                                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 border px-3 py-2 text-sm"
+                                        class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border px-3 py-2 text-sm"
                                     />
                                 </label>
                                 <div class="flex gap-2">
@@ -347,17 +634,38 @@ onMounted(load);
                         <template v-else>
                             <div class="mt-5">
                                 <p class="text-wpx-muted-dark text-[10px] font-extrabold tracking-wide uppercase">
-                                    Prix
+                                    Prix membre
                                 </p>
                                 <p class="mt-1 text-2xl font-extrabold">
                                     {{
                                         version.price_minor === 0
                                             ? 'Gratuit'
-                                            : `${numberFormatter.format(version.price_minor)} FCFA`
+                                            : `${formatAmount(version.price_minor)} FCFA`
                                     }}
                                 </p>
                                 <p class="text-wpx-muted-dark mt-1 text-xs">{{ version.duration_days }} jours</p>
+                                <p
+                                    v-if="
+                                        launchPrice(version.plan.code) !== null &&
+                                        version.price_minor !== launchPrice(version.plan.code)
+                                    "
+                                    class="text-wpx-gold mt-2 text-xs font-bold"
+                                >
+                                    Prix de lancement approuvé :
+                                    {{ formatAmount(launchPrice(version.plan.code) ?? 0) }} FCFA
+                                </p>
                             </div>
+
+                            <div
+                                v-if="version.economic_class_link"
+                                class="border-wpx-border-dark mt-4 border-t pt-4 text-xs"
+                            >
+                                <p class="flex items-center justify-between gap-3">
+                                    <span class="text-wpx-muted-dark">Niveau lié</span>
+                                    <strong>{{ version.economic_class_link.economic_class.code }}</strong>
+                                </p>
+                            </div>
+
                             <div class="border-wpx-border-dark mt-4 border-t pt-4">
                                 <p v-if="version.status === 'published'" class="text-wpx-success text-xs font-bold">
                                     Visible actuellement dans Mon Espace.
@@ -365,8 +673,11 @@ onMounted(load);
                                 <p v-else-if="version.status === 'draft'" class="text-wpx-gold text-xs font-bold">
                                     Invisible pour les membres tant qu’elle reste en brouillon.
                                 </p>
-                                <p v-else class="text-wpx-danger text-xs font-bold">Cette offre n’est plus proposée.</p>
+                                <p v-else class="text-wpx-danger text-xs font-bold">
+                                    Cette offre n’est plus proposée.
+                                </p>
                             </div>
+
                             <div class="mt-4 flex flex-wrap gap-2">
                                 <button
                                     v-if="version.status === 'draft'"
@@ -399,54 +710,6 @@ onMounted(load);
                     </article>
                 </div>
             </section>
-
-            <details class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border">
-                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
-                    <div>
-                        <p class="text-base font-extrabold">Récompenses & quotas</p>
-                        <p class="text-wpx-muted-dark mt-1 text-xs">
-                            Réglages économiques avancés associés aux niveaux Gratuit, Premium, Gold et Platine.
-                        </p>
-                    </div>
-                    <span class="text-wpx-cyan text-xs font-extrabold">Ouvrir</span>
-                </summary>
-                <div class="border-wpx-border-dark grid grid-cols-1 gap-3 border-t p-5 md:grid-cols-2 xl:grid-cols-4">
-                    <div
-                        v-for="level in levels"
-                        :key="level.id"
-                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-950 border p-4"
-                    >
-                        <p class="font-extrabold">{{ level.code }}</p>
-                        <p class="text-wpx-cyan mt-1 text-xs font-bold">{{ rewardAdvantage(level) }}</p>
-                        <label class="mt-4 block text-xs">
-                            <span class="text-wpx-muted-dark">Gain par vue complète (WP)</span>
-                            <input
-                                v-model.number="rewardForms[level.id].reward_per_complete_view_minor"
-                                type="number"
-                                min="1"
-                                class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 mt-1 w-full border px-3 py-2 text-sm"
-                            />
-                        </label>
-                        <label class="mt-3 block text-xs">
-                            <span class="text-wpx-muted-dark">Publicités maximum / mois</span>
-                            <input
-                                v-model.number="rewardForms[level.id].quota_monthly"
-                                type="number"
-                                min="1"
-                                class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 mt-1 w-full border px-3 py-2 text-sm"
-                            />
-                        </label>
-                        <button
-                            type="button"
-                            :disabled="busy === level.id"
-                            class="text-wpx-cyan mt-3 text-xs font-extrabold disabled:opacity-50"
-                            @click="saveReward(level)"
-                        >
-                            Enregistrer
-                        </button>
-                    </div>
-                </div>
-            </details>
         </template>
     </div>
 </template>
