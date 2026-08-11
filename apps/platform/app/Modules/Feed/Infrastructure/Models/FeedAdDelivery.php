@@ -27,11 +27,13 @@ final class FeedAdDelivery extends Model
 
     public const STATUS_REJECTED = 'rejected';
 
+    public const STATUS_REPLAY = 'replay';
+
     protected $table = 'feed_ad_deliveries';
 
     protected $fillable = [
         'feed_session_id', 'account_id', 'campaign_id', 'organization_id', 'campaign_envelope_consumption_id',
-        'economic_class', 'gain_minor', 'required_duration_ms', 'visible_duration_ms',
+        'economic_class', 'is_replay', 'gain_minor', 'required_duration_ms', 'visible_duration_ms',
         'last_heartbeat_at', 'risk_signal_count', 'last_risk_signal_code',
         'progress_percent', 'status', 'reserved_at', 'started_at', 'completed_at',
         'ledger_transaction_id',
@@ -40,6 +42,7 @@ final class FeedAdDelivery extends Model
     protected function casts(): array
     {
         return [
+            'is_replay' => 'boolean',
             'gain_minor' => 'integer',
             'required_duration_ms' => 'integer',
             'visible_duration_ms' => 'integer',
