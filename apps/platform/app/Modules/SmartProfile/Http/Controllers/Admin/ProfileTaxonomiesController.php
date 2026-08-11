@@ -11,11 +11,8 @@ use App\Modules\SmartProfile\Infrastructure\Models\ProfileTaxonomy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\Rule;
 
-/**
- * docs/09 Phase 4 (administration) : catalogue simple, sans éditeur JSON —
- * exigence explicite du fondateur (non-technicien).
- */
 final class ProfileTaxonomiesController extends Controller
 {
     public function __construct(private readonly ProfileTaxonomyService $taxonomies) {}
@@ -25,6 +22,7 @@ final class ProfileTaxonomiesController extends Controller
         return response()->json([
             'taxonomies' => $this->taxonomies->listAll(),
             'categories' => ProfileTaxonomy::CATEGORIES,
+            'input_types' => ProfileTaxonomy::INPUT_TYPES,
         ]);
     }
 
@@ -33,6 +31,8 @@ final class ProfileTaxonomiesController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:120', 'unique:profile_taxonomies,code'],
             'category' => ['required', 'string'],
+            'facet' => ['nullable', 'string', 'max:120'],
+            'input_type' => ['sometimes', 'string', Rule::in(ProfileTaxonomy::INPUT_TYPES)],
             'label' => ['required', 'string', 'max:255'],
             'freshness_days' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -50,6 +50,8 @@ final class ProfileTaxonomiesController extends Controller
     {
         $data = $request->validate([
             'label' => ['sometimes', 'string', 'max:255'],
+            'facet' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'input_type' => ['sometimes', 'string', Rule::in(ProfileTaxonomy::INPUT_TYPES)],
             'freshness_days' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ]);
 
