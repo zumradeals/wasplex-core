@@ -74,37 +74,45 @@ onMounted(load);
 </script>
 
 <template>
-    <div class="mx-auto flex max-w-4xl flex-col gap-5 text-wpx-white-soft">
-        <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+    <div class="text-wpx-white-soft mx-auto flex max-w-4xl flex-col gap-5">
+        <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold uppercase tracking-[0.16em]">Paiements & intégrations</p>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">
+                        Paiements & intégrations
+                    </p>
                     <h2 class="mt-1 text-xl font-extrabold">Connexion GeniusPay</h2>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm">
-                        Cette zone configure la recharge du wallet annonceur. Les clés restent chiffrées et ne sont jamais
-                        réaffichées en clair.
+                        Cette zone configure la recharge du wallet annonceur. Les clés restent chiffrées et ne sont
+                        jamais réaffichées en clair.
                     </p>
                 </div>
                 <span
                     class="rounded-wpx-full px-3 py-1 text-xs font-extrabold"
-                    :class="status?.configured ? 'bg-wpx-success/15 text-wpx-success' : 'bg-wpx-warning/15 text-wpx-gold'"
+                    :class="
+                        status?.configured ? 'bg-wpx-success/15 text-wpx-success' : 'bg-wpx-warning/15 text-wpx-gold'
+                    "
                 >
                     {{ status?.configured ? 'Configuré' : 'À configurer' }}
                 </span>
             </div>
-            <div class="bg-wpx-warning/10 text-wpx-gold mt-4 rounded-wpx-md p-3 text-xs">
-                Mode actuel : <strong>Sandbox / test</strong>. Aucune transaction réelle ne doit être considérée comme encaissée
-                tant que l’intégration production n’est pas activée.
+            <div class="bg-wpx-warning/10 text-wpx-gold rounded-wpx-md mt-4 p-3 text-xs">
+                Mode actuel : <strong>Sandbox / test</strong>. Aucune transaction réelle ne doit être considérée comme
+                encaissée tant que l’intégration production n’est pas activée.
             </div>
         </section>
 
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
 
         <template v-else>
-            <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
                 <h3 class="text-base font-extrabold">Clés de connexion</h3>
                 <p class="text-wpx-muted-dark mt-1 text-xs">
-                    {{ status?.api_key_hint ? `Clé actuellement enregistrée : ${status.api_key_hint}` : 'Aucune clé enregistrée.' }}
+                    {{
+                        status?.api_key_hint
+                            ? `Clé actuellement enregistrée : ${status.api_key_hint}`
+                            : 'Aucune clé enregistrée.'
+                    }}
                 </p>
 
                 <form class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" @submit.prevent="save">
@@ -115,7 +123,7 @@ onMounted(load);
                             type="password"
                             autocomplete="off"
                             placeholder="pk_sandbox_…"
-                            class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft"
+                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm"
                         />
                     </label>
                     <label class="flex flex-col gap-1.5 text-xs">
@@ -125,7 +133,7 @@ onMounted(load);
                             type="password"
                             autocomplete="off"
                             placeholder="sk_sandbox_…"
-                            class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft"
+                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm"
                         />
                     </label>
                     <label class="flex flex-col gap-1.5 text-xs md:col-span-2">
@@ -135,13 +143,13 @@ onMounted(load);
                             type="password"
                             autocomplete="off"
                             placeholder="whsec_…"
-                            class="border-wpx-border-dark rounded-wpx-md border bg-wpx-navy-950 px-3 py-2.5 text-sm text-wpx-white-soft"
+                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 text-wpx-white-soft border px-3 py-2.5 text-sm"
                         />
                     </label>
                     <div class="flex flex-wrap gap-2 md:col-span-2">
                         <button
                             type="submit"
-                            class="from-wpx-blue to-wpx-cyan rounded-wpx-md bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold text-wpx-navy-950 disabled:opacity-50"
+                            class="from-wpx-blue to-wpx-cyan rounded-wpx-md text-wpx-navy-950 bg-gradient-to-br px-4 py-2.5 text-xs font-extrabold disabled:opacity-50"
                             :disabled="saving"
                         >
                             {{ saving ? 'Enregistrement…' : 'Enregistrer les clés' }}
@@ -157,16 +165,25 @@ onMounted(load);
                     </div>
                 </form>
 
-                <p v-if="message" class="border-wpx-border-dark text-wpx-muted-dark mt-4 rounded-wpx-md border bg-wpx-navy-950 p-3 text-xs">
+                <p
+                    v-if="message"
+                    class="border-wpx-border-dark text-wpx-muted-dark rounded-wpx-md bg-wpx-navy-950 mt-4 border p-3 text-xs"
+                >
                     {{ message }}
                 </p>
             </section>
 
-            <section class="border-wpx-border-dark rounded-wpx-xl border bg-wpx-navy-850 p-5 shadow-wpx-card-dark">
+            <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
                 <h3 class="text-base font-extrabold">Webhook GeniusPay</h3>
-                <p class="text-wpx-muted-dark mt-1 text-xs">Cette adresse doit être déclarée dans GeniusPay pour confirmer les paiements.</p>
-                <div class="border-wpx-border-dark mt-4 flex flex-col gap-3 rounded-wpx-md border bg-wpx-navy-950 p-4 sm:flex-row sm:items-center">
-                    <code class="text-wpx-muted-dark min-w-0 flex-1 break-all text-xs">{{ status?.webhook_url ?? '—' }}</code>
+                <p class="text-wpx-muted-dark mt-1 text-xs">
+                    Cette adresse doit être déclarée dans GeniusPay pour confirmer les paiements.
+                </p>
+                <div
+                    class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 mt-4 flex flex-col gap-3 border p-4 sm:flex-row sm:items-center"
+                >
+                    <code class="text-wpx-muted-dark min-w-0 flex-1 text-xs break-all">{{
+                        status?.webhook_url ?? '—'
+                    }}</code>
                     <button type="button" class="text-wpx-cyan shrink-0 text-xs font-extrabold" @click="copyWebhook">
                         {{ copied ? 'Copié !' : 'Copier l’adresse' }}
                     </button>
