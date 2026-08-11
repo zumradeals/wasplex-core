@@ -23,6 +23,7 @@ const nav = [
 type SectionKey = (typeof nav)[number]['key'];
 
 const activeSection = ref<SectionKey>('dashboard');
+const campaignInstanceKey = ref(0);
 
 const advertiserSpace = computed(() => page.props.auth.spaces.find((s) => s.space_type === 'advertiser') ?? null);
 const organizationId = computed(() => advertiserSpace.value?.organization_id ?? null);
@@ -31,6 +32,11 @@ const organizationName = computed(() => advertiserSpace.value?.organization_name
 function selectSection(key: SectionKey): void {
     activeSection.value = key;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function startNewCampaign(): void {
+    campaignInstanceKey.value += 1;
+    selectSection('campaigns');
 }
 
 async function logout(): Promise<void> {
@@ -65,7 +71,7 @@ async function logout(): Promise<void> {
                     <button
                         type="button"
                         class="from-wpx-orange to-wpx-gold text-wpx-navy-950 shadow-wpx-card-dark flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold"
-                        @click="selectSection('campaigns')"
+                        @click="startNewCampaign"
                     >
                         <span class="text-lg leading-none">+</span>
                         Créer une publicité
@@ -256,6 +262,7 @@ async function logout(): Promise<void> {
                     />
                     <CampaignsPanel
                         v-else-if="activeSection === 'campaigns'"
+                        :key="campaignInstanceKey"
                         @navigate-wallet="selectSection('wallet')"
                     />
                     <AdvertiserWalletPanel v-else-if="activeSection === 'wallet'" />
@@ -272,7 +279,7 @@ async function logout(): Promise<void> {
                         type="button"
                         class="flex min-w-0 flex-col items-center gap-1 py-1 text-[10px] font-semibold"
                         :class="activeSection === item.key ? 'text-wpx-gold' : 'text-wpx-muted-dark'"
-                        @click="selectSection(item.key)"
+                        @click="item.key === 'campaigns' ? startNewCampaign() : selectSection(item.key)"
                     >
                         <span
                             v-if="item.key === 'campaigns'"
