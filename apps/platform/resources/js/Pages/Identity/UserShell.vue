@@ -32,6 +32,7 @@ const activeTab = ref<(typeof tabs)[number]['key']>('feed');
 const walletPanel = ref<InstanceType<typeof WalletPanel> | null>(null);
 const smartProfilePanel = ref<InstanceType<typeof SmartProfilePanel> | null>(null);
 const me = ref<MeResponse | null>(null);
+const showSmartProfile = ref(false);
 
 const { notice: espaceNotice, announce: announceComingSoon } = useComingSoon();
 
@@ -47,16 +48,12 @@ const displayName = computed(() => me.value?.profile.display_name?.trim() || pri
 const initials = computed(() => {
     const name = me.value?.profile.display_name?.trim();
 
-    if (name) {
-        return name.slice(0, 2).toUpperCase();
-    }
+    if (name) return name.slice(0, 2).toUpperCase();
 
     return primaryPhone.value ? primaryPhone.value.slice(-2) : 'WP';
 });
 
 const smartProfilePercent = computed(() => smartProfilePanel.value?.percent ?? 0);
-const smartProfileSuggestions = computed(() => smartProfilePanel.value?.nextSuggestions ?? []);
-const profileExpanded = ref(false);
 
 async function loadMe(): Promise<void> {
     const { data } = await http.get('/me');
@@ -76,8 +73,12 @@ function goToWallet(): void {
     activeTab.value = 'wallet';
 }
 
+function goToFeed(): void {
+    activeTab.value = 'feed';
+}
+
 function scrollToSubscription(): void {
-    document.getElementById('mon-abonnement')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('mon-abonnement')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function goToSubscriptionFromWallet(): Promise<void> {
@@ -107,7 +108,7 @@ onMounted(loadMe);
                 />
             </header>
 
-            <main class="flex-1" :class="activeTab === 'feed' ? '' : 'px-4 py-6'">
+            <main class="flex-1" :class="activeTab === 'feed' ? '' : 'px-4 py-5'">
                 <FeedPanel v-if="activeTab === 'feed'" @balance-changed="onBalanceChanged" />
 
                 <div v-else-if="activeTab === 'wallet'" class="flex flex-col gap-4">
@@ -144,9 +145,12 @@ onMounted(loadMe);
                     />
                 </div>
 
-                <div v-else-if="activeTab === 'espace'" class="flex flex-col gap-4">
-                    <div class="flex items-center justify-between">
-                        <h1 class="text-wpx-white-soft text-lg font-bold">Mon Espace</h1>
+                <div v-else-if="activeTab === 'espace'" class="flex flex-col gap-3.5">
+                    <div class="flex items-center justify-between px-0.5">
+                        <div>
+                            <h1 class="text-wpx-white-soft text-xl font-bold">Mon Espace</h1>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px]">Votre compte, vos choix, vos avantages.</p>
+                        </div>
                         <button
                             type="button"
                             class="text-wpx-danger flex items-center gap-1 text-xs font-bold"
@@ -171,244 +175,156 @@ onMounted(loadMe);
                         </button>
                     </div>
 
-                    <!-- Carte profil -->
                     <section
-                        class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 shadow-wpx-card-dark rounded-wpx-xl border-wpx-border-dark border bg-gradient-to-br p-4"
+                        class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 shadow-wpx-card-dark rounded-wpx-xl border-wpx-border-dark overflow-hidden border bg-gradient-to-br"
                     >
-                        <div class="flex items-start gap-3">
-                            <span
-                                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-wpx-md flex h-14 w-14 shrink-0 items-center justify-center bg-gradient-to-br text-lg font-extrabold"
-                            >
-                                {{ initials }}
-                            </span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-wpx-white-soft truncate text-base font-bold">{{ displayName }}</p>
-                                <p
-                                    v-if="primaryPhone && me?.profile.display_name"
-                                    class="text-wpx-muted-dark mt-0.5 font-mono text-xs"
+                        <div class="p-4">
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-wpx-md flex h-14 w-14 shrink-0 items-center justify-center bg-gradient-to-br text-lg font-extrabold"
                                 >
-                                    {{ primaryPhone }}
-                                </p>
-                                <button
-                                    type="button"
-                                    class="text-wpx-blue mt-1 text-xs font-semibold"
-                                    @click="announceComingSoon"
-                                >
-                                    Vérifier mon identité
-                                </button>
+                                    {{ initials }}
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-wpx-white-soft truncate text-base font-bold">{{ displayName }}</p>
+                                    <p
+                                        v-if="primaryPhone && me?.profile.display_name"
+                                        class="text-wpx-muted-dark mt-0.5 font-mono text-xs"
+                                    >
+                                        {{ primaryPhone }}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        class="text-wpx-blue mt-1.5 text-xs font-semibold"
+                                        @click="announceComingSoon"
+                                    >
+                                        Vérifier mon identité ›
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="border-wpx-border-dark mt-4 flex border-t pt-3.5">
-                            <div class="flex-1 text-center">
-                                <p class="text-wpx-white-soft text-base font-bold">{{ smartProfilePercent }}%</p>
-                                <p class="text-wpx-muted-dark mt-0.5 text-[10px] tracking-wide uppercase">Profil</p>
-                            </div>
+
+                        <div class="border-wpx-border-dark grid grid-cols-2 border-t">
                             <button
                                 type="button"
-                                class="border-wpx-border-dark flex-1 border-l text-center"
+                                class="px-3 py-3 text-center"
+                                @click="showSmartProfile = true"
+                            >
+                                <p class="text-wpx-white-soft text-base font-bold">{{ smartProfilePercent }}%</p>
+                                <p class="text-wpx-muted-dark mt-0.5 text-[10px] tracking-wide uppercase">Profil intelligent</p>
+                            </button>
+                            <button
+                                type="button"
+                                class="border-wpx-border-dark border-l px-3 py-3 text-center"
                                 @click="announceComingSoon"
                             >
-                                <p class="text-wpx-white-soft text-base font-bold">—</p>
-                                <p class="text-wpx-muted-dark mt-0.5 text-[10px] tracking-wide uppercase">Parrainage</p>
+                                <p
+                                    class="text-sm font-bold"
+                                    :class="page.props.auth.account.mfa_enabled ? 'text-wpx-success-light' : 'text-wpx-gold'"
+                                >
+                                    {{ page.props.auth.account.mfa_enabled ? 'Protégé' : 'À renforcer' }}
+                                </p>
+                                <p class="text-wpx-muted-dark mt-0.5 text-[10px] tracking-wide uppercase">Sécurité</p>
                             </button>
                         </div>
                     </section>
 
-                    <!-- Actions rapides -->
-                    <section class="grid grid-cols-2 gap-3">
+                    <section class="grid grid-cols-2 gap-2.5">
                         <button
                             type="button"
-                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3.5 text-left"
+                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5 text-left"
                             @click="goToWallet"
                         >
                             <span class="bg-wpx-blue/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect
-                                        x="3"
-                                        y="6"
-                                        width="18"
-                                        height="13"
-                                        rx="3"
-                                        stroke="#4FA3FF"
-                                        stroke-width="1.7"
-                                    />
+                                    <rect x="3" y="6" width="18" height="13" rx="3" stroke="#4FA3FF" stroke-width="1.7" />
                                     <rect x="3" y="10" width="18" height="2.4" fill="#4FA3FF" />
                                 </svg>
                             </span>
                             <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Mon wallet</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">
-                                Retrait, dépôt, historique
-                            </p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Solde, dépôt, retrait</p>
                         </button>
+
                         <button
                             type="button"
-                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3.5 text-left"
-                            @click="scrollToSubscription"
+                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5 text-left"
+                            @click="showSmartProfile = true"
                         >
-                            <span class="bg-wpx-gold/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
-                                <svg width="17" height="17" viewBox="0 0 24 24">
-                                    <path d="M12 2l6 6-6 14-6-14z" fill="#F2C14E" />
-                                </svg>
-                            </span>
-                            <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Mon abonnement</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Gérer mon abonnement</p>
-                        </button>
-                        <button
-                            type="button"
-                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3.5 text-left"
-                            @click="announceComingSoon"
-                        >
-                            <span class="bg-wpx-orange/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
+                            <span class="bg-wpx-cyan/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect
-                                        x="3"
-                                        y="5"
-                                        width="18"
-                                        height="12"
-                                        rx="2.5"
-                                        stroke="#FF9A3D"
-                                        stroke-width="1.7"
-                                    />
-                                    <circle cx="12" cy="11" r="2.4" stroke="#FF9A3D" stroke-width="1.7" />
+                                    <circle cx="12" cy="8" r="3" stroke="#2BC4DE" stroke-width="1.7" />
+                                    <path d="M6 20c.8-4 3.2-6 6-6s5.2 2 6 6" stroke="#2BC4DE" stroke-width="1.7" stroke-linecap="round" />
                                 </svg>
                             </span>
-                            <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Carte Wasplex</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Avantages exclusifs</p>
+                            <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Profil intelligent</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">{{ smartProfilePercent }}% complété</p>
                         </button>
+
                         <button
                             type="button"
-                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3.5 text-left"
+                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5 text-left"
                             @click="announceComingSoon"
                         >
                             <span class="bg-wpx-cyan/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <path
-                                        d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
-                                        stroke="#2BC4DE"
-                                        stroke-width="1.7"
-                                        stroke-linejoin="round"
-                                    />
+                                    <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="#2BC4DE" stroke-width="1.7" />
                                 </svg>
                             </span>
                             <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Identité &amp; KYC</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Sécurise ton compte</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Vérification et sécurité</p>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5 text-left"
+                            @click="announceComingSoon"
+                        >
+                            <span class="bg-wpx-orange/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <rect x="3" y="5" width="18" height="12" rx="2.5" stroke="#FF9A3D" stroke-width="1.7" />
+                                    <circle cx="12" cy="11" r="2.4" stroke="#FF9A3D" stroke-width="1.7" />
+                                </svg>
+                            </span>
+                            <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Carte Wasplex</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Avantages et services</p>
                         </button>
                     </section>
 
                     <p v-if="espaceNotice" class="text-wpx-muted-dark -mt-1 text-center text-xs">{{ espaceNotice }}</p>
 
-                    <BecomeAdvertiserPanel />
-                    <EligibleCampaignsPanel />
-                    <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-4.5">
-                        <div class="flex items-baseline justify-between">
-                            <p class="text-wpx-white-soft text-sm font-bold">Profil intelligent</p>
-                            <p class="text-wpx-gold text-sm font-bold">{{ smartProfilePercent }}%</p>
-                        </div>
-                        <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                            Complète ton profil pour des publicités mieux ciblées — facultatif, corrigible à tout
-                            moment, jamais partagé avec un annonceur.
-                        </p>
-                        <div class="bg-wpx-navy-750 mt-3 h-1.5 overflow-hidden rounded-full">
-                            <div
-                                class="from-wpx-blue to-wpx-gold h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
-                                :style="{ width: `${smartProfilePercent}%` }"
-                            />
-                        </div>
-                        <div v-if="smartProfileSuggestions.length > 0" class="mt-3.5 flex flex-col gap-2">
-                            <button
-                                v-for="suggestion in smartProfileSuggestions"
-                                :key="suggestion"
-                                type="button"
-                                class="bg-wpx-navy-750 rounded-wpx-md flex items-center justify-between p-2.5 text-left"
-                                @click="profileExpanded = true"
-                            >
-                                <span class="text-wpx-white-soft text-sm font-semibold">{{ suggestion }}</span>
-                                <span class="bg-wpx-gold/15 text-wpx-gold rounded-full px-2.5 py-1 text-xs font-bold">
-                                    +
-                                </span>
-                            </button>
-                        </div>
-                        <button
-                            type="button"
-                            class="text-wpx-blue mt-3 text-xs font-bold"
-                            @click="profileExpanded = !profileExpanded"
-                        >
-                            {{ profileExpanded ? 'Réduire' : 'Compléter mon profil' }} ›
-                        </button>
-                        <SmartProfilePanel v-show="profileExpanded" ref="smartProfilePanel" compact class="mt-3" />
-                    </section>
-                    <ConsentsPanel />
-
-                    <section
-                        class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg flex flex-col gap-3 border p-4"
-                    >
-                        <div class="flex items-center gap-2.5">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <circle cx="6" cy="12" r="2.5" stroke="#4FA3FF" stroke-width="1.7" />
-                                <circle cx="18" cy="6" r="2.5" stroke="#4FA3FF" stroke-width="1.7" />
-                                <circle cx="18" cy="18" r="2.5" stroke="#4FA3FF" stroke-width="1.7" />
-                                <path d="M8.2 10.8l7.6-4.2M8.2 13.2l7.6 4.2" stroke="#4FA3FF" stroke-width="1.6" />
-                            </svg>
-                            <span class="text-wpx-white-soft text-sm font-bold">Partager &amp; inviter</span>
-                        </div>
-                        <button
-                            type="button"
-                            class="bg-wpx-navy-750 rounded-wpx-md flex items-center justify-between p-3.5 text-left"
-                            @click="announceComingSoon"
-                        >
-                            <span class="text-wpx-muted-dark text-xs">Programme de parrainage</span>
-                            <span class="text-wpx-blue text-xs font-bold">Bientôt disponible</span>
-                        </button>
-                    </section>
-
-                    <section
-                        class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg divide-wpx-navy-750 divide-y border"
-                    >
-                        <button
-                            type="button"
-                            class="flex w-full items-center justify-between p-3.5 text-left"
-                            @click="announceComingSoon"
-                        >
-                            <span>
-                                <span class="text-wpx-white-soft block text-sm font-bold">Compte &amp; sécurité</span>
-                                <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
-                                    MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }}
-                                </span>
-                            </span>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path
-                                    d="M9 6l6 6-6 6"
-                                    stroke="#A9B7C8"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
-                        </button>
-                        <button
-                            type="button"
-                            class="flex w-full items-center justify-between p-3.5 text-left"
-                            @click="announceComingSoon"
-                        >
-                            <span>
-                                <span class="text-wpx-white-soft block text-sm font-bold">Services Wasplex</span>
-                                <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">Cartes et avantages</span>
-                            </span>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path
-                                    d="M9 6l6 6-6 6"
-                                    stroke="#A9B7C8"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
-                        </button>
-                    </section>
-
                     <div id="mon-abonnement">
                         <SubscriptionPanel />
                     </div>
+
+                    <EligibleCampaignsPanel @open-feed="goToFeed" />
+                    <BecomeAdvertiserPanel />
+                    <ConsentsPanel />
+
+                    <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-lg border">
+                        <button
+                            type="button"
+                            class="flex w-full items-center justify-between gap-3 p-3.5 text-left"
+                            @click="announceComingSoon"
+                        >
+                            <span class="flex items-center gap-3">
+                                <span class="bg-wpx-blue/12 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="#4FA3FF" stroke-width="1.7" />
+                                        <path d="M9 12l2 2 4-4" stroke="#4FA3FF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </span>
+                                <span>
+                                    <span class="text-wpx-white-soft block text-sm font-bold">Compte &amp; sécurité</span>
+                                    <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
+                                        MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} · paramètres du compte
+                                    </span>
+                                </span>
+                            </span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 6l6 6-6 6" stroke="#A9B7C8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </section>
                 </div>
 
                 <div
@@ -506,5 +422,33 @@ onMounted(loadMe);
                 </button>
             </nav>
         </div>
+
+        <Teleport to="body">
+            <div
+                v-show="showSmartProfile"
+                class="fixed inset-0 z-50 flex items-end justify-center bg-black/65 sm:items-center"
+                @click.self="showSmartProfile = false"
+            >
+                <div
+                    class="bg-wpx-navy-950 border-wpx-border-dark max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl border p-4 shadow-2xl sm:rounded-3xl"
+                >
+                    <div class="bg-wpx-navy-950 sticky top-0 z-20 flex items-start justify-between gap-3 pb-3">
+                        <div>
+                            <p class="text-wpx-white-soft text-lg font-bold">Mon profil intelligent</p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">Mettez à jour uniquement ce que vous souhaitez partager.</p>
+                        </div>
+                        <button
+                            type="button"
+                            aria-label="Fermer"
+                            class="bg-wpx-navy-750 text-wpx-white-soft flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg"
+                            @click="showSmartProfile = false"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    <SmartProfilePanel ref="smartProfilePanel" />
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
