@@ -14,6 +14,7 @@ use App\Modules\Campaigns\Application\Services\CampaignNotAvailableForDeliveryEx
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDeliveryHold;
+use App\Modules\Feed\Infrastructure\Models\FeedCampaignReward;
 use App\Modules\Matching\Application\Contracts\MatchingContract;
 use App\Modules\Subscriptions\Application\Services\FreeSubscriptionProvisioner;
 use App\Modules\Subscriptions\Application\Services\NoActiveSubscriptionException;
@@ -22,12 +23,12 @@ use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
 use App\Modules\Wallet\Application\Contracts\UserWalletContract;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
- * docs/07 §15/§20-22, docs/08 §21-28 : chaîne « réservation → session
- * d'attention → preuve → décision » réduite au périmètre réel de ce dépôt
- * (docs/chantiers/P009-CHANTIER.md §2). Le client ne crédite jamais
- * lui-même — chaque transition est décidée et enregistrée ici.
+ * Chaîne serveur du Feed : le client ne crédite jamais lui-même. Une
+ * livraison reste idempotente par son id et, désormais, la récompense est
+ * également atomique par couple membre + campagne.
  */
 final class AttentionService
 {
@@ -61,24 +62,18 @@ final class AttentionService
             return $this->present($pending);
         }
 
-        // The quota check happens before candidate composition, so a brand-new
-        // member must receive the internal FREE baseline here. Otherwise
-        // currentCounter() throws before FeedCompositionService ever gets the
-        // chance to provision it and the real /api/feed/next path returns null.
         $this->freeSubscription->ensureFor($accountId);
 
         try {
-            if ($this->quota->currentCounter($accountId)->remaining() <= 0) {
-                return null;
-            }
+            $allowRewardable = $this->quota->currentCounter($accountId)->remaining() > 0;
         } catch (NoActiveSubscriptionException) {
-            return null;
+            $allowRewardable = false;
         }
 
         $excluded = [];
 
         for ($attempt = 0; $attempt < self::MAX_COMPOSITION_ATTEMPTS; $attempt++) {
-            $candidate = $this->composition->nextCandidate($accountId, $excluded);
+            $candidate = $this->composition->nextCandidate($accountId, $excluded, $allowRewardable);
 
             if ($candidate === null) {
                 return null;
@@ -90,6 +85,39 @@ final class AttentionService
                 $excluded[] = $candidate->campaignId;
 
                 continue;
+            }
+
+            if ($candidate->isReplay) {
+                $reward = FeedCampaignReward::query()
+                    ->where('account_id', $accountId)
+                    ->where('campaign_id', $candidate->campaignId)
+                    ->first();
+
+                if ($reward === null) {
+                    $excluded[] = $candidate->campaignId;
+
+                    continue;
+                }
+
+                // Un replay est une exposition non rémunérée : aucun nouveau
+                // slot de budget n'est réservé et aucun quota n'est consommé.
+                $delivery = FeedAdDelivery::query()->create([
+                    'feed_session_id' => $feedSessionId,
+                    'account_id' => $accountId,
+                    'campaign_id' => $candidate->campaignId,
+                    'organization_id' => $reward->organization_id,
+                    'campaign_envelope_consumption_id' => "replay:{$reward->id}",
+                    'economic_class' => $reward->economic_class,
+                    'is_replay' => true,
+                    'gain_minor' => 0,
+                    'required_duration_ms' => $reward->required_duration_ms,
+                    'visible_duration_ms' => 0,
+                    'progress_percent' => 0,
+                    'status' => FeedAdDelivery::STATUS_REPLAY,
+                    'reserved_at' => Carbon::now('UTC'),
+                ]);
+
+                return $this->present($delivery);
             }
 
             try {
@@ -111,6 +139,7 @@ final class AttentionService
                 'organization_id' => $slot->organizationId,
                 'campaign_envelope_consumption_id' => $slot->consumptionId,
                 'economic_class' => $candidate->economicClass,
+                'is_replay' => false,
                 'gain_minor' => $slot->gainMinor,
                 'required_duration_ms' => $slot->requiredDurationMs,
                 'status' => FeedAdDelivery::STATUS_RESERVED,
@@ -126,6 +155,12 @@ final class AttentionService
     public function start(string $deliveryId, string $accountId): FeedAdDelivery
     {
         $delivery = $this->findOwned($deliveryId, $accountId);
+
+        // Les replays sont déjà diffusables : ils n'ouvrent ni session
+        // rémunérée, ni quota, ni réservation financière supplémentaire.
+        if ($delivery->status === FeedAdDelivery::STATUS_REPLAY) {
+            return $delivery;
+        }
 
         if ($delivery->status !== FeedAdDelivery::STATUS_STARTED) {
             if ($delivery->status !== FeedAdDelivery::STATUS_RESERVED || $this->isExpired($delivery)) {
@@ -180,13 +215,6 @@ final class AttentionService
         return $delivery->refresh();
     }
 
-    /**
-     * docs/chantiers/P010-CHANTIER.md §2.3/§5 : deux signaux calculables
-     * avec les données déjà collectées, faute de seuils chiffrés dans les
-     * spécifications qualitatives (docs/16 §18). Un signal n'entraîne pas
-     * lui-même de mise en attente — seul l'atteinte du seuil cumulé dans
-     * complete() décide (docs/16 §20 : preuve douteuse -> hold -> revue).
-     */
     private function detectRiskSignal(FeedAdDelivery $delivery, Carbon $now, int $visibleDurationMs, int $realElapsedMs): ?string
     {
         if ($delivery->last_heartbeat_at !== null) {
@@ -215,6 +243,14 @@ final class AttentionService
             return [
                 'delivery' => $delivery,
                 'gain_minor' => $delivery->gain_minor,
+                'balance_minor' => $this->userWallet->balanceMinor($accountId),
+            ];
+        }
+
+        if ($delivery->status === FeedAdDelivery::STATUS_REPLAY) {
+            return [
+                'delivery' => $delivery,
+                'gain_minor' => 0,
                 'balance_minor' => $this->userWallet->balanceMinor($accountId),
             ];
         }
@@ -256,7 +292,52 @@ final class AttentionService
             ];
         }
 
-        DB::transaction(function () use ($delivery, $accountId): void {
+        $rewarded = DB::transaction(function () use ($delivery, $accountId): bool {
+            $now = Carbon::now('UTC');
+            $rewardId = (string) Str::ulid();
+
+            // insertOrIgnore se traduit par ON CONFLICT DO NOTHING sur
+            // PostgreSQL : le verrou UNIQUE(account_id, campaign_id) décide
+            // atomiquement quel traitement a le droit de payer.
+            $claimed = FeedCampaignReward::query()->insertOrIgnore([
+                'id' => $rewardId,
+                'account_id' => $accountId,
+                'campaign_id' => $delivery->campaign_id,
+                'first_delivery_id' => $delivery->id,
+                'organization_id' => $delivery->organization_id,
+                'economic_class' => $delivery->economic_class,
+                'reward_minor' => $delivery->gain_minor,
+                'required_duration_ms' => $delivery->required_duration_ms,
+                'ledger_transaction_id' => null,
+                'rewarded_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]) === 1;
+
+            if (! $claimed) {
+                // Une autre livraison de cette même campagne a déjà gagné la
+                // course. Celle-ci devient un replay : libération du slot et
+                // restitution du quota consommé au start(), sans aucun crédit.
+                $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
+
+                try {
+                    $this->quota->restore($accountId, 1, "feed-quota-duplicate:{$delivery->id}");
+                } catch (NoActiveSubscriptionException) {
+                    // La récompense reste protégée même si l'abonnement a
+                    // expiré entre start() et complete().
+                }
+
+                $delivery->update([
+                    'is_replay' => true,
+                    'gain_minor' => 0,
+                    'status' => FeedAdDelivery::STATUS_COMPLETED,
+                    'completed_at' => $now,
+                    'ledger_transaction_id' => null,
+                ]);
+
+                return false;
+            }
+
             $this->envelope->captureSlot($delivery->campaign_envelope_consumption_id);
 
             $destination = $this->userWallet->availableAccountReference($accountId);
@@ -269,24 +350,33 @@ final class AttentionService
                 "feed-capture:{$delivery->id}",
             );
 
+            FeedCampaignReward::query()->whereKey($rewardId)->update([
+                'ledger_transaction_id' => $ledgerTransactionId,
+                'updated_at' => $now,
+            ]);
+
             $delivery->update([
                 'status' => FeedAdDelivery::STATUS_COMPLETED,
-                'completed_at' => Carbon::now('UTC'),
+                'completed_at' => $now,
                 'ledger_transaction_id' => $ledgerTransactionId,
             ]);
+
+            return true;
         });
 
-        $this->userWallet->notifyBalanceChanged(
-            $accountId,
-            $delivery->gain_minor,
-            'feed.attention',
-            'credit',
-            $delivery->ledger_transaction_id,
-        );
+        if ($rewarded) {
+            $this->userWallet->notifyBalanceChanged(
+                $accountId,
+                $delivery->gain_minor,
+                'feed.attention',
+                'credit',
+                $delivery->ledger_transaction_id,
+            );
+        }
 
         return [
             'delivery' => $delivery->refresh(),
-            'gain_minor' => $delivery->gain_minor,
+            'gain_minor' => $rewarded ? $delivery->gain_minor : 0,
             'balance_minor' => $this->userWallet->balanceMinor($accountId),
         ];
     }

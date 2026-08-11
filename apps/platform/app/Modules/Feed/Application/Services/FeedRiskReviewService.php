@@ -8,17 +8,19 @@ use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservati
 use App\Modules\Campaigns\Application\Contracts\CampaignEnvelopeContract;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDeliveryHold;
+use App\Modules\Feed\Infrastructure\Models\FeedCampaignReward;
+use App\Modules\Subscriptions\Application\Services\NoActiveSubscriptionException;
+use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
 use App\Modules\Wallet\Application\Contracts\UserWalletContract;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
- * Revue administrative des retenues antifraude (docs/16 §20/§24,
- * docs/chantiers/P010-CHANTIER.md §5) — séparé d'AttentionService comme
- * CampaignReviewService l'est de CampaignService (P007) : le parcours
- * utilisateur en direct et la décision administrative sont deux
- * responsabilités distinctes.
+ * Revue administrative des retenues antifraude. La libération d'un hold
+ * respecte la même unicité membre + campagne que le parcours direct : une
+ * décision admin ne peut donc jamais créer un second paiement.
  */
 final class FeedRiskReviewService
 {
@@ -26,6 +28,7 @@ final class FeedRiskReviewService
         private readonly CampaignEnvelopeContract $envelope,
         private readonly AdvertiserWalletReservationContract $advertiserReservations,
         private readonly UserWalletContract $userWallet,
+        private readonly SubscriptionQuotaContract $quota,
     ) {}
 
     /**
@@ -45,7 +48,53 @@ final class FeedRiskReviewService
         $hold = $this->findResolvable($holdId);
         $delivery = $hold->delivery;
 
-        DB::transaction(function () use ($hold, $delivery, $adminAccountId, $note): void {
+        $rewarded = DB::transaction(function () use ($hold, $delivery, $adminAccountId, $note): bool {
+            $now = Carbon::now('UTC');
+            $rewardId = (string) Str::ulid();
+
+            $claimed = FeedCampaignReward::query()->insertOrIgnore([
+                'id' => $rewardId,
+                'account_id' => $delivery->account_id,
+                'campaign_id' => $delivery->campaign_id,
+                'first_delivery_id' => $delivery->id,
+                'organization_id' => $delivery->organization_id,
+                'economic_class' => $delivery->economic_class,
+                'reward_minor' => $delivery->gain_minor,
+                'required_duration_ms' => $delivery->required_duration_ms,
+                'ledger_transaction_id' => null,
+                'rewarded_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]) === 1;
+
+            if (! $claimed) {
+                $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
+
+                try {
+                    $this->quota->restore($delivery->account_id, 1, "feed-quota-duplicate:{$delivery->id}");
+                } catch (NoActiveSubscriptionException) {
+                    // Le verrou économique reste prioritaire si l'abonnement
+                    // a expiré pendant la revue manuelle.
+                }
+
+                $delivery->update([
+                    'is_replay' => true,
+                    'gain_minor' => 0,
+                    'status' => FeedAdDelivery::STATUS_COMPLETED,
+                    'completed_at' => $now,
+                    'ledger_transaction_id' => null,
+                ]);
+
+                $hold->update([
+                    'status' => FeedAdDeliveryHold::STATUS_RELEASED,
+                    'resolved_at' => $now,
+                    'resolved_by' => $adminAccountId,
+                    'resolution_note' => trim(($note !== null ? $note.' — ' : '').'Récompense déjà versée pour cette campagne.'),
+                ]);
+
+                return false;
+            }
+
             $this->envelope->captureSlot($delivery->campaign_envelope_consumption_id);
 
             $destination = $this->userWallet->availableAccountReference($delivery->account_id);
@@ -58,27 +107,36 @@ final class FeedRiskReviewService
                 "feed-capture:{$delivery->id}",
             );
 
+            FeedCampaignReward::query()->whereKey($rewardId)->update([
+                'ledger_transaction_id' => $ledgerTransactionId,
+                'updated_at' => $now,
+            ]);
+
             $delivery->update([
                 'status' => FeedAdDelivery::STATUS_COMPLETED,
-                'completed_at' => Carbon::now('UTC'),
+                'completed_at' => $now,
                 'ledger_transaction_id' => $ledgerTransactionId,
             ]);
 
             $hold->update([
                 'status' => FeedAdDeliveryHold::STATUS_RELEASED,
-                'resolved_at' => Carbon::now('UTC'),
+                'resolved_at' => $now,
                 'resolved_by' => $adminAccountId,
                 'resolution_note' => $note,
             ]);
+
+            return true;
         });
 
-        $this->userWallet->notifyBalanceChanged(
-            $delivery->account_id,
-            $delivery->gain_minor,
-            'feed.risk_review',
-            'credit',
-            $delivery->ledger_transaction_id,
-        );
+        if ($rewarded) {
+            $this->userWallet->notifyBalanceChanged(
+                $delivery->account_id,
+                $delivery->gain_minor,
+                'feed.risk_review',
+                'credit',
+                $delivery->ledger_transaction_id,
+            );
+        }
 
         return $hold->refresh();
     }

@@ -9,5 +9,6 @@ final class FeedCandidate
     public function __construct(
         public readonly string $campaignId,
         public readonly string $economicClass,
+        public readonly bool $isReplay = false,
     ) {}
 }
