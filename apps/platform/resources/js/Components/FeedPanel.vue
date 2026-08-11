@@ -428,9 +428,10 @@ async function sendHeartbeat(): Promise<void> {
         if (delivery.value?.id !== current.id) return;
 
         lastHeartbeatVisibleMs = Math.max(lastHeartbeatVisibleMs, data.delivery.visible_duration_ms ?? visibleMs);
-        delivery.value = { ...delivery.value, ...data.delivery };
+        const updated = { ...delivery.value, ...data.delivery };
+        delivery.value = updated;
 
-        if (delivery.value.progress_percent >= 100) {
+        if (updated.progress_percent >= 100) {
             pauseAttentionClock();
             await completeDelivery();
         }
@@ -464,10 +465,11 @@ async function completeDelivery(): Promise<void> {
         const { data } = await http.post(`/feed/deliveries/${current.id}/complete`);
         if (delivery.value?.id !== current.id) return;
 
-        delivery.value = { ...delivery.value, ...data.delivery };
+        const updated = { ...delivery.value, ...data.delivery };
+        delivery.value = updated;
         void prefetchNext();
 
-        if (delivery.value.status === 'held') {
+        if (updated.status === 'held') {
             holdNotice.value = true;
             scheduleNext(1600);
             return;
