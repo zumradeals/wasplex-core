@@ -65,7 +65,7 @@ const videoPaused = ref(false);
 const isMuted = ref(true);
 const soundPreferred = ref(false);
 const playbackIndicator = ref<PlaybackIndicator>(null);
-const { notice: alertsNotice, announce: announceAlerts } = useComingSoon();
+const { notice: feedNavNotice, announce: announceFeedNav } = useComingSoon();
 
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let heartbeatInFlight = false;
@@ -625,18 +625,17 @@ onBeforeUnmount(() => {
         @touchend="onTouchEnd"
         @wheel.passive="onWheel"
     >
-        <div class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-3.5 pt-3 pb-6">
+        <div
+            class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/80 via-black/45 to-transparent px-3.5 pt-3 pb-7"
+        >
             <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3.5">
+                <div class="flex items-center gap-2.5">
                     <img
                         src="/brand/wasplex-logo-transparent.png"
                         alt="Wasplex"
                         class="wpx-motion-safe h-6.5 w-6.5 animate-[wpxPulseLogo_2.4s_ease-in-out_infinite] object-contain"
                     />
-                    <div class="flex items-center gap-4 text-sm">
-                        <span class="border-wpx-blue border-b-2 pb-0.5 font-bold text-white">Pour toi</span>
-                        <span class="font-semibold text-white/70">Explorer</span>
-                    </div>
+                    <span class="text-sm font-black tracking-tight text-white">Wasplex</span>
                 </div>
                 <span
                     class="border-wpx-gold/40 flex items-center gap-1.5 rounded-full border bg-black/55 px-2.5 py-1.5"
@@ -645,7 +644,30 @@ onBeforeUnmount(() => {
                     <span class="text-wpx-gold text-xs font-bold">{{ balance ?? '…' }} WP</span>
                 </span>
             </div>
-            <div class="mt-3 h-0.5 overflow-hidden rounded-full bg-white/15">
+
+            <nav class="mt-2.5 flex items-center justify-center gap-4 text-[12px]" aria-label="Navigation du Feed">
+                <span aria-current="page" class="border-wpx-blue border-b-2 pb-1 font-bold text-white">Pour toi</span>
+                <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
+                    Explorer
+                </button>
+                <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
+                    Alertes
+                </button>
+                <button
+                    type="button"
+                    class="flex items-center gap-1 pb-1 font-semibold text-white/70"
+                    @click.stop="announceFeedNav"
+                >
+                    <span class="bg-wpx-danger h-1.5 w-1.5 rounded-full" aria-hidden="true" />
+                    Live
+                </button>
+            </nav>
+
+            <div v-if="feedNavNotice" class="mt-1.5 text-center text-[10px] font-medium text-white/70">
+                {{ feedNavNotice }}
+            </div>
+
+            <div class="mt-2.5 h-0.5 overflow-hidden rounded-full bg-white/15">
                 <div
                     class="from-wpx-blue to-wpx-gold h-full rounded-full bg-gradient-to-r transition-[width] duration-300"
                     :style="{ width: progressWidth }"
@@ -732,47 +754,39 @@ onBeforeUnmount(() => {
                 <span class="text-[11px] text-white/60">· {{ durationLabel }}</span>
             </div>
 
-            <div class="absolute right-2 bottom-28 z-20 flex flex-col items-center gap-4">
+            <div class="absolute right-2 bottom-28 z-20 flex flex-col items-center gap-3.5">
                 <button
                     type="button"
                     class="flex flex-col items-center gap-0.5"
-                    aria-label="Alertes"
-                    @click="announceAlerts"
-                >
-                    <span
-                        aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M12 4a5 5 0 015 5v3l1.5 3h-13L7 12V9a5 5 0 015-5z"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linejoin="round"
-                            />
-                            <path d="M10 18a2 2 0 004 0" stroke="currentColor" stroke-width="1.7" />
-                        </svg>
-                    </span>
-                    <span class="text-[10px] text-white/80">Alertes</span>
-                </button>
-                <button
-                    type="button"
-                    class="flex flex-col items-center gap-0.5"
-                    :aria-label="delivery.interactions.liked_by_me ? 'Retirer le like' : 'Aimer'"
+                    :aria-label="delivery.interactions.liked_by_me ? 'Retirer des favoris' : 'Ajouter aux favoris'"
                     :aria-pressed="delivery.interactions.liked_by_me"
                     @click="toggleLike"
                 >
                     <span
                         aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-lg"
+                        class="flex h-10 w-10 items-center justify-center rounded-full"
                         :class="
                             delivery.interactions.liked_by_me ? 'bg-wpx-danger text-white' : 'bg-black/40 text-white/90'
                         "
                     >
-                        ❤
+                        <svg
+                            width="21"
+                            height="21"
+                            viewBox="0 0 24 24"
+                            :fill="delivery.interactions.liked_by_me ? 'currentColor' : 'none'"
+                        >
+                            <path
+                                d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 00-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 00-.1-7.8z"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
                     </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.likes }}</span>
                 </button>
+
                 <button
                     type="button"
                     class="flex flex-col items-center gap-0.5"
@@ -781,11 +795,21 @@ onBeforeUnmount(() => {
                 >
                     <span
                         aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-lg text-white/90"
-                        >💬</span
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
                     >
+                        <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M21 11.5a8.4 8.4 0 01-9 8.5 9.3 9.3 0 01-3.8-.8L3 21l1.7-4.7A8.2 8.2 0 013 11.5 8.5 8.5 0 0112 3a8.5 8.5 0 019 8.5z"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.comments }}</span>
                 </button>
+
                 <button
                     type="button"
                     class="flex flex-col items-center gap-0.5"
@@ -795,25 +819,54 @@ onBeforeUnmount(() => {
                 >
                     <span
                         aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-lg"
+                        class="flex h-10 w-10 items-center justify-center rounded-full"
                         :class="
                             delivery.interactions.saved_by_me
                                 ? 'bg-wpx-gold text-wpx-navy-950'
                                 : 'bg-black/40 text-white/90'
                         "
                     >
-                        ⭐
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            :fill="delivery.interactions.saved_by_me ? 'currentColor' : 'none'"
+                        >
+                            <path
+                                d="M6 4.8A1.8 1.8 0 017.8 3h8.4A1.8 1.8 0 0118 4.8V21l-6-3.8L6 21V4.8z"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
                     </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.saves }}</span>
                 </button>
+
                 <button type="button" class="flex flex-col items-center gap-0.5" aria-label="Partager" @click="share">
                     <span
                         aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-lg text-white/90"
-                        >🔗</span
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
                     >
+                        <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M5 12.5v5A2.5 2.5 0 007.5 20h9a2.5 2.5 0 002.5-2.5v-5"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                    </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.shares }}</span>
                 </button>
+
                 <button
                     v-if="delivery.creative?.type === 'video'"
                     type="button"
@@ -824,19 +877,35 @@ onBeforeUnmount(() => {
                 >
                     <span
                         aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-lg text-white/90"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
                     >
-                        {{ isMuted ? '🔇' : '🔊' }}
+                        <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M4 10v4h4l5 4V6L8 10H4z"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linejoin="round"
+                            />
+                            <template v-if="isMuted">
+                                <path
+                                    d="M17 10l4 4m0-4l-4 4"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
+                            </template>
+                            <template v-else>
+                                <path
+                                    d="M16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linecap="round"
+                                />
+                            </template>
+                        </svg>
                     </span>
                     <span class="text-[10px] text-white/80">Son</span>
                 </button>
-            </div>
-
-            <div
-                v-if="alertsNotice"
-                class="absolute right-16 bottom-32 z-20 rounded-full bg-black/70 px-2.5 py-1 text-[10px] text-white/90"
-            >
-                {{ alertsNotice }}
             </div>
 
             <div class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/85 to-transparent p-3 pr-16">
