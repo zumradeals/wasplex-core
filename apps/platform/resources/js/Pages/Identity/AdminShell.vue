@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
+import AdminAdvertisingOverviewPanel from '@/Components/AdminAdvertisingOverviewPanel.vue';
 import AdminCampaignsPanel from '@/Components/AdminCampaignsPanel.vue';
 import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
@@ -20,7 +21,7 @@ const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
     { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
-    { key: 'users', label: 'Utilisateurs', helper: 'Comptes et accès' },
+    { key: 'users', label: 'Utilisateurs', helper: 'Comptes et organisations' },
     { key: 'advertising', label: 'Publicité', helper: 'Campagnes et diffusion' },
     { key: 'finance', label: 'Finance', helper: 'Wallet et Grand Livre' },
     { key: 'offers', label: 'Offres', helper: 'Abonnements et gains' },
@@ -28,10 +29,11 @@ const nav = [
 ] as const;
 
 type SectionKey = (typeof nav)[number]['key'];
-type AdvertisingTab = 'advertisers' | 'feed' | 'matching' | 'smartprofile';
+type AdvertisingTab = 'overview' | 'advertisers' | 'feed' | 'matching' | 'smartprofile';
 type SettingsTab = 'capabilities' | 'organizations' | 'audit';
 
 const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
+    { key: 'overview', label: 'Vue d’ensemble' },
     { key: 'advertisers', label: 'Campagnes & annonceurs' },
     { key: 'feed', label: 'Antifraude' },
     { key: 'matching', label: 'Diffusion & ciblage' },
@@ -45,7 +47,7 @@ const settingsTabs: Array<{ key: SettingsTab; label: string }> = [
 ];
 
 const activeSection = ref<SectionKey>('dashboard');
-const activeAdvertisingTab = ref<AdvertisingTab>('advertisers');
+const activeAdvertisingTab = ref<AdvertisingTab>('overview');
 const activeSettingsTab = ref<SettingsTab>('capabilities');
 const feedPanel = ref<InstanceType<typeof AdminFeedPanel> | null>(null);
 
@@ -179,7 +181,16 @@ async function logout(): Promise<void> {
                         </button>
                     </div>
 
-                    <AdminCampaignsPanel v-if="activeAdvertisingTab === 'advertisers'" />
+                    <AdminAdvertisingOverviewPanel
+                        v-if="activeAdvertisingTab === 'overview'"
+                        @open-tab="activeAdvertisingTab = $event"
+                    />
+                    <div
+                        v-else-if="activeAdvertisingTab === 'advertisers'"
+                        class="[&_.bg-white]:bg-wpx-navy-850 [&_.bg-wpx-surface]:bg-wpx-navy-850 [&_.bg-wpx-canvas]:bg-wpx-navy-950 [&_.text-wpx-text]:text-wpx-white-soft [&_.text-wpx-text-muted]:text-wpx-muted-dark [&_.border-wpx-border]:border-wpx-border-dark [&_.text-wpx-blue-light]:text-wpx-cyan [&_.text-wpx-success-light]:text-wpx-success [&_.text-wpx-warning-light]:text-wpx-gold [&_.text-wpx-danger-light]:text-wpx-danger [&_input]:bg-wpx-navy-950 [&_input]:text-wpx-white-soft [&_select]:bg-wpx-navy-950 [&_select]:text-wpx-white-soft"
+                    >
+                        <AdminCampaignsPanel />
+                    </div>
                     <div v-else-if="activeAdvertisingTab === 'feed'" class="flex flex-col gap-4">
                         <AdminFeedPanel ref="feedPanel" />
                         <AdminFeedRiskPanel @resolved="onFeedHoldResolved" />
