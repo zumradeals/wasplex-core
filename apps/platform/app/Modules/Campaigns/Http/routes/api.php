@@ -4,14 +4,26 @@ declare(strict_types=1);
 
 use App\Modules\Campaigns\Http\Controllers\Admin\CampaignReviewsController;
 use App\Modules\Campaigns\Http\Controllers\Admin\PricingController;
+use App\Modules\Campaigns\Http\Controllers\Advertiser\CampaignDistributionController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\CampaignReportingController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\CampaignsController;
 use App\Modules\Campaigns\Http\Controllers\Advertiser\TargetingController;
+use App\Modules\Campaigns\Http\Controllers\Public\PublicCampaignTrackingController;
 use App\Modules\Identity\Http\Middleware\EnsureActiveAdvertiserOrganization;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureRecentMfa;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use Illuminate\Support\Facades\Route;
+
+// Portée publique : aucune authentification et aucune interaction avec le
+// Feed rémunéré. Les routes ne font que mesurer une exposition volontairement
+// publique d'une campagne déjà approuvée.
+Route::prefix('public/campaigns')->group(function (): void {
+    Route::post('/{slug}/visits', [PublicCampaignTrackingController::class, 'start']);
+    Route::post('/{slug}/visits/{visit}/complete', [PublicCampaignTrackingController::class, 'complete']);
+    Route::post('/{slug}/visits/{visit}/join', [PublicCampaignTrackingController::class, 'join']);
+    Route::post('/{slug}/visits/{visit}/share', [PublicCampaignTrackingController::class, 'share']);
+});
 
 // docs/13-studio-annonceur-wasplex.md §90-91 (sous-ensemble campagne
 // rapide) — même middleware que AdvertiserStudio/AdvertiserWallet.
@@ -36,7 +48,11 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveAdvertise
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
         Route::get('/campaigns/{campaign}/report', [CampaignReportingController::class, 'show'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+        Route::get('/campaigns/{campaign}/public-report', [CampaignDistributionController::class, 'report'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
         Route::patch('/campaigns/{campaign}', [CampaignsController::class, 'update'])
+            ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+        Route::patch('/campaigns/{campaign}/distribution', [CampaignDistributionController::class, 'update'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
         Route::post('/campaigns/{campaign}/estimate-audience', [CampaignsController::class, 'estimateAudience'])
             ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');

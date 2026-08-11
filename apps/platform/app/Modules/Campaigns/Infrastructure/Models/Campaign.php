@@ -30,6 +30,10 @@ final class Campaign extends Model
 
     public const STATUS_SUSPENDED = 'suspended';
 
+    public const DISTRIBUTION_MEMBERS_ONLY = 'members_only';
+
+    public const DISTRIBUTION_MEMBERS_PUBLIC = 'members_public';
+
     public const OBJECTIVES = [
         'faire_connaitre' => 'En savoir plus',
         'obtenir_appels' => 'Appeler',
@@ -42,7 +46,7 @@ final class Campaign extends Model
     ];
 
     protected $fillable = [
-        'organization_id', 'brand_id', 'type', 'objective_code', 'status', 'currency',
+        'organization_id', 'brand_id', 'type', 'objective_code', 'status', 'distribution_mode', 'public_slug', 'currency',
         'budget_amount_minor', 'scheduled_start', 'scheduled_end', 'created_by',
     ];
 
@@ -68,6 +72,11 @@ final class Campaign extends Model
     public function reviewCases(): HasMany
     {
         return $this->hasMany(CampaignReviewCase::class);
+    }
+
+    public function publicVisits(): HasMany
+    {
+        return $this->hasMany(CampaignPublicVisit::class);
     }
 
     public function latestReviewCase(): ?CampaignReviewCase
