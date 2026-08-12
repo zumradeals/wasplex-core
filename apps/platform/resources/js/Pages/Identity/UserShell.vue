@@ -11,6 +11,7 @@ import EligibleCampaignsPanel from '@/Components/EligibleCampaignsPanel.vue';
 import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';
 import ProfessionalSpaceEntryPanel from '@/Components/ProfessionalSpaceEntryPanel.vue';
 import FeedPanel from '@/Components/FeedPanel.vue';
+import FundsPanel from '@/Components/FundsPanel.vue';
 import AlertsPanel from '@/Components/AlertsPanel.vue';
 import WalletPanel from '@/Components/WalletPanel.vue';
 import IdentityVerificationPanel from '@/Components/IdentityVerificationPanel.vue';
@@ -154,6 +155,8 @@ onMounted(loadMe);
                         @go-to-subscription="goToSubscriptionFromWallet"
                     />
                 </div>
+
+                <FundsPanel v-else-if="activeTab === 'fonds'" />
 
                 <AlertsPanel v-else-if="activeTab === 'alertes'" />
 
