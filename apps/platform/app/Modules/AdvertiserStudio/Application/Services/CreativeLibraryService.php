@@ -148,6 +148,6 @@ final class CreativeLibraryService
             );
         }
 
-        return max(1, (int) round($durationSeconds * 1000));
+        return max(1, (int) ceil($durationSeconds * 1000));
     }
 }
