@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeAsset;
 use App\Modules\Campaigns\Infrastructure\Models\AdvertisingPriceVersion;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignReviewCase;
@@ -105,10 +106,24 @@ function approvedCampaignForMatchingTests(string $advertiserEmail, array $audien
     registerAndLogin($advertiserEmail);
     $organizationId = createAdvertiserOrganization();
     $brandId = test()->postJson('/api/advertiser/brands', ['name' => 'GamaDeals'])->assertCreated()->json('brand.id');
+    $asset = CreativeAsset::query()->create([
+        'brand_id' => $brandId,
+        'type' => CreativeAsset::TYPE_VIDEO,
+        'filename' => 'matching-spot.mp4',
+        'format' => 'mp4',
+        'size' => 1024,
+        'duration' => 15,
+        'duration_ms' => 15000,
+        'moderation_status' => CreativeAsset::STATUS_READY,
+        'storage_disk' => 'public',
+        'storage_path' => 'creatives/matching-spot.mp4',
+        'created_by' => 'matching-test-suite',
+    ]);
     $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
         'objective_code' => 'faire_connaitre',
+        'creative_configuration' => ['asset_id' => $asset->id, 'title' => 'Spot test'],
         'audience_configuration' => $audienceConfiguration,
         'budget_configuration' => ['budget_amount_minor' => $budgetAmountMinor],
     ])->assertOk();

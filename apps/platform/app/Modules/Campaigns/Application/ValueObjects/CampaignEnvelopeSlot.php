@@ -14,5 +14,7 @@ final class CampaignEnvelopeSlot
         public readonly int $gainMinor,
         public readonly int $requiredDurationMs,
         public readonly string $expiresAt,
+        public readonly int $attentionUnits = 1,
+        public readonly bool $requiresMediaEnd = false,
     ) {}
 }

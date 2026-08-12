@@ -89,15 +89,19 @@ it('exposes the real creative asset on a Feed delivery (docs/chantiers/P010-B)',
     expect($delivery['creative']['url'])->toContain('demo.mp4');
 });
 
-it('returns a null creative when the campaign has no attached asset', function (): void {
-    approvedCampaignForMatchingTests(
-        'feed-creative-none-advertiser@example.com',
-        ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
-    );
-    readyFeedCandidate('feed-creative-none-candidate@example.com', 'GOLD');
-    $sessionId = startFeedSession();
+it('refuses to quote a V1 campaign without a video', function (): void {
+    registerAndLogin('feed-creative-none-advertiser@example.com');
+    createAdvertiserOrganization();
+    $brandId = test()->postJson('/api/advertiser/brands', ['name' => 'Sans vidéo'])->assertCreated()->json('brand.id');
+    $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
-    $delivery = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")->assertOk()->json('delivery');
+    test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
+        'objective_code' => 'faire_connaitre',
+        'audience_configuration' => ['territory' => ['country_code' => 'CI']],
+        'budget_configuration' => ['daily_budget_minor' => 1000, 'duration_days' => 7],
+    ])->assertOk();
 
-    expect($delivery['creative'])->toBeNull();
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")
+        ->assertStatus(422)
+        ->assertJsonPath('message', 'Ajoute une vidéo avant de générer le devis.');
 });

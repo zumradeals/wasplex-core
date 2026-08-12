@@ -40,6 +40,7 @@ const error = ref<string | null>(null);
 const showCreate = ref(false);
 const editing = ref<string | null>(null);
 const simulatorBudget = ref(100000);
+const simulatorDurationSeconds = ref(15);
 
 const createForm = reactive({
     plan_code: '',
@@ -85,8 +86,14 @@ function rewardAdvantage(level: EconomicClass): string {
     )} %`;
 }
 
+const simulatorAttentionUnits = computed(() => Math.max(1, Math.ceil(simulatorDurationSeconds.value / 15)));
+
+function rewardPerCompleteVideo(level: EconomicClass): number {
+    return rewardFor(level) * simulatorAttentionUnits.value;
+}
+
 function advertiserCostPerView(level: EconomicClass): number {
-    return rewardFor(level) * 2;
+    return rewardPerCompleteVideo(level) * 2;
 }
 
 function monthlyCeiling(level: EconomicClass): number {
@@ -94,7 +101,7 @@ function monthlyCeiling(level: EconomicClass): number {
 }
 
 function simulatedViews(level: EconomicClass): number {
-    const reward = rewardFor(level);
+    const reward = rewardPerCompleteVideo(level);
     return reward > 0 ? Math.floor(memberEnvelope.value / reward) : 0;
 }
 
@@ -357,11 +364,11 @@ onMounted(load);
 
                         <div class="mt-4 grid grid-cols-2 gap-2">
                             <div class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border p-3">
-                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Membre / vue</p>
+                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Membre / 15 s</p>
                                 <p class="mt-1 text-xl font-extrabold">{{ formatAmount(rewardFor(level)) }} WP</p>
                             </div>
                             <div class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-850 border p-3">
-                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Coût annonceur / vue</p>
+                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Coût annonceur / 15 s</p>
                                 <p class="mt-1 text-xl font-extrabold">
                                     {{ formatAmount(advertiserCostPerView(level)) }} WP
                                 </p>
@@ -370,7 +377,7 @@ onMounted(load);
 
                         <div class="mt-3 text-xs">
                             <p class="flex items-center justify-between gap-3">
-                                <span class="text-wpx-muted-dark">Publicités max / mois</span>
+                                <span class="text-wpx-muted-dark">Crédits de 15 s / mois</span>
                                 <strong>{{ formatAmount(quotaFor(level)) }}</strong>
                             </p>
                             <p class="mt-2 flex items-center justify-between gap-3">
@@ -384,7 +391,7 @@ onMounted(load);
                                 Modifier ce niveau
                             </p>
                             <label class="mt-3 block text-xs">
-                                <span class="text-wpx-muted-dark">Gain par vue complète (WP)</span>
+                                <span class="text-wpx-muted-dark">Gain par tranche de 15 s (WP)</span>
                                 <input
                                     v-model.number="rewardForms[level.id].reward_per_complete_view_minor"
                                     type="number"
@@ -393,7 +400,7 @@ onMounted(load);
                                 />
                             </label>
                             <label class="mt-3 block text-xs">
-                                <span class="text-wpx-muted-dark">Publicités maximum / mois</span>
+                                <span class="text-wpx-muted-dark">Crédits d’attention de 15 s / mois</span>
                                 <input
                                     v-model.number="rewardForms[level.id].quota_monthly"
                                     type="number"
@@ -434,16 +441,31 @@ onMounted(load);
                             niveau membre.
                         </p>
                     </div>
-                    <label class="w-full max-w-xs text-xs">
-                        <span class="text-wpx-muted-dark font-bold">Budget campagne (FCFA)</span>
-                        <input
-                            v-model.number="simulatorBudget"
-                            type="number"
-                            min="0"
-                            step="1000"
-                            class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 mt-1 w-full border px-3 py-2.5 text-sm"
-                        />
-                    </label>
+                    <div class="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
+                        <label class="flex-1 text-xs">
+                            <span class="text-wpx-muted-dark font-bold">Durée vidéo</span>
+                            <select
+                                v-model.number="simulatorDurationSeconds"
+                                class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 mt-1 w-full border px-3 py-2.5 text-sm"
+                            >
+                                <option :value="15">15 s</option>
+                                <option :value="30">30 s</option>
+                                <option :value="60">60 s</option>
+                                <option :value="120">2 min</option>
+                                <option :value="300">5 min</option>
+                            </select>
+                        </label>
+                        <label class="flex-1 text-xs">
+                            <span class="text-wpx-muted-dark font-bold">Budget campagne (FCFA)</span>
+                            <input
+                                v-model.number="simulatorBudget"
+                                type="number"
+                                min="0"
+                                step="1000"
+                                class="border-wpx-border-dark rounded-wpx-md bg-wpx-navy-950 mt-1 w-full border px-3 py-2.5 text-sm"
+                            />
+                        </label>
+                    </div>
                 </div>
 
                 <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -474,8 +496,8 @@ onMounted(load);
                             ≈ {{ formatAmount(simulatedViews(level)) }} vues
                         </p>
                         <p class="text-wpx-muted-dark mt-1 text-xs">
-                            {{ formatAmount(rewardFor(level)) }} WP membre + {{ formatAmount(rewardFor(level)) }} WP
-                            Wasplex par vue.
+                            {{ formatAmount(rewardPerCompleteVideo(level)) }} WP membre +
+                            {{ formatAmount(rewardPerCompleteVideo(level)) }} WP Wasplex par vidéo complète.
                         </p>
                         <p v-if="simulatedRemainder(level) > 0" class="text-wpx-muted-dark mt-2 text-[11px]">
                             Reste non consommé par ce scénario : {{ formatAmount(simulatedRemainder(level)) }}.

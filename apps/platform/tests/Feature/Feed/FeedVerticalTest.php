@@ -99,6 +99,7 @@ it('delivers the full advertising vertical: gain known before play, real reserva
     test()->postJson("/api/feed/deliveries/{$deliveryId}/heartbeat", ['visible_duration_ms' => $next['required_duration_ms']])
         ->assertOk()
         ->assertJsonPath('delivery.progress_percent', 100);
+    test()->postJson("/api/feed/deliveries/{$deliveryId}/ended", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
 
     Carbon::setTestNow();
 

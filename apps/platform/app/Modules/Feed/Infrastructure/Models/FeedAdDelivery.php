@@ -34,6 +34,7 @@ final class FeedAdDelivery extends Model
     protected $fillable = [
         'feed_session_id', 'account_id', 'campaign_id', 'organization_id', 'campaign_envelope_consumption_id',
         'economic_class', 'is_replay', 'gain_minor', 'required_duration_ms', 'visible_duration_ms',
+        'quota_units', 'requires_media_end', 'media_ended_at',
         'last_heartbeat_at', 'risk_signal_count', 'last_risk_signal_code',
         'progress_percent', 'status', 'reserved_at', 'started_at', 'completed_at',
         'ledger_transaction_id',
@@ -46,6 +47,9 @@ final class FeedAdDelivery extends Model
             'gain_minor' => 'integer',
             'required_duration_ms' => 'integer',
             'visible_duration_ms' => 'integer',
+            'quota_units' => 'integer',
+            'requires_media_end' => 'boolean',
+            'media_ended_at' => 'immutable_datetime',
             'risk_signal_count' => 'integer',
             'progress_percent' => 'integer',
             'reserved_at' => 'immutable_datetime',

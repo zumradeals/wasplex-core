@@ -33,7 +33,7 @@ final class CreativeAsset extends Model
     public const STATUS_ARCHIVED = 'archived';
 
     protected $fillable = [
-        'brand_id', 'type', 'filename', 'format', 'size', 'width', 'height', 'duration',
+        'brand_id', 'type', 'filename', 'format', 'size', 'width', 'height', 'duration', 'duration_ms',
         'language', 'rights_status', 'moderation_status', 'storage_disk', 'storage_path', 'created_by',
     ];
 
@@ -44,6 +44,7 @@ final class CreativeAsset extends Model
             'width' => 'integer',
             'height' => 'integer',
             'duration' => 'integer',
+            'duration_ms' => 'integer',
         ];
     }
 

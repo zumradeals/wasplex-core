@@ -6,6 +6,8 @@ namespace App\Modules\Feed\Console;
 
 use App\Modules\Campaigns\Application\Contracts\CampaignEnvelopeContract;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
+use App\Modules\Subscriptions\Application\Services\NoActiveSubscriptionException;
+use App\Modules\Subscriptions\Application\Services\SubscriptionQuotaContract;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +24,7 @@ final class ReleaseExpiredDeliveriesCommand extends Command
 
     protected $description = 'Libère les réservations et livraisons Feed bloquées, et signale toute livraison complétée sans transaction Grand Livre associée.';
 
-    public function handle(CampaignEnvelopeContract $envelope): int
+    public function handle(CampaignEnvelopeContract $envelope, SubscriptionQuotaContract $quota): int
     {
         $reservationTtlSeconds = (int) config('campaigns.envelope_reservation_ttl_seconds');
         $reservationCutoff = now()->subSeconds($reservationTtlSeconds);
@@ -53,6 +55,15 @@ final class ReleaseExpiredDeliveriesCommand extends Command
             }
 
             $envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
+            try {
+                $quota->restore(
+                    $delivery->account_id,
+                    max(1, (int) $delivery->quota_units),
+                    "feed-quota-expired:{$delivery->id}",
+                );
+            } catch (NoActiveSubscriptionException) {
+                // La réservation financière est tout de même libérée.
+            }
             $delivery->update(['status' => FeedAdDelivery::STATUS_EXPIRED]);
             $stuckCount++;
         }

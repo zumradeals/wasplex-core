@@ -12,60 +12,42 @@ use App\Modules\Campaigns\Infrastructure\Models\CampaignQuote;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
-/**
- * docs/07-super-moteur-unifie-valeur-temps-reel-wasplex.md §15 :
- * "Sans réservation confirmée, aucune publicité rémunérée ne commence."
- * Tracks capacity per (devis, classe économique) only — anonymous, never
- * knows which account holds a slot (docs/chantiers/P009-CHANTIER.md §3).
- */
 final class CampaignEnvelopeService implements CampaignEnvelopeContract
 {
     public function reserveSlot(string $campaignId, string $economicClass, string $idempotencyKey): CampaignEnvelopeSlot
     {
-        $existing = CampaignEnvelopeConsumption::query()
-            ->where('idempotency_key', $idempotencyKey)
-            ->first();
-
+        $existing = CampaignEnvelopeConsumption::query()->where('idempotency_key', $idempotencyKey)->first();
         if ($existing !== null) {
             return $this->toSlot($existing);
         }
 
         $campaign = Campaign::query()->where('status', Campaign::STATUS_APPROVED)->find($campaignId);
-
         if ($campaign === null) {
             throw new CampaignNotAvailableForDeliveryException;
         }
 
         $quote = $campaign->currentVersion()?->latestQuote();
-
-        // A campaign can only reach `approved` after fund() — which
-        // transitions its quote from `active` to `consumed` (docs/chantiers/
-        // P006-CHANTIER.md: funding "spends" the devis into a real
-        // reservation). `consumed` is therefore the expected, deliverable
-        // state here, not a stale one.
         if ($quote === null || $quote->status !== CampaignQuote::STATUS_CONSUMED) {
             throw new CampaignNotAvailableForDeliveryException;
         }
 
         $classBreakdown = $quote->class_breakdown[$economicClass] ?? null;
-
         if ($classBreakdown === null) {
             throw new CampaignNotAvailableForDeliveryException;
         }
 
+        // Valide le snapshot économique avant toute réservation. Cela bloque
+        // les anciennes campagnes image et tout devis dont la durée/unité ne
+        // correspond plus à la vidéo réellement diffusée.
+        $this->creativeEconomics($campaign, $classBreakdown);
+
         return DB::transaction(function () use ($campaign, $quote, $economicClass, $classBreakdown, $idempotencyKey): CampaignEnvelopeSlot {
-            // Lock the quote row itself to serialize concurrent
-            // reservations against the same envelope — the consumption
-            // rows being counted may not exist yet, so they can't be the
-            // lock target, and PostgreSQL rejects `FOR UPDATE` combined
-            // with an aggregate (count()) anyway.
             CampaignQuote::query()->whereKey($quote->id)->lockForUpdate()->first();
 
             $committedReward = (int) CampaignEnvelopeConsumption::query()
                 ->where('campaign_quote_id', $quote->id)
                 ->whereIn('status', [CampaignEnvelopeConsumption::STATUS_RESERVED, CampaignEnvelopeConsumption::STATUS_CAPTURED])
                 ->sum('gain_minor');
-
             $gainMinor = (int) $classBreakdown['gain_unitaire_minor'];
 
             if ($committedReward + $gainMinor > intdiv($quote->gross_amount_minor, 2)) {
@@ -73,7 +55,6 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
             }
 
             $now = Carbon::now('UTC');
-
             $consumption = CampaignEnvelopeConsumption::query()->create([
                 'campaign_quote_id' => $quote->id,
                 'economic_class' => $economicClass,
@@ -84,7 +65,7 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
                 'idempotency_key' => $idempotencyKey,
             ]);
 
-            return $this->toSlot($consumption, $campaign);
+            return $this->toSlot($consumption, $campaign, $classBreakdown);
         });
     }
 
@@ -104,14 +85,21 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
             ->update(['status' => CampaignEnvelopeConsumption::STATUS_RELEASED]);
     }
 
-    private function toSlot(CampaignEnvelopeConsumption $consumption, ?Campaign $campaign = null): CampaignEnvelopeSlot
-    {
+    /** @param array<string, mixed>|null $classBreakdown */
+    private function toSlot(
+        CampaignEnvelopeConsumption $consumption,
+        ?Campaign $campaign = null,
+        ?array $classBreakdown = null,
+    ): CampaignEnvelopeSlot {
         $campaign ??= $consumption->quote()->with('campaignVersion.campaign')->first()?->campaignVersion?->campaign;
+        if ($campaign === null) {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
 
-        $creative = $campaign->currentVersion()?->creative_configuration ?? [];
-        $durationMs = isset($creative['duration_seconds'])
-            ? ((int) $creative['duration_seconds']) * 1000
-            : (int) config('campaigns.default_ad_duration_ms');
+        $quote = $consumption->quote()->first();
+        $breakdown = $quote?->class_breakdown ?? [];
+        $classBreakdown ??= (array) ($breakdown[$consumption->economic_class] ?? []);
+        [$durationMs, $attentionUnits] = $this->creativeEconomics($campaign, $classBreakdown);
 
         return new CampaignEnvelopeSlot(
             consumptionId: $consumption->id,
@@ -121,6 +109,42 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
             gainMinor: $consumption->gain_minor,
             requiredDurationMs: $durationMs,
             expiresAt: $consumption->expires_at->toIso8601String(),
+            attentionUnits: $attentionUnits,
+            requiresMediaEnd: true,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $classBreakdown
+     * @return array{0: int, 1: int}
+     */
+    private function creativeEconomics(Campaign $campaign, array $classBreakdown): array
+    {
+        $creative = $campaign->currentVersion()?->creative_configuration ?? [];
+
+        if (($creative['format'] ?? null) !== 'video') {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
+
+        $durationMs = (int) ($creative['duration_ms']
+            ?? (isset($creative['duration_seconds'])
+                ? ((int) $creative['duration_seconds']) * 1000
+                : 0));
+        $maxDurationMs = ((int) config('advertiser_studio.video.max_duration_seconds')) * 1000;
+
+        if ($durationMs <= 0 || $durationMs > $maxDurationMs) {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
+
+        $unitMs = max(1, (int) config('campaigns.attention_unit_ms'));
+        $derivedUnits = (int) ceil($durationMs / $unitMs);
+        $creativeUnits = max(1, (int) ($creative['attention_units'] ?? $derivedUnits));
+        $quotedUnits = max(1, (int) ($classBreakdown['attention_units'] ?? 1));
+
+        if ($creativeUnits !== $derivedUnits || $quotedUnits !== $derivedUnits) {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
+
+        return [$durationMs, $derivedUnits];
     }
 }

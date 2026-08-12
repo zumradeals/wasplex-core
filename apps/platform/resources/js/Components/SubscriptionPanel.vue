@@ -11,6 +11,8 @@ interface Plan {
     duration_days: number;
     economic_class: string | null;
     quota_monthly: number | null;
+    reward_per_attention_unit_minor: number | null;
+    attention_unit_seconds: number;
     fonds_eligible: boolean;
 }
 
@@ -63,6 +65,16 @@ const quotaPercent = computed(() => {
     if (!quota.value || quota.value.allocated === 0) return 0;
     return Math.min(100, Math.round((quota.value.consumed / quota.value.allocated) * 100));
 });
+
+function formatAttention(units: number): string {
+    const totalSeconds = Math.max(0, units) * 15;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours} h ${minutes.toString().padStart(2, '0')}`;
+    if (minutes > 0) return `${minutes} min${seconds ? ` ${seconds} s` : ''}`;
+    return `${seconds} s`;
+}
 
 function planPrice(plan: Plan): string {
     return plan.price_minor === 0 ? 'Gratuit' : `${numberFormatter.format(plan.price_minor)} ${plan.currency}`;
@@ -148,7 +160,7 @@ void load();
                         </template>
                     </div>
                     <span class="bg-wpx-gold/15 text-wpx-gold rounded-wpx-md px-2.5 py-1.5 text-xs font-bold">
-                        {{ quota ? `${numberFormatter.format(quota.remaining)} restantes` : '—' }}
+                        {{ quota ? `${formatAttention(quota.remaining)} restantes` : '—' }}
                     </span>
                 </div>
 
@@ -160,8 +172,8 @@ void load();
                         />
                     </div>
                     <p class="text-wpx-muted-dark mt-1.5 text-[11px]">
-                        {{ numberFormatter.format(quota.consumed) }} /
-                        {{ numberFormatter.format(quota.allocated) }} publicités utilisées ce cycle
+                        {{ formatAttention(quota.consumed) }} / {{ formatAttention(quota.allocated) }} d’attention
+                        utilisée ce cycle
                     </p>
                 </div>
             </div>
@@ -236,15 +248,15 @@ void load();
                             </div>
                             <div class="mt-3 grid grid-cols-2 gap-2">
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
-                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Publicités / mois</p>
+                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Attention rémunérée / mois</p>
                                     <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
-                                        {{ numberFormatter.format(plan.quota_monthly ?? 0) }}
+                                        {{ formatAttention(plan.quota_monthly ?? 0) }}
                                     </p>
                                 </div>
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
-                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Fonds Wasplex</p>
+                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Gain par 15 s</p>
                                     <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
-                                        {{ plan.fonds_eligible ? 'Inclus' : 'Non inclus' }}
+                                        {{ numberFormatter.format(plan.reward_per_attention_unit_minor ?? 0) }} WP
                                     </p>
                                 </div>
                             </div>

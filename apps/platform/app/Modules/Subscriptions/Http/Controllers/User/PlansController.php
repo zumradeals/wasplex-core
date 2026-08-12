@@ -32,6 +32,8 @@ final class PlansController extends Controller
                 'services_snapshot' => $version->services_snapshot,
                 'economic_class' => $version->economicClassLink?->economicClass?->code,
                 'quota_monthly' => $version->economicClassLink?->economicClass?->versions->first()?->quota_monthly,
+                'reward_per_attention_unit_minor' => $version->economicClassLink?->economicClass?->versions->first()?->reward_per_complete_view_minor,
+                'attention_unit_seconds' => 15,
                 'fonds_eligible' => $version->economicClassLink?->economicClass?->code !== 'FREE',
             ]);
 

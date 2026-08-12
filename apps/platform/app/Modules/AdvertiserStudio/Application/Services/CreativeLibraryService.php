@@ -11,13 +11,9 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 
 /**
- * docs/13 §18-21: la bibliothèque créative. Aucun pipeline de traitement
- * asynchrone réel n'existe dans ce dépôt (docs/chantiers/P005-CHANTIER.md
- * §3.3) — la validation technique est donc synchrone et limitée à ce qui
- * est vérifiable sans traitement lourd : extension déclarée, taille,
- * dimensions d'image lues directement depuis le fichier. Un média est
- * accepté (`ready`) ou refusé (`needs_changes`) immédiatement à l'upload,
- * jamais laissé en `processing`.
+ * Bibliothèque créative V1 : Wasplex démarre avec la vidéo uniquement.
+ * La durée réelle est mesurée par ffprobe en millisecondes et devient une
+ * donnée économique : le navigateur ne choisit jamais la durée facturée.
  */
 final class CreativeLibraryService
 {
@@ -32,16 +28,24 @@ final class CreativeLibraryService
         }
 
         $extension = strtolower((string) $file->getClientOriginalExtension());
-        $type = $this->resolveType($extension);
-        $config = (array) config("advertiser_studio.{$type}");
+        $config = (array) config('advertiser_studio.video');
 
         if (! in_array($extension, $config['formats'], true)) {
-            throw new InvalidCreativeAssetException("Format « {$extension} » non autorisé pour un {$type}.");
+            throw new InvalidCreativeAssetException(
+                'Wasplex accepte uniquement une vidéo MP4, MOV ou WEBM pour une publicité V1.'
+            );
+        }
+
+        $mime = strtolower((string) $file->getMimeType());
+        if ($mime === '' || ! in_array($mime, (array) ($config['mime_types'] ?? []), true)) {
+            throw new InvalidCreativeAssetException('Ce fichier ne peut pas être vérifié comme une vidéo valide.');
         }
 
         $sizeKb = (int) ceil($file->getSize() / 1024);
         if ($sizeKb > $config['max_size_kb']) {
-            throw new InvalidCreativeAssetException("Fichier trop volumineux ({$sizeKb} Ko, maximum {$config['max_size_kb']} Ko).");
+            throw new InvalidCreativeAssetException(
+                "Fichier trop volumineux ({$sizeKb} Ko, maximum {$config['max_size_kb']} Ko)."
+            );
         }
 
         $disk = (string) config('advertiser_studio.disk');
@@ -52,38 +56,31 @@ final class CreativeLibraryService
         }
 
         $absolutePath = Storage::disk($disk)->path($path);
-        [$width, $height] = $type === CreativeAsset::TYPE_IMAGE
-            ? $this->imageDimensions($absolutePath)
-            : [null, null];
 
-        $duration = null;
+        try {
+            $durationMs = $this->videoDurationMs($absolutePath);
+            $maxDurationMs = ((int) $config['max_duration_seconds']) * 1000;
 
-        if ($type === CreativeAsset::TYPE_VIDEO) {
-            try {
-                $duration = $this->videoDurationSeconds($absolutePath);
-                $maxDuration = (int) $config['max_duration_seconds'];
-
-                if ($duration > $maxDuration) {
-                    throw new InvalidCreativeAssetException(
-                        "Vidéo trop longue ({$duration} secondes, maximum {$maxDuration} secondes)."
-                    );
-                }
-            } catch (InvalidCreativeAssetException $exception) {
-                Storage::disk($disk)->delete($path);
-
-                throw $exception;
+            if ($durationMs > $maxDurationMs) {
+                throw new InvalidCreativeAssetException(
+                    'Vidéo trop longue (maximum 5 minutes pour Wasplex V1).'
+                );
             }
+        } catch (InvalidCreativeAssetException $exception) {
+            Storage::disk($disk)->delete($path);
+            throw $exception;
         }
 
         return CreativeAsset::query()->create([
             'brand_id' => $brand->id,
-            'type' => $type,
+            'type' => CreativeAsset::TYPE_VIDEO,
             'filename' => $file->getClientOriginalName(),
             'format' => $extension,
             'size' => $file->getSize(),
-            'width' => $width,
-            'height' => $height,
-            'duration' => $duration,
+            'width' => null,
+            'height' => null,
+            'duration' => (int) ceil($durationMs / 1000),
+            'duration_ms' => $durationMs,
             'rights_status' => 'unknown',
             'moderation_status' => CreativeAsset::STATUS_READY,
             'storage_disk' => $disk,
@@ -131,46 +128,26 @@ final class CreativeLibraryService
         return $asset->refresh();
     }
 
-    private function resolveType(string $extension): string
-    {
-        return in_array($extension, (array) config('advertiser_studio.video.formats'), true)
-            ? CreativeAsset::TYPE_VIDEO
-            : CreativeAsset::TYPE_IMAGE;
-    }
-
-    /**
-     * @return array{0: int|null, 1: int|null}
-     */
-    private function imageDimensions(string $absolutePath): array
-    {
-        $size = @getimagesize($absolutePath);
-
-        return $size === false ? [null, null] : [$size[0], $size[1]];
-    }
-
-    private function videoDurationSeconds(string $absolutePath): int
+    private function videoDurationMs(string $absolutePath): int
     {
         $process = new Process([
             (string) config('advertiser_studio.video.ffprobe_binary'),
-            '-v',
-            'error',
-            '-show_entries',
-            'format=duration',
-            '-of',
-            'default=noprint_wrappers=1:nokey=1',
+            '-v', 'error',
+            '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
             $absolutePath,
         ]);
         $process->setTimeout(15);
         $process->run();
 
-        $duration = (float) trim($process->getOutput());
+        $durationSeconds = (float) trim($process->getOutput());
 
-        if (! $process->isSuccessful() || ! is_finite($duration) || $duration <= 0) {
+        if (! $process->isSuccessful() || ! is_finite($durationSeconds) || $durationSeconds <= 0) {
             throw new InvalidCreativeAssetException(
                 'La durée de cette vidéo ne peut pas être vérifiée. Vérifiez le fichier puis réessayez.'
             );
         }
 
-        return (int) ceil($duration);
+        return max(1, (int) ceil($durationSeconds * 1000));
     }
 }

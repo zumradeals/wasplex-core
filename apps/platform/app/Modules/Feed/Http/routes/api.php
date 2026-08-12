@@ -21,6 +21,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
 
         Route::post('/deliveries/{delivery}/start', [FeedDeliveriesController::class, 'start']);
         Route::post('/deliveries/{delivery}/heartbeat', [FeedDeliveriesController::class, 'heartbeat']);
+        Route::post('/deliveries/{delivery}/ended', [FeedDeliveriesController::class, 'ended']);
         Route::post('/deliveries/{delivery}/complete', [FeedDeliveriesController::class, 'complete']);
         Route::post('/deliveries/{delivery}/abandon', [FeedDeliveriesController::class, 'abandon']);
         Route::get('/deliveries/{delivery}/why', [FeedDeliveriesController::class, 'why']);

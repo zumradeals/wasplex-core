@@ -23,6 +23,8 @@ interface Asset {
     filename: string;
     moderation_status: string;
     url?: string;
+    duration?: number | null;
+    duration_ms?: number | null;
 }
 
 const ADVERTISER_TYPES = [
@@ -124,7 +126,7 @@ async function selectBrand(brandId: string): Promise<void> {
     if (index !== -1) {
         brands.value[index] = brandRes.data.brand;
     }
-    assets.value = assetsRes.data.assets;
+    assets.value = (assetsRes.data.assets as Asset[]).filter((asset) => asset.type === 'video');
 }
 
 async function addColor(): Promise<void> {
@@ -146,6 +148,11 @@ async function addColor(): Promise<void> {
 
 async function uploadFile(file: File | undefined): Promise<void> {
     if (!file || !selectedBrandId.value) {
+        return;
+    }
+
+    if (!file.type.startsWith('video/')) {
+        loadError.value = 'Wasplex V1 accepte uniquement une vidéo publicitaire.';
         return;
     }
 
@@ -357,9 +364,9 @@ void load();
                         <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">
                             {{ selectedBrand.name }}
                         </p>
-                        <h2 class="text-wpx-white-soft mt-0.5 text-base font-extrabold">Mes visuels</h2>
+                        <h2 class="text-wpx-white-soft mt-0.5 text-base font-extrabold">Mes vidéos</h2>
                         <p class="text-wpx-muted-dark mt-0.5 text-xs">
-                            Photos et vidéos réutilisables dans vos publicités.
+                            Vidéos réutilisables dans vos publicités · 5 minutes maximum en V1.
                         </p>
                     </div>
                     <span class="text-wpx-muted-dark shrink-0 text-xs"
@@ -392,19 +399,19 @@ void load();
                                 />
                             </svg>
                         </span>
-                        <span class="text-wpx-white-soft mt-2.5 text-sm font-bold">Ajouter une photo ou une vidéo</span>
+                        <span class="text-wpx-white-soft mt-2.5 text-sm font-bold">Ajouter une vidéo</span>
                         <span class="text-wpx-muted-dark mt-1 text-[11px]"
-                            >JPG, PNG, WEBP · 10 Mo max — MP4, MOV, WEBM · 200 Mo max</span
+                            >MP4, MOV ou WEBM · 5 minutes maximum · 200 Mo max</span
                         >
                         <input
                             ref="fileInput"
                             type="file"
-                            accept="image/*,video/*"
+                            accept="video/mp4,video/quicktime,video/webm"
                             class="hidden"
                             @change="onFileInputChange"
                         />
                     </label>
-                    <p v-if="uploading" class="text-wpx-cyan mt-3 text-xs font-bold">Envoi du média en cours…</p>
+                    <p v-if="uploading" class="text-wpx-cyan mt-3 text-xs font-bold">Envoi de la vidéo en cours…</p>
 
                     <div v-if="assets.length > 0" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                         <article

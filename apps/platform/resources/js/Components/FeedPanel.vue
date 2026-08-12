@@ -16,6 +16,7 @@ interface Creative {
     url: string;
     type: string;
     duration: number | null;
+    duration_ms?: number | null;
 }
 
 interface Delivery {
@@ -24,6 +25,9 @@ interface Delivery {
     status: 'reserved' | 'started' | 'completed' | 'abandoned' | 'expired' | 'held' | 'rejected' | 'replay';
     gain_minor: number;
     required_duration_ms: number;
+    quota_units?: number;
+    requires_media_end?: boolean;
+    media_ended_at?: string | null;
     visible_duration_ms: number;
     progress_percent: number;
     brand_name: string | null;
@@ -409,6 +413,10 @@ async function retryPlayback(): Promise<void> {
 
     const video = videoRef.value;
     if (video === null) return;
+    if (video.ended && current.status === 'started') {
+        await onVideoEnded();
+        return;
+    }
     if (video.error !== null) video.load();
     await attemptAutoplay();
 }
@@ -431,7 +439,7 @@ async function sendHeartbeat(): Promise<void> {
         const updated = { ...delivery.value, ...data.delivery };
         delivery.value = updated;
 
-        if (updated.progress_percent >= 100) {
+        if (updated.progress_percent >= 100 && !updated.requires_media_end) {
             pauseAttentionClock();
             await completeDelivery();
         }
@@ -441,6 +449,31 @@ async function sendHeartbeat(): Promise<void> {
         playerError.value = 'Connexion interrompue. La progression est en pause. Réessayez.';
     } finally {
         heartbeatInFlight = false;
+    }
+}
+
+async function onVideoEnded(): Promise<void> {
+    pauseAttentionClock();
+
+    const current = delivery.value;
+    if (current === null) return;
+
+    if (current.status === 'replay') {
+        void prefetchNext();
+        scheduleNext(650);
+        return;
+    }
+    if (current.status !== 'started') return;
+
+    try {
+        const { data } = await http.post(`/feed/deliveries/${current.id}/ended`, {
+            visible_duration_ms: currentVisibleDurationMs(),
+        });
+        if (delivery.value?.id !== current.id) return;
+        delivery.value = { ...delivery.value, ...data.delivery };
+        await completeDelivery();
+    } catch {
+        playerError.value = 'La fin réelle de la vidéo n’a pas pu être validée. Réessayez.';
     }
 }
 
@@ -592,9 +625,14 @@ async function toggleWhy(): Promise<void> {
 
 const progressWidth = computed(() => `${delivery.value?.progress_percent ?? 0}%`);
 const gainLabel = computed(() => (delivery.value ? `+${delivery.value.gain_minor} WP` : ''));
-const durationLabel = computed(() =>
-    delivery.value ? `${Math.round(delivery.value.required_duration_ms / 1000)} s` : '',
-);
+function formatDuration(ms: number): string {
+    const totalSeconds = Math.max(1, Math.ceil(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes > 0 ? `${minutes} min ${seconds.toString().padStart(2, '0')} s` : `${seconds} s`;
+}
+
+const durationLabel = computed(() => (delivery.value ? formatDuration(delivery.value.required_duration_ms) : ''));
 
 onMounted(() => {
     loadSoundPreference();
@@ -682,7 +720,6 @@ onBeforeUnmount(() => {
             :src="delivery.creative.url"
             class="absolute inset-0 h-full w-full cursor-pointer object-cover"
             :muted="isMuted"
-            loop
             playsinline
             preload="auto"
             @click.stop="togglePlayback"
@@ -691,6 +728,7 @@ onBeforeUnmount(() => {
             @waiting="onVideoWaiting"
             @stalled="onVideoWaiting"
             @canplay="onVideoCanPlay"
+            @ended="onVideoEnded"
             @error="onVideoError"
         />
         <img

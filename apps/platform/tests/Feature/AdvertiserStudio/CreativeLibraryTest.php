@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeAsset;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Http\Testing\File;
 use Illuminate\Support\Facades\Storage;
@@ -17,59 +18,56 @@ function createBrandForLibraryTests(): string
     return test()->postJson('/api/advertiser/brands', ['name' => 'GamaDeals'])->assertCreated()->json('brand.id');
 }
 
-it('accepts a valid image upload and reads its dimensions', function (): void {
-    registerAndLogin('studio-media-1@example.com');
+function createStoredVideoAssetForLibraryTests(string $brandId): CreativeAsset
+{
+    return CreativeAsset::query()->create([
+        'brand_id' => $brandId,
+        'type' => CreativeAsset::TYPE_VIDEO,
+        'filename' => 'spot.mp4',
+        'format' => 'mp4',
+        'size' => 1024,
+        'duration' => 15,
+        'duration_ms' => 15000,
+        'moderation_status' => CreativeAsset::STATUS_READY,
+        'storage_disk' => 'public',
+        'storage_path' => 'creatives/spot.mp4',
+        'created_by' => 'test-suite',
+    ]);
+}
+
+it('rejects image uploads because Wasplex V1 is video only', function (): void {
+    registerAndLogin('studio-media-image@example.com');
     $brandId = createBrandForLibraryTests();
-
-    $file = File::image('logo.png', 40, 20);
-
-    test()->postJson('/api/advertiser/assets', ['brand_id' => $brandId, 'file' => $file])
-        ->assertCreated()
-        ->assertJsonPath('asset.moderation_status', 'ready')
-        ->assertJsonPath('asset.width', 40)
-        ->assertJsonPath('asset.height', 20);
+    test()->postJson('/api/advertiser/assets', [
+        'brand_id' => $brandId,
+        'file' => File::image('affiche.png', 40, 20),
+    ])->assertStatus(422);
 });
 
 it('rejects a disallowed file format', function (): void {
     registerAndLogin('studio-media-2@example.com');
     $brandId = createBrandForLibraryTests();
-
-    $file = File::create('malware.exe', 10);
-
-    test()->postJson('/api/advertiser/assets', ['brand_id' => $brandId, 'file' => $file])
-        ->assertStatus(422);
-});
-
-it('rejects a file over the configured size limit', function (): void {
-    registerAndLogin('studio-media-3@example.com');
-    $brandId = createBrandForLibraryTests();
-
-    $file = File::create('huge.jpg', (config('advertiser_studio.image.max_size_kb') + 100));
-
-    test()->postJson('/api/advertiser/assets', ['brand_id' => $brandId, 'file' => $file])
-        ->assertStatus(422);
+    test()->postJson('/api/advertiser/assets', [
+        'brand_id' => $brandId,
+        'file' => File::create('malware.exe', 10),
+    ])->assertStatus(422);
 });
 
 it('never leaks a media asset between two organizations', function (): void {
     registerAndLogin('studio-media-owner@example.com');
     $brandId = createBrandForLibraryTests();
-    $file = File::image('logo.png', 40, 20);
-    $assetId = test()->postJson('/api/advertiser/assets', ['brand_id' => $brandId, 'file' => $file])->assertCreated()->json('asset.id');
-
+    $assetId = createStoredVideoAssetForLibraryTests($brandId)->id;
     test()->postJson('/api/logout')->assertNoContent();
 
     registerAndLogin('studio-media-intruder@example.com');
     createAdvertiserOrganization('Org B');
-
     test()->getJson("/api/advertiser/assets/{$assetId}")->assertStatus(404);
 });
 
-it('lets an admin approve or reject a pending media asset', function (): void {
+it('lets an admin approve a pending video asset', function (): void {
     registerAndLogin('studio-media-mod@example.com');
     $brandId = createBrandForLibraryTests();
-    $file = File::image('logo.png', 40, 20);
-    $assetId = test()->postJson('/api/advertiser/assets', ['brand_id' => $brandId, 'file' => $file])->assertCreated()->json('asset.id');
-
+    $assetId = createStoredVideoAssetForLibraryTests($brandId)->id;
     $account = Account::query()
         ->whereHas('identifiers', fn ($q) => $q->where('value', 'studio-media-mod@example.com'))
         ->firstOrFail();
