@@ -1,0 +1,70 @@
+name: p019-wire-ui
+
+on:
+  push:
+    branches:
+      - feat/p019-professional-institutional-spaces
+    paths:
+      - .github/workflows/p019-wire-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p019-professional-institutional-spaces
+          fetch-depth: 0
+      - name: Wire professional UI
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          user = Path('apps/platform/resources/js/Pages/Identity/UserShell.vue')
+          s = user.read_text()
+          imp = "import ProfessionalSpaceEntryPanel from '@/Components/ProfessionalSpaceEntryPanel.vue';"
+          if imp not in s:
+              s = s.replace(
+                  "import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';",
+                  "import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';\n" + imp,
+              )
+          if '<ProfessionalSpaceEntryPanel />' not in s:
+              s = s.replace(
+                  '                    <BecomeAdvertiserPanel />\n                    <ConsentsPanel />',
+                  '                    <BecomeAdvertiserPanel />\n                    <ProfessionalSpaceEntryPanel />\n                    <ConsentsPanel />',
+              )
+          user.write_text(s)
+
+          admin = Path('apps/platform/resources/js/Pages/Identity/AdminShell.vue')
+          s = admin.read_text()
+          imp = "import AdminProfessionalSpacesPanel from '@/Components/AdminProfessionalSpacesPanel.vue';"
+          if imp not in s:
+              s = s.replace(
+                  "import AdminIdentityVerificationsPanel from '@/Components/AdminIdentityVerificationsPanel.vue';",
+                  "import AdminIdentityVerificationsPanel from '@/Components/AdminIdentityVerificationsPanel.vue';\n" + imp,
+              )
+          s = s.replace("type UsersTab = 'accounts' | 'kyc';", "type UsersTab = 'accounts' | 'kyc' | 'professionals';")
+          if "{ key: 'professionals', label: 'Professionnels & institutions' }," not in s:
+              s = s.replace(
+                  "    { key: 'kyc', label: 'Identité & KYC' },",
+                  "    { key: 'kyc', label: 'Identité & KYC' },\n    { key: 'professionals', label: 'Professionnels & institutions' },",
+              )
+          s = s.replace(
+              "                    <AdminUsersPanel v-if=\"activeUsersTab === 'accounts'\" />\n                    <AdminIdentityVerificationsPanel v-else />",
+              "                    <AdminUsersPanel v-if=\"activeUsersTab === 'accounts'\" />\n                    <AdminIdentityVerificationsPanel v-else-if=\"activeUsersTab === 'kyc'\" />\n                    <AdminProfessionalSpacesPanel v-else />",
+          )
+          admin.write_text(s)
+          PY
+      - name: Commit wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/platform/resources/js/Pages/Identity/UserShell.vue apps/platform/resources/js/Pages/Identity/AdminShell.vue
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat(p019): raccorder Mon Espace et la revue admin"
+          git push origin HEAD:feat/p019-professional-institutional-spaces
