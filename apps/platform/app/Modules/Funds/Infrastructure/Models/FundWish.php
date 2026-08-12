@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class FundWish extends Model
 {
@@ -71,5 +72,10 @@ final class FundWish extends Model
     public function providerOrganization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'provider_organization_id');
+    }
+
+    public function collectionSnapshot(): HasOne
+    {
+        return $this->hasOne(FundCollectionSnapshot::class, 'fund_wish_id');
     }
 }
