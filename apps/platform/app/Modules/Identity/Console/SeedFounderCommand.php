@@ -98,43 +98,34 @@ final class SeedFounderCommand extends Command
             'admin.capabilities.grant',
             'admin.capabilities.revoke',
             'admin.audit.view',
-            // docs/chantiers/P017-CHANTIER.md: écran Utilisateurs.
             'admin.accounts.view',
             'admin.accounts.restrict',
             'admin.identity-verifications.view',
             'admin.identity-verifications.decide',
-            // docs/chantiers/P002-CHANTIER.md: capacités Grand Livre.
-            // Identity ne connaît pas leur signification, seulement leur
-            // code (le système de capacités est agnostique du domaine).
+            // docs/14-espaces-partenaires-professionnels-institutionnels-wasplex.md: P019.
+            'admin.professional-spaces.view',
+            'admin.professional-spaces.decide',
             'wallet.ledger.view',
             'wallet.correction.propose',
             'wallet.correction.approve',
             'wallet.audit.view',
-            // docs/chantiers/P005-CHANTIER.md: capacités Studio Annonceur.
             'admin.advertisers.manage',
             'admin.brands.moderate',
             'admin.advertiser-wallet.supervised-deposit',
-            // docs/chantiers/P004-CHANTIER.md: capacités Abonnements/Classes.
             'admin.subscriptions.plans.manage',
             'admin.subscriptions.classes.manage',
-            // docs/chantiers/P006-CHANTIER.md: catalogue de prix publicitaire.
             'admin.advertising.pricing.manage',
-            // docs/chantiers/P007-CHANTIER.md: revue administrative des campagnes.
             'admin.campaign-reviews.view',
             'admin.campaign-reviews.decide',
             'admin.campaigns.suspend',
-            // docs/chantiers/P008-CHANTIER.md: SmartProfile et Matching.
             'admin.smartprofile.taxonomies.manage',
             'admin.smartprofile.consents.manage',
             'admin.matching.configuration.manage',
             'admin.matching.audit.view',
-            // docs/chantiers/P009-CHANTIER.md: Feed et attention.
             'admin.feed.dashboard.view',
             'admin.feed.risk.review',
-            // docs/02-module-alertes-sante-wasplex.md: P015 Alertes.
             'admin.alerts.review',
             'admin.alerts.configuration.manage',
-            // docs/chantiers/P011-B-RAPPROCHEMENT.md: rapprochement GeniusPay.
             'admin.reconciliation.review',
         ];
     }
