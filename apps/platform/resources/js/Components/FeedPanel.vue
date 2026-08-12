@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import FeedAlertSurfaces from '@/Components/FeedAlertSurfaces.vue';
 import { feedMediaPreloadActivated, feedMediaPreloadPlaying, releaseFeedMediaPreload } from '@/lib/feedMediaPreload';
 import { useComingSoon } from '@/lib/comingSoon';
 
@@ -61,6 +62,7 @@ const comments = ref<Comment[]>([]);
 const newComment = ref('');
 const gainToast = ref<number | null>(null);
 const holdNotice = ref(false);
+const showAlertCircles = ref(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const balance = ref<number | null>(null);
 const buffering = ref(false);
@@ -626,7 +628,12 @@ onBeforeUnmount(() => {
                 <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
                     Explorer
                 </button>
-                <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
+                <button
+                    type="button"
+                    class="pb-1 font-semibold"
+                    :class="showAlertCircles ? 'text-wpx-gold' : 'text-white/70'"
+                    @click.stop="showAlertCircles = !showAlertCircles"
+                >
                     Alertes
                 </button>
                 <button
@@ -650,6 +657,8 @@ onBeforeUnmount(() => {
                 />
             </div>
         </div>
+
+        <FeedAlertSurfaces :show-circles="showAlertCircles" @close-circles="showAlertCircles = false" />
 
         <video
             v-if="delivery?.creative?.type === 'video'"
@@ -741,16 +750,9 @@ onBeforeUnmount(() => {
                     <span
                         aria-hidden="true"
                         class="flex h-10 w-10 items-center justify-center rounded-full"
-                        :class="
-                            delivery.interactions.liked_by_me ? 'bg-wpx-danger text-white' : 'bg-black/40 text-white/90'
-                        "
+                        :class="delivery.interactions.liked_by_me ? 'bg-wpx-danger text-white' : 'bg-black/40 text-white/90'"
                     >
-                        <svg
-                            width="21"
-                            height="21"
-                            viewBox="0 0 24 24"
-                            :fill="delivery.interactions.liked_by_me ? 'currentColor' : 'none'"
-                        >
+                        <svg width="21" height="21" viewBox="0 0 24 24" :fill="delivery.interactions.liked_by_me ? 'currentColor' : 'none'">
                             <path
                                 d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 00-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 00-.1-7.8z"
                                 stroke="currentColor"
@@ -763,16 +765,8 @@ onBeforeUnmount(() => {
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.likes }}</span>
                 </button>
 
-                <button
-                    type="button"
-                    class="flex flex-col items-center gap-0.5"
-                    aria-label="Voir les commentaires"
-                    @click="openComments"
-                >
-                    <span
-                        aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
-                    >
+                <button type="button" class="flex flex-col items-center gap-0.5" aria-label="Voir les commentaires" @click="openComments">
+                    <span aria-hidden="true" class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90">
                         <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
                             <path
                                 d="M21 11.5a8.4 8.4 0 01-9 8.5 9.3 9.3 0 01-3.8-.8L3 21l1.7-4.7A8.2 8.2 0 013 11.5 8.5 8.5 0 0112 3a8.5 8.5 0 019 8.5z"
@@ -796,18 +790,9 @@ onBeforeUnmount(() => {
                     <span
                         aria-hidden="true"
                         class="flex h-10 w-10 items-center justify-center rounded-full"
-                        :class="
-                            delivery.interactions.saved_by_me
-                                ? 'bg-wpx-gold text-wpx-navy-950'
-                                : 'bg-black/40 text-white/90'
-                        "
+                        :class="delivery.interactions.saved_by_me ? 'bg-wpx-gold text-wpx-navy-950' : 'bg-black/40 text-white/90'"
                     >
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            :fill="delivery.interactions.saved_by_me ? 'currentColor' : 'none'"
-                        >
+                        <svg width="20" height="20" viewBox="0 0 24 24" :fill="delivery.interactions.saved_by_me ? 'currentColor' : 'none'">
                             <path
                                 d="M6 4.8A1.8 1.8 0 017.8 3h8.4A1.8 1.8 0 0118 4.8V21l-6-3.8L6 21V4.8z"
                                 stroke="currentColor"
@@ -820,24 +805,10 @@ onBeforeUnmount(() => {
                 </button>
 
                 <button type="button" class="flex flex-col items-center gap-0.5" aria-label="Partager" @click="share">
-                    <span
-                        aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
-                    >
+                    <span aria-hidden="true" class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90">
                         <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-                            <path
-                                d="M5 12.5v5A2.5 2.5 0 007.5 20h9a2.5 2.5 0 002.5-2.5v-5"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linecap="round"
-                            />
+                            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M5 12.5v5A2.5 2.5 0 007.5 20h9a2.5 2.5 0 002.5-2.5v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
                         </svg>
                     </span>
                     <span class="text-[10px] text-white/80">{{ delivery.interactions.shares }}</span>
@@ -851,32 +822,14 @@ onBeforeUnmount(() => {
                     :aria-pressed="!isMuted"
                     @click.stop="toggleSound"
                 >
-                    <span
-                        aria-hidden="true"
-                        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90"
-                    >
+                    <span aria-hidden="true" class="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/90">
                         <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-                            <path
-                                d="M4 10v4h4l5 4V6L8 10H4z"
-                                stroke="currentColor"
-                                stroke-width="1.7"
-                                stroke-linejoin="round"
-                            />
+                            <path d="M4 10v4h4l5 4V6L8 10H4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
                             <template v-if="isMuted">
-                                <path
-                                    d="M17 10l4 4m0-4l-4 4"
-                                    stroke="currentColor"
-                                    stroke-width="1.7"
-                                    stroke-linecap="round"
-                                />
+                                <path d="M17 10l4 4m0-4l-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
                             </template>
                             <template v-else>
-                                <path
-                                    d="M16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11"
-                                    stroke="currentColor"
-                                    stroke-width="1.7"
-                                    stroke-linecap="round"
-                                />
+                                <path d="M16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
                             </template>
                         </svg>
                     </span>
@@ -897,9 +850,7 @@ onBeforeUnmount(() => {
                     >
                         {{ delivery.cta_label }}
                     </button>
-                    <button type="button" class="text-[11px] text-white/70 underline" @click="toggleWhy">
-                        Pourquoi cette publicité ?
-                    </button>
+                    <button type="button" class="text-[11px] text-white/70 underline" @click="toggleWhy">Pourquoi cette publicité ?</button>
                     <button
                         v-if="!['completed', 'held'].includes(delivery.status)"
                         type="button"
@@ -916,40 +867,24 @@ onBeforeUnmount(() => {
         </template>
 
         <div v-if="gainToast !== null" class="absolute inset-0 z-30 flex items-center justify-center bg-black/30">
-            <div
-                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 animate-bounce rounded-full bg-gradient-to-br px-6 py-3 text-lg font-bold shadow-xl"
-            >
-                +{{ gainToast }} WP
-            </div>
+            <div class="from-wpx-orange to-wpx-gold text-wpx-navy-950 animate-bounce rounded-full bg-gradient-to-br px-6 py-3 text-lg font-bold shadow-xl">+{{ gainToast }} WP</div>
         </div>
 
         <div v-if="holdNotice" class="absolute inset-0 z-30 flex items-center justify-center bg-black/30">
             <div class="bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md px-5 py-3 text-center text-sm shadow-xl">
-                Vérification en cours<br /><span class="text-wpx-muted-dark text-xs"
-                    >Le gain sera confirmé après contrôle.</span
-                >
+                Vérification en cours<br /><span class="text-wpx-muted-dark text-xs">Le gain sera confirmé après contrôle.</span>
             </div>
         </div>
 
-        <div
-            v-if="showComments"
-            class="absolute inset-0 z-40 flex flex-col justify-end bg-black/60"
-            @click.self="showComments = false"
-        >
+        <div v-if="showComments" class="absolute inset-0 z-40 flex flex-col justify-end bg-black/60" @click.self="showComments = false">
             <div class="bg-wpx-navy-850 rounded-t-wpx-lg max-h-[70%] p-4">
                 <div class="mb-2 flex items-center justify-between">
                     <p class="text-wpx-white-soft text-sm font-semibold">Commentaires</p>
-                    <button type="button" class="text-wpx-muted-dark text-xs" @click="showComments = false">
-                        Fermer
-                    </button>
+                    <button type="button" class="text-wpx-muted-dark text-xs" @click="showComments = false">Fermer</button>
                 </div>
                 <div class="mb-3 flex max-h-48 flex-col gap-2 overflow-y-auto">
-                    <p v-for="comment in comments" :key="comment.id" class="text-wpx-muted-dark text-xs">
-                        {{ comment.body }}
-                    </p>
-                    <p v-if="comments.length === 0" class="text-wpx-muted-dark text-xs italic">
-                        Aucun commentaire pour le moment.
-                    </p>
+                    <p v-for="comment in comments" :key="comment.id" class="text-wpx-muted-dark text-xs">{{ comment.body }}</p>
+                    <p v-if="comments.length === 0" class="text-wpx-muted-dark text-xs italic">Aucun commentaire pour le moment.</p>
                 </div>
                 <form class="flex gap-2" @submit.prevent="postComment">
                     <input
