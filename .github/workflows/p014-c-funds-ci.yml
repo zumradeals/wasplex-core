@@ -1,0 +1,142 @@
+name: p014-c-funds-ci
+
+on:
+  push:
+    branches: [feat/p014-c-fonds-partenaires-devis]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_local_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wasplex -d wasplex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+
+    defaults:
+      run:
+        working-directory: apps/platform
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p014-c-fonds-partenaires-devis
+          fetch-depth: 0
+
+      - name: Wire P014-C visual surfaces
+        working-directory: .
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('apps/platform/resources/js/Pages/Identity/ProfessionalShell.vue')
+          s = p.read_text()
+          if "ProfessionalFundQuotesPanel" not in s:
+              s = s.replace(
+                  "import ProfessionalInstitutionalCasesPanel from '@/Components/ProfessionalInstitutionalCasesPanel.vue';",
+                  "import ProfessionalInstitutionalCasesPanel from '@/Components/ProfessionalInstitutionalCasesPanel.vue';\nimport ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';",
+              )
+          s = s.replace(
+              "type Tab = 'overview' | 'cases' | 'operations' | 'team' | 'points' | 'audit';",
+              "type Tab = 'overview' | 'cases' | 'funds' | 'operations' | 'team' | 'points' | 'audit';",
+          )
+          if "{ key: 'funds', label: 'Fonds', icon: '◇' }" not in s:
+              s = s.replace(
+                  "    { key: 'cases', label: 'Dossiers', icon: '▤' },",
+                  "    { key: 'cases', label: 'Dossiers', icon: '▤' },\n    { key: 'funds', label: 'Fonds', icon: '◇' },",
+              )
+          marker = "const myRoleLabels = computed(() => workspace.value?.my_roles.map((role) => role.role_code.replaceAll('_', ' ')) ?? []);"
+          if 'const supportsFundsPartner' not in s:
+              extra = marker + "\n\nconst fundsPartnerKinds = ['partner', 'merchant', 'service_provider', 'healthcare_institution', 'financial_operator'];\nconst supportsFundsPartner = computed(() => fundsPartnerKinds.includes(workspace.value?.space.space_kind ?? ''));\nconst canRespondToFundQuotes = computed(() =>\n    workspace.value?.my_roles.some((role) => ['organization_admin', 'operations_manager', 'reviewer', 'partner_cashier'].includes(role.role_code)) ?? false,\n);\nconst visibleTabs = computed(() => tabs.filter((tab) => tab.key !== 'funds' || supportsFundsPartner.value));"
+              s = s.replace(marker, extra)
+          old = "    return {\n        title: 'Espace opérationnel',\n        text: 'Les capacités métiers seront activées progressivement selon les modules Wasplex autorisés pour votre organisation.',\n    };"
+          if "title: 'Raccordement Fonds'" not in s:
+              new = "    if (fundsPartnerKinds.includes(kind ?? '')) {\n        return {\n            title: 'Raccordement Fonds',\n            text: 'Les demandes de devis explicitement adressées à votre organisation apparaissent dans Fonds. Vous ne voyez que les informations nécessaires pour chiffrer le besoin.',\n        };\n    }\n" + old
+              s = s.replace(old, new)
+          s = s.replace('v-for="tab in tabs"', 'v-for="tab in visibleTabs"')
+          s = s.replace('v-for="tab in tabs.slice(0, 5)"', 'v-for="tab in visibleTabs.slice(0, 5)"')
+          if '<ProfessionalFundQuotesPanel' not in s:
+              s = s.replace(
+                  "                    <ProfessionalInstitutionalCasesPanel\n                        v-else-if=\"activeTab === 'cases'\"\n                        :space-kind=\"workspace.space.space_kind\"\n                    />",
+                  "                    <ProfessionalInstitutionalCasesPanel\n                        v-else-if=\"activeTab === 'cases'\"\n                        :space-kind=\"workspace.space.space_kind\"\n                    />\n\n                    <ProfessionalFundQuotesPanel\n                        v-else-if=\"activeTab === 'funds'\"\n                        :can-respond=\"canRespondToFundQuotes\"\n                        class=\"mt-4\"\n                    />",
+              )
+          p.write_text(s)
+
+          p = Path('apps/platform/resources/js/Components/AdminFundsPanel.vue')
+          s = p.read_text()
+          if "AdminFundPartnerQuotes" not in s:
+              s = s.replace(
+                  "import http from '@/lib/http';",
+                  "import http from '@/lib/http';\nimport AdminFundPartnerQuotes from '@/Components/AdminFundPartnerQuotes.vue';",
+              )
+              anchor = '            <section class="flex flex-col gap-3">\n                <div class="flex items-center justify-between">\n                    <div>\n                        <h3 class="text-wpx-white-soft font-bold">Programmes</h3>'
+              if anchor not in s:
+                  raise SystemExit('AdminFundsPanel anchor not found')
+              s = s.replace(anchor, '            <AdminFundPartnerQuotes />\n\n' + anchor, 1)
+          p.write_text(s)
+          PY
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql, redis
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist
+          npm ci
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          printf '\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_DATABASE=wasplex_test\nDB_USERNAME=wasplex\nDB_PASSWORD=wasplex_local_only\nREDIS_HOST=127.0.0.1\nREDIS_PORT=6379\n' >> .env
+
+      - name: Format implementation
+        run: |
+          npx prettier --write resources/js/Pages/Identity/ProfessionalShell.vue resources/js/Components/ProfessionalFundQuotesPanel.vue resources/js/Components/AdminFundPartnerQuotes.vue resources/js/Components/AdminFundsPanel.vue
+          ./vendor/bin/pint
+
+      - name: Frontend checks
+        run: |
+          npm run format:check
+          npm run lint:check
+          npm run types:check
+          npm run build
+
+      - name: P014-C tests
+        run: php artisan test tests/Feature/Funds/FundsPartnerQuotesTest.php
+
+      - name: Full Laravel suite
+        run: php artisan test
+
+      - name: Commit formatted implementation and cleanup
+        working-directory: .
+        run: |
+          rm .github/workflows/p014-c-funds-ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(funds): finaliser P014-C partenaires et devis"
+          git push origin HEAD:feat/p014-c-fonds-partenaires-devis
