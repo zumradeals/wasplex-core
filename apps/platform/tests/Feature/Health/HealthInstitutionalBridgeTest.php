@@ -39,13 +39,19 @@ function bridgeHealthLogin(string $identifier): void
     }
 }
 
-function bridgeHealthRequestSpace(): ProfessionalSpace
+function bridgeHealthRequestSpace(string $kind = ProfessionalSpace::KIND_HEALTHCARE_INSTITUTION): ProfessionalSpace
 {
     $response = test()->postJson('/api/professional-spaces', [
-        'space_kind' => ProfessionalSpace::KIND_HEALTHCARE_INSTITUTION,
-        'legal_name' => 'Centre de santé raccordement Wasplex',
-        'trade_name' => 'Centre Santé Bridge',
-        'registration_number' => 'HEALTH-BRIDGE-001',
+        'space_kind' => $kind,
+        'legal_name' => $kind === ProfessionalSpace::KIND_HEALTH_PROFESSIONAL
+            ? 'Professionnel Santé raccordement Wasplex'
+            : 'Centre de santé raccordement Wasplex',
+        'trade_name' => $kind === ProfessionalSpace::KIND_HEALTH_PROFESSIONAL
+            ? 'Pro Santé Bridge'
+            : 'Centre Santé Bridge',
+        'registration_number' => $kind === ProfessionalSpace::KIND_HEALTH_PROFESSIONAL
+            ? 'HEALTH-PRO-BRIDGE-001'
+            : 'HEALTH-BRIDGE-001',
         'country_code' => 'CI',
         'territory' => [
             'country_code' => 'CI',
@@ -129,7 +135,7 @@ it('requires patient approval before a verified health organization can read the
         ->exists())->toBeTrue();
 });
 
-it('allows emergency capsule access only when the patient enabled emergency consent', function (): void {
+it('allows emergency capsule access only to a verified health professional when the patient enabled emergency consent', function (): void {
     registerAndLogin('bridge-health-emergency-patient@wasplex.test');
     $patientAccount = bridgeHealthAccount('bridge-health-emergency-patient@wasplex.test');
     test()->putJson('/api/health/me/capsule', [
@@ -141,7 +147,7 @@ it('allows emergency capsule access only when the patient enabled emergency cons
     test()->postJson('/api/logout')->assertNoContent();
 
     registerAndLogin('bridge-health-emergency-owner@wasplex.test');
-    $space = bridgeHealthRequestSpace();
+    $space = bridgeHealthRequestSpace(ProfessionalSpace::KIND_HEALTH_PROFESSIONAL);
     test()->postJson('/api/logout')->assertNoContent();
 
     registerAndLogin('bridge-health-emergency-admin@wasplex.test');
