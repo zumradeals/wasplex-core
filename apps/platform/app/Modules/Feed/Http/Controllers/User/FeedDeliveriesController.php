@@ -9,7 +9,6 @@ use App\Modules\Feed\Application\Services\AttentionService;
 use App\Modules\Feed\Application\Services\DeliveryNotStartableException;
 use App\Modules\Feed\Application\Services\FeedDeliveryNotFoundException;
 use App\Modules\Feed\Application\Services\FeedInteractionService;
-use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Subscriptions\Application\Services\QuotaExhaustedException;
 use Illuminate\Http\JsonResponse;
@@ -36,13 +35,6 @@ final class FeedDeliveriesController extends Controller
         $account = $request->user();
 
         $result = $this->attention->next($data['feed_session_id'], $account->id);
-
-        if ($result !== null && $this->hasIncompatibleVideoEconomics($result)) {
-            /** @var FeedAdDelivery $staleDelivery */
-            $staleDelivery = $result['delivery'];
-            $this->attention->abandon($staleDelivery->id, $account->id);
-            $result = $this->attention->next($data['feed_session_id'], $account->id);
-        }
 
         if ($result === null) {
             return response()->json(['delivery' => null]);
@@ -91,24 +83,6 @@ final class FeedDeliveriesController extends Controller
 
         /** @var Account $account */
         $account = $request->user();
-
-        $current = FeedAdDelivery::query()
-            ->whereKey($delivery)
-            ->where('account_id', $account->id)
-            ->first();
-
-        if ($current !== null
-            && $current->status === FeedAdDelivery::STATUS_STARTED
-            && $current->requires_media_end) {
-            $toleranceMs = max(0, (int) config('feed.media_end_tolerance_ms'));
-
-            if ($current->last_heartbeat_at === null
-                || $current->visible_duration_ms + $toleranceMs < $current->required_duration_ms) {
-                return response()->json([
-                    'message' => 'La fin de la vidéo ne peut être validée sans preuve d’attention suffisante.',
-                ], 422);
-            }
-        }
 
         try {
             $updated = $this->attention->markMediaEnded($delivery, $account->id, $data['visible_duration_ms']);
@@ -208,38 +182,6 @@ final class FeedDeliveriesController extends Controller
         $comment = $this->interactions->addComment($account->id, $campaign, $data['body']);
 
         return response()->json(['comment' => $comment], 201);
-    }
-
-    /**
-     * @param  array{delivery: FeedAdDelivery, brand_name: ?string, objective_code: ?string, cta_label: ?string, creative?: mixed}  $result
-     */
-    private function hasIncompatibleVideoEconomics(array $result): bool
-    {
-        $delivery = $result['delivery'];
-
-        if ($delivery->is_replay) {
-            return false;
-        }
-
-        $creative = $result['creative'] ?? null;
-        if (! is_array($creative) || ($creative['type'] ?? null) !== 'video') {
-            return true;
-        }
-
-        $durationMs = (int) ($creative['duration_ms'] ?? 0);
-        if ($durationMs <= 0) {
-            $durationMs = ((int) ($creative['duration'] ?? 0)) * 1000;
-        }
-        if ($durationMs <= 0) {
-            return true;
-        }
-
-        $unitMs = max(1, (int) config('campaigns.attention_unit_ms'));
-        $expectedUnits = (int) ceil($durationMs / $unitMs);
-
-        return (int) $delivery->required_duration_ms !== $durationMs
-            || (int) $delivery->quota_units !== $expectedUnits
-            || ! $delivery->requires_media_end;
     }
 
     /**
