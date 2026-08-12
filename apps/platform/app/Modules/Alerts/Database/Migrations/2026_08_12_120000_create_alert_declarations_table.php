@@ -13,6 +13,7 @@ return new class extends Migration
         Schema::create('alert_declarations', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->foreignUlid('account_id')->constrained('accounts')->cascadeOnDelete();
+            $table->foreignUlid('reviewed_by_account_id')->nullable()->constrained('accounts')->nullOnDelete();
             $table->string('category', 32);
             $table->string('situation', 24);
             $table->string('priority', 4)->default('P3');
@@ -20,11 +21,13 @@ return new class extends Migration
             $table->string('title', 140);
             $table->text('description');
             $table->text('public_summary')->nullable();
+            $table->text('rejection_reason')->nullable();
             $table->string('city', 80)->nullable();
             $table->string('area_label', 120)->nullable();
             $table->text('exact_location')->nullable();
             $table->boolean('public_visibility')->default(false);
             $table->timestampTz('submitted_at')->nullable();
+            $table->timestampTz('reviewed_at')->nullable();
             $table->timestampTz('published_at')->nullable();
             $table->timestampTz('resolved_at')->nullable();
             $table->timestampTz('expires_at')->nullable();
