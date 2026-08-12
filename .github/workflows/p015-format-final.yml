@@ -1,0 +1,53 @@
+name: p015-format-final
+
+on:
+  push:
+    branches:
+      - feat/p015-a-alertes-citoyennes-feed
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p015-a-alertes-citoyennes-feed
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: apps/platform
+        run: npm ci
+      - name: Format P015-A frontend
+        working-directory: apps/platform
+        run: |
+          npx prettier --write \
+            resources/js/Components/AdminAlertsPanel.vue \
+            resources/js/Components/AlertsPanel.vue \
+            resources/js/Components/FeedAlertSurfaces.vue \
+            resources/js/Components/FeedPanel.vue \
+            resources/js/Pages/Identity/AdminShell.vue \
+            resources/js/Pages/Identity/UserShell.vue
+      - name: Commit formatted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            apps/platform/resources/js/Components/AdminAlertsPanel.vue \
+            apps/platform/resources/js/Components/AlertsPanel.vue \
+            apps/platform/resources/js/Components/FeedAlertSurfaces.vue \
+            apps/platform/resources/js/Components/FeedPanel.vue \
+            apps/platform/resources/js/Pages/Identity/AdminShell.vue \
+            apps/platform/resources/js/Pages/Identity/UserShell.vue
+          if git diff --cached --quiet; then
+            echo "No formatting changes"
+            exit 0
+          fi
+          git commit -m "style(alerts): appliquer le formatage final P015-A"
+          git push origin HEAD:feat/p015-a-alertes-citoyennes-feed
