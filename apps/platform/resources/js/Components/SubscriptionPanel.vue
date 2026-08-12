@@ -232,13 +232,48 @@ void load();
                         </button>
                     </div>
 
-                    <div v-if="currentPlan" class="border-wpx-cyan/40 bg-wpx-cyan/5 rounded-wpx-lg mb-3 border p-3">
-                        <p class="text-wpx-cyan text-[10px] font-bold tracking-wide uppercase">Votre plan actuel</p>
-                        <div class="mt-1 flex items-center justify-between gap-3">
-                            <p class="text-wpx-white-soft font-bold">{{ currentPlan.name }}</p>
+                    <article
+                        v-if="currentPlan"
+                        class="border-wpx-cyan/40 bg-wpx-cyan/5 rounded-wpx-xl mb-3 border p-4"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-wpx-cyan text-[10px] font-bold tracking-wide uppercase">Votre plan actuel</p>
+                                <h4 class="text-wpx-white-soft mt-1 text-base font-bold">{{ currentPlan.name }}</h4>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">{{ currentPlan.duration_days }} jours</p>
+                            </div>
                             <p class="text-wpx-gold text-sm font-bold">{{ planPrice(currentPlan) }}</p>
                         </div>
-                    </div>
+
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                            <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
+                                <p class="text-wpx-muted-dark text-[10px] uppercase">Crédits d’attention / mois</p>
+                                <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
+                                    {{ formatCredits(currentPlan.quota_monthly ?? 0) }}
+                                </p>
+                            </div>
+                            <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
+                                <p class="text-wpx-muted-dark text-[10px] uppercase">Gain par crédit</p>
+                                <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
+                                    {{ numberFormatter.format(currentPlan.reward_per_attention_unit_minor ?? 0) }} WP
+                                </p>
+                            </div>
+                        </div>
+
+                        <p class="text-wpx-muted-dark mt-2 text-[10px]">
+                            1 crédit = {{ currentPlan.attention_unit_seconds }} s d’attention · ≈
+                            {{ formatPlanAttentionEquivalent(currentPlan) }} au total
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-[10px] italic">
+                            La quantité de publicités dépend toujours des campagnes compatibles disponibles.
+                        </p>
+
+                        <div
+                            class="border-wpx-cyan/30 bg-wpx-cyan/10 text-wpx-cyan rounded-wpx-md mt-3 border px-4 py-2.5 text-center text-sm font-bold"
+                        >
+                            Plan actuel
+                        </div>
+                    </article>
 
                     <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mb-3 p-3 text-xs">
                         {{ error }}
