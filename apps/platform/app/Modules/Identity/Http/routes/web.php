@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Identity\Http\Controllers\AdminShellController;
 use App\Modules\Identity\Http\Controllers\AdvertiserShellController;
 use App\Modules\Identity\Http\Controllers\GuestPagesController;
+use App\Modules\Identity\Http\Controllers\ProfessionalShellController;
 use App\Modules\Identity\Http\Controllers\UserShellController;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureRecentMfa;
@@ -22,6 +23,10 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
     Route::get('/studio', [AdvertiserShellController::class, 'index'])
         ->middleware(EnsureSpaceMembership::class.':advertiser')
         ->name('studio.home');
+
+    Route::get('/pro', [ProfessionalShellController::class, 'index'])
+        ->middleware(EnsureSpaceMembership::class.':professional')
+        ->name('professional.home');
 
     Route::get('/admin/mfa-challenge', [AdminShellController::class, 'mfaChallenge'])->name('admin.mfa-challenge');
 
