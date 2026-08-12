@@ -7,6 +7,7 @@ namespace App\Modules\Funds\Infrastructure\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class FundWish extends Model
 {
@@ -31,6 +32,7 @@ final class FundWish extends Model
         return [
             'submitted_at' => 'immutable_datetime',
             'reviewed_at' => 'immutable_datetime',
+            'personal_contribution_completed_at' => 'immutable_datetime',
         ];
     }
 
@@ -42,5 +44,10 @@ final class FundWish extends Model
     public function membership(): BelongsTo
     {
         return $this->belongsTo(FundMembership::class, 'fund_membership_id');
+    }
+
+    public function personalContributions(): HasMany
+    {
+        return $this->hasMany(FundPersonalContribution::class, 'fund_wish_id')->orderByDesc('created_at');
     }
 }
