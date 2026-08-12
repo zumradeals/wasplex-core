@@ -261,7 +261,9 @@ onMounted(load);
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <div class="mb-2 flex items-center gap-2">
-                        <span class="bg-wpx-cyan/12 flex h-10 w-10 items-center justify-center rounded-2xl text-xl">❤️‍🩹</span>
+                        <span class="bg-wpx-cyan/12 flex h-10 w-10 items-center justify-center rounded-2xl text-xl"
+                            >❤️‍🩹</span
+                        >
                         <div>
                             <p class="text-wpx-cyan text-[9px] font-black tracking-[0.18em] uppercase">Wasplex Santé</p>
                             <p class="text-wpx-white-soft text-base font-black">Ma Santé</p>
@@ -271,7 +273,9 @@ onMounted(load);
                         Gardez ici seulement les informations qui peuvent vraiment aider en cas d’urgence.
                     </p>
                 </div>
-                <div class="border-wpx-border-dark bg-wpx-navy-950/70 min-w-16 rounded-2xl border px-3 py-2 text-center">
+                <div
+                    class="border-wpx-border-dark bg-wpx-navy-950/70 min-w-16 rounded-2xl border px-3 py-2 text-center"
+                >
                     <p class="text-wpx-white-soft text-sm font-black">{{ completion }}%</p>
                     <p class="text-wpx-muted-dark text-[8px] font-bold uppercase">prête</p>
                 </div>
@@ -285,7 +289,9 @@ onMounted(load);
                     </div>
                     <span
                         class="rounded-full px-2.5 py-1 text-[9px] font-black"
-                        :class="consentGranted ? 'bg-emerald-500/12 text-emerald-300' : 'bg-amber-500/10 text-amber-300'"
+                        :class="
+                            consentGranted ? 'bg-emerald-500/12 text-emerald-300' : 'bg-amber-500/10 text-amber-300'
+                        "
                     >
                         {{ consentGranted ? 'URGENCE AUTORISÉE' : 'ACCÈS FERMÉ' }}
                     </span>
@@ -318,7 +324,8 @@ onMounted(load);
                     <div>
                         <p class="text-wpx-white-soft text-sm font-black">Informations vitales</p>
                         <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                            Une information saisie par vous est affichée comme déclarée, jamais comme certifiée médicalement.
+                            Une information saisie par vous est affichée comme déclarée, jamais comme certifiée
+                            médicalement.
                         </p>
                     </div>
                     <span class="bg-wpx-blue/10 text-wpx-blue rounded-full px-2 py-1 text-[8px] font-black">PRIVÉ</span>
@@ -332,7 +339,11 @@ onMounted(load);
                             class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft w-full rounded-xl border px-3 py-3 text-xs"
                         >
                             <option value="">Je ne sais pas / non renseigné</option>
-                            <option v-for="group in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']" :key="group" :value="group">
+                            <option
+                                v-for="group in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']"
+                                :key="group"
+                                :value="group"
+                            >
                                 {{ group }}
                             </option>
                         </select>
@@ -340,7 +351,9 @@ onMounted(load);
 
                     <div class="grid gap-3 md:grid-cols-2">
                         <div>
-                            <label class="text-wpx-muted-dark mb-1 block text-[9px] font-bold">Allergies critiques</label>
+                            <label class="text-wpx-muted-dark mb-1 block text-[9px] font-bold"
+                                >Allergies critiques</label
+                            >
                             <textarea
                                 v-model="allergiesText"
                                 rows="3"
@@ -349,7 +362,9 @@ onMounted(load);
                             />
                         </div>
                         <div>
-                            <label class="text-wpx-muted-dark mb-1 block text-[9px] font-bold">Pathologies critiques utiles</label>
+                            <label class="text-wpx-muted-dark mb-1 block text-[9px] font-bold"
+                                >Pathologies critiques utiles</label
+                            >
                             <textarea
                                 v-model="conditionsText"
                                 rows="3"
@@ -384,7 +399,9 @@ onMounted(load);
 
             <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">
                 <p class="text-wpx-white-soft text-sm font-black">Contact d’urgence</p>
-                <p class="text-wpx-muted-dark mt-1 text-[10px]">Une personne à contacter si vous ne pouvez pas répondre.</p>
+                <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                    Une personne à contacter si vous ne pouvez pas répondre.
+                </p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-3">
                     <input v-model="emergencyName" class="health-input" placeholder="Nom" />
                     <input v-model="emergencyPhone" class="health-input" placeholder="Téléphone" />
@@ -394,7 +411,9 @@ onMounted(load);
 
             <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">
                 <p class="text-wpx-white-soft text-sm font-black">Médecin ou établissement de référence</p>
-                <p class="text-wpx-muted-dark mt-1 text-[10px]">Facultatif. La vérification professionnelle viendra avec P019.</p>
+                <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                    Facultatif. La vérification professionnelle viendra avec P019.
+                </p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-3">
                     <input v-model="referenceName" class="health-input" placeholder="Nom" />
                     <input v-model="referenceType" class="health-input" placeholder="Type / spécialité" />
@@ -420,11 +439,14 @@ onMounted(load);
         <template v-else-if="activeTab === 'consents'">
             <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">
                 <div class="flex items-start gap-3">
-                    <span class="bg-wpx-cyan/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg">🛡️</span>
+                    <span class="bg-wpx-cyan/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                        >🛡️</span
+                    >
                     <div>
                         <p class="text-wpx-white-soft text-sm font-black">Accès médical d’urgence</p>
                         <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                            Ce consentement autorise seulement la projection médicale minimale de votre capsule. Il ne donne jamais accès à un futur dossier médical complet.
+                            Ce consentement autorise seulement la projection médicale minimale de votre capsule. Il ne
+                            donne jamais accès à un futur dossier médical complet.
                         </p>
                     </div>
                 </div>
@@ -434,7 +456,8 @@ onMounted(load);
                         {{ consentGranted ? 'Vous autorisez cet accès' : 'Vous n’autorisez pas cet accès' }}
                     </p>
                     <p class="text-wpx-muted-dark mt-1 text-[9px] leading-relaxed">
-                        Un futur bris de glace exigera en plus un professionnel habilité, une institution active, une MFA récente, un SOS identifié, une justification, une durée courte et un audit.
+                        Un futur bris de glace exigera en plus un professionnel habilité, une institution active, une
+                        MFA récente, un SOS identifié, une justification, une durée courte et un audit.
                     </p>
                 </div>
 
@@ -458,14 +481,19 @@ onMounted(load);
             <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">
                 <p class="text-wpx-white-soft text-sm font-black">Ajouter une personne de confiance</p>
                 <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                    Ajouter quelqu’un ne lui donne aucun pouvoir médical automatique. Le statut reste « à vérifier » tant qu’aucune preuve n’a été validée.
+                    Ajouter quelqu’un ne lui donne aucun pouvoir médical automatique. Le statut reste « à vérifier »
+                    tant qu’aucune preuve n’a été validée.
                 </p>
 
                 <div class="mt-3 flex flex-col gap-2">
                     <input v-model="representativeName" class="health-input" placeholder="Nom complet" />
                     <div class="grid grid-cols-2 gap-2">
                         <input v-model="representativePhone" class="health-input" placeholder="Téléphone" />
-                        <input v-model="representativeRelationship" class="health-input" placeholder="Lien : parent, conjoint…" />
+                        <input
+                            v-model="representativeRelationship"
+                            class="health-input"
+                            placeholder="Lien : parent, conjoint…"
+                        />
                     </div>
                     <select v-model="representativeScope" class="health-input">
                         <option value="emergency_contact">Contact d’urgence</option>
@@ -474,7 +502,11 @@ onMounted(load);
                     <button
                         type="button"
                         class="bg-wpx-blue/15 text-wpx-blue rounded-xl py-3 text-xs font-black disabled:opacity-60"
-                        :disabled="saving || representativeName.trim().length < 2 || representativeRelationship.trim().length < 2"
+                        :disabled="
+                            saving ||
+                            representativeName.trim().length < 2 ||
+                            representativeRelationship.trim().length < 2
+                        "
                         @click="addRepresentative"
                     >
                         Ajouter
@@ -492,7 +524,8 @@ onMounted(load);
                         <div>
                             <p class="text-wpx-white-soft text-xs font-black">{{ representative.name }}</p>
                             <p class="text-wpx-muted-dark mt-1 text-[9px]">
-                                {{ representative.relationship }} · {{ representative.phone || 'Téléphone non renseigné' }}
+                                {{ representative.relationship }} ·
+                                {{ representative.phone || 'Téléphone non renseigné' }}
                             </p>
                         </div>
                         <span
@@ -517,7 +550,10 @@ onMounted(load);
                     </button>
                 </article>
 
-                <div v-if="representatives.length === 0" class="text-wpx-muted-dark rounded-xl bg-white/3 p-5 text-center text-xs">
+                <div
+                    v-if="representatives.length === 0"
+                    class="text-wpx-muted-dark rounded-xl bg-white/3 p-5 text-center text-xs"
+                >
                     Aucun représentant ajouté.
                 </div>
             </section>
@@ -529,7 +565,9 @@ onMounted(load);
                     <span class="bg-wpx-blue/10 flex h-10 w-10 items-center justify-center rounded-xl text-lg">👁️</span>
                     <div>
                         <p class="text-wpx-white-soft text-sm font-black">Qui a accédé à mes données ?</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[10px]">Les futurs accès professionnels et bris de glace seront visibles ici et audités.</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                            Les futurs accès professionnels et bris de glace seront visibles ici et audités.
+                        </p>
                     </div>
                 </div>
             </section>
@@ -540,12 +578,17 @@ onMounted(load);
                     :key="access.id"
                     class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5"
                 >
-                    <p class="text-wpx-white-soft text-xs font-black">{{ access.institution_name || access.actor_type }}</p>
+                    <p class="text-wpx-white-soft text-xs font-black">
+                        {{ access.institution_name || access.actor_type }}
+                    </p>
                     <p class="text-wpx-muted-dark mt-1 text-[9px]">
                         {{ access.purpose }} · {{ access.access_type }} · {{ formatDate(access.accessed_at) }}
                     </p>
                 </article>
-                <div v-if="accesses.length === 0" class="text-wpx-muted-dark rounded-xl bg-white/3 p-5 text-center text-xs">
+                <div
+                    v-if="accesses.length === 0"
+                    class="text-wpx-muted-dark rounded-xl bg-white/3 p-5 text-center text-xs"
+                >
                     Aucun accès externe enregistré. C’est normal pour cette première version citoyenne.
                 </div>
             </section>
@@ -563,7 +606,8 @@ onMounted(load);
 
         <section class="border-wpx-border-dark rounded-wpx-lg border bg-black/10 p-3">
             <p class="text-wpx-muted-dark text-[9px] leading-relaxed">
-                🔒 Vos données Santé ne servent ni à la publicité, ni au Wallet, ni au ciblage. Elles restent dans un domaine technique séparé d’Alertes.
+                🔒 Vos données Santé ne servent ni à la publicité, ni au Wallet, ni au ciblage. Elles restent dans un
+                domaine technique séparé d’Alertes.
             </p>
         </section>
     </div>
