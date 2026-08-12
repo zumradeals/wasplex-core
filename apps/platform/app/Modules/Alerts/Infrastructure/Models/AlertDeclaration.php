@@ -15,6 +15,7 @@ final class AlertDeclaration extends Model
 
     protected $fillable = [
         'account_id',
+        'reviewed_by_account_id',
         'category',
         'situation',
         'priority',
@@ -22,11 +23,13 @@ final class AlertDeclaration extends Model
         'title',
         'description',
         'public_summary',
+        'rejection_reason',
         'city',
         'area_label',
         'exact_location',
         'public_visibility',
         'submitted_at',
+        'reviewed_at',
         'published_at',
         'resolved_at',
         'expires_at',
@@ -40,6 +43,7 @@ final class AlertDeclaration extends Model
             'exact_location' => 'encrypted',
             'public_visibility' => 'boolean',
             'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
             'published_at' => 'datetime',
             'resolved_at' => 'datetime',
             'expires_at' => 'datetime',
@@ -49,6 +53,11 @@ final class AlertDeclaration extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'reviewed_by_account_id');
     }
 
     public function isPubliclyVisible(): bool
