@@ -6,9 +6,11 @@ use App\Modules\Health\Application\Contracts\EmergencyCapsuleProvider;
 use App\Modules\Health\Infrastructure\Models\HealthEmergencyCapsule;
 use App\Modules\Health\Infrastructure\Models\HealthPatient;
 use App\Modules\Health\Infrastructure\Models\HealthRepresentative;
+use App\Modules\Identity\Infrastructure\Models\Account;
 
 it('stores the citizen emergency capsule encrypted and exposes it only through emergency consent', function (): void {
-    $account = registerAndLogin('health-member@wasplex.test');
+    registerAndLogin('health-member@wasplex.test');
+    $account = Account::query()->firstOrFail();
 
     test()->putJson('/api/health/me/capsule', [
         'blood_group' => 'O+',
