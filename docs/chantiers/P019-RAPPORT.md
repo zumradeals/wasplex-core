@@ -34,7 +34,8 @@ P019 fournit le socle commun des espaces professionnels et institutionnels Waspl
 - les grants professionnels sont limités à l'organisation ;
 - `security_officer` n'est accepté que dans une institution de sécurité ;
 - `health_professional` n'est accepté que dans un contexte Santé compatible ;
-- suspension/restriction révoque l'accès professionnel sensible ;
+- suspension/restriction révoque l'accès professionnel sensible avec `revoked_at` et `revoked_by` ;
+- une nouvelle vérification réactive proprement les grants existants sans doublon ;
 - P019 ne lit ni ne copie un dossier Santé ou Alertes complet ;
 - les modules P015/P016 restent propriétaires de leurs données, consentements et journaux ;
 - le numéro d'enregistrement officiel est chiffré avec le cast Laravel `encrypted`.
@@ -82,7 +83,7 @@ Les routes de décision administrative exigent MFA récent et capacités explici
 - shell Wasplex Pro orienté desktop de pilotage et mobile terrain ;
 - onglet « Professionnels & institutions » dans Utilisateurs de la console admin.
 
-## Tests
+## Tests et CI
 
 Couverture ajoutée :
 
@@ -97,7 +98,16 @@ Couverture ajoutée :
 - refus d'un rôle Santé dans une institution de sécurité ;
 - bootstrap fondateur idempotent via le catalogue partagé des capacités.
 
-La preuve finale attendue avant fusion est la CI complète du dépôt : Prettier, ESLint, TypeScript, build Vite, Pint et suite Pest sur PostgreSQL/Redis.
+Preuve finale avant PR : workflow P019 sur PostgreSQL 17 + Redis 7.4, run `31608481947`, conclusion `success` :
+
+- Prettier : succès ;
+- ESLint : succès (aucune erreur ; avertissements préexistants hors P019) ;
+- TypeScript : succès ;
+- build Vite : succès ;
+- `composer lint:check` / Pint : succès ;
+- suite Pest complète : succès.
+
+Les workflows P019 temporaires de construction, formatage et validation ont été retirés avant la PR ; seul le workflow CI normal du dépôt doit rester sur `main`.
 
 ## Raccordements suivants
 
