@@ -210,7 +210,7 @@ it('uses the grace period after subscription expiry and reactivates when eligibi
 
     $membership = FundMembership::query()->where('account_id', $account->id)->firstOrFail();
     expect($membership->grace_ends_at)->not->toBeNull();
-    expect($membership->grace_ends_at->diffInDays($membership->grace_started_at))->toBe(7.0);
+    expect($membership->grace_started_at->diffInDays($membership->grace_ends_at))->toBe(7.0);
 
     DB::table('user_subscriptions')->where('id', $subscriptionId)->update([
         'status' => UserSubscription::STATUS_ACTIVE,
