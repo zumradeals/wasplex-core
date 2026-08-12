@@ -14,10 +14,15 @@ final class FundCollectionSnapshot extends Model
     use HasUlids;
 
     public const STATUS_SCHEDULED = 'scheduled';
+
     public const STATUS_COLLECTING = 'collecting';
+
     public const STATUS_PARTIALLY_FUNDED = 'partially_funded';
+
     public const STATUS_FUNDED = 'funded';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $table = 'fund_collection_snapshots';

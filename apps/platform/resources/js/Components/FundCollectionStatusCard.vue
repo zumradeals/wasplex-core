@@ -87,13 +87,19 @@ onMounted(load);
         <p v-if="loading" class="text-wpx-muted-dark mt-3 text-xs">Chargement…</p>
 
         <template v-if="data && !loading">
-            <div v-if="data.summary.open_arrears_minor > 0" class="bg-wpx-gold/10 border-wpx-gold/20 mt-4 rounded-xl border p-3.5">
+            <div
+                v-if="data.summary.open_arrears_minor > 0"
+                class="bg-wpx-gold/10 border-wpx-gold/20 mt-4 rounded-xl border p-3.5"
+            >
                 <div class="flex items-start gap-3">
                     <span class="bg-wpx-gold/15 flex h-9 w-9 shrink-0 items-center justify-center rounded-full">◷</span>
                     <div class="min-w-0 flex-1">
-                        <p class="text-wpx-gold text-sm font-extrabold">{{ money(data.summary.open_arrears_minor) }} à régulariser</p>
+                        <p class="text-wpx-gold text-sm font-extrabold">
+                            {{ money(data.summary.open_arrears_minor) }} à régulariser
+                        </p>
                         <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                            Alimentez votre Solde Fonds. Wasplex pourra compléter les engagements déjà constitués sans rendre votre Wallet négatif.
+                            Alimentez votre Solde Fonds. Wasplex pourra compléter les engagements déjà constitués sans
+                            rendre votre Wallet négatif.
                         </p>
                     </div>
                 </div>
@@ -116,7 +122,9 @@ onMounted(load);
                     <div class="mt-3 grid grid-cols-3 gap-2">
                         <div>
                             <p class="text-wpx-muted-dark text-[9px] uppercase">Solidarité</p>
-                            <p class="text-wpx-white-soft mt-0.5 text-xs font-bold">{{ money(item.solidarity_due_minor) }}</p>
+                            <p class="text-wpx-white-soft mt-0.5 text-xs font-bold">
+                                {{ money(item.solidarity_due_minor) }}
+                            </p>
                         </div>
                         <div>
                             <p class="text-wpx-muted-dark text-[9px] uppercase">Frais</p>
@@ -124,7 +132,10 @@ onMounted(load);
                         </div>
                         <div>
                             <p class="text-wpx-muted-dark text-[9px] uppercase">Reste</p>
-                            <p class="mt-0.5 text-xs font-bold" :class="item.arrears_minor > 0 ? 'text-wpx-gold' : 'text-wpx-success-light'">
+                            <p
+                                class="mt-0.5 text-xs font-bold"
+                                :class="item.arrears_minor > 0 ? 'text-wpx-gold' : 'text-wpx-success-light'"
+                            >
                                 {{ money(item.arrears_minor) }}
                             </p>
                         </div>
@@ -132,13 +143,18 @@ onMounted(load);
 
                     <div class="border-wpx-border-dark mt-3 border-t pt-2.5">
                         <p v-if="item.collection_status === 'scheduled'" class="text-wpx-muted-dark text-[11px]">
-                            Prélèvement prévu après le <span class="text-wpx-white-soft font-semibold">{{ dateLabel(item.scheduled_at) }}</span>.
+                            Prélèvement prévu après le
+                            <span class="text-wpx-white-soft font-semibold">{{ dateLabel(item.scheduled_at) }}</span
+                            >.
                         </p>
                         <p v-else-if="item.arrears_minor > 0" class="text-wpx-muted-dark text-[11px]">
-                            Délai de régularisation : <span class="text-wpx-gold font-semibold">{{ dateLabel(item.arrear_grace_ends_at) }}</span>.
+                            Délai de régularisation :
+                            <span class="text-wpx-gold font-semibold">{{ dateLabel(item.arrear_grace_ends_at) }}</span
+                            >.
                         </p>
                         <p v-else class="text-wpx-muted-dark text-[11px]">
-                            Payé : {{ money(item.solidarity_paid_minor) }} · Frais prélevés : {{ money(item.fee_paid_minor) }}
+                            Payé : {{ money(item.solidarity_paid_minor) }} · Frais prélevés :
+                            {{ money(item.fee_paid_minor) }}
                         </p>
                     </div>
                 </article>
@@ -146,7 +162,9 @@ onMounted(load);
 
             <div v-else class="mt-4 rounded-xl bg-white/[0.025] p-4 text-center">
                 <p class="text-wpx-white-soft text-sm font-bold">Aucune contribution prévue</p>
-                <p class="text-wpx-muted-dark mt-1 text-xs">Vos futures contributions apparaîtront ici après leur préavis.</p>
+                <p class="text-wpx-muted-dark mt-1 text-xs">
+                    Vos futures contributions apparaîtront ici après leur préavis.
+                </p>
             </div>
         </template>
     </section>

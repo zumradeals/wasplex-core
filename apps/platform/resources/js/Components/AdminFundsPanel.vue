@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
 import AdminFundPartnerQuotes from '@/Components/AdminFundPartnerQuotes.vue';
+import AdminFundCollections from '@/Components/AdminFundCollections.vue';
 
 type ProgramVersion = {
     id: string;
@@ -20,6 +21,8 @@ type ProgramVersion = {
     wasplex_fee_minor: number;
     notice_hours: number;
     grace_period_days: number;
+    arrears_grace_days: number;
+    max_simultaneous_collections: number;
 };
 type Program = { id: string; code: string; name: string; status: string; versions: ProgramVersion[] };
 type Category = { id: string; code: string; name: string; icon: string | null; is_active: boolean };
@@ -75,6 +78,8 @@ const programForm = ref({
     wasplex_fee_minor: 100,
     notice_hours: 24,
     grace_period_days: 7,
+    arrears_grace_days: 7,
+    max_simultaneous_collections: 1,
 });
 const categoryForm = ref({ code: '', name: '', icon: '🎯', description: '' });
 const reviewForm = ref({ decision: 'approve', note: '' });
@@ -116,6 +121,8 @@ function resetProgram(): void {
         wasplex_fee_minor: 100,
         notice_hours: 24,
         grace_period_days: 7,
+        arrears_grace_days: 7,
+        max_simultaneous_collections: 1,
     };
     showProgram.value = true;
 }
@@ -145,6 +152,8 @@ async function createProgram(): Promise<void> {
             wasplex_fee_minor: programForm.value.wasplex_fee_minor,
             notice_hours: programForm.value.notice_hours,
             grace_period_days: programForm.value.grace_period_days,
+            arrears_grace_days: programForm.value.arrears_grace_days,
+            max_simultaneous_collections: programForm.value.max_simultaneous_collections,
         });
         await http.post(`/admin/funds/program-versions/${version.data.id}/publish`);
         showProgram.value = false;
@@ -271,6 +280,8 @@ onMounted(load);
             </section>
 
             <AdminFundPartnerQuotes />
+
+            <AdminFundCollections />
 
             <section class="flex flex-col gap-3">
                 <div class="flex items-center justify-between">
@@ -506,6 +517,20 @@ onMounted(load);
                         <label class="text-wpx-muted-dark text-xs"
                             >Délai de grâce (jours)<input
                                 v-model.number="programForm.grace_period_days"
+                                type="number"
+                                min="1"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs"
+                            >Grâce arriérés (jours)<input
+                                v-model.number="programForm.arrears_grace_days"
+                                type="number"
+                                min="1"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs"
+                            >Collectes simultanées<input
+                                v-model.number="programForm.max_simultaneous_collections"
                                 type="number"
                                 min="1"
                                 class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"

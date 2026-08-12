@@ -9,7 +9,6 @@ use App\Modules\Funds\Infrastructure\Models\FundCollectionDebit;
 use App\Modules\Funds\Infrastructure\Models\FundCollectionParticipant;
 use App\Modules\Funds\Infrastructure\Models\FundCollectionSnapshot;
 use App\Modules\Funds\Infrastructure\Models\FundMembership;
-use App\Modules\Funds\Infrastructure\Models\FundProgramVersion;
 use App\Modules\Funds\Infrastructure\Models\FundWish;
 use App\Modules\Ledger\Application\Services\LedgerPostingContract;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;

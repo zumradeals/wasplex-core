@@ -14,7 +14,9 @@ final class FundArrear extends Model
     use HasUlids;
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_SETTLED = 'settled';
+
     public const STATUS_WAIVED = 'waived';
 
     protected $table = 'fund_arrears';

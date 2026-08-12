@@ -42,8 +42,11 @@ const busyId = ref('');
 const error = ref('');
 const data = ref<Data | null>(null);
 
-const activeSnapshots = computed(() =>
-    data.value?.snapshots.filter((item) => ['scheduled', 'collecting', 'partially_funded', 'failed'].includes(item.status)) ?? [],
+const activeSnapshots = computed(
+    () =>
+        data.value?.snapshots.filter((item) =>
+            ['scheduled', 'collecting', 'partially_funded', 'failed'].includes(item.status),
+        ) ?? [],
 );
 
 function money(value: number, currency = 'XOF'): string {
@@ -117,10 +120,15 @@ onMounted(load);
                 <p class="text-wpx-cyan text-[10px] font-bold tracking-[0.16em] uppercase">Collecte automatique</p>
                 <h3 class="text-wpx-white-soft mt-1 text-lg font-extrabold">Snapshots & contributions</h3>
                 <p class="text-wpx-muted-dark mt-1 max-w-2xl text-xs leading-relaxed">
-                    Chaque collecte est figée avant le préavis : participants, plafonds, solidarité, frais et règle de calcul restent auditables.
+                    Chaque collecte est figée avant le préavis : participants, plafonds, solidarité, frais et règle de
+                    calcul restent auditables.
                 </p>
             </div>
-            <button type="button" class="border-wpx-border-dark text-wpx-cyan rounded-lg border px-3 py-2 text-xs font-bold" @click="load">
+            <button
+                type="button"
+                class="border-wpx-border-dark text-wpx-cyan rounded-lg border px-3 py-2 text-xs font-bold"
+                @click="load"
+            >
                 Actualiser
             </button>
         </div>
@@ -144,19 +152,29 @@ onMounted(load);
                 </div>
                 <div class="bg-wpx-navy-950 rounded-lg p-3">
                     <p class="text-wpx-muted-dark text-[10px] uppercase">À régulariser</p>
-                    <p class="text-wpx-gold mt-1 text-sm font-extrabold">{{ money(data.metrics.open_arrears_minor, 'XOF') }}</p>
+                    <p class="text-wpx-gold mt-1 text-sm font-extrabold">
+                        {{ money(data.metrics.open_arrears_minor, 'XOF') }}
+                    </p>
                 </div>
             </div>
 
             <div v-if="data.ready_wishes.length" class="mt-5">
                 <p class="text-wpx-white-soft text-sm font-bold">Prêts à préparer</p>
                 <div class="mt-2 grid gap-2 lg:grid-cols-2">
-                    <article v-for="wish in data.ready_wishes" :key="wish.id" class="bg-wpx-navy-950 border-wpx-border-dark rounded-xl border p-3.5">
+                    <article
+                        v-for="wish in data.ready_wishes"
+                        :key="wish.id"
+                        class="bg-wpx-navy-950 border-wpx-border-dark rounded-xl border p-3.5"
+                    >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">{{ wish.reference }} · {{ wish.category?.icon }} {{ wish.category?.name }}</p>
+                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">
+                                    {{ wish.reference }} · {{ wish.category?.icon }} {{ wish.category?.name }}
+                                </p>
                                 <p class="text-wpx-white-soft mt-1 truncate text-sm font-bold">{{ wish.title }}</p>
-                                <p class="text-wpx-muted-dark mt-1 text-[11px]">{{ wish.program?.name }} · {{ wish.provider?.name }}</p>
+                                <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                                    {{ wish.program?.name }} · {{ wish.provider?.name }}
+                                </p>
                             </div>
                             <button
                                 type="button"
@@ -169,7 +187,9 @@ onMounted(load);
                         </div>
                         <div class="mt-3 flex items-center justify-between text-xs">
                             <span class="text-wpx-muted-dark">Coût validé</span>
-                            <span class="text-wpx-white-soft font-bold">{{ money(wish.validated_amount_minor, wish.currency) }}</span>
+                            <span class="text-wpx-white-soft font-bold">{{
+                                money(wish.validated_amount_minor, wish.currency)
+                            }}</span>
                         </div>
                     </article>
                 </div>
@@ -178,30 +198,48 @@ onMounted(load);
             <div v-if="activeSnapshots.length" class="mt-5">
                 <p class="text-wpx-white-soft text-sm font-bold">Collectes actives</p>
                 <div class="mt-2 flex flex-col gap-2">
-                    <article v-for="snapshot in activeSnapshots" :key="snapshot.id" class="bg-wpx-navy-950 border-wpx-border-dark rounded-xl border p-3.5">
+                    <article
+                        v-for="snapshot in activeSnapshots"
+                        :key="snapshot.id"
+                        class="bg-wpx-navy-950 border-wpx-border-dark rounded-xl border p-3.5"
+                    >
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">{{ snapshot.wish?.reference }} · {{ snapshot.program?.name }}</p>
+                                <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">
+                                    {{ snapshot.wish?.reference }} · {{ snapshot.program?.name }}
+                                </p>
                                 <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ snapshot.wish?.title }}</p>
-                                <p class="text-wpx-cyan mt-1 text-[11px] font-bold">{{ statusLabel(snapshot.status) }}</p>
+                                <p class="text-wpx-cyan mt-1 text-[11px] font-bold">
+                                    {{ statusLabel(snapshot.status) }}
+                                </p>
                             </div>
                             <button
                                 type="button"
                                 class="border-wpx-cyan/30 text-wpx-cyan rounded-lg border px-3 py-2 text-[11px] font-bold disabled:opacity-40"
-                                :disabled="busyId === snapshot.id || (!due(snapshot) && snapshot.status === 'scheduled')"
+                                :disabled="
+                                    busyId === snapshot.id || (!due(snapshot) && snapshot.status === 'scheduled')
+                                "
                                 @click="execute(snapshot)"
                             >
-                                {{ snapshot.status === 'scheduled' && !due(snapshot) ? 'Préavis en cours' : 'Exécuter / réessayer' }}
+                                {{
+                                    snapshot.status === 'scheduled' && !due(snapshot)
+                                        ? 'Préavis en cours'
+                                        : 'Exécuter / réessayer'
+                                }}
                             </button>
                         </div>
                         <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                             <div>
                                 <p class="text-wpx-muted-dark text-[9px] uppercase">Collectif</p>
-                                <p class="text-wpx-white-soft text-xs font-bold">{{ money(snapshot.collective_amount_minor) }}</p>
+                                <p class="text-wpx-white-soft text-xs font-bold">
+                                    {{ money(snapshot.collective_amount_minor) }}
+                                </p>
                             </div>
                             <div>
                                 <p class="text-wpx-muted-dark text-[9px] uppercase">Collecté</p>
-                                <p class="text-wpx-success-light text-xs font-bold">{{ money(snapshot.solidarity_paid_minor) }}</p>
+                                <p class="text-wpx-success-light text-xs font-bold">
+                                    {{ money(snapshot.solidarity_paid_minor) }}
+                                </p>
                             </div>
                             <div>
                                 <p class="text-wpx-muted-dark text-[9px] uppercase">Participants</p>
@@ -212,7 +250,9 @@ onMounted(load);
                                 <p class="text-wpx-gold text-xs font-bold">{{ money(snapshot.arrears_minor) }}</p>
                             </div>
                         </div>
-                        <p class="text-wpx-muted-dark mt-3 truncate font-mono text-[9px]">Snapshot {{ snapshot.snapshot_hash }}</p>
+                        <p class="text-wpx-muted-dark mt-3 truncate font-mono text-[9px]">
+                            Snapshot {{ snapshot.snapshot_hash }}
+                        </p>
                     </article>
                 </div>
             </div>

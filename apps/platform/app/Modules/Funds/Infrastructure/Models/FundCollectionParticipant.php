@@ -16,9 +16,13 @@ final class FundCollectionParticipant extends Model
     use HasUlids;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_PARTIAL = 'partial';
+
     public const STATUS_ARREARS = 'arrears';
+
     public const STATUS_SKIPPED = 'skipped';
 
     protected $table = 'fund_collection_participants';

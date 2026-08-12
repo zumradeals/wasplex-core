@@ -13,7 +13,9 @@ final class FundCollectionDebit extends Model
     use HasUlids;
 
     public const STATUS_SUCCESS = 'success';
+
     public const STATUS_PARTIAL = 'partial';
+
     public const STATUS_FAILED = 'failed';
 
     protected $table = 'fund_collection_debits';
