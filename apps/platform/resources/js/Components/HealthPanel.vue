@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import HealthProfessionalAccessRequestsPanel from '@/Components/HealthProfessionalAccessRequestsPanel.vue';
 
 type HealthTab = 'capsule' | 'consents' | 'representatives' | 'accesses';
 
