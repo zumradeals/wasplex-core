@@ -66,14 +66,22 @@ const quotaPercent = computed(() => {
     return Math.min(100, Math.round((quota.value.consumed / quota.value.allocated) * 100));
 });
 
-function formatAttention(units: number): string {
-    const totalSeconds = Math.max(0, units) * 15;
+function formatCredits(units: number): string {
+    return `${numberFormatter.format(Math.max(0, units))} crédit${units === 1 ? '' : 's'}`;
+}
+
+function formatAttentionEquivalent(units: number, attentionUnitSeconds = 15): string {
+    const totalSeconds = Math.max(0, units) * Math.max(1, attentionUnitSeconds);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     if (hours > 0) return `${hours} h ${minutes.toString().padStart(2, '0')}`;
     if (minutes > 0) return `${minutes} min${seconds ? ` ${seconds} s` : ''}`;
     return `${seconds} s`;
+}
+
+function formatPlanAttentionEquivalent(plan: Plan): string {
+    return formatAttentionEquivalent(plan.quota_monthly ?? 0, plan.attention_unit_seconds);
 }
 
 function planPrice(plan: Plan): string {
@@ -160,7 +168,7 @@ void load();
                         </template>
                     </div>
                     <span class="bg-wpx-gold/15 text-wpx-gold rounded-wpx-md px-2.5 py-1.5 text-xs font-bold">
-                        {{ quota ? `${formatAttention(quota.remaining)} restantes` : '—' }}
+                        {{ quota ? `${formatCredits(quota.remaining)} restants` : '—' }}
                     </span>
                 </div>
 
@@ -172,8 +180,11 @@ void load();
                         />
                     </div>
                     <p class="text-wpx-muted-dark mt-1.5 text-[11px]">
-                        {{ formatAttention(quota.consumed) }} / {{ formatAttention(quota.allocated) }} d’attention
-                        utilisée ce cycle
+                        {{ formatCredits(quota.consumed) }} / {{ formatCredits(quota.allocated) }} utilisés ce cycle
+                    </p>
+                    <p v-if="currentPlan" class="text-wpx-muted-dark mt-0.5 text-[10px]">
+                        1 crédit = {{ currentPlan.attention_unit_seconds }} s · équivalent restant ≈
+                        {{ formatAttentionEquivalent(quota.remaining, currentPlan.attention_unit_seconds) }}
                     </p>
                 </div>
             </div>
@@ -248,19 +259,23 @@ void load();
                             </div>
                             <div class="mt-3 grid grid-cols-2 gap-2">
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
-                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Attention rémunérée / mois</p>
+                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Crédits d’attention / mois</p>
                                     <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
-                                        {{ formatAttention(plan.quota_monthly ?? 0) }}
+                                        {{ formatCredits(plan.quota_monthly ?? 0) }}
                                     </p>
                                 </div>
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-2.5">
-                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Gain par 15 s</p>
+                                    <p class="text-wpx-muted-dark text-[10px] uppercase">Gain par crédit</p>
                                     <p class="text-wpx-white-soft mt-0.5 text-sm font-bold">
                                         {{ numberFormatter.format(plan.reward_per_attention_unit_minor ?? 0) }} WP
                                     </p>
                                 </div>
                             </div>
-                            <p class="text-wpx-muted-dark mt-2 text-[10px] italic">
+                            <p class="text-wpx-muted-dark mt-2 text-[10px]">
+                                1 crédit = {{ plan.attention_unit_seconds }} s d’attention · ≈
+                                {{ formatPlanAttentionEquivalent(plan) }} au total
+                            </p>
+                            <p class="text-wpx-muted-dark mt-1 text-[10px] italic">
                                 La quantité de publicités dépend toujours des campagnes compatibles disponibles.
                             </p>
                             <button
