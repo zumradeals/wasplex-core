@@ -13,6 +13,7 @@ return new class extends Migration
         Schema::create('identity_verifications', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->foreignUlid('account_id')->unique()->constrained('accounts')->cascadeOnDelete();
+            $table->foreignUlid('reviewed_by_account_id')->nullable()->constrained('accounts')->nullOnDelete();
             $table->string('status', 24)->default('draft');
             $table->string('document_type', 32)->nullable();
             $table->string('document_country', 2)->nullable();
