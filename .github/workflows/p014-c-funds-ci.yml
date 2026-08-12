@@ -88,6 +88,19 @@ jobs:
                   raise SystemExit('AdminFundsPanel anchor not found')
               s = s.replace(anchor, '            <AdminFundPartnerQuotes />\n\n' + anchor, 1)
           p.write_text(s)
+
+          p = Path('apps/platform/resources/js/Components/AdminFundPartnerQuotes.vue')
+          s = p.read_text()
+          s = s.replace("import { computed, onMounted, ref } from 'vue';", "import { onMounted, ref } from 'vue';")
+          s = s.replace("\nconst openWishes = computed(() => data.value?.wishes.filter((wish) => !wish.selected_quote_id) ?? []);\n", "\n")
+          p.write_text(s)
+
+          p = Path('apps/platform/resources/js/Components/ProfessionalFundQuotesPanel.vue')
+          s = p.read_text().replace(
+              'const props = defineProps<{ canRespond: boolean }>();',
+              'defineProps<{ canRespond: boolean }>();',
+          )
+          p.write_text(s)
           PY
 
       - uses: shivammathur/setup-php@v2
