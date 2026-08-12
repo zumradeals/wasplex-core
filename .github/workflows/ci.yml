@@ -72,6 +72,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Normalize P014-D in runner
+        run: |
+          npx prettier --write resources/js/Components/AdminFundCollections.vue resources/js/Components/FundCollectionStatusCard.vue
+          ./vendor/bin/pint app/Modules/Funds tests/Feature/Funds/FundsAutomaticCollectionTest.php
+
       - name: Check frontend formatting
         run: npm run format:check
 
@@ -98,6 +103,11 @@ jobs:
           DB_PASSWORD: wasplex_ci_only
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+
+      - name: Show P014-D runner diff
+        if: always()
+        working-directory: .
+        run: git diff -- apps/platform/app/Modules/Funds apps/platform/resources/js/Components/AdminFundCollections.vue apps/platform/resources/js/Components/FundCollectionStatusCard.vue apps/platform/tests/Feature/Funds/FundsAutomaticCollectionTest.php
 
       # TODO(P001+): réactiver "composer types:check" (Larastan/PHPStan)
       # dès que le paquet larastan/larastan est ajouté à composer.json depuis
