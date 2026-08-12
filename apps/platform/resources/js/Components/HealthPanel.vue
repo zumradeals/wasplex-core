@@ -403,9 +403,21 @@ onMounted(load);
                     Une personne à contacter si vous ne pouvez pas répondre.
                 </p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-3">
-                    <input v-model="emergencyName" class="health-input" placeholder="Nom" />
-                    <input v-model="emergencyPhone" class="health-input" placeholder="Téléphone" />
-                    <input v-model="emergencyRelationship" class="health-input" placeholder="Lien avec vous" />
+                    <input
+                        v-model="emergencyName"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Nom"
+                    />
+                    <input
+                        v-model="emergencyPhone"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Téléphone"
+                    />
+                    <input
+                        v-model="emergencyRelationship"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Lien avec vous"
+                    />
                 </div>
             </section>
 
@@ -415,9 +427,21 @@ onMounted(load);
                     Facultatif. La vérification professionnelle viendra avec P019.
                 </p>
                 <div class="mt-3 grid gap-2 sm:grid-cols-3">
-                    <input v-model="referenceName" class="health-input" placeholder="Nom" />
-                    <input v-model="referenceType" class="health-input" placeholder="Type / spécialité" />
-                    <input v-model="referencePhone" class="health-input" placeholder="Téléphone" />
+                    <input
+                        v-model="referenceName"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Nom"
+                    />
+                    <input
+                        v-model="referenceType"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Type / spécialité"
+                    />
+                    <input
+                        v-model="referencePhone"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Téléphone"
+                    />
                 </div>
             </section>
 
@@ -486,16 +510,27 @@ onMounted(load);
                 </p>
 
                 <div class="mt-3 flex flex-col gap-2">
-                    <input v-model="representativeName" class="health-input" placeholder="Nom complet" />
+                    <input
+                        v-model="representativeName"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                        placeholder="Nom complet"
+                    />
                     <div class="grid grid-cols-2 gap-2">
-                        <input v-model="representativePhone" class="health-input" placeholder="Téléphone" />
+                        <input
+                            v-model="representativePhone"
+                            class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                            placeholder="Téléphone"
+                        />
                         <input
                             v-model="representativeRelationship"
-                            class="health-input"
+                            class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
                             placeholder="Lien : parent, conjoint…"
                         />
                     </div>
-                    <select v-model="representativeScope" class="health-input">
+                    <select
+                        v-model="representativeScope"
+                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                    >
                         <option value="emergency_contact">Contact d’urgence</option>
                         <option value="legal_representation">Représentation légale à vérifier</option>
                     </select>
@@ -612,9 +647,3 @@ onMounted(load);
         </section>
     </div>
 </template>
-
-<style scoped>
-.health-input {
-    @apply bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark w-full rounded-xl border px-3 py-3 text-xs outline-none;
-}
-</style>
