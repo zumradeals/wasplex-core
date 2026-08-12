@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import AdminAlertInstitutionalReferral from '@/Components/AdminAlertInstitutionalReferral.vue';
 
 interface AdminAlert {
     id: string;
@@ -291,6 +292,8 @@ onMounted(load);
                     <p class="text-wpx-muted-dark mt-1 text-[9px]">
                         Ce message sera visible par le citoyen dans Mes déclarations.
                     </p>
+                    <AdminAlertInstitutionalReferral :alert-id="selected.id" @referred="load" />
+
                     <div class="mt-4 grid grid-cols-2 gap-2">
                         <button
                             type="button"

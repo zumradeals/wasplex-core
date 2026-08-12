@@ -79,8 +79,8 @@ onMounted(load);
             <div>
                 <p class="text-wpx-white-soft text-sm font-black">Demandes d’accès professionnelles</p>
                 <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                    Un établissement ou professionnel vérifié doit vous demander l’autorisation avant un accès normal à votre capsule.
-                    Une autorisation accordée expire après 24 heures.
+                    Un établissement ou professionnel vérifié doit vous demander l’autorisation avant un accès normal à
+                    votre capsule. Une autorisation accordée expire après 24 heures.
                 </p>
             </div>
             <button type="button" class="text-wpx-cyan text-[10px] font-black" @click="load">Rafraîchir</button>
@@ -103,8 +103,12 @@ onMounted(load);
             >
                 <div class="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                        <p class="text-wpx-white-soft text-xs font-black">{{ item.institution_name || 'Acteur Santé vérifié' }}</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[9px]">Demandé le {{ formatDate(item.requested_at) }}</p>
+                        <p class="text-wpx-white-soft text-xs font-black">
+                            {{ item.institution_name || 'Acteur Santé vérifié' }}
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-[9px]">
+                            Demandé le {{ formatDate(item.requested_at) }}
+                        </p>
                     </div>
                     <span
                         class="rounded-full px-2.5 py-1 text-[8px] font-black"
@@ -113,7 +117,7 @@ onMounted(load);
                                 ? 'bg-amber-400/10 text-amber-200'
                                 : item.status === 'approved'
                                   ? 'bg-emerald-500/10 text-emerald-300'
-                                  : 'bg-white/5 text-wpx-muted-dark'
+                                  : 'text-wpx-muted-dark bg-white/5'
                         "
                     >
                         {{ statusLabel(item.status) }}

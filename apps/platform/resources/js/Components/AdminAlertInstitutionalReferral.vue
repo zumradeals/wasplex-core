@@ -55,7 +55,8 @@ async function refer(): Promise<void> {
             reason: reason.value.trim(),
             institutional_reference: reference.value.trim() || null,
         });
-        notice.value = 'Dossier transmis. Il apparaîtra comme “pris en charge” seulement après action réelle de l’institution.';
+        notice.value =
+            'Dossier transmis. Il apparaîtra comme “pris en charge” seulement après action réelle de l’institution.';
         reason.value = '';
         reference.value = '';
         emit('referred');
@@ -83,7 +84,8 @@ onMounted(loadDestinations);
     <section class="border-wpx-cyan/15 bg-wpx-cyan/5 mt-4 rounded-2xl border p-4">
         <p class="text-wpx-white-soft text-xs font-black">Transmettre à une institution vérifiée</p>
         <p class="text-wpx-muted-dark mt-1 text-[9px] leading-relaxed">
-            La transmission ne signifie pas “prise en charge”. Ce statut apparaîtra uniquement lorsqu’un agent de l’institution aura accusé réception ou démarré l’intervention.
+            La transmission ne signifie pas “prise en charge”. Ce statut apparaîtra uniquement lorsqu’un agent de
+            l’institution aura accusé réception ou démarré l’intervention.
         </p>
 
         <p v-if="notice" class="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-[9px] font-bold text-emerald-300">
@@ -103,7 +105,8 @@ onMounted(loadDestinations);
             >
                 <option value="" disabled>Choisir une institution de sécurité</option>
                 <option v-for="destination in destinations" :key="destination.id" :value="destination.id">
-                    {{ destination.name }}{{ territoryLabel(destination.territory) ? ` · ${territoryLabel(destination.territory)}` : '' }}
+                    {{ destination.name
+                    }}{{ territoryLabel(destination.territory) ? ` · ${territoryLabel(destination.territory)}` : '' }}
                 </option>
             </select>
             <textarea

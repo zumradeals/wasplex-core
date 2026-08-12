@@ -193,7 +193,8 @@ onMounted(load);
                         Seuls les signalements explicitement transmis à votre organisation apparaissent ici.
                     </template>
                     <template v-else-if="isHealth">
-                        Aucune donnée médicale n’est ouverte automatiquement. Chaque accès normal dépend de la décision du patient.
+                        Aucune donnée médicale n’est ouverte automatiquement. Chaque accès normal dépend de la décision
+                        du patient.
                     </template>
                     <template v-else> Aucun dossier métier n’est autorisé pour ce type d’espace. </template>
                 </p>
@@ -226,11 +227,19 @@ onMounted(load);
                                 </span>
                             </div>
                             <p class="text-wpx-white-soft mt-2 text-xs font-black">{{ item.alert?.title }}</p>
-                            <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">{{ item.alert?.description }}</p>
-                            <p class="text-wpx-muted-dark mt-2 text-[9px]">
-                                {{ [item.alert?.area_label, item.alert?.city].filter(Boolean).join(' · ') || 'Zone non précisée' }}
+                            <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
+                                {{ item.alert?.description }}
                             </p>
-                            <p v-if="item.alert?.exact_location" class="mt-2 rounded-xl bg-amber-400/8 px-3 py-2 text-[9px] text-amber-200">
+                            <p class="text-wpx-muted-dark mt-2 text-[9px]">
+                                {{
+                                    [item.alert?.area_label, item.alert?.city].filter(Boolean).join(' · ') ||
+                                    'Zone non précisée'
+                                }}
+                            </p>
+                            <p
+                                v-if="item.alert?.exact_location"
+                                class="mt-2 rounded-xl bg-amber-400/8 px-3 py-2 text-[9px] text-amber-200"
+                            >
                                 Localisation privée transmise : {{ item.alert.exact_location }}
                             </p>
                             <p v-if="item.institutional_reference" class="text-wpx-muted-dark mt-2 text-[9px]">
@@ -285,7 +294,10 @@ onMounted(load);
         </template>
 
         <template v-else-if="isHealth">
-            <form class="mb-4 grid gap-2 rounded-2xl bg-black/10 p-3 md:grid-cols-2" @submit.prevent="requestHealthAccess">
+            <form
+                class="mb-4 grid gap-2 rounded-2xl bg-black/10 p-3 md:grid-cols-2"
+                @submit.prevent="requestHealthAccess"
+            >
                 <input
                     v-model="patientAccountId"
                     required
@@ -315,7 +327,9 @@ onMounted(load);
                     class="border-wpx-border-dark bg-wpx-navy-950/50 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3"
                 >
                     <div>
-                        <p class="text-wpx-white-soft text-xs font-black">Patient {{ item.patient_account_id?.slice(-8) || '—' }}</p>
+                        <p class="text-wpx-white-soft text-xs font-black">
+                            Patient {{ item.patient_account_id?.slice(-8) || '—' }}
+                        </p>
                         <p class="text-wpx-muted-dark mt-1 text-[9px]">{{ statusLabel(item.status) }}</p>
                     </div>
                     <button
@@ -334,7 +348,8 @@ onMounted(load);
             <div v-if="canEmergency" class="mt-5 border-t border-white/5 pt-4">
                 <p class="text-wpx-white-soft text-xs font-black">Accès d’urgence</p>
                 <p class="text-wpx-muted-dark mt-1 text-[9px] leading-relaxed">
-                    Disponible uniquement si le patient a activé son consentement d’urgence. Chaque ouverture est journalisée.
+                    Disponible uniquement si le patient a activé son consentement d’urgence. Chaque ouverture est
+                    journalisée.
                 </p>
                 <form class="mt-3 grid gap-2 md:grid-cols-2" @submit.prevent="readEmergencyCapsule">
                     <input
@@ -363,9 +378,13 @@ onMounted(load);
             <div v-if="capsule" class="border-wpx-cyan/20 bg-wpx-cyan/5 mt-4 rounded-2xl border p-4">
                 <div class="flex items-center justify-between gap-2">
                     <p class="text-wpx-white-soft text-xs font-black">Capsule autorisée</p>
-                    <button type="button" class="text-wpx-muted-dark text-[9px] font-bold" @click="capsule = null">Fermer</button>
+                    <button type="button" class="text-wpx-muted-dark text-[9px] font-bold" @click="capsule = null">
+                        Fermer
+                    </button>
                 </div>
-                <pre class="text-wpx-muted-dark mt-3 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed">{{ JSON.stringify(capsule, null, 2) }}</pre>
+                <pre class="text-wpx-muted-dark mt-3 overflow-x-auto text-[10px] leading-relaxed whitespace-pre-wrap">{{
+                    JSON.stringify(capsule, null, 2)
+                }}</pre>
             </div>
         </template>
 
