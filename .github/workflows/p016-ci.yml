@@ -72,4 +72,4 @@ jobs:
           DB_PASSWORD: wasplex_ci_only
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-# rerun after P016-A formatting
+# rerun after Tailwind scoped-style fix
