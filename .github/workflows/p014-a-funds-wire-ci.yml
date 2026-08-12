@@ -16,11 +16,11 @@ jobs:
         image: postgres:17
         env:
           POSTGRES_DB: wasplex_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_local_only
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U postgres"
+          --health-cmd "pg_isready -U wasplex"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -117,7 +117,7 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-          printf '\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_DATABASE=wasplex_test\nDB_USERNAME=postgres\nDB_PASSWORD=postgres\nREDIS_HOST=127.0.0.1\nREDIS_PORT=6379\n' >> .env
+          printf '\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_DATABASE=wasplex_test\nDB_USERNAME=wasplex\nDB_PASSWORD=wasplex_local_only\nREDIS_HOST=127.0.0.1\nREDIS_PORT=6379\n' >> .env
 
       - name: Format implementation
         working-directory: apps/platform
