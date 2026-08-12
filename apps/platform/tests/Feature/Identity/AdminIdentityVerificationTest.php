@@ -39,6 +39,24 @@ function submitKycForCurrentMember(): IdentityVerification
     return IdentityVerification::query()->firstOrFail();
 }
 
+function loginExistingKycAccount(string $identifier, string $password = 'Password123!'): void
+{
+    test()->withCredentials();
+
+    $login = test()->postJson('/api/login', [
+        'identifier_value' => $identifier,
+        'password' => $password,
+    ])->assertOk();
+
+    $sessionCookieName = config('session.cookie');
+
+    foreach ($login->headers->getCookies() as $cookie) {
+        if ($cookie->getName() === $sessionCookieName) {
+            test()->withUnencryptedCookie($sessionCookieName, $cookie->getValue());
+        }
+    }
+}
+
 test('an authorized admin can inspect private KYC data and approve a submitted dossier', function (): void {
     Storage::fake('local');
     registerAndLogin('kyc-subject@wasplex.test');
@@ -92,10 +110,7 @@ test('an authorized admin can reject a dossier with a reason visible to the memb
     ])->assertOk()->assertJsonPath('verification.status', 'rejected');
 
     test()->postJson('/api/logout')->assertNoContent();
-    test()->postJson('/api/login', [
-        'identifier_value' => 'kyc-reject-subject@wasplex.test',
-        'password' => 'Password123!',
-    ])->assertOk();
+    loginExistingKycAccount('kyc-reject-subject@wasplex.test');
 
     test()->getJson('/api/me/identity-verification')
         ->assertOk()
