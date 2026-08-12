@@ -10,6 +10,7 @@ import ConsentsPanel from '@/Components/ConsentsPanel.vue';
 import EligibleCampaignsPanel from '@/Components/EligibleCampaignsPanel.vue';
 import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';
 import FeedPanel from '@/Components/FeedPanel.vue';
+import AlertsPanel from '@/Components/AlertsPanel.vue';
 import WalletPanel from '@/Components/WalletPanel.vue';
 import IdentityVerificationPanel from '@/Components/IdentityVerificationPanel.vue';
 import AccountSecurityPanel from '@/Components/AccountSecurityPanel.vue';
@@ -26,6 +27,7 @@ const tabs = [
     { key: 'feed', label: 'Feed' },
     { key: 'fonds', label: 'Fonds' },
     { key: 'wallet', label: 'Wallet' },
+    { key: 'alertes', label: 'Alertes' },
     { key: 'espace', label: 'Mon Espace' },
 ] as const;
 
@@ -151,6 +153,8 @@ onMounted(loadMe);
                         @go-to-subscription="goToSubscriptionFromWallet"
                     />
                 </div>
+
+                <AlertsPanel v-else-if="activeTab === 'alertes'" />
 
                 <div v-else-if="activeTab === 'espace'" class="flex flex-col gap-3.5">
                     <div class="flex items-center justify-between px-0.5">
@@ -388,14 +392,14 @@ onMounted(loadMe);
                     v-else
                     class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 text-wpx-muted-dark flex h-64 flex-col items-center justify-center gap-2 text-sm"
                 >
-                    <span class="bg-wpx-gold/10 flex h-12 w-12 items-center justify-center rounded-full text-2xl">
-                        🎯
-                    </span>
+                    <span class="bg-wpx-gold/10 flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+                        >🎯</span
+                    >
                     {{ tabs.find((t) => t.key === activeTab)?.label }} — bientôt disponible
                 </div>
             </main>
 
-            <nav class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-4 items-end border-t px-1 pt-1 pb-2">
+            <nav class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-5 items-end border-t px-1 pt-1 pb-2">
                 <button
                     v-for="tab in tabs"
                     :key="tab.key"
@@ -442,6 +446,21 @@ onMounted(loadMe);
                                 stroke-width="1.6"
                             />
                             <circle cx="12" cy="12" r="1" :fill="activeTab === 'fonds' ? '#F2C14E' : '#A9B7C8'" />
+                        </svg>
+                        <svg v-else-if="tab.key === 'alertes'" width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M18 9a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"
+                                :stroke="activeTab === 'alertes' ? '#F2C14E' : '#A9B7C8'"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M10 20h4"
+                                :stroke="activeTab === 'alertes' ? '#F2C14E' : '#A9B7C8'"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                            />
                         </svg>
                         <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">
                             <circle

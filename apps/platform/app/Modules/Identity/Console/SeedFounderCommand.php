@@ -131,6 +131,9 @@ final class SeedFounderCommand extends Command
             // docs/chantiers/P009-CHANTIER.md: Feed et attention.
             'admin.feed.dashboard.view',
             'admin.feed.risk.review',
+            // docs/02-module-alertes-sante-wasplex.md: P015 Alertes.
+            'admin.alerts.review',
+            'admin.alerts.configuration.manage',
             // docs/chantiers/P011-B-RAPPROCHEMENT.md: rapprochement GeniusPay.
             'admin.reconciliation.review',
         ];
