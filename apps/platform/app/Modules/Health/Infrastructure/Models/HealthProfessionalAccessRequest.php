@@ -16,11 +16,15 @@ final class HealthProfessionalAccessRequest extends Model
     use HasUlids;
 
     public const PURPOSE_CARE_CAPSULE = 'care_capsule';
+
     public const PURPOSE_EMERGENCY_CAPSULE = 'emergency_capsule';
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_DENIED = 'denied';
+
     public const STATUS_EXPIRED = 'expired';
 
     protected $fillable = [
