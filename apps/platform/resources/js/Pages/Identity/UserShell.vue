@@ -9,6 +9,7 @@ import SmartProfilePanel from '@/Components/SmartProfilePanel.vue';
 import ConsentsPanel from '@/Components/ConsentsPanel.vue';
 import EligibleCampaignsPanel from '@/Components/EligibleCampaignsPanel.vue';
 import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';
+import ProfessionalSpaceEntryPanel from '@/Components/ProfessionalSpaceEntryPanel.vue';
 import FeedPanel from '@/Components/FeedPanel.vue';
 import AlertsPanel from '@/Components/AlertsPanel.vue';
 import WalletPanel from '@/Components/WalletPanel.vue';
@@ -340,6 +341,7 @@ onMounted(loadMe);
 
                     <EligibleCampaignsPanel @open-feed="goToFeed" />
                     <BecomeAdvertiserPanel />
+                    <ProfessionalSpaceEntryPanel />
                     <ConsentsPanel />
 
                     <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-lg border">

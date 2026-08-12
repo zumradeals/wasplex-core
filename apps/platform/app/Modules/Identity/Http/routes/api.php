@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Identity\Http\Controllers\Admin\AccountsController;
 use App\Modules\Identity\Http\Controllers\Admin\CapabilityGrantsController;
 use App\Modules\Identity\Http\Controllers\Admin\IdentityVerificationsController;
+use App\Modules\Identity\Http\Controllers\Admin\ProfessionalSpacesController as AdminProfessionalSpacesController;
 use App\Modules\Identity\Http\Controllers\Api\AuthController;
 use App\Modules\Identity\Http\Controllers\Api\MeController;
 use App\Modules\Identity\Http\Controllers\Api\MeIdentityVerificationController;
@@ -15,6 +16,9 @@ use App\Modules\Identity\Http\Controllers\Api\MeSpacesController;
 use App\Modules\Identity\Http\Controllers\Api\OrganizationInvitationsController;
 use App\Modules\Identity\Http\Controllers\Api\OrganizationMembersController;
 use App\Modules\Identity\Http\Controllers\Api\OrganizationsController;
+use App\Modules\Identity\Http\Controllers\Api\ProfessionalSpacesController;
+use App\Modules\Identity\Http\Controllers\Api\ProfessionalWorkspaceController;
+use App\Modules\Identity\Http\Middleware\EnsureActiveProfessionalOrganization;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureRecentMfa;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
@@ -56,6 +60,20 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
         ->middleware(EnsureCapability::class.':organization.manage.self,organization:organization');
     Route::post('/organizations/invitations/{invitation}/accept', [OrganizationInvitationsController::class, 'accept']);
 
+    Route::get('/professional-spaces', [ProfessionalSpacesController::class, 'index']);
+    Route::post('/professional-spaces', [ProfessionalSpacesController::class, 'store']);
+
+    Route::prefix('professional')
+        ->middleware([EnsureActiveProfessionalOrganization::class])
+        ->group(function (): void {
+            Route::get('/workspace', [ProfessionalWorkspaceController::class, 'show'])
+                ->middleware(EnsureCapability::class.':professional.space.access,organization:professional_organization_id');
+            Route::post('/service-points', [ProfessionalWorkspaceController::class, 'storeServicePoint'])
+                ->middleware(EnsureCapability::class.':professional.service-points.manage,organization:professional_organization_id');
+            Route::post('/roles', [ProfessionalWorkspaceController::class, 'assignRole'])
+                ->middleware(EnsureCapability::class.':professional.team.manage,organization:professional_organization_id');
+        });
+
     Route::prefix('admin')
         ->middleware([EnsureRecentMfa::class])
         ->group(function (): void {
@@ -85,5 +103,12 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
                 ->middleware(EnsureCapability::class.':admin.identity-verifications.decide');
             Route::post('/identity-verifications/{verification}/reject', [IdentityVerificationsController::class, 'reject'])
                 ->middleware(EnsureCapability::class.':admin.identity-verifications.decide');
+
+            Route::get('/professional-spaces', [AdminProfessionalSpacesController::class, 'index'])
+                ->middleware(EnsureCapability::class.':admin.professional-spaces.view');
+            Route::get('/professional-spaces/{professionalSpace}', [AdminProfessionalSpacesController::class, 'show'])
+                ->middleware(EnsureCapability::class.':admin.professional-spaces.view');
+            Route::post('/professional-spaces/{professionalSpace}/decision', [AdminProfessionalSpacesController::class, 'decide'])
+                ->middleware(EnsureCapability::class.':admin.professional-spaces.decide');
         });
 });

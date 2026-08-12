@@ -11,6 +11,7 @@ import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';
 import AdminIdentityVerificationsPanel from '@/Components/AdminIdentityVerificationsPanel.vue';
+import AdminProfessionalSpacesPanel from '@/Components/AdminProfessionalSpacesPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminNavIcon from '@/Components/AdminNavIcon.vue';
 import AdminPaymentsSettingsPanel from '@/Components/AdminPaymentsSettingsPanel.vue';
@@ -34,13 +35,14 @@ const nav = [
 ] as const;
 
 type SectionKey = (typeof nav)[number]['key'];
-type UsersTab = 'accounts' | 'kyc';
+type UsersTab = 'accounts' | 'kyc' | 'professionals';
 type AdvertisingTab = 'overview' | 'advertisers' | 'feed' | 'matching' | 'smartprofile';
 type SettingsTab = 'capabilities' | 'payments' | 'audit';
 
 const usersTabs: Array<{ key: UsersTab; label: string }> = [
     { key: 'accounts', label: 'Comptes' },
     { key: 'kyc', label: 'Identité & KYC' },
+    { key: 'professionals', label: 'Professionnels & institutions' },
 ];
 
 const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
@@ -189,7 +191,8 @@ async function logout(): Promise<void> {
                         </button>
                     </div>
                     <AdminUsersPanel v-if="activeUsersTab === 'accounts'" />
-                    <AdminIdentityVerificationsPanel v-else />
+                    <AdminIdentityVerificationsPanel v-else-if="activeUsersTab === 'kyc'" />
+                    <AdminProfessionalSpacesPanel v-else />
                 </section>
 
                 <section v-else-if="activeSection === 'alerts'">
