@@ -15,8 +15,10 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
         Route::get('/', [FundsController::class, 'overview']);
         Route::post('/membership', [FundsController::class, 'join']);
         Route::post('/membership/revoke-mandate', [FundsController::class, 'revokeMandate']);
+        Route::post('/balance/fund', [FundsController::class, 'fundBalance']);
         Route::post('/wishes', [FundsController::class, 'storeWish']);
         Route::post('/wishes/{wish}/submit', [FundsController::class, 'submitWish']);
+        Route::post('/wishes/{wish}/contributions', [FundsController::class, 'contributeWish']);
     });
 
 Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::class])
