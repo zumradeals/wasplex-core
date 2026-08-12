@@ -102,7 +102,6 @@ final class SeedFounderCommand extends Command
             'admin.accounts.restrict',
             'admin.identity-verifications.view',
             'admin.identity-verifications.decide',
-            // docs/14-espaces-partenaires-professionnels-institutionnels-wasplex.md: P019.
             'admin.professional-spaces.view',
             'admin.professional-spaces.decide',
             'wallet.ledger.view',
@@ -124,6 +123,9 @@ final class SeedFounderCommand extends Command
             'admin.matching.audit.view',
             'admin.feed.dashboard.view',
             'admin.feed.risk.review',
+            'admin.funds.view',
+            'admin.funds.manage',
+            'admin.funds.review',
             'admin.alerts.review',
             'admin.alerts.configuration.manage',
             'admin.reconciliation.review',
