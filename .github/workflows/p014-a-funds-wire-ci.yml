@@ -140,12 +140,17 @@ jobs:
           set -o pipefail
           composer lint:check
           php artisan config:clear --ansi
+          if ! php artisan test tests/Feature/Funds/FundsFoundationTest.php 2>&1 | tee /tmp/p014-funds-tests.log; then
+            tail -n 120 /tmp/p014-funds-tests.log | while IFS= read -r line; do
+              line="${line//'%'/'%25'}"
+              line="${line//$'\r'/'%0D'}"
+              line="${line//$'\n'/'%0A'}"
+              echo "::error::$line"
+            done
+            exit 1
+          fi
           if ! php artisan test --stop-on-failure 2>&1 | tee /tmp/p014-tests.log; then
-            echo '## Laravel test failure' >> "$GITHUB_STEP_SUMMARY"
-            echo '```text' >> "$GITHUB_STEP_SUMMARY"
-            tail -n 160 /tmp/p014-tests.log >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            tail -n 80 /tmp/p014-tests.log | while IFS= read -r line; do
+            tail -n 100 /tmp/p014-tests.log | while IFS= read -r line; do
               line="${line//'%'/'%25'}"
               line="${line//$'\r'/'%0D'}"
               line="${line//$'\n'/'%0A'}"
