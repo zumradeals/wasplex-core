@@ -6,6 +6,7 @@ namespace App\Modules\Alerts\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Alerts\Infrastructure\Models\AlertDeclaration;
+use App\Modules\Alerts\Infrastructure\Models\AlertInstitutionalCase;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ final class AlertsController extends Controller
         $account = $request->user();
 
         $alerts = AlertDeclaration::query()
+            ->with('institutionalCases.organization')
             ->where('account_id', $account->id)
             ->latest()
             ->limit(100)
@@ -106,6 +108,11 @@ final class AlertsController extends Controller
     /** @return array<string, mixed> */
     private function memberProjection(AlertDeclaration $alert): array
     {
+        /** @var AlertInstitutionalCase|null $case */
+        $case = $alert->relationLoaded('institutionalCases')
+            ? $alert->institutionalCases->sortByDesc('referred_at')->first()
+            : null;
+
         return [
             'id' => $alert->id,
             'category' => $alert->category,
@@ -123,7 +130,30 @@ final class AlertsController extends Controller
             'reviewed_at' => $alert->reviewed_at?->toIso8601String(),
             'published_at' => $alert->published_at?->toIso8601String(),
             'resolved_at' => $alert->resolved_at?->toIso8601String(),
+            'institutional_status' => $this->institutionalStatus($case),
+            'institutional_case' => $case === null ? null : [
+                'id' => $case->id,
+                'status' => $case->status,
+                'institution_name' => $case->organization?->name,
+                'institutional_reference' => $case->institutional_reference,
+                'referred_at' => $case->referred_at?->toIso8601String(),
+                'acknowledged_at' => $case->acknowledged_at?->toIso8601String(),
+                'started_at' => $case->started_at?->toIso8601String(),
+                'resolved_at' => $case->resolved_at?->toIso8601String(),
+            ],
         ];
+    }
+
+    private function institutionalStatus(?AlertInstitutionalCase $case): ?string
+    {
+        return match ($case?->status) {
+            AlertInstitutionalCase::STATUS_REFERRED => 'forwarded',
+            AlertInstitutionalCase::STATUS_ACKNOWLEDGED,
+            AlertInstitutionalCase::STATUS_IN_PROGRESS => 'taken_charge',
+            AlertInstitutionalCase::STATUS_RESOLVED => 'resolved',
+            AlertInstitutionalCase::STATUS_DECLINED => 'declined',
+            default => null,
+        };
     }
 
     /** @return array<string, mixed> */
