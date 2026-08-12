@@ -6,6 +6,7 @@ use App\Modules\Identity\Http\Controllers\Admin\AccountsController;
 use App\Modules\Identity\Http\Controllers\Admin\CapabilityGrantsController;
 use App\Modules\Identity\Http\Controllers\Api\AuthController;
 use App\Modules\Identity\Http\Controllers\Api\MeController;
+use App\Modules\Identity\Http\Controllers\Api\MeIdentityVerificationController;
 use App\Modules\Identity\Http\Controllers\Api\MeMfaController;
 use App\Modules\Identity\Http\Controllers\Api\MeSessionsController;
 use App\Modules\Identity\Http\Controllers\Api\MeSpacesController;
@@ -35,6 +36,9 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
     Route::post('/me/mfa', [MeMfaController::class, 'store']);
     Route::put('/me/mfa', [MeMfaController::class, 'update']);
     Route::post('/me/mfa/verify', [MeMfaController::class, 'verify']);
+
+    Route::get('/me/identity-verification', [MeIdentityVerificationController::class, 'show']);
+    Route::post('/me/identity-verification', [MeIdentityVerificationController::class, 'store']);
 
     Route::get('/organizations', [OrganizationsController::class, 'index']);
     Route::post('/organizations', [OrganizationsController::class, 'store']);
