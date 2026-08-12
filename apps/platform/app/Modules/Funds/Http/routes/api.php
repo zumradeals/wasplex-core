@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Funds\Http\Controllers\Admin\AdminFundCollectionsController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundPartnerDashboardController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundQuotesController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundsController;
@@ -63,5 +64,12 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
         Route::post('/wishes/{wish}/quote-requests', [AdminFundQuotesController::class, 'requestQuotes'])
             ->middleware(EnsureCapability::class.':admin.funds.review');
         Route::post('/wishes/{wish}/quotes/{quote}/select', [AdminFundQuotesController::class, 'selectQuote'])
+            ->middleware(EnsureCapability::class.':admin.funds.review');
+
+        Route::get('/collections', [AdminFundCollectionsController::class, 'index'])
+            ->middleware(EnsureCapability::class.':admin.funds.view');
+        Route::post('/wishes/{wish}/collection-snapshot', [AdminFundCollectionsController::class, 'create'])
+            ->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/collections/{snapshot}/execute', [AdminFundCollectionsController::class, 'execute'])
             ->middleware(EnsureCapability::class.':admin.funds.review');
     });
