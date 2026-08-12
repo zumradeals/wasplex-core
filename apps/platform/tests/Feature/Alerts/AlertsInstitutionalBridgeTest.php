@@ -131,7 +131,7 @@ it('forwards a citizen alert only to a verified security institution and reflect
     test()->getJson('/api/alerts/mine')
         ->assertOk()
         ->assertJsonPath('alerts.0.institutional_status', 'resolved')
-        ->assertJsonPath('alerts.0.institutional_case.institution_name', 'Unité de sécurité raccordement Alertes')
+        ->assertJsonPath('alerts.0.institutional_case.institution_name', 'Unité Alertes')
         ->assertJsonPath('alerts.0.institutional_case.institutional_reference', 'DOSSIER-SEC-1001');
 
     expect($citizen->id)->not->toBeNull();
