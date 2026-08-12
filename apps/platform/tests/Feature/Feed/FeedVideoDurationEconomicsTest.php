@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\AdvertiserStudio\Infrastructure\Models\CreativeAsset;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignEnvelopeConsumption;
+use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\SmartProfile\Infrastructure\Models\ConsentPurpose;
 use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionQuotaCounter;
 use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
@@ -73,6 +74,21 @@ it('requires the true end of a sixty second video and consumes four attention cr
     expect($delivery['quota_units'])->toBe(4);
     expect($delivery['gain_minor'])->toBe(200);
     expect($delivery['requires_media_end'])->toBeTrue();
+
+    $legacyDeliveryId = $delivery['id'];
+    FeedAdDelivery::query()->whereKey($legacyDeliveryId)->update([
+        'quota_units' => 1,
+        'requires_media_end' => false,
+    ]);
+
+    $delivery = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
+        ->assertOk()
+        ->json('delivery');
+
+    expect($delivery['id'])->not->toBe($legacyDeliveryId);
+    expect($delivery['quota_units'])->toBe(4);
+    expect($delivery['requires_media_end'])->toBeTrue();
+    expect(FeedAdDelivery::query()->findOrFail($legacyDeliveryId)->status)->toBe(FeedAdDelivery::STATUS_ABANDONED);
 
     test()->postJson("/api/feed/deliveries/{$delivery['id']}/start")->assertOk();
     expect(videoDurationQuotaConsumed($account->id))->toBe(4);
