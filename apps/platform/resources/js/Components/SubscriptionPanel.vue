@@ -67,7 +67,7 @@ const quotaPercent = computed(() => {
 });
 
 function formatCredits(units: number): string {
-    return `${numberFormatter.format(Math.max(0, units))} crédit${units > 1 ? 's' : ''}`;
+    return `${numberFormatter.format(Math.max(0, units))} crédit${units === 1 ? '' : 's'}`;
 }
 
 function formatAttentionEquivalent(units: number, attentionUnitSeconds = 15): string {
@@ -78,6 +78,10 @@ function formatAttentionEquivalent(units: number, attentionUnitSeconds = 15): st
     if (hours > 0) return `${hours} h ${minutes.toString().padStart(2, '0')}`;
     if (minutes > 0) return `${minutes} min${seconds ? ` ${seconds} s` : ''}`;
     return `${seconds} s`;
+}
+
+function formatPlanAttentionEquivalent(plan: Plan): string {
+    return formatAttentionEquivalent(plan.quota_monthly ?? 0, plan.attention_unit_seconds);
 }
 
 function planPrice(plan: Plan): string {
@@ -269,7 +273,7 @@ void load();
                             </div>
                             <p class="text-wpx-muted-dark mt-2 text-[10px]">
                                 1 crédit = {{ plan.attention_unit_seconds }} s d’attention · ≈
-                                {{ formatAttentionEquivalent(plan.quota_monthly ?? 0, plan.attention_unit_seconds) }} au total
+                                {{ formatPlanAttentionEquivalent(plan) }} au total
                             </p>
                             <p class="text-wpx-muted-dark mt-1 text-[10px] italic">
                                 La quantité de publicités dépend toujours des campagnes compatibles disponibles.
