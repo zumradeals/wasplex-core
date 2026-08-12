@@ -9,7 +9,7 @@ type Balances = {
     wp_to_xof: number;
 };
 
-const props = defineProps<{ balances: Balances }>();
+defineProps<{ balances: Balances }>();
 const emit = defineEmits<{ refresh: [] }>();
 
 const open = ref(false);
