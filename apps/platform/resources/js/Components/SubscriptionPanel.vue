@@ -232,6 +232,7 @@ void load();
                         </button>
                     </div>
 
+                    <!-- prettier-ignore -->
                     <article
                         v-if="currentPlan"
                         class="border-wpx-cyan/40 bg-wpx-cyan/5 rounded-wpx-xl mb-3 border p-4"
