@@ -18,50 +18,29 @@ jobs:
         with:
           ref: feat/p016-a-sante-citoyen-capsule
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: apps/platform/package-lock.json
       - name: Wire HealthPanel into AlertsPanel
+        shell: bash
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
-          p = Path('apps/platform/resources/js/Components/AlertsPanel.vue')
+          p = Path("apps/platform/resources/js/Components/AlertsPanel.vue")
           s = p.read_text()
-          if "import HealthPanel from '@/Components/HealthPanel.vue';" not in s:
-              s = s.replace("import http from '@/lib/http';", "import http from '@/lib/http';\nimport HealthPanel from '@/Components/HealthPanel.vue';")
-          old = '''        <template v-else-if="activeTab === 'health'">
-            <section
-                class="from-wpx-cyan/10 to-wpx-blue/5 border-wpx-cyan/20 rounded-wpx-xl border bg-gradient-to-br p-5 text-center"
-            >
-                <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-2xl"
-                    >❤️‍🩹</span
-                >
-                <p class="text-wpx-white-soft mt-3 text-base font-black">Santé arrive dans P016</p>
-                <p class="text-wpx-muted-dark mx-auto mt-1.5 max-w-xs text-[11px] leading-relaxed">
-                    La capsule médicale d’urgence et vos consentements seront intégrés ici, sans créer un nouvel onglet
-                    principal.
-                </p>
-            </section>
-        </template>'''
-          new = '''        <template v-else-if="activeTab === 'health'">
-            <HealthPanel />
-        </template>'''
-          if old not in s:
-              raise SystemExit('Health placeholder not found')
-          s = s.replace(old, new)
+          marker = "import http from '@/lib/http';"
+          health_import = "import HealthPanel from '@/Components/HealthPanel.vue';"
+          if health_import not in s:
+              s = s.replace(marker, marker + "\n" + health_import)
+          start = s.index("        <template v-else-if=\"activeTab === 'health'\">")
+          end = s.index("        <template v-else>", start)
+          replacement = "        <template v-else-if=\"activeTab === 'health'\">\n            <HealthPanel />\n        </template>\n\n"
+          s = s[:start] + replacement + s[end:]
           p.write_text(s)
           PY
-      - name: Format frontend
-        working-directory: apps/platform
-        run: |
-          npm ci
-          npx prettier --write resources/js/Components/HealthPanel.vue resources/js/Components/AlertsPanel.vue
       - name: Commit wiring
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/platform/resources/js/Components/HealthPanel.vue apps/platform/resources/js/Components/AlertsPanel.vue
-          git commit -m "feat(health): raccorder Ma Santé dans Alertes" || exit 0
+          git add apps/platform/resources/js/Components/AlertsPanel.vue
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat(health): raccorder Ma Santé dans Alertes"
           git push origin HEAD:feat/p016-a-sante-citoyen-capsule
