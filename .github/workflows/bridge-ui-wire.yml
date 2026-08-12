@@ -106,7 +106,13 @@ jobs:
 
       - name: Format finalized UI
         working-directory: apps/platform
-        run: npx prettier --write resources/js/Components/HealthPanel.vue resources/js/Components/AdminAlertsPanel.vue
+        run: |
+          npx prettier --write \
+            resources/js/Components/HealthPanel.vue \
+            resources/js/Components/AdminAlertsPanel.vue \
+            resources/js/Components/AdminAlertInstitutionalReferral.vue \
+            resources/js/Components/HealthProfessionalAccessRequestsPanel.vue \
+            resources/js/Components/ProfessionalInstitutionalCasesPanel.vue
 
       - name: Check frontend formatting
         working-directory: apps/platform
@@ -148,6 +154,9 @@ jobs:
           git rm .github/workflows/bridge-ui-wire.yml
           git add \
             apps/platform/resources/js/Components/HealthPanel.vue \
-            apps/platform/resources/js/Components/AdminAlertsPanel.vue
+            apps/platform/resources/js/Components/AdminAlertsPanel.vue \
+            apps/platform/resources/js/Components/AdminAlertInstitutionalReferral.vue \
+            apps/platform/resources/js/Components/HealthProfessionalAccessRequestsPanel.vue \
+            apps/platform/resources/js/Components/ProfessionalInstitutionalCasesPanel.vue
           git commit -m "feat(ui): finaliser les raccordements institutionnels"
           git push origin HEAD:feat/p015-p016-p019-institutional-bridges
