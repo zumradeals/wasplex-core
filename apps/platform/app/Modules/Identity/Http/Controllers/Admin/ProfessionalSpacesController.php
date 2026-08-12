@@ -123,14 +123,15 @@ final class ProfessionalSpacesController extends Controller
 
         foreach ($ownerIds as $accountId) {
             foreach ($capabilities as $capability) {
-                CapabilityGrant::query()->firstOrCreate([
+                CapabilityGrant::query()->updateOrCreate([
                     'account_id' => $accountId,
                     'capability_code' => $capability,
                     'scope_type' => CapabilityGrant::SCOPE_ORGANIZATION,
                     'scope_id' => $space->organization_id,
-                    'status' => 'active',
                 ], [
+                    'status' => 'active',
                     'starts_at' => now(),
+                    'ends_at' => null,
                     'granted_by' => $admin->id,
                 ]);
             }
