@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Funds\Infrastructure\Models;
 
+use App\Modules\Identity\Infrastructure\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,13 +15,9 @@ final class FundWish extends Model
     use HasUlids;
 
     public const STATUS_DRAFT = 'draft';
-
     public const STATUS_SUBMITTED = 'submitted';
-
     public const STATUS_NEEDS_INFORMATION = 'needs_information';
-
     public const STATUS_APPROVED = 'approved';
-
     public const STATUS_REJECTED = 'rejected';
 
     protected $table = 'fund_wishes';
@@ -33,6 +30,7 @@ final class FundWish extends Model
             'submitted_at' => 'immutable_datetime',
             'reviewed_at' => 'immutable_datetime',
             'personal_contribution_completed_at' => 'immutable_datetime',
+            'cost_validated_at' => 'immutable_datetime',
         ];
     }
 
@@ -49,5 +47,25 @@ final class FundWish extends Model
     public function personalContributions(): HasMany
     {
         return $this->hasMany(FundPersonalContribution::class, 'fund_wish_id')->orderByDesc('created_at');
+    }
+
+    public function quoteRequests(): HasMany
+    {
+        return $this->hasMany(FundQuoteRequest::class, 'fund_wish_id')->orderByDesc('requested_at');
+    }
+
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(FundWishQuote::class, 'fund_wish_id')->orderBy('amount_minor');
+    }
+
+    public function selectedQuote(): BelongsTo
+    {
+        return $this->belongsTo(FundWishQuote::class, 'selected_quote_id');
+    }
+
+    public function providerOrganization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class, 'provider_organization_id');
     }
 }
