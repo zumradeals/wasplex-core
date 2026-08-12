@@ -193,12 +193,17 @@ final class ProfessionalWorkspaceController extends Controller
     private function roleCapabilities(ProfessionalSpace $space, string $roleCode): ?array
     {
         $base = ['professional.space.access'];
+        $fundsView = $this->supportsFundsPartner($space) ? ['professional.funds.quote.view'] : [];
+        $fundsRespond = $this->supportsFundsPartner($space)
+            ? ['professional.funds.quote.view', 'professional.funds.quote.respond']
+            : [];
 
         return match ($roleCode) {
             'organization_admin' => [
                 ...$base,
                 'professional.team.manage',
                 'professional.service-points.manage',
+                ...$fundsRespond,
             ],
             'security_officer' => $space->space_kind === ProfessionalSpace::KIND_SECURITY_INSTITUTION
                 ? [...$base, 'professional.alerts.institution.view', 'professional.alerts.institution.act']
@@ -209,16 +214,22 @@ final class ProfessionalWorkspaceController extends Controller
             ], true)
                 ? [...$base, 'professional.health.access.request', 'professional.health.emergency-capsule.request']
                 : null,
-            'operations_manager',
-            'supervisor',
-            'agent',
-            'reviewer',
-            'finance_manager',
-            'partner_cashier',
-            'auditor',
-            'read_only' => $base,
+            'operations_manager', 'reviewer', 'partner_cashier' => [...$base, ...$fundsRespond],
+            'finance_manager', 'read_only' => [...$base, ...$fundsView],
+            'supervisor', 'agent', 'auditor' => $base,
             default => null,
         };
+    }
+
+    private function supportsFundsPartner(ProfessionalSpace $space): bool
+    {
+        return in_array($space->space_kind, [
+            ProfessionalSpace::KIND_PARTNER,
+            ProfessionalSpace::KIND_MERCHANT,
+            ProfessionalSpace::KIND_SERVICE_PROVIDER,
+            ProfessionalSpace::KIND_HEALTHCARE_INSTITUTION,
+            ProfessionalSpace::KIND_FINANCIAL_OPERATOR,
+        ], true);
     }
 
     private function resolveSpace(Request $request): ProfessionalSpace
