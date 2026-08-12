@@ -1,0 +1,167 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Identity\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\AuditLogger;
+use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Identity\Infrastructure\Models\OrganizationMembership;
+use App\Modules\Identity\Infrastructure\Models\ProfessionalRoleAssignment;
+use App\Modules\Identity\Infrastructure\Models\ProfessionalServicePoint;
+use App\Modules\Identity\Infrastructure\Models\ProfessionalSpace;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+final class ProfessionalWorkspaceController extends Controller
+{
+    public function __construct(private readonly AuditLogger $audit) {}
+
+    public function show(Request $request): JsonResponse
+    {
+        $space = $this->resolveSpace($request);
+        /** @var Account $account */
+        $account = $request->user();
+
+        $roles = $space->roleAssignments()
+            ->where('account_id', $account->id)
+            ->where('status', 'active')
+            ->get(['id', 'role_code', 'scope', 'starts_at', 'ends_at']);
+
+        $members = OrganizationMembership::query()
+            ->where('organization_id', $space->organization_id)
+            ->where('status', 'active')
+            ->with('account.identifiers')
+            ->get()
+            ->map(fn (OrganizationMembership $membership) => [
+                'membership_id' => $membership->id,
+                'account_id' => $membership->account_id,
+                'title' => $membership->title,
+                'joined_at' => $membership->joined_at?->toIso8601String(),
+            ]);
+
+        return new JsonResponse([
+            'space' => [
+                'id' => $space->id,
+                'organization_id' => $space->organization_id,
+                'organization_name' => $space->organization?->name,
+                'space_kind' => $space->space_kind,
+                'verification_status' => $space->verification_status,
+                'territory' => $space->territory,
+                'purposes' => $space->purposes ?? [],
+                'restrictions' => $space->restrictions ?? [],
+                'verified_at' => $space->verified_at?->toIso8601String(),
+            ],
+            'my_roles' => $roles,
+            'members' => $members->values(),
+            'service_points' => $space->servicePoints()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (ProfessionalServicePoint $point) => [
+                    'id' => $point->id,
+                    'name' => $point->name,
+                    'type' => $point->type,
+                    'country_code' => $point->country_code,
+                    'city' => $point->city,
+                    'area_label' => $point->area_label,
+                    'address' => $point->address,
+                    'status' => $point->status,
+                ])->values(),
+        ]);
+    }
+
+    public function storeServicePoint(Request $request): JsonResponse
+    {
+        $space = $this->resolveSpace($request);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:160'],
+            'type' => ['nullable', 'string', 'max:48'],
+            'country_code' => ['required', 'string', 'size:2'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'area_label' => ['nullable', 'string', 'max:160'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'coordinates' => ['nullable', 'array'],
+            'coordinates.lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'coordinates.lng' => ['nullable', 'numeric', 'between:-180,180'],
+        ]);
+
+        $point = $space->servicePoints()->create([
+            ...$data,
+            'country_code' => strtoupper($data['country_code']),
+            'status' => 'active',
+        ]);
+
+        $this->audit->record('professional.service-point.created', [
+            'actor_account_id' => $request->user()?->id,
+            'organization_id' => $space->organization_id,
+            'resource_type' => 'professional_service_point',
+            'resource_id' => $point->id,
+        ], $request);
+
+        return new JsonResponse(['id' => $point->id], 201);
+    }
+
+    public function assignRole(Request $request): JsonResponse
+    {
+        $space = $this->resolveSpace($request);
+        $data = $request->validate([
+            'account_id' => ['required', 'string', 'exists:accounts,id'],
+            'role_code' => ['required', Rule::in([
+                'organization_admin',
+                'operations_manager',
+                'supervisor',
+                'agent',
+                'reviewer',
+                'finance_manager',
+                'health_professional',
+                'security_officer',
+                'partner_cashier',
+                'auditor',
+                'read_only',
+            ])],
+            'scope' => ['nullable', 'array'],
+        ]);
+
+        $isMember = OrganizationMembership::query()
+            ->where('organization_id', $space->organization_id)
+            ->where('account_id', $data['account_id'])
+            ->where('status', 'active')
+            ->exists();
+
+        if (! $isMember) {
+            return new JsonResponse(['message' => 'Ce compte doit d’abord rejoindre l’organisation.'], 422);
+        }
+
+        $assignment = ProfessionalRoleAssignment::query()->updateOrCreate([
+            'professional_space_id' => $space->id,
+            'account_id' => $data['account_id'],
+            'role_code' => $data['role_code'],
+        ], [
+            'status' => 'active',
+            'scope' => $data['scope'] ?? null,
+            'starts_at' => now(),
+            'ends_at' => null,
+            'assigned_by_account_id' => $request->user()?->id,
+        ]);
+
+        $this->audit->record('professional.role.assigned', [
+            'actor_account_id' => $request->user()?->id,
+            'organization_id' => $space->organization_id,
+            'resource_type' => 'professional_role_assignment',
+            'resource_id' => $assignment->id,
+        ], $request);
+
+        return new JsonResponse(['assignment_id' => $assignment->id]);
+    }
+
+    private function resolveSpace(Request $request): ProfessionalSpace
+    {
+        return ProfessionalSpace::query()
+            ->with('organization')
+            ->whereKey((string) $request->attributes->get('professional_space_id'))
+            ->where('verification_status', ProfessionalSpace::VERIFICATION_VERIFIED)
+            ->firstOrFail();
+    }
+}
