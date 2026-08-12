@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Funds\Http\Controllers\Admin;
 
+use App\Modules\Funds\Application\Services\FundContributionService;
 use App\Modules\Funds\Infrastructure\Models\FundAuditEvent;
+use App\Modules\Funds\Infrastructure\Models\FundPersonalContribution;
 use App\Modules\Funds\Infrastructure\Models\FundProgram;
 use App\Modules\Funds\Infrastructure\Models\FundProgramVersion;
 use App\Modules\Funds\Infrastructure\Models\FundWish;
@@ -17,16 +19,40 @@ use Illuminate\Validation\Rule;
 
 final class AdminFundsController
 {
+    public function __construct(private readonly FundContributionService $contributions) {}
+
     public function dashboard(): JsonResponse
     {
+        $wishes = FundWish::query()
+            ->with(['category:id,name,icon', 'membership.program:id,name,code', 'personalContributions'])
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->map(function (FundWish $wish): array {
+                $contributed = $this->contributions->wishContributionMinor($wish);
+                $required = $wish->required_personal_contribution_minor === null ? null : (int) $wish->required_personal_contribution_minor;
+                $remaining = $required === null ? null : max(0, $required - $contributed);
+
+                return [
+                    ...$wish->toArray(),
+                    'personal_contribution_minor' => $contributed,
+                    'personal_contribution_remaining_minor' => $remaining,
+                    'personal_contribution_progress_percent' => $required === null || $required <= 0
+                        ? 0
+                        : min(100, (int) floor(($contributed / $required) * 100)),
+                ];
+            });
+
         return response()->json([
             'programs' => FundProgram::query()->with(['versions' => fn ($q) => $q->orderByDesc('version')])->orderBy('sort_order')->get(),
             'categories' => FundWishCategory::query()->orderBy('sort_order')->get(),
-            'wishes' => FundWish::query()->with(['category:id,name,icon', 'membership.program:id,name,code'])->latest()->limit(100)->get(),
+            'wishes' => $wishes,
             'metrics' => [
                 'active_programs' => FundProgram::query()->where('status', FundProgram::STATUS_ACTIVE)->count(),
                 'submitted_wishes' => FundWish::query()->where('status', FundWish::STATUS_SUBMITTED)->count(),
                 'approved_wishes' => FundWish::query()->where('status', FundWish::STATUS_APPROVED)->count(),
+                'personal_contributions_count' => FundPersonalContribution::query()->count(),
+                'personal_contributions_minor' => (int) FundPersonalContribution::query()->sum('amount_minor'),
             ],
         ]);
     }
