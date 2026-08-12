@@ -1,0 +1,134 @@
+name: p015-wire-ui
+
+on:
+  push:
+    branches:
+      - feat/p015-a-alertes-citoyennes-feed
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/platform
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p015-a-alertes-citoyennes-feed
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Wire P015 UI safely
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          user = Path('resources/js/Pages/Identity/UserShell.vue')
+          text = user.read_text()
+
+          text = text.replace(
+              "import FeedPanel from '@/Components/FeedPanel.vue';\n",
+              "import FeedPanel from '@/Components/FeedPanel.vue';\nimport AlertsPanel from '@/Components/AlertsPanel.vue';\n",
+              1,
+          )
+          text = text.replace(
+              "    { key: 'wallet', label: 'Wallet' },\n    { key: 'espace', label: 'Mon Espace' },",
+              "    { key: 'wallet', label: 'Wallet' },\n    { key: 'alertes', label: 'Alertes' },\n    { key: 'espace', label: 'Mon Espace' },",
+              1,
+          )
+          text = text.replace(
+              "\n                <div v-else-if=\"activeTab === 'espace'\" class=\"flex flex-col gap-3.5\">",
+              "\n                <AlertsPanel v-else-if=\"activeTab === 'alertes'\" />\n\n                <div v-else-if=\"activeTab === 'espace'\" class=\"flex flex-col gap-3.5\">",
+              1,
+          )
+          text = text.replace(
+              'class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-4 items-end border-t px-1 pt-1 pb-2"',
+              'class="border-wpx-border-dark bg-wpx-navy-850 grid grid-cols-5 items-end border-t px-1 pt-1 pb-2"',
+              1,
+          )
+          marker = '                        <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">'
+          replacement = '''                        <svg v-else-if="tab.key === 'alertes'" width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M18 9a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7"
+                                :stroke="activeTab === 'alertes' ? '#F2C14E' : '#A9B7C8'"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M10 20h4"
+                                :stroke="activeTab === 'alertes' ? '#F2C14E' : '#A9B7C8'"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                            />
+                        </svg>
+                        <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">'''
+          if marker not in text:
+              raise SystemExit('UserShell alert icon marker not found')
+          text = text.replace(marker, replacement, 1)
+          user.write_text(text)
+
+          feed = Path('resources/js/Components/FeedPanel.vue')
+          text = feed.read_text()
+          text = text.replace(
+              "import http from '@/lib/http';\n",
+              "import http from '@/lib/http';\nimport FeedAlertSurfaces from '@/Components/FeedAlertSurfaces.vue';\n",
+              1,
+          )
+          text = text.replace(
+              "const holdNotice = ref(false);\n",
+              "const holdNotice = ref(false);\nconst showAlertCircles = ref(false);\n",
+              1,
+          )
+          old_alert_button = '''                <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
+                    Alertes
+                </button>'''
+          new_alert_button = '''                <button
+                    type="button"
+                    class="pb-1 font-semibold"
+                    :class="showAlertCircles ? 'text-wpx-gold' : 'text-white/70'"
+                    @click.stop="showAlertCircles = !showAlertCircles"
+                >
+                    Alertes
+                </button>'''
+          if old_alert_button not in text:
+              raise SystemExit('Feed alert button marker not found')
+          text = text.replace(old_alert_button, new_alert_button, 1)
+          video_marker = '''        <video
+            v-if="delivery?.creative?.type === 'video'"'''
+          insert = '''        <FeedAlertSurfaces
+            :show-circles="showAlertCircles"
+            @close-circles="showAlertCircles = false"
+        />
+
+        <video
+            v-if="delivery?.creative?.type === 'video'"'''
+          if video_marker not in text:
+              raise SystemExit('Feed video marker not found')
+          text = text.replace(video_marker, insert, 1)
+          feed.write_text(text)
+          PY
+
+      - run: npm ci
+      - run: npx prettier --write resources/js/Pages/Identity/UserShell.vue resources/js/Components/FeedPanel.vue resources/js/Components/AlertsPanel.vue resources/js/Components/FeedAlertSurfaces.vue
+
+      - name: Commit wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- resources/js/Pages/Identity/UserShell.vue resources/js/Components/FeedPanel.vue resources/js/Components/AlertsPanel.vue resources/js/Components/FeedAlertSurfaces.vue
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(alerts): raccorder Alertes au menu et au Feed"
+          git push origin HEAD:feat/p015-a-alertes-citoyennes-feed
