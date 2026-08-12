@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import AdminFundPartnerQuotes from '@/Components/AdminFundPartnerQuotes.vue';
 
 type ProgramVersion = {
     id: string;
@@ -268,6 +269,8 @@ onMounted(load);
                     </p>
                 </div>
             </section>
+
+            <AdminFundPartnerQuotes />
 
             <section class="flex flex-col gap-3">
                 <div class="flex items-center justify-between">
