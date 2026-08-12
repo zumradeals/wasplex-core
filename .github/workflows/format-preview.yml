@@ -6,7 +6,7 @@ on:
       - feat/mon-espace-identity-security
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -16,25 +16,23 @@ jobs:
         working-directory: apps/platform
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: apps/platform/package-lock.json
       - run: npm ci
-      - name: Format target files
+      - name: Apply Prettier
         run: npx prettier --write resources/js/Components/AccountSecurityPanel.vue resources/js/Components/IdentityVerificationPanel.vue resources/js/Pages/Identity/UserShell.vue
-      - name: Stage formatted files for artifact
+      - name: Commit exact formatting when needed
+        working-directory: .
         run: |
-          mkdir -p /tmp/formatted/Components /tmp/formatted/Pages/Identity
-          cp resources/js/Components/AccountSecurityPanel.vue /tmp/formatted/Components/
-          cp resources/js/Components/IdentityVerificationPanel.vue /tmp/formatted/Components/
-          cp resources/js/Pages/Identity/UserShell.vue /tmp/formatted/Pages/Identity/
-      - name: Upload formatted files
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4
-        with:
-          name: formatted-mon-espace
-          path: /tmp/formatted
-          if-no-files-found: error
+          if git diff --quiet -- apps/platform/resources/js/Components/AccountSecurityPanel.vue apps/platform/resources/js/Components/IdentityVerificationPanel.vue apps/platform/resources/js/Pages/Identity/UserShell.vue; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git config user.name "wasplex-ci"
+          git config user.email "wasplex-ci@users.noreply.github.com"
+          git add -- apps/platform/resources/js/Components/AccountSecurityPanel.vue apps/platform/resources/js/Components/IdentityVerificationPanel.vue apps/platform/resources/js/Pages/Identity/UserShell.vue
+          git commit -m "style: formater les panneaux Mon Espace"
+          git push origin HEAD:feat/mon-espace-identity-security
