@@ -366,7 +366,9 @@ onMounted(loadMe);
                                     </svg>
                                 </span>
                                 <span>
-                                    <span class="text-wpx-white-soft block text-sm font-bold">Compte &amp; sécurité</span>
+                                    <span class="text-wpx-white-soft block text-sm font-bold"
+                                        >Compte &amp; sécurité</span
+                                    >
                                     <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
                                         MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} ·
                                         sessions et appareils
@@ -390,7 +392,9 @@ onMounted(loadMe);
                     v-else
                     class="rounded-wpx-lg shadow-wpx-card-dark bg-wpx-navy-850 text-wpx-muted-dark flex h-64 flex-col items-center justify-center gap-2 text-sm"
                 >
-                    <span class="bg-wpx-gold/10 flex h-12 w-12 items-center justify-center rounded-full text-2xl">🎯</span>
+                    <span class="bg-wpx-gold/10 flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+                        >🎯</span
+                    >
                     {{ tabs.find((t) => t.key === activeTab)?.label }} — bientôt disponible
                 </div>
             </main>

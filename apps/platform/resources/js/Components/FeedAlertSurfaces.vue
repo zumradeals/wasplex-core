@@ -155,7 +155,7 @@ onMounted(load);
                 </button>
             </div>
 
-            <div v-if="circles.length" class="scrollbar-none flex gap-3 overflow-x-auto pb-1">
+            <div v-if="circles.length" class="flex scrollbar-none gap-3 overflow-x-auto pb-1">
                 <button
                     v-for="alert in circles"
                     :key="alert.id"
@@ -254,7 +254,7 @@ onMounted(load);
                 <p v-if="usefulContent.area" class="text-wpx-gold mt-4 text-[10px] font-black">
                     {{ usefulContent.area }}
                 </p>
-                <h2 class="text-wpx-white-soft mt-1 text-xl font-black leading-tight">{{ usefulContent.title }}</h2>
+                <h2 class="text-wpx-white-soft mt-1 text-xl leading-tight font-black">{{ usefulContent.title }}</h2>
                 <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">{{ usefulContent.body }}</p>
 
                 <div class="border-wpx-border-dark mt-5 rounded-2xl border bg-black/10 p-3">
