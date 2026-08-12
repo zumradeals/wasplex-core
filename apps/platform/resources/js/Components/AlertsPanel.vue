@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import HealthPanel from '@/Components/HealthPanel.vue';
 
 type AlertTab = 'for-you' | 'community' | 'sos' | 'health' | 'mine';
 type AlertCategory = 'object' | 'document' | 'vehicle' | 'person' | 'sos';
@@ -356,18 +357,7 @@ onMounted(load);
         </template>
 
         <template v-else-if="activeTab === 'health'">
-            <section
-                class="from-wpx-cyan/10 to-wpx-blue/5 border-wpx-cyan/20 rounded-wpx-xl border bg-gradient-to-br p-5 text-center"
-            >
-                <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-2xl"
-                    >❤️‍🩹</span
-                >
-                <p class="text-wpx-white-soft mt-3 text-base font-black">Santé arrive dans P016</p>
-                <p class="text-wpx-muted-dark mx-auto mt-1.5 max-w-xs text-[11px] leading-relaxed">
-                    La capsule médicale d’urgence et vos consentements seront intégrés ici, sans créer un nouvel onglet
-                    principal.
-                </p>
-            </section>
+            <HealthPanel />
         </template>
 
         <template v-else>
