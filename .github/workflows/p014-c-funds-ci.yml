@@ -37,7 +37,7 @@ jobs:
           ref: feat/p014-c-fonds-partenaires-devis
           fetch-depth: 0
 
-      - name: Wire P014-C visual surfaces
+      - name: Wire P014-C visual surfaces and fixtures
         working-directory: .
         run: |
           python3 - <<'PY'
@@ -61,7 +61,7 @@ jobs:
               )
           marker = "const myRoleLabels = computed(() => workspace.value?.my_roles.map((role) => role.role_code.replaceAll('_', ' ')) ?? []);"
           if 'const supportsFundsPartner' not in s:
-              extra = marker + "\n\nconst fundsPartnerKinds = ['partner', 'merchant', 'service_provider', 'healthcare_institution', 'financial_operator'];\nconst supportsFundsPartner = computed(() => fundsPartnerKinds.includes(workspace.value?.space.space_kind ?? ''));\nconst canRespondToFundQuotes = computed(() =>\n    workspace.value?.my_roles.some((role) => ['organization_admin', 'operations_manager', 'reviewer', 'partner_cashier'].includes(role.role_code)) ?? false,\n);\nconst visibleTabs = computed(() => tabs.filter((tab) => tab.key !== 'funds' || supportsFundsPartner.value));"
+              extra = marker + "\n\nconst fundsPartnerKinds = ['partner', 'merchant', 'service_provider', 'healthcare_institution', 'financial_operator'];\nconst supportsFundsPartner = computed(() => fundsPartnerKinds.includes(workspace.value?.space.space_kind ?? ''));\nconst canRespondToFundQuotes = computed(() =>\n    workspace.value?.my_roles.some((role) => ['organization_owner', 'organization_admin', 'operations_manager', 'reviewer', 'partner_cashier'].includes(role.role_code)) ?? false,\n);\nconst visibleTabs = computed(() => tabs.filter((tab) => tab.key !== 'funds' || supportsFundsPartner.value));"
               s = s.replace(marker, extra)
           old = "    return {\n        title: 'Espace opérationnel',\n        text: 'Les capacités métiers seront activées progressivement selon les modules Wasplex autorisés pour votre organisation.',\n    };"
           if "title: 'Raccordement Fonds'" not in s:
@@ -99,6 +99,14 @@ jobs:
           s = p.read_text().replace(
               'const props = defineProps<{ canRespond: boolean }>();',
               'defineProps<{ canRespond: boolean }>();',
+          )
+          p.write_text(s)
+
+          p = Path('apps/platform/tests/Feature/Funds/FundsPartnerQuotesTest.php')
+          s = p.read_text()
+          s = s.replace(
+              "$space->organization()->update(['status' => 'active']);\n\n    foreach (['professional.funds.quote.view', 'professional.funds.quote.respond'] as $capability) {",
+              "$space->organization()->update(['status' => 'active']);\n    $space->userSpace()->update(['status' => 'active']);\n\n    foreach ([\n        'professional.space.access',\n        'professional.team.manage',\n        'professional.service-points.manage',\n        'professional.funds.quote.view',\n        'professional.funds.quote.respond',\n    ] as $capability) {",
           )
           p.write_text(s)
           PY
