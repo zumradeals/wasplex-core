@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class UserSpace extends Model
 {
@@ -16,6 +17,8 @@ final class UserSpace extends Model
     public const TYPE_USER = 'user';
 
     public const TYPE_ADVERTISER = 'advertiser';
+
+    public const TYPE_PROFESSIONAL = 'professional';
 
     public const TYPE_ADMIN = 'admin';
 
@@ -39,6 +42,11 @@ final class UserSpace extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(SpaceMembership::class);
+    }
+
+    public function professionalProfile(): HasOne
+    {
+        return $this->hasOne(ProfessionalSpace::class);
     }
 
     public function isActive(): bool
