@@ -1,0 +1,128 @@
+name: p014-a-funds-wire-ci
+
+on:
+  push:
+    branches: [feat/p014-a-fonds-socle]
+
+permissions:
+  contents: write
+
+jobs:
+  wire-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p014-a-fonds-socle
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wire Funds UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          user = Path('apps/platform/resources/js/Pages/Identity/UserShell.vue')
+          s = user.read_text()
+          if "import FundsPanel from '@/Components/FundsPanel.vue';" not in s:
+              s = s.replace(
+                  "import FeedPanel from '@/Components/FeedPanel.vue';\n",
+                  "import FeedPanel from '@/Components/FeedPanel.vue';\nimport FundsPanel from '@/Components/FundsPanel.vue';\n",
+              )
+          if "<FundsPanel v-else-if=\"activeTab === 'fonds'\" />" not in s:
+              s = s.replace(
+                  "                <AlertsPanel v-else-if=\"activeTab === 'alertes'\" />\n",
+                  "                <FundsPanel v-else-if=\"activeTab === 'fonds'\" />\n\n                <AlertsPanel v-else-if=\"activeTab === 'alertes'\" />\n",
+              )
+          user.write_text(s)
+
+          admin = Path('apps/platform/resources/js/Pages/Identity/AdminShell.vue')
+          s = admin.read_text()
+          if "import AdminFundsPanel from '@/Components/AdminFundsPanel.vue';" not in s:
+              s = s.replace(
+                  "import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';\n",
+                  "import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';\nimport AdminFundsPanel from '@/Components/AdminFundsPanel.vue';\n",
+              )
+          if "{ key: 'funds', label: 'Fonds'" not in s:
+              s = s.replace(
+                  "    { key: 'alerts', label: 'Alertes', helper: 'Protection et diffusion utile' },\n",
+                  "    { key: 'alerts', label: 'Alertes', helper: 'Protection et diffusion utile' },\n    { key: 'funds', label: 'Fonds', helper: 'Programmes solidaires et vœux' },\n",
+              )
+          if "<AdminFundsPanel />" not in s:
+              s = s.replace(
+                  "                <section v-else-if=\"activeSection === 'alerts'\">\n                    <AdminAlertsPanel />\n                </section>\n",
+                  "                <section v-else-if=\"activeSection === 'alerts'\">\n                    <AdminAlertsPanel />\n                </section>\n\n                <section v-else-if=\"activeSection === 'funds'\">\n                    <AdminFundsPanel />\n                </section>\n",
+              )
+          admin.write_text(s)
+          PY
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql, redis
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/platform
+        run: |
+          composer install --no-interaction --prefer-dist
+          npm ci
+
+      - name: Prepare environment
+        working-directory: apps/platform
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          printf '\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_DATABASE=wasplex_test\nDB_USERNAME=postgres\nDB_PASSWORD=postgres\nREDIS_HOST=127.0.0.1\nREDIS_PORT=6379\n' >> .env
+
+      - name: Format new code
+        working-directory: apps/platform
+        run: |
+          npx prettier --write resources/js/Components/FundsPanel.vue resources/js/Components/AdminFundsPanel.vue resources/js/Pages/Identity/UserShell.vue resources/js/Pages/Identity/AdminShell.vue
+          ./vendor/bin/pint app/Modules/Funds bootstrap/providers.php app/Modules/Identity/Console/SeedFounderCommand.php
+
+      - name: Frontend checks
+        working-directory: apps/platform
+        run: |
+          npm run format:check
+          npm run lint:check
+          npm run types:check
+          npm run build
+
+      - name: PHP checks
+        working-directory: apps/platform
+        run: |
+          composer lint:check
+          composer test
+
+      - name: Commit formatted implementation and cleanup
+        run: |
+          rm .github/workflows/p014-a-funds-wire-ci.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "feat(funds): finaliser P014-A socle et interfaces"
+          git push origin HEAD:feat/p014-a-fonds-socle
