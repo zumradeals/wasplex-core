@@ -35,6 +35,8 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
     ->group(function (): void {
         Route::get('/', [AlertsReviewController::class, 'index'])
             ->middleware(EnsureCapability::class.':admin.alerts.review');
+        Route::get('/institutional-destinations', [AlertInstitutionalCasesController::class, 'destinations'])
+            ->middleware(EnsureCapability::class.':admin.alerts.review');
         Route::post('/{alert}/publish', [AlertsReviewController::class, 'publish'])
             ->middleware(EnsureCapability::class.':admin.alerts.review');
         Route::post('/{alert}/reject', [AlertsReviewController::class, 'reject'])
