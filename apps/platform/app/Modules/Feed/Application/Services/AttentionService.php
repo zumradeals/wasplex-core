@@ -69,11 +69,13 @@ final class AttentionService
 
         $this->freeSubscription->ensureFor($accountId);
 
+        $remainingQuotaUnits = 0;
         try {
-            $allowRewardable = $this->quota->currentCounter($accountId)->remaining() > 0;
+            $remainingQuotaUnits = $this->quota->currentCounter($accountId)->remaining();
         } catch (NoActiveSubscriptionException) {
-            $allowRewardable = false;
+            $remainingQuotaUnits = 0;
         }
+        $allowRewardable = $remainingQuotaUnits > 0;
 
         $excluded = [];
 
@@ -116,6 +118,8 @@ final class AttentionService
                     'is_replay' => true,
                     'gain_minor' => 0,
                     'required_duration_ms' => $reward->required_duration_ms,
+                    'quota_units' => 0,
+                    'requires_media_end' => false,
                     'visible_duration_ms' => 0,
                     'progress_percent' => 0,
                     'status' => FeedAdDelivery::STATUS_REPLAY,
@@ -132,6 +136,13 @@ final class AttentionService
                     "feed-reserve:{$accountId}:{$candidate->campaignId}:".uniqid('', true),
                 );
             } catch (CampaignEnvelopeExhaustedException|CampaignNotAvailableForDeliveryException) {
+                $excluded[] = $candidate->campaignId;
+
+                continue;
+            }
+
+            if ($slot->attentionUnits > $remainingQuotaUnits) {
+                $this->envelope->releaseSlot($slot->consumptionId);
                 $excluded[] = $candidate->campaignId;
 
                 continue;
@@ -158,6 +169,8 @@ final class AttentionService
                 'is_replay' => false,
                 'gain_minor' => $slot->gainMinor,
                 'required_duration_ms' => $slot->requiredDurationMs,
+                'quota_units' => $slot->attentionUnits,
+                'requires_media_end' => $slot->requiresMediaEnd,
                 'status' => FeedAdDelivery::STATUS_RESERVED,
                 'reserved_at' => Carbon::now('UTC'),
             ]);
@@ -191,7 +204,7 @@ final class AttentionService
             }
 
             try {
-                $this->quota->consume($accountId, 1, "feed-quota:{$delivery->id}");
+                $this->quota->consume($accountId, max(1, (int) $delivery->quota_units), "feed-quota:{$delivery->id}");
             } catch (QuotaExhaustedException $exception) {
                 $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
                 $delivery->update(['status' => FeedAdDelivery::STATUS_EXPIRED]);
@@ -234,6 +247,36 @@ final class AttentionService
         }
 
         $delivery->update($attributes);
+
+        return $delivery->refresh();
+    }
+
+    public function markMediaEnded(string $deliveryId, string $accountId, int $visibleDurationMs): FeedAdDelivery
+    {
+        $delivery = $this->findOwned($deliveryId, $accountId);
+
+        if ($delivery->status === FeedAdDelivery::STATUS_REPLAY) {
+            return $delivery;
+        }
+        if ($delivery->status !== FeedAdDelivery::STATUS_STARTED) {
+            throw new AttentionNotQualifiedException;
+        }
+
+        $now = Carbon::now('UTC');
+        $realElapsedMs = (int) max(0, $now->diffInMilliseconds($delivery->started_at, true));
+        $claimed = min($visibleDurationMs, $realElapsedMs);
+        $toleranceMs = max(0, (int) config('feed.media_end_tolerance_ms'));
+
+        if ($delivery->requires_media_end && $claimed + $toleranceMs < $delivery->required_duration_ms) {
+            throw new AttentionNotQualifiedException;
+        }
+
+        $delivery->update([
+            'visible_duration_ms' => max($delivery->visible_duration_ms, $delivery->required_duration_ms),
+            'progress_percent' => 100,
+            'last_heartbeat_at' => $now,
+            'media_ended_at' => $now,
+        ]);
 
         return $delivery->refresh();
     }
@@ -301,6 +344,10 @@ final class AttentionService
             throw new AttentionNotQualifiedException;
         }
 
+        if ($delivery->requires_media_end && $delivery->media_ended_at === null) {
+            throw new AttentionNotQualifiedException;
+        }
+
         if ($delivery->risk_signal_count >= (int) config('feed.risk_hold_threshold')) {
             DB::transaction(function () use ($delivery): void {
                 $delivery->update(['status' => FeedAdDelivery::STATUS_HELD]);
@@ -364,7 +411,7 @@ final class AttentionService
                 $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
 
                 try {
-                    $this->quota->restore($accountId, 1, "feed-quota-duplicate:{$delivery->id}");
+                    $this->quota->restore($accountId, max(1, (int) $delivery->quota_units), "feed-quota-duplicate:{$delivery->id}");
                 } catch (NoActiveSubscriptionException) {
                     // La récompense reste protégée même si l'abonnement a
                     // expiré entre start() et complete().
@@ -429,7 +476,21 @@ final class AttentionService
         $delivery = $this->findOwned($deliveryId, $accountId);
 
         if (in_array($delivery->status, [FeedAdDelivery::STATUS_RESERVED, FeedAdDelivery::STATUS_STARTED], true)) {
+            $quotaWasConsumed = $delivery->status === FeedAdDelivery::STATUS_STARTED;
             $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
+
+            if ($quotaWasConsumed) {
+                try {
+                    $this->quota->restore(
+                        $accountId,
+                        max(1, (int) $delivery->quota_units),
+                        "feed-quota-abandon:{$delivery->id}",
+                    );
+                } catch (NoActiveSubscriptionException) {
+                    // L'abandon reste valide si l'abonnement expire pendant la lecture.
+                }
+            }
+
             $delivery->update(['status' => FeedAdDelivery::STATUS_ABANDONED]);
         }
 
@@ -459,7 +520,7 @@ final class AttentionService
 
             if ($quotaWasConsumed) {
                 try {
-                    $this->quota->restore($accountId, 1, "feed-quota-own-campaign:{$locked->id}");
+                    $this->quota->restore($accountId, max(1, (int) $locked->quota_units), "feed-quota-own-campaign:{$locked->id}");
                 } catch (NoActiveSubscriptionException) {
                     // The economic block remains absolute even if the
                     // subscription expired between start and neutralization.
@@ -506,7 +567,12 @@ final class AttentionService
             $asset = $this->creativeAssets->find($campaign->organizationId, $campaign->creativeAssetId);
 
             if ($asset !== null) {
-                $creative = ['url' => $asset->url, 'type' => $asset->type, 'duration' => $asset->duration];
+                $creative = [
+                    'url' => $asset->url,
+                    'type' => $asset->type,
+                    'duration' => $asset->duration,
+                    'duration_ms' => $asset->durationMs,
+                ];
             }
         }
 

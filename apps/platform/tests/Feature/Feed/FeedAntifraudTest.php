@@ -93,6 +93,7 @@ it('places a delivery on hold instead of crediting once the risk threshold is re
     test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/heartbeat", ['visible_duration_ms' => $requiredMs])
         ->assertOk()
         ->assertJsonPath('delivery.risk_signal_count', 2);
+    test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/ended", ['visible_duration_ms' => $requiredMs])->assertOk();
 
     $walletBefore = app(UserWalletQueryService::class)->balanceMinor($ctx['candidate']->id);
 
@@ -120,6 +121,7 @@ function heldDeliveryForReviewTests(string $advertiserEmail, string $candidateEm
     test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/heartbeat", ['visible_duration_ms' => $requiredMs])->assertOk();
     test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/heartbeat", ['visible_duration_ms' => $requiredMs])->assertOk();
     test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/heartbeat", ['visible_duration_ms' => $requiredMs])->assertOk();
+    test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/ended", ['visible_duration_ms' => $requiredMs])->assertOk();
     $completed = test()->postJson("/api/feed/deliveries/{$ctx['delivery_id']}/complete")->assertOk();
     expect($completed->json('delivery.status'))->toBe('held');
 
@@ -228,6 +230,7 @@ it('logs a critical anomaly for a completed delivery found without a Grand Livre
 
     Carbon::setTestNow(Carbon::now('UTC')->addMilliseconds($next['required_duration_ms'] + 500));
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
+    test()->postJson("/api/feed/deliveries/{$next['id']}/ended", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
     Carbon::setTestNow();
 
     test()->postJson("/api/feed/deliveries/{$next['id']}/complete")->assertOk();

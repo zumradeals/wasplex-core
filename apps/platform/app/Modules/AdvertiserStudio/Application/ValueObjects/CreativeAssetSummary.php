@@ -15,5 +15,6 @@ final class CreativeAssetSummary
         public readonly ?int $width,
         public readonly ?int $height,
         public readonly ?int $duration,
+        public readonly ?int $durationMs = null,
     ) {}
 }

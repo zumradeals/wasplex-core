@@ -60,7 +60,7 @@ final class FeedRiskReviewService
                 $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
 
                 try {
-                    $this->quota->restore($delivery->account_id, 1, "feed-quota-own-campaign:{$delivery->id}");
+                    $this->quota->restore($delivery->account_id, max(1, (int) $delivery->quota_units), "feed-quota-own-campaign:{$delivery->id}");
                 } catch (NoActiveSubscriptionException) {
                     // No payment may be created even if the subscription
                     // expired while the hold was awaiting manual review.
@@ -104,7 +104,7 @@ final class FeedRiskReviewService
                 $this->envelope->releaseSlot($delivery->campaign_envelope_consumption_id);
 
                 try {
-                    $this->quota->restore($delivery->account_id, 1, "feed-quota-duplicate:{$delivery->id}");
+                    $this->quota->restore($delivery->account_id, max(1, (int) $delivery->quota_units), "feed-quota-duplicate:{$delivery->id}");
                 } catch (NoActiveSubscriptionException) {
                     // Le verrou économique reste prioritaire si l'abonnement
                     // a expiré pendant la revue manuelle.

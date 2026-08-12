@@ -20,6 +20,8 @@ interface Asset {
     filename: string;
     moderation_status?: string;
     url?: string;
+    duration?: number | null;
+    duration_ms?: number | null;
 }
 
 interface ProfileCriterion {
@@ -206,6 +208,20 @@ const latestReviewCase = computed<ReviewCase | null>(() => {
 });
 const selectedAsset = computed(() => assets.value.find((asset) => asset.id === form.asset_id) ?? null);
 const selectedBrand = computed(() => brands.value.find((brand) => brand.id === form.brand_id) ?? null);
+const selectedVideoDurationMs = computed(() => {
+    const asset = selectedAsset.value;
+    if (!asset) return 0;
+    return asset.duration_ms ?? (asset.duration ? asset.duration * 1000 : 0);
+});
+const selectedVideoUnits = computed(() =>
+    selectedVideoDurationMs.value > 0 ? Math.ceil(selectedVideoDurationMs.value / 15000) : 0,
+);
+function formatVideoDuration(ms: number): string {
+    const seconds = Math.max(1, Math.ceil(ms / 1000));
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    return minutes > 0 ? `${minutes} min ${rest.toString().padStart(2, '0')} s` : `${rest} s`;
+}
 const ctaLabel = computed(() => (form.objective_code ? OBJECTIVES[form.objective_code] : null));
 const gainLabel = computed(() => {
     const quote = latestQuote.value;
@@ -226,7 +242,7 @@ async function loadAssetsForBrand(brandId: string): Promise<void> {
         return;
     }
     const { data } = await http.get(`/advertiser/assets?brand_id=${brandId}`);
-    assets.value = data.assets;
+    assets.value = (data.assets as Asset[]).filter((asset) => asset.type === 'video');
 }
 
 async function loadAll(): Promise<void> {
@@ -471,6 +487,10 @@ function toggleProfileCriterion(code: string): void {
 
 async function uploadFile(file: File | undefined): Promise<void> {
     if (!file) return;
+    if (!file.type.startsWith('video/')) {
+        actionError.value = 'Wasplex V1 accepte uniquement une vidéo publicitaire.';
+        return;
+    }
     if (!form.brand_id) {
         actionError.value = "Choisis d'abord l'activité que tu veux promouvoir.";
         return;
@@ -937,15 +957,15 @@ void loadAll();
                                         >↑</span
                                     >
                                     <span class="text-wpx-white-soft mt-2 text-sm font-bold">{{
-                                        uploading ? 'Envoi du visuel…' : 'Ajouter une photo ou une vidéo'
+                                        uploading ? 'Envoi de la vidéo…' : 'Ajouter une vidéo'
                                     }}</span>
                                     <span class="text-wpx-muted-dark mt-1 text-[11px]"
-                                        >JPG, PNG, WEBP, MP4, MOV ou WEBM</span
+                                        >MP4, MOV ou WEBM · 5 minutes maximum</span
                                     >
                                     <input
                                         ref="fileInput"
                                         type="file"
-                                        accept="image/*,video/*"
+                                        accept="video/mp4,video/quicktime,video/webm"
                                         class="hidden"
                                         @change="onFileInputChange"
                                     />
@@ -1346,6 +1366,27 @@ void loadAll();
                                 :gain-label="gainLabel"
                                 :progress-percent="((step + 1) / STEPS.length) * 100"
                             />
+                            <div
+                                v-if="selectedVideoDurationMs > 0"
+                                class="border-wpx-border-dark bg-wpx-navy-850 mt-3 rounded-2xl border p-3 text-xs"
+                            >
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-wpx-muted-dark">Durée détectée</span>
+                                    <strong class="text-wpx-white-soft">{{
+                                        formatVideoDuration(selectedVideoDurationMs)
+                                    }}</strong>
+                                </div>
+                                <div class="mt-2 flex items-center justify-between gap-3">
+                                    <span class="text-wpx-muted-dark">Tarification Wasplex</span>
+                                    <strong class="text-wpx-cyan"
+                                        >{{ selectedVideoUnits }} tranche{{ selectedVideoUnits > 1 ? 's' : '' }} de 15
+                                        s</strong
+                                    >
+                                </div>
+                                <p class="text-wpx-muted-dark mt-2 leading-relaxed">
+                                    Le membre est rémunéré uniquement après la fin réelle de la vidéo.
+                                </p>
+                            </div>
                         </div>
                     </aside>
                 </div>

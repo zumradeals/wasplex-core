@@ -25,6 +25,9 @@ final class CampaignQuoteService
     {
         $audience = $version->audience_configuration ?? [];
         $budget = $version->budget_configuration ?? [];
+        $creative = $version->creative_configuration ?? [];
+        $attentionUnits = max(1, (int) ($creative['attention_units'] ?? 1));
+        $durationMs = (int) ($creative['duration_ms'] ?? config('campaigns.default_ad_duration_ms'));
         $countryCode = $audience['territory']['country_code'] ?? null;
         $dailyBudgetMinor = (int) ($budget['daily_budget_minor'] ?? 0);
         $configuredDurationDays = (int) ($budget['duration_days'] ?? 0);
@@ -89,7 +92,8 @@ final class CampaignQuoteService
         $highestReward = 0;
 
         foreach ($classes as $summary) {
-            $gainUnitaireMinor = $summary->rewardPerCompleteViewMinor;
+            $baseRewardMinor = $summary->rewardPerCompleteViewMinor;
+            $gainUnitaireMinor = $baseRewardMinor * $attentionUnits;
             $events = intdiv($userEnvelopeTotal, $gainUnitaireMinor);
             $highestReward = max($highestReward, $gainUnitaireMinor);
 
@@ -97,6 +101,9 @@ final class CampaignQuoteService
                 'envelope_minor' => $userEnvelopeTotal,
                 'events' => $events,
                 'gain_unitaire_minor' => $gainUnitaireMinor,
+                'base_reward_minor' => $baseRewardMinor,
+                'attention_units' => $attentionUnits,
+                'duration_ms' => $durationMs,
             ];
         }
 

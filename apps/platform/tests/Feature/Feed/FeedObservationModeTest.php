@@ -55,6 +55,7 @@ it('credits a complete view immediately in antifraud observation mode even when 
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $requiredMs])
         ->assertOk()
         ->assertJsonPath('delivery.risk_signal_count', 2);
+    test()->postJson("/api/feed/deliveries/{$next['id']}/ended", ['visible_duration_ms' => $requiredMs])->assertOk();
 
     $walletBefore = app(UserWalletQueryService::class)->balanceMinor($candidate->id);
 

@@ -87,6 +87,7 @@ function completeOneFeedDeliveryForReportingTests(string $campaignId, string $ca
 
     Carbon::setTestNow(Carbon::now('UTC')->addMilliseconds($next['required_duration_ms'] + 500));
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
+    test()->postJson("/api/feed/deliveries/{$next['id']}/ended", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
     Carbon::setTestNow();
 
     $completed = test()->postJson("/api/feed/deliveries/{$next['id']}/complete")->assertOk();

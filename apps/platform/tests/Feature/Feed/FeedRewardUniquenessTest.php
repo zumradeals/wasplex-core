@@ -59,6 +59,9 @@ function watchFeedRewardDelivery(array $delivery): void
     test()->postJson("/api/feed/deliveries/{$delivery['id']}/heartbeat", [
         'visible_duration_ms' => $delivery['required_duration_ms'],
     ])->assertOk()->assertJsonPath('delivery.progress_percent', 100);
+    test()->postJson("/api/feed/deliveries/{$delivery['id']}/ended", [
+        'visible_duration_ms' => $delivery['required_duration_ms'],
+    ])->assertOk();
 
     Carbon::setTestNow();
 }

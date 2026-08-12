@@ -172,7 +172,16 @@ final class CampaignService
             throw new InvalidCampaignStateException('Un devis ne peut être généré que pour une campagne en brouillon ou déjà devisée.');
         }
 
-        $this->quoteService->quote($campaign->currentVersion());
+        $version = $campaign->currentVersion();
+        $creative = $version->creative_configuration ?? [];
+        if (empty($creative['asset_id'])) {
+            throw new InvalidCampaignConfigurationException('Ajoute une vidéo avant de générer le devis.');
+        }
+        $version->update([
+            'creative_configuration' => $this->validateCreativeConfiguration($organizationId, $creative),
+        ]);
+
+        $this->quoteService->quote($version->refresh());
 
         return $this->find($organizationId, $campaignId);
     }
@@ -259,7 +268,7 @@ final class CampaignService
         $version = $campaign->currentVersion();
         if ($campaign->objective_code === null || empty($version->creative_configuration['asset_id'])) {
             throw new InvalidCampaignConfigurationException(
-                'Choisis un objectif et un média avant d’envoyer la campagne.'
+                'Choisis un objectif et une vidéo avant d’envoyer la campagne.'
             );
         }
 
@@ -327,7 +336,24 @@ final class CampaignService
             throw new InvalidCampaignConfigurationException("Média introuvable : {$configuration['asset_id']}.");
         }
 
-        $configuration['format'] = $asset->type === 'video' ? 'video' : 'image';
+        if ($asset->type !== 'video') {
+            throw new InvalidCampaignConfigurationException('Wasplex V1 diffuse uniquement des publicités vidéo.');
+        }
+
+        $durationMs = $asset->durationMs ?? (($asset->duration ?? 0) * 1000);
+        $maxDurationMs = ((int) config('advertiser_studio.video.max_duration_seconds')) * 1000;
+
+        if ($durationMs <= 0 || $durationMs > $maxDurationMs) {
+            throw new InvalidCampaignConfigurationException(
+                'La vidéo doit avoir une durée vérifiée comprise entre 1 seconde et 5 minutes.'
+            );
+        }
+
+        $unitMs = max(1, (int) config('campaigns.attention_unit_ms'));
+        $configuration['format'] = 'video';
+        $configuration['duration_ms'] = $durationMs;
+        $configuration['attention_units'] = (int) ceil($durationMs / $unitMs);
+        unset($configuration['duration_seconds']);
 
         return $configuration;
     }

@@ -43,6 +43,7 @@ it('broadcasts wallet.balance.changed on the account private channel after a nor
 
     Carbon::setTestNow(Carbon::now('UTC')->addMilliseconds($next['required_duration_ms'] + 500));
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
+    test()->postJson("/api/feed/deliveries/{$next['id']}/ended", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
     Carbon::setTestNow();
 
     $completed = test()->postJson("/api/feed/deliveries/{$next['id']}/complete")->assertOk();
@@ -90,6 +91,7 @@ function heldDeliveryForRealtimeTests(string $advertiserEmail, string $candidate
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $requiredMs])->assertOk();
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $requiredMs])->assertOk();
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $requiredMs])->assertOk();
+    test()->postJson("/api/feed/deliveries/{$next['id']}/ended", ['visible_duration_ms' => $requiredMs])->assertOk();
 
     Carbon::setTestNow();
 
@@ -179,6 +181,7 @@ it('still credits and responds successfully when the wallet.balance.changed broa
 
     Carbon::setTestNow(Carbon::now('UTC')->addMilliseconds($next['required_duration_ms'] + 500));
     test()->postJson("/api/feed/deliveries/{$next['id']}/heartbeat", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
+    test()->postJson("/api/feed/deliveries/{$next['id']}/ended", ['visible_duration_ms' => $next['required_duration_ms']])->assertOk();
     Carbon::setTestNow();
 
     $completed = test()->postJson("/api/feed/deliveries/{$next['id']}/complete")->assertOk();

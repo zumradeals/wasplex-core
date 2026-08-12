@@ -50,8 +50,12 @@ function creditAdvertiserWalletForTests(string $organizationId, int $amountMinor
     ));
 }
 
-function setUpQuotableCampaign(string $email, int $budgetAmountMinor = 100000, int $durationDays = 7): array
-{
+function setUpQuotableCampaign(
+    string $email,
+    int $budgetAmountMinor = 100000,
+    int $durationDays = 7,
+    int $videoDurationMs = 15000,
+): array {
     createActiveSubscriberInClass('GOLD', 'CI');
     createActiveSubscriberInClass('GOLD', 'CI');
     createActiveSubscriberInClass('GOLD', 'CI');
@@ -68,7 +72,8 @@ function setUpQuotableCampaign(string $email, int $budgetAmountMinor = 100000, i
         'filename' => 'campagne-test.mp4',
         'format' => 'video',
         'size' => 1024,
-        'duration' => 15,
+        'duration' => (int) ceil($videoDurationMs / 1000),
+        'duration_ms' => $videoDurationMs,
         'moderation_status' => CreativeAsset::STATUS_READY,
         'storage_disk' => 'public',
         'storage_path' => 'creatives/campagne-test.mp4',
@@ -116,10 +121,17 @@ it('allows quoting when the targeted segment is still small', function (): void 
     registerAndLogin('campaign-quote-2@example.com');
     createAdvertiserOrganization();
     $brandId = test()->postJson('/api/advertiser/brands', ['name' => 'GamaDeals'])->assertCreated()->json('brand.id');
+    $asset = CreativeAsset::query()->create([
+        'brand_id' => $brandId, 'type' => CreativeAsset::TYPE_VIDEO, 'filename' => 'small-segment.mp4',
+        'format' => 'mp4', 'size' => 1024, 'duration' => 15, 'duration_ms' => 15000,
+        'moderation_status' => CreativeAsset::STATUS_READY, 'storage_disk' => 'public',
+        'storage_path' => 'creatives/small-segment.mp4', 'created_by' => 'test-suite',
+    ]);
     $campaignId = test()->postJson('/api/advertiser/campaigns', ['brand_id' => $brandId])->assertCreated()->json('campaign.id');
 
     // No subscribers created at all in this test -> segment size 0.
     test()->patchJson("/api/advertiser/campaigns/{$campaignId}", [
+        'creative_configuration' => ['asset_id' => $asset->id, 'title' => 'Test'],
         'audience_configuration' => ['economic_classes' => ['GOLD']],
         'budget_configuration' => ['budget_amount_minor' => 100000],
     ])->assertOk();
@@ -176,6 +188,22 @@ it('produces a quote with an exact 50/50 envelope and direct plan rewards', func
     expect($breakdown['PLATINUM']['gain_unitaire_minor'])->toBe(60);
 
     expect($quote->estimated_events)->toBeGreaterThan(0);
+});
+
+it('prices a five minute video by twenty attention units', function (): void {
+    publishPriceCatalog();
+    ['campaign_id' => $campaignId] = setUpQuotableCampaign(
+        'campaign-five-minute-pricing@example.com',
+        100000,
+        7,
+        300000,
+    );
+
+    test()->postJson("/api/advertiser/campaigns/{$campaignId}/quote")->assertOk();
+    $quote = CampaignQuote::query()->latest('created_at')->firstOrFail();
+    expect($quote->class_breakdown['GOLD']['attention_units'])->toBe(20);
+    expect($quote->class_breakdown['GOLD']['gain_unitaire_minor'])->toBe(1000);
+    expect($quote->class_breakdown['PLATINUM']['gain_unitaire_minor'])->toBe(1200);
 });
 
 it('refuses funding with insufficient advertiser balance', function (): void {

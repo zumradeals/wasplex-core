@@ -27,6 +27,10 @@ return [
     // tentative de sur-déclaration plutôt qu'une imprécision réseau.
     'overclaim_tolerance_ms' => (int) env('FEED_OVERCLAIM_TOLERANCE_MS', 500),
 
+    // L'événement ended arrive au bord exact du média alors que l'horloge
+    // d'attention est échantillonnée côté navigateur.
+    'media_end_tolerance_ms' => (int) env('FEED_MEDIA_END_TOLERANCE_MS', 1200),
+
     // En mode observation, les signaux restent enregistrés mais le seuil de
     // retenue devient volontairement inatteignable. En mode enforce, on
     // retrouve le seuil configurable historique.

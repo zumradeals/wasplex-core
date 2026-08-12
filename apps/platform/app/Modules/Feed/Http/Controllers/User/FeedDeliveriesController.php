@@ -77,6 +77,24 @@ final class FeedDeliveriesController extends Controller
         return response()->json(['delivery' => $updated]);
     }
 
+    public function ended(Request $request, string $delivery): JsonResponse
+    {
+        $data = $request->validate(['visible_duration_ms' => ['required', 'integer', 'min:0']]);
+
+        /** @var Account $account */
+        $account = $request->user();
+
+        try {
+            $updated = $this->attention->markMediaEnded($delivery, $account->id, $data['visible_duration_ms']);
+        } catch (FeedDeliveryNotFoundException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 404);
+        } catch (AttentionNotQualifiedException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['delivery' => $updated]);
+    }
+
     public function complete(Request $request, string $delivery): JsonResponse
     {
         /** @var Account $account */

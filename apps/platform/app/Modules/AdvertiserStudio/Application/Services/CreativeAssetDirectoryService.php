@@ -29,6 +29,7 @@ final class CreativeAssetDirectoryService implements CreativeAssetDirectoryContr
             width: $asset->width,
             height: $asset->height,
             duration: $asset->duration,
+            durationMs: $asset->duration_ms,
         );
     }
 }

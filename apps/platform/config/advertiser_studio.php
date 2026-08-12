@@ -27,8 +27,9 @@ return [
 
     'video' => [
         'formats' => ['mp4', 'mov', 'webm'],
+        'mime_types' => ['video/mp4', 'video/quicktime', 'video/webm'],
         'max_size_kb' => 204800,
-        'max_duration_seconds' => (int) env('ADVERTISER_STUDIO_VIDEO_MAX_DURATION_SECONDS', 60),
+        'max_duration_seconds' => (int) env('ADVERTISER_STUDIO_VIDEO_MAX_DURATION_SECONDS', 300),
         'ffprobe_binary' => env('ADVERTISER_STUDIO_FFPROBE_BINARY', 'ffprobe'),
     ],
 

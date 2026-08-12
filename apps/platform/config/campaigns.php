@@ -58,6 +58,10 @@ return [
 
     'default_ad_duration_ms' => (int) env('CAMPAIGNS_DEFAULT_AD_DURATION_MS', 15000),
 
+    // Unité économique V1 : chaque tranche commencée de 15 secondes
+    // multiplie le gain membre, le coût annonceur et le quota d'attention.
+    'attention_unit_ms' => (int) env('CAMPAIGNS_ATTENTION_UNIT_MS', 15000),
+
     /*
     |--------------------------------------------------------------------------
     | Livraison — validité d'une réservation d'enveloppe
