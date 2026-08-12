@@ -17,6 +17,27 @@ final class AlertInstitutionalCasesController extends Controller
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
+    public function destinations(): JsonResponse
+    {
+        $destinations = ProfessionalSpace::query()
+            ->with('organization:id,name,status')
+            ->where('space_kind', ProfessionalSpace::KIND_SECURITY_INSTITUTION)
+            ->where('verification_status', ProfessionalSpace::VERIFICATION_VERIFIED)
+            ->whereHas('organization', fn ($query) => $query->where('status', 'active'))
+            ->orderBy('trade_name')
+            ->limit(200)
+            ->get()
+            ->map(fn (ProfessionalSpace $space): array => [
+                'id' => $space->id,
+                'organization_id' => $space->organization_id,
+                'name' => $space->trade_name ?: $space->organization?->name ?: $space->legal_name,
+                'territory' => $space->territory,
+            ])
+            ->values();
+
+        return new JsonResponse(['destinations' => $destinations]);
+    }
+
     public function refer(Request $request, AlertDeclaration $alert): JsonResponse
     {
         $data = $request->validate([
