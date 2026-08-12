@@ -92,7 +92,7 @@ final class ProfessionalSpacesController extends Controller
             if ($status === ProfessionalSpace::VERIFICATION_VERIFIED) {
                 $this->grantVerifiedCapabilities($professionalSpace, $admin);
             } else {
-                $this->revokeSensitiveCapabilities($professionalSpace);
+                $this->revokeSensitiveCapabilities($professionalSpace, $admin);
             }
         });
 
@@ -131,14 +131,16 @@ final class ProfessionalSpacesController extends Controller
                 ], [
                     'status' => 'active',
                     'starts_at' => now(),
-                    'ends_at' => null,
+                    'expires_at' => null,
                     'granted_by' => $admin->id,
+                    'revoked_at' => null,
+                    'revoked_by' => null,
                 ]);
             }
         }
     }
 
-    private function revokeSensitiveCapabilities(ProfessionalSpace $space): void
+    private function revokeSensitiveCapabilities(ProfessionalSpace $space, Account $admin): void
     {
         CapabilityGrant::query()
             ->where('scope_type', CapabilityGrant::SCOPE_ORGANIZATION)
@@ -149,7 +151,11 @@ final class ProfessionalSpacesController extends Controller
                     ->orWhere('capability_code', 'like', 'professional.health.%');
             })
             ->where('status', 'active')
-            ->update(['status' => 'revoked', 'ends_at' => now()]);
+            ->update([
+                'status' => 'revoked',
+                'revoked_at' => now(),
+                'revoked_by' => $admin->id,
+            ]);
     }
 
     /** @return array<int, string> */
