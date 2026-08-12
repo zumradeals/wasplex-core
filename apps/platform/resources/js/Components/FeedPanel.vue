@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import {
+    feedMediaPreloadActivated,
+    feedMediaPreloadPlaying,
+    releaseFeedMediaPreload,
+} from '@/lib/feedMediaPreload';
 import { useComingSoon } from '@/lib/comingSoon';
 
 interface Interactions {
@@ -54,7 +59,6 @@ const loading = ref(true);
 const noAdAvailable = ref(false);
 const feedSessionId = ref<string | null>(null);
 const delivery = ref<Delivery | null>(null);
-const prefetchedDelivery = ref<Delivery | null | undefined>(undefined);
 const explanation = ref<string[] | null>(null);
 const showComments = ref(false);
 const comments = ref<Comment[]>([]);
@@ -83,9 +87,6 @@ let lastSwipeAt = 0;
 let scrollGestureLocked = false;
 let playbackIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
 let transitionTimer: ReturnType<typeof setTimeout> | null = null;
-let prefetchPromise: Promise<void> | null = null;
-let prefetchedMedia: HTMLVideoElement | HTMLImageElement | null = null;
-let destroyed = false;
 
 async function loadBalance(): Promise<void> {
     const { data } = await http.get('/me/wallet');
@@ -166,63 +167,10 @@ async function fetchNextDelivery(): Promise<Delivery | null> {
     return data.delivery;
 }
 
-function releasePrefetchedMedia(): void {
-    if (prefetchedMedia instanceof HTMLVideoElement) {
-        prefetchedMedia.removeAttribute('src');
-        prefetchedMedia.load();
-    }
-    prefetchedMedia = null;
-}
-
-function preloadCreative(next: Delivery | null): void {
-    releasePrefetchedMedia();
-    if (next?.creative?.url === undefined) return;
-
-    if (next.creative.type === 'video') {
-        const media = document.createElement('video');
-        media.preload = 'auto';
-        media.muted = true;
-        media.playsInline = true;
-        media.src = next.creative.url;
-        media.load();
-        prefetchedMedia = media;
-        return;
-    }
-
-    if (next.creative.type === 'image') {
-        const image = new Image();
-        image.src = next.creative.url;
-        prefetchedMedia = image;
-    }
-}
-
-async function prefetchNext(): Promise<void> {
-    if (prefetchPromise !== null || prefetchedDelivery.value !== undefined || destroyed) return;
-
-    prefetchPromise = (async () => {
-        const next = await fetchNextDelivery();
-        if (destroyed) {
-            if (next !== null && ['reserved', 'started'].includes(next.status)) {
-                void http.post(`/feed/deliveries/${next.id}/abandon`).catch(() => undefined);
-            }
-            return;
-        }
-        prefetchedDelivery.value = next;
-        preloadCreative(next);
-    })()
-        .catch(() => {
-            prefetchedDelivery.value = undefined;
-        })
-        .finally(() => {
-            prefetchPromise = null;
-        });
-
-    await prefetchPromise;
-}
-
 async function activateDelivery(next: Delivery | null): Promise<void> {
     videoRef.value?.pause();
     resetPlayerState();
+    feedMediaPreloadActivated(next?.campaign_id ?? null);
     delivery.value = next;
     noAdAvailable.value = next === null;
     loading.value = false;
@@ -238,7 +186,10 @@ async function activateDelivery(next: Delivery | null): Promise<void> {
 
     if (next.status === 'reserved') {
         await ensureDeliveryStarted();
-        if (delivery.value?.status === 'started') resumeAttentionClock();
+        if (delivery.value?.status === 'started') {
+            resumeAttentionClock();
+            feedMediaPreloadPlaying(delivery.value.campaign_id);
+        }
     }
 }
 
@@ -259,16 +210,6 @@ async function loadNext(): Promise<void> {
 
 async function activatePrefetchedOrLoadNext(): Promise<void> {
     explanation.value = null;
-    if (prefetchPromise !== null) await prefetchPromise;
-
-    if (prefetchedDelivery.value !== undefined) {
-        const next = prefetchedDelivery.value;
-        prefetchedDelivery.value = undefined;
-        releasePrefetchedMedia();
-        await activateDelivery(next);
-        return;
-    }
-
     await loadNext();
 }
 
@@ -326,6 +267,12 @@ async function onVideoPlaying(): Promise<void> {
 
     if (delivery.value?.status === 'started' && videoRef.value !== null && !videoRef.value.paused) {
         resumeAttentionClock();
+        feedMediaPreloadPlaying(delivery.value.campaign_id);
+        return;
+    }
+
+    if (delivery.value?.status === 'replay') {
+        feedMediaPreloadPlaying(delivery.value.campaign_id);
     }
 }
 
@@ -407,7 +354,10 @@ async function retryPlayback(): Promise<void> {
 
     if (current.creative?.type !== 'video') {
         if (current.status === 'reserved') await ensureDeliveryStarted();
-        if (delivery.value?.status === 'started') resumeAttentionClock();
+        if (delivery.value?.status === 'started') {
+            resumeAttentionClock();
+            feedMediaPreloadPlaying(delivery.value.campaign_id);
+        }
         return;
     }
 
@@ -459,7 +409,6 @@ async function onVideoEnded(): Promise<void> {
     if (current === null) return;
 
     if (current.status === 'replay') {
-        void prefetchNext();
         scheduleNext(650);
         return;
     }
@@ -500,7 +449,6 @@ async function completeDelivery(): Promise<void> {
 
         const updated = { ...delivery.value, ...data.delivery };
         delivery.value = updated;
-        void prefetchNext();
 
         if (updated.status === 'held') {
             holdNotice.value = true;
@@ -642,17 +590,11 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    destroyed = true;
     pauseAttentionClock();
     document.removeEventListener('visibilitychange', onVisibilityChange);
     if (playbackIndicatorTimer !== null) clearTimeout(playbackIndicatorTimer);
     if (transitionTimer !== null) clearTimeout(transitionTimer);
-
-    const pending = prefetchedDelivery.value;
-    if (pending !== undefined && pending !== null && ['reserved', 'started'].includes(pending.status)) {
-        void http.post(`/feed/deliveries/${pending.id}/abandon`).catch(() => undefined);
-    }
-    releasePrefetchedMedia();
+    releaseFeedMediaPreload();
 });
 </script>
 
