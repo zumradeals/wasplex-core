@@ -309,7 +309,9 @@ watch(
                                     <p class="text-wpx-muted-dark mt-1.5 text-[10px]">Ne partagez jamais cette clé.</p>
                                 </div>
                                 <label class="flex flex-col gap-1.5">
-                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">2. Code à 6 chiffres</span>
+                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
+                                        >2. Code à 6 chiffres</span
+                                    >
                                     <input
                                         v-model="code"
                                         type="text"
@@ -342,11 +344,15 @@ watch(
                     <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex items-start gap-3">
-                                <span class="bg-wpx-blue/12 text-wpx-blue rounded-wpx-md flex h-10 w-10 shrink-0 items-center justify-center">•••</span>
+                                <span
+                                    class="bg-wpx-blue/12 text-wpx-blue rounded-wpx-md flex h-10 w-10 shrink-0 items-center justify-center"
+                                    >•••</span
+                                >
                                 <div>
                                     <p class="text-wpx-white-soft text-sm font-bold">Mot de passe</p>
                                     <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                                        Modifiez votre secret d’accès. Par sécurité, les autres appareils seront déconnectés.
+                                        Modifiez votre secret d’accès. Par sécurité, les autres appareils seront
+                                        déconnectés.
                                     </p>
                                 </div>
                             </div>
@@ -362,7 +368,9 @@ watch(
 
                         <div v-if="showPasswordForm" class="mt-4 flex flex-col gap-2.5">
                             <label class="flex flex-col gap-1.5">
-                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Mot de passe actuel</span>
+                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
+                                    >Mot de passe actuel</span
+                                >
                                 <input
                                     v-model="currentPassword"
                                     type="password"
@@ -371,7 +379,9 @@ watch(
                                 />
                             </label>
                             <label class="flex flex-col gap-1.5">
-                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Nouveau mot de passe</span>
+                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
+                                    >Nouveau mot de passe</span
+                                >
                                 <input
                                     v-model="newPassword"
                                     type="password"
@@ -381,7 +391,9 @@ watch(
                                 />
                             </label>
                             <label class="flex flex-col gap-1.5">
-                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Confirmer le nouveau</span>
+                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
+                                    >Confirmer le nouveau</span
+                                >
                                 <input
                                     v-model="newPasswordConfirmation"
                                     type="password"
@@ -520,7 +532,8 @@ watch(
                             <div>
                                 <p class="text-wpx-white-soft text-xs font-bold">Un accès vous semble suspect ?</p>
                                 <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                                    Déconnectez l’appareil concerné, changez votre mot de passe puis activez la double authentification.
+                                    Déconnectez l’appareil concerné, changez votre mot de passe puis activez la double
+                                    authentification.
                                 </p>
                             </div>
                         </div>

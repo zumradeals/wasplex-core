@@ -56,7 +56,9 @@ function documentTypeLabel(value: string | null): string {
             passport: 'Passeport',
             drivers_license: 'Permis de conduire',
             residence_permit: 'Titre de séjour',
-        }[value ?? ''] ?? value ?? '—'
+        }[value ?? ''] ??
+        value ??
+        '—'
     );
 }
 
@@ -165,10 +167,13 @@ onMounted(load);
         <section class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">Identité &amp; KYC</p>
+                    <p class="text-wpx-cyan text-[11px] font-extrabold tracking-[0.16em] uppercase">
+                        Identité &amp; KYC
+                    </p>
                     <h2 class="mt-1 text-xl font-extrabold">Vérifier avec méthode, décider avec une trace.</h2>
                     <p class="text-wpx-muted-dark mt-1 max-w-2xl text-sm">
-                        Les pièces restent privées. Chaque consultation et chaque décision sont protégées par le MFA admin et journalisées.
+                        Les pièces restent privées. Chaque consultation et chaque décision sont protégées par le MFA
+                        admin et journalisées.
                     </p>
                 </div>
                 <div class="border-wpx-border-dark bg-wpx-navy-950 rounded-wpx-md flex gap-1 border p-1">
@@ -177,7 +182,9 @@ onMounted(load);
                         :key="tab.key"
                         type="button"
                         class="rounded-wpx-sm px-3 py-2 text-xs font-extrabold"
-                        :class="activeStatus === tab.key ? 'bg-wpx-white-soft text-wpx-navy-950' : 'text-wpx-muted-dark'"
+                        :class="
+                            activeStatus === tab.key ? 'bg-wpx-white-soft text-wpx-navy-950' : 'text-wpx-muted-dark'
+                        "
                         @click="switchStatus(tab.key)"
                     >
                         {{ tab.label }}
@@ -191,7 +198,9 @@ onMounted(load);
         </p>
 
         <div class="grid min-h-[520px] grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
-            <aside class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border">
+            <aside
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark overflow-hidden border"
+            >
                 <div class="border-wpx-border-dark flex items-center justify-between border-b px-4 py-3.5">
                     <p class="text-sm font-extrabold">{{ tabs.find((tab) => tab.key === activeStatus)?.label }}</p>
                     <span class="text-wpx-muted-dark text-xs">{{ rows.length }}</span>
@@ -203,15 +212,24 @@ onMounted(load);
                         :key="row.id"
                         type="button"
                         class="rounded-wpx-md mb-1 w-full border p-3 text-left transition"
-                        :class="selected?.id === row.id ? 'border-wpx-cyan/40 bg-wpx-navy-750' : 'hover:bg-wpx-navy-750/60 border-transparent'"
+                        :class="
+                            selected?.id === row.id
+                                ? 'border-wpx-cyan/40 bg-wpx-navy-750'
+                                : 'hover:bg-wpx-navy-750/60 border-transparent'
+                        "
                         @click="selectVerification(row.id)"
                     >
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <p class="truncate text-[13px] font-bold">
-                                    {{ [row.account.first_name, row.account.last_name].filter(Boolean).join(' ') || row.account.primary_identifier }}
+                                    {{
+                                        [row.account.first_name, row.account.last_name].filter(Boolean).join(' ') ||
+                                        row.account.primary_identifier
+                                    }}
                                 </p>
-                                <p class="text-wpx-muted-dark mt-1 truncate text-[10px]">{{ row.account.primary_identifier }}</p>
+                                <p class="text-wpx-muted-dark mt-1 truncate text-[10px]">
+                                    {{ row.account.primary_identifier }}
+                                </p>
                             </div>
                             <span class="text-wpx-cyan text-[10px] font-bold">{{ row.document_country ?? '—' }}</span>
                         </div>
@@ -219,11 +237,16 @@ onMounted(load);
                             {{ documentTypeLabel(row.document_type) }} · {{ formatDate(row.submitted_at) }}
                         </p>
                     </button>
-                    <p v-if="rows.length === 0" class="text-wpx-muted-dark p-5 text-center text-sm">Aucun dossier dans cette file.</p>
+                    <p v-if="rows.length === 0" class="text-wpx-muted-dark p-5 text-center text-sm">
+                        Aucun dossier dans cette file.
+                    </p>
                 </div>
             </aside>
 
-            <section v-if="selected" class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5">
+            <section
+                v-if="selected"
+                class="border-wpx-border-dark rounded-wpx-xl bg-wpx-navy-850 shadow-wpx-card-dark border p-5"
+            >
                 <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
                         <p class="text-wpx-cyan text-[10px] font-extrabold tracking-wide uppercase">Dossier KYC</p>
@@ -240,7 +263,13 @@ onMounted(load);
                                   : 'bg-wpx-gold/15 text-wpx-gold'
                         "
                     >
-                        {{ selected.status === 'approved' ? 'Validé' : selected.status === 'rejected' ? 'Refusé' : 'À vérifier' }}
+                        {{
+                            selected.status === 'approved'
+                                ? 'Validé'
+                                : selected.status === 'rejected'
+                                  ? 'Refusé'
+                                  : 'À vérifier'
+                        }}
                     </span>
                 </div>
 
@@ -328,7 +357,10 @@ onMounted(load);
                     </div>
                 </div>
 
-                <div v-else-if="selected.status === 'rejected' && selected.rejection_reason" class="bg-wpx-danger/8 text-wpx-danger rounded-wpx-md mt-5 p-3 text-xs">
+                <div
+                    v-else-if="selected.status === 'rejected' && selected.rejection_reason"
+                    class="bg-wpx-danger/8 text-wpx-danger rounded-wpx-md mt-5 p-3 text-xs"
+                >
                     <span class="font-extrabold">Motif :</span> {{ selected.rejection_reason }}
                 </div>
             </section>

@@ -168,7 +168,9 @@ async function logout(): Promise<void> {
                 </section>
 
                 <section v-else-if="activeSection === 'users'" class="flex flex-col gap-5">
-                    <div class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2">
+                    <div
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
+                    >
                         <button
                             v-for="tab in usersTabs"
                             :key="tab.key"
