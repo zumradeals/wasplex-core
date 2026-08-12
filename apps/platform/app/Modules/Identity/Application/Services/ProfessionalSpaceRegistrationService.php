@@ -76,7 +76,11 @@ final class ProfessionalSpaceRegistrationService
                 'starts_at' => now(),
             ]);
 
-            foreach (['professional.space.view.self', 'professional.organization.manage.self'] as $capability) {
+            foreach ([
+                'organization.manage.self',
+                'professional.space.view.self',
+                'professional.organization.manage.self',
+            ] as $capability) {
                 CapabilityGrant::create([
                     'account_id' => $creator->id,
                     'capability_code' => $capability,
