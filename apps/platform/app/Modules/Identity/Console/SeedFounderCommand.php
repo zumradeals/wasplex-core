@@ -13,7 +13,6 @@ use App\Modules\Identity\Infrastructure\Models\UserSpace;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use RuntimeException;
 
 final class SeedFounderCommand extends Command
 {
