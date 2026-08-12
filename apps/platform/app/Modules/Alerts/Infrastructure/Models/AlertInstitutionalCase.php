@@ -16,9 +16,13 @@ final class AlertInstitutionalCase extends Model
     use HasUlids;
 
     public const STATUS_REFERRED = 'referred';
+
     public const STATUS_ACKNOWLEDGED = 'acknowledged';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_RESOLVED = 'resolved';
+
     public const STATUS_DECLINED = 'declined';
 
     protected $fillable = [
