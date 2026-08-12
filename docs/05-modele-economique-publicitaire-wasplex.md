@@ -1,558 +1,378 @@
-# WASPLEX — MODÈLE ÉCONOMIQUE PUBLICITAIRE
+# WASPLEX — MODÈLE ÉCONOMIQUE PUBLICITAIRE V1
 
-**Fichier cible :** `docs/04-publicite/05-modele-economique-publicitaire-wasplex.md`  
-**Statut :** spécification économique, produit et technique prête au codage  
-**Partage :** 50 % Wasplex / 50 % enveloppe utilisateurs  
-**Répartition initiale :** 10 % / 20 % / 35 % / 35 %  
-**Unité :** 1 WP = 1 FCFA
+**Statut :** modèle économique de référence, aligné sur l’implémentation après les PR #60 et #67  
+**Usage :** référence produit, technique et future base de rédaction du business plan Wasplex  
+**Monnaie interne :** 1 WP = 1 FCFA  
+**Principe de partage :** 50 % membre / 50 % Wasplex sur chaque vue complète qualifiée
 
 ---
 
-# 1. Objet
+## 1. Principe général
 
-Ce document définit :
+Wasplex transforme une attention publicitaire réellement fournie et vérifiée en valeur économique traçable.
 
-- ce que l’annonceur achète ;
-- le prix ;
-- le budget ;
-- le partage interne ;
-- la répartition par abonnement ;
-- le calcul du gain ;
-- la réservation ;
-- la consommation ;
-- les reliquats ;
-- le reporting ;
-- le rôle du super moteur.
+Le modèle V1 repose sur cinq règles simples :
 
-# 2. Ce que l’annonceur achète
+1. l’annonceur finance une campagne depuis son solde publicitaire ;
+2. le membre reçoit un montant fixe selon sa classe économique et la durée réelle de la vidéo ;
+3. Wasplex reconnaît une valeur équivalente à celle du membre ;
+4. une vidéo ne produit de valeur qu’après une complétion qualifiée ;
+5. le temps, le quota, la récompense et le coût annonceur utilisent la même unité économique de 15 secondes commencées.
 
-L’annonceur achète :
+Le modèle n’est donc plus fondé sur une répartition générale 10 % / 20 % / 35 % / 35 % d’une enveloppe utilisateurs. Cette ancienne règle est obsolète pour la V1 actuelle.
+
+---
+
+## 2. Unité d’attention
+
+L’unité économique de référence est :
+
+```text
+1 crédit d’attention = 15 secondes commencées
+```
+
+Le nombre de crédits d’une vidéo est calculé ainsi :
+
+```text
+crédits = plafond(durée réelle en millisecondes / 15 000)
+```
+
+Exemples :
+
+```text
+1 à 15 s       = 1 crédit
+15,001 à 30 s  = 2 crédits
+60 s           = 4 crédits
+5 min          = 20 crédits
+```
+
+La durée vidéo réelle est mesurée côté serveur avec `ffprobe`, enregistrée en millisecondes et arrondie vers le haut afin qu’une tranche commencée ne soit jamais sous-comptée.
+
+La V1 publicitaire est vidéo uniquement, avec une durée maximale de 5 minutes.
+
+---
+
+## 3. Classes économiques et récompense de base
+
+La récompense de base correspond à un crédit de 15 secondes.
+
+| Classe | Récompense de base | Crédits mensuels | Plafond théorique mensuel |
+|---|---:|---:|---:|
+| Gratuit | 30 WP | 120 | 3 600 WP |
+| Premium | 40 WP | 300 | 12 000 WP |
+| Gold | 50 WP | 600 | 30 000 WP |
+| Platine | 60 WP | 900 | 54 000 WP |
+
+Le plafond théorique est une capacité économique maximale. Il ne constitue jamais une promesse de revenu : il dépend notamment de la disponibilité des campagnes, du matching, de l’éligibilité, des complétions réelles et des règles de sécurité.
+
+---
+
+## 4. Abonnements V1
+
+Prix de lancement prévus sur des cycles de 30 jours :
+
+```text
+Gratuit  : 0 FCFA
+Premium  : 1 500 FCFA
+Gold     : 4 000 FCFA
+Platine  : 7 500 FCFA
+```
+
+Les offres payantes ne deviennent visibles aux membres qu’après publication explicite par l’administration.
+
+La valeur de l’abonnement ne vient pas d’un rendement financier promis. L’abonnement donne accès à une classe économique avec une récompense de base et une capacité mensuelle d’attention supérieures, en plus des autres avantages produit qui pourront être associés au plan.
+
+---
+
+## 5. Récompense selon la durée réelle
+
+La récompense membre est :
+
+```text
+récompense membre
+= récompense de base de la classe × crédits d’attention de la vidéo
+```
+
+Exemple Gold, vidéo de 60 secondes :
+
+```text
+Durée                 : 60 s
+Crédits               : 4
+Base Gold             : 50 WP
+Récompense membre     : 200 WP
+Part Wasplex          : 200 FCFA
+Coût économique total : 400 FCFA
+```
+
+Une vidéo plus longue consomme donc davantage de crédits mais rémunère proportionnellement davantage. Comme le gain et le quota sont multipliés par le même nombre de crédits, les plafonds théoriques mensuels des classes restent inchangés.
+
+---
+
+## 6. Partage 50 / 50
+
+Pour chaque vue complète qualifiée :
+
+```text
+Valeur économique totale
+├── 50 % membre
+└── 50 % Wasplex
+```
+
+Si un membre Gold reçoit 50 WP pour une unité de 15 secondes, le coût économique correspondant pour l’annonceur est de 100 FCFA :
+
+```text
+50 WP membre + 50 FCFA Wasplex = 100 FCFA
+```
+
+Pour quatre unités :
+
+```text
+200 WP membre + 200 FCFA Wasplex = 400 FCFA
+```
+
+Le partage est appliqué au moment de la vue complète validée, pas au simple chargement de la publicité.
+
+---
+
+## 7. Ce que paie l’annonceur
+
+L’annonceur finance une campagne publicitaire et achète notamment :
 
 - une diffusion ciblée ;
 - une audience agrégée ;
-- des événements qualifiés ;
+- une attention qualifiée ;
 - une mesure de performance ;
 - une capacité de ciblage protégée ;
-- un accès payant aux classes économiques.
+- un nombre d’événements finançables déterminé par le budget disponible.
+
+Le devis tient compte de la classe économique ciblée, de la récompense applicable et du nombre de crédits liés à la durée réelle de la vidéo.
+
+Le moteur ne peut jamais promettre davantage de vues rémunérées que l’enveloppe réellement financée.
+
+---
+
+## 8. Exemple de budget campagne
+
+Hypothèse : campagne Gold avec vidéos de 60 secondes.
+
+```text
+Budget campagne              : 100 000 FCFA
+Crédits par vue              : 4
+Récompense membre / vue      : 200 WP
+Part Wasplex / vue           : 200 FCFA
+Coût total / vue qualifiée   : 400 FCFA
+Vues complètes finançables   : 250
+```
+
+À chaque vue complète qualifiée, 400 FCFA de valeur économique sont consommés : 200 WP sont crédités au membre et 200 FCFA correspondent à la part Wasplex.
+
+Les reliquats éventuels restent traçables ; aucune valeur résiduelle ne devient silencieusement un revenu caché.
+
+---
+
+## 9. Quand une vue devient facturable et rémunérable
+
+Une vidéo préchargée ou simplement affichée ne suffit pas.
+
+Pour une livraison rémunérée, Wasplex exige notamment :
+
+- le démarrage réel de la livraison ;
+- une progression d’attention enregistrée côté serveur ;
+- une durée visible suffisante ;
+- l’événement réel de fin du média lorsque celui-ci est requis ;
+- l’absence d’un blocage économique ou de sécurité.
+
+Un appel artificiel à la fin de vidéo sans preuve d’attention préalable ne qualifie pas la vue.
+
+La valeur n’est capturée qu’après validation de la complétion.
+
+---
+
+## 10. Quotas et crédits d’attention
+
+Les quotas mensuels représentent désormais des crédits d’attention et non un simple nombre brut de vidéos.
+
+Une vidéo de 60 secondes consomme 4 crédits. Une vidéo de 5 minutes en consomme 20.
+
+Le quota est consommé au démarrage réel d’une livraison rémunérée selon le nombre de crédits requis.
+
+Une livraison abandonnée ou invalidée suit les mécanismes de libération/restauration prévus par le moteur afin de ne pas créer de consommation financière injustifiée.
+
+---
+
+## 11. Replay
+
+Une campagne déjà récompensée peut être revue sans produire une deuxième rémunération.
+
+```text
+Replay
+= 0 WP supplémentaire
+= 0 crédit d’attention supplémentaire
+= 0 consommation supplémentaire du budget campagne
+```
+
+La règle de référence est : au maximum une récompense par membre et par campagne.
+
+---
+
+## 12. Diffusion publique hors connexion
+
+Une campagne approuvée peut disposer d’une portée publique lorsque cette option est activée.
+
+Une vue publique anonyme :
+
+```text
+0 WP
+0 crédit d’attention membre
+0 réservation de récompense
+0 capture du budget Feed rémunéré
+```
+
+La portée publique sert à l’acquisition et à la visibilité ; elle est économiquement séparée du Feed membre rémunéré.
+
+---
+
+## 13. Auto-rémunération interdite
+
+Un annonceur, propriétaire ou membre actif de l’organisation qui possède une campagne ne peut pas recevoir de WP sur sa propre publicité.
+
+Cette exclusion est appliquée avant la diffusion et revalidée dans le parcours de paiement afin qu’une campagne ne puisse pas servir à transformer artificiellement un budget publicitaire en récompense personnelle.
+
+---
+
+## 14. Préchargement et neutralité économique
+
+Le préchargement technique d’une prochaine vidéo doit rester économiquement neutre.
+
+Précharger signifie uniquement préparer les données et le média afin de réduire le buffering et le temps de transition.
+
+Le préchargement ne doit jamais, à lui seul :
+
+- démarrer la prochaine livraison ;
+- consommer des crédits d’attention ;
+- réserver ou capturer une nouvelle valeur financière comme si la vidéo était regardée ;
+- produire une récompense ;
+- déclencher le chronomètre d’attention.
+
+La livraison ne devient active que lorsque le membre arrive réellement sur la vidéo et que sa lecture démarre conformément aux règles du Feed.
+
+Cette règle est un invariant économique important pour toute optimisation du lecteur, notamment le préchargement anticipé du Feed.
+
+---
+
+## 15. Grand Livre et traçabilité
+
+Les flux financiers réels doivent rester traçables dans le Grand Livre.
+
+Les événements importants couvrent notamment :
+
+- financement de campagne ;
+- montant disponible ;
+- réservation ;
+- libération ;
+- capture ;
+- part Wasplex ;
+- récompense membre ;
+- remboursement ou correction lorsqu’applicable.
+
+Les opérations financières critiques doivent être atomiques et idempotentes : une même vue qualifiée ne peut produire ni double débit annonceur ni double crédit membre.
+
+---
+
+## 16. Confidentialité commerciale et données membres
+
+L’annonceur reçoit des informations agrégées utiles au pilotage de sa campagne, sans acheter l’identité des membres.
 
 Il n’achète pas :
 
-- identités ;
-- téléphones ;
-- fichiers ;
-- profils individuels ;
-- positions exactes ;
-- Santé ;
-- Alertes ;
-- KYC.
+- les numéros de téléphone ;
+- les emails ;
+- les profils individuels ;
+- les données KYC ;
+- les données Santé ;
+- les Alertes privées ;
+- une extraction des réponses individuelles du Profil intelligent.
 
-# 3. Budget global
+L’administration Wasplex peut superviser les règles économiques, les campagnes, les anomalies et le Grand Livre selon les permissions prévues.
 
-Exemple :
+---
 
-```text
-Budget annonceur : 100 000 FCFA
-```
-
-L’annonceur connaît :
-
-- service ;
-- audience ;
-- durée ;
-- format ;
-- événements estimés ;
-- budget ;
-- taxes ;
-- résultats ;
-- reliquat.
-
-Il n’est pas obligé de connaître la marge interne complète de Wasplex.
-
-# 4. Partage interne
-
-Règle officielle :
+## 17. Formules de référence
 
 ```text
-Budget net distribuable
-├── 50 % Wasplex
-└── 50 % enveloppe utilisateurs
+attention_units = ceil(duration_ms / 15_000)
+
+member_reward = base_reward(class) × attention_units
+
+wasplex_share = member_reward
+
+advertiser_cost_per_qualified_view
+= member_reward + wasplex_share
+= 2 × member_reward
 ```
 
-Exemple :
+Valeurs de base :
 
 ```text
-Budget net :              100 000 FCFA
-Part Wasplex :             50 000 FCFA
-Enveloppe utilisateurs :   50 000 FCFA
+Gratuit  = 30 WP / unité
+Premium  = 40 WP / unité
+Gold     = 50 WP / unité
+Platine  = 60 WP / unité
 ```
 
-# 5. Confidentialité commerciale
-
-L’annonceur ne voit pas nécessairement :
-
-- la part interne Wasplex ;
-- la part individuelle ;
-- la répartition complète entre abonnements ;
-- les WP détenus ;
-- le détail du grand livre.
-
-L’administration Wasplex voit tout.
-
-# 6. Répartition générale
+Capacités mensuelles :
 
 ```text
-Gratuit :  10 %
-Premium :  20 %
-Gold :     35 %
-Platine :  35 %
-Total :   100 %
+Gratuit  = 120 crédits
+Premium  = 300 crédits
+Gold     = 600 crédits
+Platine  = 900 crédits
 ```
 
-Pour 50 000 FCFA :
+---
+
+## 18. Indicateurs utiles au futur business plan
+
+Le futur business plan pourra dériver de ce modèle les indicateurs suivants :
+
+- chiffre d’affaires publicitaire brut ;
+- part Wasplex reconnue ;
+- valeur distribuée aux membres ;
+- revenu d’abonnement par classe ;
+- crédits d’attention disponibles et consommés ;
+- coût moyen par vue complète qualifiée ;
+- durée moyenne des vidéos ;
+- taux de complétion ;
+- taux de replay ;
+- budget réservé, consommé et restant ;
+- portée membre et portée publique ;
+- revenu moyen par campagne et par annonceur ;
+- marge opérationnelle après coûts de paiement, hébergement, stockage, diffusion vidéo, support, fraude et conformité.
+
+Les projections de business plan devront distinguer clairement :
+
+1. la valeur économique théorique maximale ;
+2. la consommation réelle d’attention ;
+3. le revenu réellement reconnu ;
+4. la trésorerie encaissée ;
+5. les coûts opérationnels.
+
+---
+
+## 19. Décision économique V1
+
+Le modèle officiel à retenir est :
 
 ```text
-Gratuit :   5 000 FCFA
-Premium :  10 000 FCFA
-Gold :     17 500 FCFA
-Platine :  17 500 FCFA
+1 WP = 1 FCFA
+1 crédit d’attention = 15 secondes commencées
+vidéo V1 = maximum 5 minutes
+récompense = base de classe × crédits vidéo
+partage d’une vue qualifiée = 50 % membre / 50 % Wasplex
+replay = 0 nouvelle valeur
+préchargement = 0 consommation économique
 ```
 
-# 7. Classe unique
+Les anciennes répartitions générales d’enveloppe 10 % / 20 % / 35 % / 35 % ne doivent plus être utilisées comme règle V1.
 
-Gold uniquement :
-
-```text
-Enveloppe Gold : 50 000 FCFA
-```
-
-Gold reçoit 100 % de l’enveloppe utilisateurs de la campagne.
-
-# 8. Plusieurs classes
-
-Gold + Platine :
-
-```text
-35 / 35
-→ 50 % / 50 %
-```
-
-Premium + Gold :
-
-```text
-Premium : 20 / 55
-Gold :    35 / 55
-```
-
-Les arrondis sont exacts et tracés.
-
-# 9. Ciblage économique payant
-
-Cibler un abonnement payant coûte plus cher en raison :
-
-- de l’engagement ;
-- de la rareté ;
-- de la valeur commerciale ;
-- de la capacité économique ;
-- de la probabilité d’action.
-
-Formule conceptuelle :
-
-```text
-Prix commercial
-= prix de base
-× format
-× durée
-× précision
-× territoire
-× rareté
-× classe ciblée
-× volume
-```
-
-Les coefficients sont administrables.
-
-# 10. Exemple Orange
-
-```text
-Annonceur : opérateur télécom
-Réseau : Orange
-Zone : Abidjan / Cocody
-Classes : Gold + Platine
-Budget : 100 000 FCFA
-```
-
-Wasplex calcule :
-
-- taille d’audience ;
-- coût ;
-- événements estimés ;
-- portée ;
-- fréquence ;
-- gain unitaire ;
-- durée.
-
-# 11. Événement facturable
-
-Le budget n’est pas consommé au préchargement.
-
-Événements possibles :
-
-- vidéo complétée ;
-- image visible pendant un seuil ;
-- clic valide ;
-- appel initié ;
-- itinéraire ;
-- formulaire ;
-- action catalogue.
-
-Chaque événement possède prix, preuve, règle, idempotency key, classe et gain.
-
-# 12. Quota et facturation
-
-Une publicité affichée :
-
-- consomme le quota ;
-- ne consomme pas nécessairement l’enveloppe ;
-- ne produit pas nécessairement de gain.
-
-Une publicité qualifiée :
-
-- consomme l’enveloppe ;
-- produit le gain ;
-- reconnaît la part Wasplex ;
-- écrit le grand livre.
-
-# 13. Calcul du gain unitaire
-
-```text
-Gain unitaire
-= enveloppe de classe
-÷ nombre d’événements qualifiés financés
-```
-
-Exemple :
-
-```text
-Enveloppe Gold : 17 500 FCFA
-Événements Gold : 100
-Gain : 175 WP
-```
-
-Le gain exact est connu avant diffusion.
-
-# 14. Nombre d’événements
-
-Le devis détermine :
-
-- nombre d’événements ;
-- gain ;
-- coût ;
-- classe ;
-- budget ;
-- réserve.
-
-Le moteur ne promet jamais plus que l’enveloppe disponible.
-
-# 15. Réservation
-
-Avant démarrage :
-
-```text
-montant réservé
-classe identifiée
-gain promis
-preuve attendue
-expiration
-```
-
-La même valeur ne peut pas être promise deux fois.
-
-# 16. Abandon
-
-Si l’utilisateur abandonne :
-
-- quota consommé si affichage réel ;
-- aucun gain ;
-- réservation libérée ;
-- enveloppe restaurée ;
-- aucun débit final.
-
-# 17. Validation
-
-Si l’événement est valide :
-
-```text
-réservation consommée
-→ enveloppe débitée
-→ Wallet crédité
-→ part Wasplex enregistrée
-→ reporting mis à jour
-```
-
-# 18. Arrondis
-
-Puisque 1 WP = 1 FCFA :
-
-- gain entier ;
-- reliquat conservé ;
-- aucune fraction cachée ;
-- aucune création de valeur ;
-- aucune perte silencieuse.
-
-Exemple :
-
-```text
-10 000 / 300 = 33 WP
-300 événements = 9 900 FCFA
-Reliquat = 100 FCFA
-```
-
-# 19. Reliquat de classe
-
-Règle adoptée :
-
-1. tenter de consommer dans la classe ;
-2. redistribuer vers d’autres classes éligibles si la règle l’autorise ;
-3. ne jamais réduire un gain déjà promis ;
-4. créditer ou rembourser le reliquat final à l’annonceur selon le contrat.
-
-# 20. Reliquat global
-
-Options :
-
-- prolongation ;
-- élargissement avec accord ;
-- redistribution ;
-- crédit annonceur ;
-- remboursement.
-
-Aucun reliquat ne devient automatiquement un revenu caché Wasplex.
-
-# 21. Utilisateur hors quota
-
-L’utilisateur n’est plus éligible.
-
-Le moteur cherche un autre membre de la même classe.
-
-Aucune publicité commerciale ne lui est servie avant le prochain cycle.
-
-# 22. États budget
-
-```text
-draft
-quoted
-awaiting_payment
-paid
-available
-reserved
-active
-partially_consumed
-completed
-refundable
-refunded
-disputed
-cancelled
-```
-
-# 23. Devis annonceur
-
-Afficher :
-
-- audience estimée ;
-- critères ;
-- format ;
-- durée ;
-- classes ;
-- prix ;
-- budget ;
-- événements ;
-- portée ;
-- fréquence ;
-- dates ;
-- taxes ;
-- reliquat ;
-- remboursement.
-
-# 24. Super moteur de valeur
-
-```text
-attention
-→ preuve
-→ consommation
-→ partage
-→ grand livre
-→ Wallet
-→ interface
-```
-
-Il garantit :
-
-- atomicité ;
-- idempotence ;
-- compensation ;
-- audit ;
-- temps réel visible.
-
-# 25. Grand livre
-
-Écritures :
-
-- budget reçu ;
-- disponible ;
-- réservé ;
-- consommé ;
-- part Wasplex ;
-- part utilisateur ;
-- WP crédités ;
-- réservation libérée ;
-- remboursement ;
-- correction ;
-- litige.
-
-# 26. Reporting annonceur
-
-- budget initial ;
-- consommé ;
-- restant ;
-- événements commencés ;
-- qualifiés ;
-- rejets ;
-- portée ;
-- fréquence ;
-- complétion ;
-- CTA ;
-- coût moyen ;
-- classes ;
-- dates.
-
-# 27. Reporting administration
-
-- revenu Wasplex ;
-- enveloppes utilisateurs ;
-- distribution par classe ;
-- réservations ;
-- consommations ;
-- reliquats ;
-- remboursements ;
-- anomalies ;
-- fraude ;
-- pays ;
-- devise.
-
-# 28. Modèle de données
-
-```text
-advertising_price_catalogs
-advertising_price_versions
-advertising_campaign_quotes
-advertising_campaign_budgets
-advertising_budget_entries
-advertising_user_envelopes
-advertising_envelope_allocations
-advertising_value_reservations
-advertising_qualified_events
-advertising_value_splits
-advertising_campaign_refunds
-advertising_campaign_reports
-```
-
-# 29. API annonceur
-
-```text
-POST   /api/advertiser/campaigns/{id}/quote
-POST   /api/advertiser/campaigns/{id}/fund
-POST   /api/advertiser/campaigns/{id}/activate
-GET    /api/advertiser/campaigns/{id}/budget
-GET    /api/advertiser/campaigns/{id}/report
-POST   /api/advertiser/campaigns/{id}/refund-request
-```
-
-# 30. API administration
-
-```text
-GET    /api/admin/advertising/pricing
-POST   /api/admin/advertising/pricing
-PATCH  /api/admin/advertising/pricing/{id}
-POST   /api/admin/advertising/pricing/{id}/publish
-
-GET    /api/admin/advertising/campaigns
-GET    /api/admin/advertising/campaigns/{id}
-POST   /api/admin/advertising/campaigns/{id}/approve
-POST   /api/admin/advertising/campaigns/{id}/suspend
-POST   /api/admin/advertising/campaigns/{id}/refund
-```
-
-# 31. Événements métier
-
-```text
-CampaignQuoted
-CampaignFunded
-CampaignApproved
-CampaignActivated
-CampaignEnvelopeAllocated
-AdValueReserved
-AdValueReleased
-QualifiedEventValidated
-CampaignBudgetConsumed
-UserRewardCredited
-WasplexRevenueRecognized
-CampaignCompleted
-CampaignRefunded
-```
-
-# 32. Tests
-
-- partage 50/50 ;
-- enveloppe 10/20/35/35 ;
-- Gold unique ;
-- Premium + Gold normalisés ;
-- ciblage payant ;
-- devis ;
-- gain unitaire ;
-- réservation ;
-- abandon ;
-- validation ;
-- arrondi ;
-- reliquat ;
-- remboursement ;
-- double débit impossible ;
-- double crédit impossible ;
-- reporting agrégé ;
-- aucune identité exposée.
-
-# 33. Critères d’acceptation
-
-1. budget global accepté ;
-2. partage 50/50 ;
-3. enveloppes créées ;
-4. classes normalisées ;
-5. ciblage payant ;
-6. gain avant affichage ;
-7. réservation ;
-8. validation atomique ;
-9. Wallet immédiat ;
-10. arrondis exacts ;
-11. reliquats traçables ;
-12. remboursement possible ;
-13. reporting agrégé ;
-14. aucune identité ;
-15. tests verts.
-
-# 34. Décision finale
-
-```text
-Budget annonceur : 100 000 FCFA
-Part Wasplex :      50 000 FCFA
-Utilisateurs :      50 000 FCFA
-```
-
-Répartition générale :
-
-```text
-Gratuit : 10 %
-Premium : 20 %
-Gold :    35 %
-Platine : 35 %
-```
-
-Le système calcule, réserve, valide et crédite en temps réel sans exposer la marge interne de Wasplex à l’annonceur.
+Ce document constitue la référence économique fonctionnelle à utiliser pour les évolutions produit, les simulations financières et la future rédaction du business plan Wasplex.
