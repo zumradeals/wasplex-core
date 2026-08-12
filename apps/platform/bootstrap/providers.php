@@ -5,6 +5,7 @@ use App\Modules\AdvertiserWallet\Infrastructure\Providers\AdvertiserWalletServic
 use App\Modules\Alerts\Infrastructure\Providers\AlertsServiceProvider;
 use App\Modules\Campaigns\Infrastructure\Providers\CampaignsServiceProvider;
 use App\Modules\Feed\Infrastructure\Providers\FeedServiceProvider;
+use App\Modules\Health\Infrastructure\Providers\HealthServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
 use App\Modules\Ledger\Infrastructure\Providers\LedgerServiceProvider;
 use App\Modules\Matching\Infrastructure\Providers\MatchingServiceProvider;
@@ -30,6 +31,7 @@ return [
     WalletServiceProvider::class,
     FeedServiceProvider::class,
     AlertsServiceProvider::class,
+    HealthServiceProvider::class,
     ReconciliationServiceProvider::class,
     ReportingServiceProvider::class,
 ];
