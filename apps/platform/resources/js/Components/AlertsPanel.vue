@@ -20,6 +20,7 @@ interface PublicAlert {
 interface MyAlert extends PublicAlert {
     status: string;
     description: string;
+    rejection_reason: string | null;
     public_visibility: boolean;
     submitted_at: string | null;
 }
@@ -388,6 +389,15 @@ onMounted(load);
                             class="bg-wpx-blue/10 text-wpx-blue shrink-0 rounded-full px-2 py-1 text-[9px] font-black"
                             >{{ statusLabel(alert.status) }}</span
                         >
+                    </div>
+                    <div
+                        v-if="alert.status === 'rejected' && alert.rejection_reason"
+                        class="border-wpx-danger/20 bg-wpx-danger/8 mt-3 rounded-xl border px-3 py-2.5"
+                    >
+                        <p class="text-wpx-danger text-[9px] font-black tracking-wide uppercase">À corriger</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
+                            {{ alert.rejection_reason }}
+                        </p>
                     </div>
                 </article>
                 <div
