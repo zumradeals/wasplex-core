@@ -6,6 +6,14 @@ on:
       - feat/p019-professional-institutional-spaces
     paths:
       - .github/workflows/p019-ci.yml
+      - apps/platform/app/Modules/Identity/**
+      - apps/platform/resources/js/Components/AdminProfessionalSpacesPanel.vue
+      - apps/platform/resources/js/Components/ProfessionalSpaceEntryPanel.vue
+      - apps/platform/resources/js/Pages/Identity/AdminShell.vue
+      - apps/platform/resources/js/Pages/Identity/ProfessionalShell.vue
+      - apps/platform/resources/js/Pages/Identity/UserShell.vue
+      - apps/platform/tests/Feature/Identity/**
+      - docs/chantiers/P019-*.md
 
 permissions:
   contents: read
