@@ -11,59 +11,143 @@ permissions:
   contents: write
 
 jobs:
-  wire:
+  finalize:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wasplex -d wasplex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feat/p015-p016-p019-institutional-bridges
           fetch-depth: 0
-      - name: Wire institutional UI
+
+      - name: Finalize institutional UI wiring
         run: |
           python3 <<'PY'
           from pathlib import Path
-
-          pro = Path('apps/platform/resources/js/Pages/Identity/ProfessionalShell.vue')
-          s = pro.read_text()
-          imp = "import ProfessionalInstitutionalCasesPanel from '@/Components/ProfessionalInstitutionalCasesPanel.vue';"
-          if imp not in s:
-              s = s.replace(
-                  "import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';",
-                  "import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';\n" + imp,
-              )
-          marker = '''                    <section\n                        v-else-if="activeTab === 'team'"'''
-          insert = '''                    <ProfessionalInstitutionalCasesPanel\n                        v-else-if="activeTab === 'cases'"\n                        :space-kind="workspace.space.space_kind"\n                    />\n\n'''
-          if insert.strip() not in s:
-              s = s.replace(marker, insert + marker)
-          s = s.replace(
-              "L’espace est prêt à recevoir les projections institutionnelles. Aucun signalement n’est affiché tant que le raccordement P015 institutionnel n’est pas activé.",
-              "Les signalements explicitement transmis à votre organisation apparaissent dans Dossiers. Une prise en charge n’existe qu’après votre action réelle et horodatée.",
-          )
-          s = s.replace(
-              "L’espace est prêt pour les accès Santé autorisés. Aucun dossier médical n’est ouvert automatiquement et aucune capsule n’est consultable sans le flux d’autorisation prévu.",
-              "Les demandes d’accès Santé passent par Dossiers. Le patient garde la décision pour l’accès normal et l’urgence exige son consentement d’urgence actif.",
-          )
-          pro.write_text(s)
 
           health = Path('apps/platform/resources/js/Components/HealthPanel.vue')
           s = health.read_text()
           health_imp = "import HealthProfessionalAccessRequestsPanel from '@/Components/HealthProfessionalAccessRequestsPanel.vue';"
           if health_imp not in s:
-              last_import = "import http from '@/lib/http';"
-              s = s.replace(last_import, last_import + "\n" + health_imp)
-          needle = '''            <div v-else-if="activeTab === 'accesses'"'''
-          replacement = '''            <div v-else-if="activeTab === 'accesses'">\n                <HealthProfessionalAccessRequestsPanel />\n                <div'''
+              s = s.replace("import http from '@/lib/http';", "import http from '@/lib/http';\n" + health_imp)
+          marker = '''        <template v-else>\n            <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">'''
+          insert = '''        <template v-else>\n            <HealthProfessionalAccessRequestsPanel />\n\n            <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">'''
           if '<HealthProfessionalAccessRequestsPanel />' not in s:
-              s = s.replace(needle, replacement, 1)
+              if marker not in s:
+                  raise SystemExit('HealthPanel access marker not found')
+              s = s.replace(marker, insert, 1)
           health.write_text(s)
+
+          admin = Path('apps/platform/resources/js/Components/AdminAlertsPanel.vue')
+          s = admin.read_text()
+          admin_imp = "import AdminAlertInstitutionalReferral from '@/Components/AdminAlertInstitutionalReferral.vue';"
+          if admin_imp not in s:
+              s = s.replace("import http from '@/lib/http';", "import http from '@/lib/http';\n" + admin_imp)
+          action_marker = '''                    <div class="mt-4 grid grid-cols-2 gap-2">'''
+          referral = '''                    <AdminAlertInstitutionalReferral\n                        :alert-id="selected.id"\n                        @referred="load"\n                    />\n\n'''
+          if '<AdminAlertInstitutionalReferral' not in s:
+              if action_marker not in s:
+                  raise SystemExit('AdminAlertsPanel action marker not found')
+              s = s.replace(action_marker, referral + action_marker, 1)
+          admin.write_text(s)
           PY
-      - name: Commit wiring
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql, redis
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install PHP dependencies
+        working-directory: apps/platform
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare test environment
+        working-directory: apps/platform
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Install frontend dependencies
+        working-directory: apps/platform
+        run: npm ci
+
+      - name: Format finalized UI
+        working-directory: apps/platform
+        run: npx prettier --write resources/js/Components/HealthPanel.vue resources/js/Components/AdminAlertsPanel.vue
+
+      - name: Check frontend formatting
+        working-directory: apps/platform
+        run: npm run format:check
+
+      - name: Run ESLint
+        working-directory: apps/platform
+        run: npm run lint:check
+
+      - name: Check Vue TypeScript
+        working-directory: apps/platform
+        run: npm run types:check
+
+      - name: Build frontend
+        working-directory: apps/platform
+        run: npm run build
+
+      - name: Check PHP formatting
+        working-directory: apps/platform
+        run: composer lint:check
+
+      - name: Run PHP tests
+        working-directory: apps/platform
+        run: composer test
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: wasplex_test
+          DB_USERNAME: wasplex
+          DB_PASSWORD: wasplex_ci_only
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+
+      - name: Commit finalized wiring and remove temporary workflow
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/bridge-ui-wire.yml
           git add \
-            apps/platform/resources/js/Pages/Identity/ProfessionalShell.vue \
-            apps/platform/resources/js/Components/HealthPanel.vue
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "feat(ui): raccorder les dossiers institutionnels et les demandes Santé"
+            apps/platform/resources/js/Components/HealthPanel.vue \
+            apps/platform/resources/js/Components/AdminAlertsPanel.vue
+          git commit -m "feat(ui): finaliser les raccordements institutionnels"
           git push origin HEAD:feat/p015-p016-p019-institutional-bridges
