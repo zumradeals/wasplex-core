@@ -13,15 +13,25 @@ interface FeedAlert {
     area_label: string | null;
 }
 
+interface Tip {
+    title: string;
+    body: string;
+}
+
 interface FeedConfiguration {
     useful_content_interval: number;
     circles_enabled: boolean;
     left_rail_enabled: boolean;
     full_screen_enabled: boolean;
+    tips: Tip[];
 }
 
+type UsefulContent =
+    | { kind: 'alert'; title: string; body: string; badge: string; icon: string; area: string | null }
+    | { kind: 'tip'; title: string; body: string; badge: string; icon: string; area: null };
+
 const props = defineProps<{ showCircles: boolean }>();
-const emit = defineEmits<{ closeCircles: [] }>();
+const emit = defineEmits<{ closeCircles: []; continue: [] }>();
 
 const alerts = ref<FeedAlert[]>([]);
 const configuration = ref<FeedConfiguration>({
@@ -29,8 +39,14 @@ const configuration = ref<FeedConfiguration>({
     circles_enabled: true,
     left_rail_enabled: true,
     full_screen_enabled: true,
+    tips: [],
 });
 const selected = ref<FeedAlert | null>(null);
+const usefulContent = ref<UsefulContent | null>(null);
+let completedAdvertisements = 0;
+let nextUsefulKind: 'alert' | 'tip' = 'alert';
+let alertCursor = 0;
+let tipCursor = 0;
 
 const circles = computed(() => alerts.value.slice(0, 8));
 const rail = computed(() => alerts.value.slice(0, 4));
@@ -46,6 +62,62 @@ function priorityClass(priority: string): string {
     return 'border-cyan-300/60 ring-cyan-400/15';
 }
 
+function nextAlertContent(): UsefulContent | null {
+    if (alerts.value.length === 0) return null;
+    const alert = alerts.value[alertCursor % alerts.value.length];
+    alertCursor += 1;
+    if (!alert) return null;
+
+    return {
+        kind: 'alert',
+        title: alert.title,
+        body: alert.summary,
+        badge: `ALERTE ${alert.priority}`,
+        icon: categoryIcon(alert.category),
+        area: alert.area_label || alert.city,
+    };
+}
+
+function nextTipContent(): UsefulContent | null {
+    if (configuration.value.tips.length === 0) return null;
+    const tip = configuration.value.tips[tipCursor % configuration.value.tips.length];
+    tipCursor += 1;
+    if (!tip) return null;
+
+    return {
+        kind: 'tip',
+        title: tip.title,
+        body: tip.body,
+        badge: 'ASTUCE WASPLEX',
+        icon: '💡',
+        area: null,
+    };
+}
+
+function registerAdvertisementCompletion(): boolean {
+    completedAdvertisements += 1;
+
+    if (!configuration.value.full_screen_enabled) return false;
+    const interval = Math.max(1, configuration.value.useful_content_interval || 5);
+    if (completedAdvertisements < interval) return false;
+
+    completedAdvertisements = 0;
+
+    let content = nextUsefulKind === 'alert' ? nextAlertContent() : nextTipContent();
+    if (content === null) content = nextUsefulKind === 'alert' ? nextTipContent() : nextAlertContent();
+    if (content === null) return false;
+
+    nextUsefulKind = nextUsefulKind === 'alert' ? 'tip' : 'alert';
+    selected.value = null;
+    usefulContent.value = content;
+    return true;
+}
+
+function continueFeed(): void {
+    usefulContent.value = null;
+    emit('continue');
+}
+
 async function load(): Promise<void> {
     try {
         const [alertsResponse, configResponse] = await Promise.all([
@@ -59,13 +131,14 @@ async function load(): Promise<void> {
     }
 }
 
+defineExpose({ registerAdvertisementCompletion });
 onMounted(load);
 </script>
 
 <template>
     <div class="pointer-events-none absolute inset-0 z-20">
         <div
-            v-if="props.showCircles && configuration.circles_enabled"
+            v-if="props.showCircles && configuration.circles_enabled && !usefulContent"
             class="pointer-events-auto absolute inset-x-0 top-[5.4rem] z-30 bg-gradient-to-b from-black/80 via-black/55 to-transparent px-3 pt-2 pb-5"
         >
             <div class="mb-2 flex items-center justify-between">
@@ -73,20 +146,41 @@ onMounted(load);
                     <p class="text-[10px] font-black tracking-[0.16em] text-white/75 uppercase">Alertes en cours</p>
                     <p class="text-[9px] text-white/45">Touchez un cercle pour voir l’essentiel</p>
                 </div>
-                <button type="button" class="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm text-white" @click="emit('closeCircles')">×</button>
+                <button
+                    type="button"
+                    class="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm text-white"
+                    @click="emit('closeCircles')"
+                >
+                    ×
+                </button>
             </div>
 
             <div v-if="circles.length" class="scrollbar-none flex gap-3 overflow-x-auto pb-1">
-                <button v-for="alert in circles" :key="alert.id" type="button" class="w-14 shrink-0 text-center" @click="selected = alert">
-                    <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 bg-black/55 text-xl ring-2" :class="priorityClass(alert.priority)">{{ categoryIcon(alert.category) }}</span>
-                    <span class="mt-1 block truncate text-[8px] font-bold text-white/85">{{ alert.area_label || alert.city || alert.title }}</span>
+                <button
+                    v-for="alert in circles"
+                    :key="alert.id"
+                    type="button"
+                    class="w-14 shrink-0 text-center"
+                    @click="selected = alert"
+                >
+                    <span
+                        class="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 bg-black/55 text-xl ring-2"
+                        :class="priorityClass(alert.priority)"
+                    >
+                        {{ categoryIcon(alert.category) }}
+                    </span>
+                    <span class="mt-1 block truncate text-[8px] font-bold text-white/85">
+                        {{ alert.area_label || alert.city || alert.title }}
+                    </span>
                 </button>
             </div>
-            <div v-else class="rounded-xl bg-white/5 px-3 py-3 text-center text-[10px] text-white/55">Aucune alerte publique active.</div>
+            <div v-else class="rounded-xl bg-white/5 px-3 py-3 text-center text-[10px] text-white/55">
+                Aucune alerte publique active.
+            </div>
         </div>
 
         <div
-            v-if="configuration.left_rail_enabled && rail.length"
+            v-if="configuration.left_rail_enabled && rail.length && !usefulContent"
             class="pointer-events-auto absolute bottom-28 left-2 z-20 flex flex-col items-center gap-2.5"
             aria-label="Alertes rapides"
         >
@@ -100,23 +194,83 @@ onMounted(load);
                 @click.stop="selected = alert"
             >
                 {{ categoryIcon(alert.category) }}
-                <span v-if="alert.priority === 'P0'" class="absolute -top-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                <span
+                    v-if="alert.priority === 'P0'"
+                    class="absolute -top-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full bg-red-500"
+                />
             </button>
         </div>
 
-        <div v-if="selected" class="pointer-events-auto absolute inset-x-3 bottom-20 z-40 rounded-2xl border border-white/15 bg-black/85 p-3.5 shadow-2xl backdrop-blur-md">
+        <div
+            v-if="selected && !usefulContent"
+            class="pointer-events-auto absolute inset-x-3 bottom-20 z-40 rounded-2xl border border-white/15 bg-black/85 p-3.5 shadow-2xl backdrop-blur-md"
+        >
             <div class="flex items-start gap-3">
-                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/8 text-xl">{{ categoryIcon(selected.category) }}</span>
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/8 text-xl">
+                    {{ categoryIcon(selected.category) }}
+                </span>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] font-black text-amber-300">{{ selected.priority }}</span>
-                        <span class="text-[9px] text-white/45">{{ selected.area_label || selected.city || 'Zone protégée' }}</span>
+                        <span class="text-[9px] text-white/45">
+                            {{ selected.area_label || selected.city || 'Zone protégée' }}
+                        </span>
                     </div>
                     <p class="mt-0.5 text-xs font-black text-white">{{ selected.title }}</p>
                     <p class="mt-1 line-clamp-3 text-[10px] leading-relaxed text-white/65">{{ selected.summary }}</p>
                 </div>
-                <button type="button" class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-sm text-white/70" @click="selected = null">×</button>
+                <button
+                    type="button"
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/8 text-sm text-white/70"
+                    @click="selected = null"
+                >
+                    ×
+                </button>
             </div>
+        </div>
+
+        <div
+            v-if="usefulContent"
+            class="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-black/92 px-5"
+            @touchstart.stop
+            @touchend.stop
+            @wheel.stop
+        >
+            <article
+                class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 border-wpx-border-dark w-full rounded-3xl border bg-gradient-to-br p-5 shadow-2xl"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <span
+                        class="bg-wpx-cyan/12 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black tracking-[0.12em]"
+                    >
+                        {{ usefulContent.badge }}
+                    </span>
+                    <span class="rounded-full bg-white/5 px-2.5 py-1 text-[9px] font-black text-white/50">0 WP</span>
+                </div>
+
+                <div class="mt-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/6 text-3xl">
+                    {{ usefulContent.icon }}
+                </div>
+                <p v-if="usefulContent.area" class="text-wpx-gold mt-4 text-[10px] font-black">
+                    {{ usefulContent.area }}
+                </p>
+                <h2 class="text-wpx-white-soft mt-1 text-xl font-black leading-tight">{{ usefulContent.title }}</h2>
+                <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">{{ usefulContent.body }}</p>
+
+                <div class="border-wpx-border-dark mt-5 rounded-2xl border bg-black/10 p-3">
+                    <p class="text-wpx-muted-dark text-[10px] leading-relaxed">
+                        Contenu utile Wasplex · aucune récompense · aucune consommation de quota publicitaire.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-5 w-full rounded-2xl bg-gradient-to-r py-3 text-xs font-black"
+                    @click="continueFeed"
+                >
+                    Continuer le Feed
+                </button>
+            </article>
         </div>
     </div>
 </template>
