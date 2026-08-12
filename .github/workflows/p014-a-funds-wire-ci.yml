@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wire Funds UI
+      - name: Wire Funds UI and strict TS
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -71,6 +71,27 @@ jobs:
                   "                <section v-else-if=\"activeSection === 'alerts'\">\n                    <AdminAlertsPanel />\n                </section>\n\n                <section v-else-if=\"activeSection === 'funds'\">\n                    <AdminFundsPanel />\n                </section>\n",
               )
           admin.write_text(s)
+
+          replacements = {
+              'apps/platform/resources/js/Components/FundsPanel.vue': [
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'L’adhésion n’a pas pu être enregistrée.';", "} catch {\n        error.value = 'L’adhésion n’a pas pu être enregistrée.';"),
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'Le brouillon n’a pas pu être créé.';", "} catch {\n        error.value = 'Le brouillon n’a pas pu être créé.';"),
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'Le vœu n’a pas pu être soumis.';", "} catch {\n        error.value = 'Le vœu n’a pas pu être soumis.';"),
+              ],
+              'apps/platform/resources/js/Components/AdminFundsPanel.vue': [
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'Impossible de charger le pilotage Fonds.';", "} catch {\n        error.value = 'Impossible de charger le pilotage Fonds.';"),
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'Le programme n’a pas pu être créé.';", "} catch {\n        error.value = 'Le programme n’a pas pu être créé.';"),
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'Le statut du programme n’a pas pu être changé.';", "} catch {\n        error.value = 'Le statut du programme n’a pas pu être changé.';"),
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'La catégorie n’a pas pu être créée.';", "} catch {\n        error.value = 'La catégorie n’a pas pu être créée.';"),
+                  ("} catch (e: any) {\n        error.value = e?.response?.data?.message ?? 'La décision n’a pas pu être enregistrée.';", "} catch {\n        error.value = 'La décision n’a pas pu être enregistrée.';"),
+              ],
+          }
+          for path, pairs in replacements.items():
+              p = Path(path)
+              content = p.read_text()
+              for old, new in pairs:
+                  content = content.replace(old, new)
+              p.write_text(content)
           PY
 
       - uses: shivammathur/setup-php@v2
