@@ -119,11 +119,11 @@ jobs:
           php artisan key:generate
           printf '\nDB_CONNECTION=pgsql\nDB_HOST=127.0.0.1\nDB_PORT=5432\nDB_DATABASE=wasplex_test\nDB_USERNAME=postgres\nDB_PASSWORD=postgres\nREDIS_HOST=127.0.0.1\nREDIS_PORT=6379\n' >> .env
 
-      - name: Format new code
+      - name: Format implementation
         working-directory: apps/platform
         run: |
           npx prettier --write resources/js/Components/FundsPanel.vue resources/js/Components/AdminFundsPanel.vue resources/js/Pages/Identity/UserShell.vue resources/js/Pages/Identity/AdminShell.vue
-          ./vendor/bin/pint app/Modules/Funds bootstrap/providers.php app/Modules/Identity/Console/SeedFounderCommand.php
+          ./vendor/bin/pint
 
       - name: Frontend checks
         working-directory: apps/platform
