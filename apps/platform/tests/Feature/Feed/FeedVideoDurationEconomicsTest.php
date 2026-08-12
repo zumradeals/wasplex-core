@@ -78,6 +78,11 @@ it('requires the true end of a sixty second video and consumes four attention cr
     expect(videoDurationQuotaConsumed($account->id))->toBe(4);
 
     Carbon::setTestNow(Carbon::now('UTC')->addMilliseconds(60500));
+
+    test()->postJson("/api/feed/deliveries/{$delivery['id']}/ended", [
+        'visible_duration_ms' => 60000,
+    ])->assertStatus(422);
+
     test()->postJson("/api/feed/deliveries/{$delivery['id']}/heartbeat", [
         'visible_duration_ms' => 60000,
     ])->assertOk()->assertJsonPath('delivery.progress_percent', 100);
