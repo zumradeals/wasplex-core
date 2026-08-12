@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import http from '@/lib/http';
-import {
-    feedMediaPreloadActivated,
-    feedMediaPreloadPlaying,
-    releaseFeedMediaPreload,
-} from '@/lib/feedMediaPreload';
+import { feedMediaPreloadActivated, feedMediaPreloadPlaying, releaseFeedMediaPreload } from '@/lib/feedMediaPreload';
 import { useComingSoon } from '@/lib/comingSoon';
 
 interface Interactions {
