@@ -11,6 +11,8 @@ import EligibleCampaignsPanel from '@/Components/EligibleCampaignsPanel.vue';
 import BecomeAdvertiserPanel from '@/Components/BecomeAdvertiserPanel.vue';
 import FeedPanel from '@/Components/FeedPanel.vue';
 import WalletPanel from '@/Components/WalletPanel.vue';
+import IdentityVerificationPanel from '@/Components/IdentityVerificationPanel.vue';
+import AccountSecurityPanel from '@/Components/AccountSecurityPanel.vue';
 import type { AuthShared } from '@/types/identity';
 
 interface MeResponse {
@@ -32,6 +34,8 @@ const walletPanel = ref<InstanceType<typeof WalletPanel> | null>(null);
 const smartProfilePanel = ref<InstanceType<typeof SmartProfilePanel> | null>(null);
 const me = ref<MeResponse | null>(null);
 const showSmartProfile = ref(false);
+const showIdentityVerification = ref(false);
+const showAccountSecurity = ref(false);
 
 const { notice: espaceNotice, announce: announceComingSoon } = useComingSoon();
 
@@ -84,6 +88,10 @@ async function goToSubscriptionFromWallet(): Promise<void> {
     activeTab.value = 'espace';
     await nextTick();
     scrollToSubscription();
+}
+
+function onMfaEnabled(): void {
+    router.reload({ only: ['auth'] });
 }
 
 onMounted(loadMe);
@@ -197,7 +205,7 @@ onMounted(loadMe);
                                     <button
                                         type="button"
                                         class="text-wpx-blue mt-1.5 text-xs font-semibold"
-                                        @click="announceComingSoon"
+                                        @click="showIdentityVerification = true"
                                     >
                                         Vérifier mon identité ›
                                     </button>
@@ -215,7 +223,7 @@ onMounted(loadMe);
                             <button
                                 type="button"
                                 class="border-wpx-border-dark border-l px-3 py-3 text-center"
-                                @click="announceComingSoon"
+                                @click="showAccountSecurity = true"
                             >
                                 <p
                                     class="text-sm font-bold"
@@ -279,7 +287,7 @@ onMounted(loadMe);
                         <button
                             type="button"
                             class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5 text-left"
-                            @click="announceComingSoon"
+                            @click="showIdentityVerification = true"
                         >
                             <span class="bg-wpx-cyan/16 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -291,7 +299,9 @@ onMounted(loadMe);
                                 </svg>
                             </span>
                             <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Identité &amp; KYC</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Vérification et sécurité</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">
+                                Vérification confidentielle
+                            </p>
                         </button>
 
                         <button
@@ -332,7 +342,7 @@ onMounted(loadMe);
                         <button
                             type="button"
                             class="flex w-full items-center justify-between gap-3 p-3.5 text-left"
-                            @click="announceComingSoon"
+                            @click="showAccountSecurity = true"
                         >
                             <span class="flex items-center gap-3">
                                 <span class="bg-wpx-blue/12 rounded-wpx-sm flex h-9 w-9 items-center justify-center">
@@ -357,7 +367,7 @@ onMounted(loadMe);
                                     >
                                     <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
                                         MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} ·
-                                        paramètres du compte
+                                        sessions et appareils
                                     </span>
                                 </span>
                             </span>
@@ -483,5 +493,17 @@ onMounted(loadMe);
                 </div>
             </div>
         </Teleport>
+
+        <IdentityVerificationPanel
+            :open="showIdentityVerification"
+            @close="showIdentityVerification = false"
+            @submitted="loadMe"
+        />
+        <AccountSecurityPanel
+            :open="showAccountSecurity"
+            :mfa-enabled="page.props.auth.account.mfa_enabled"
+            @close="showAccountSecurity = false"
+            @mfa-enabled="onMfaEnabled"
+        />
     </div>
 </template>

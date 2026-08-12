@@ -21,8 +21,28 @@ const name = ref('');
 const countryCode = ref('CI');
 const error = ref<string | null>(null);
 const submitting = ref(false);
+const openingStudio = ref(false);
 const showForm = ref(false);
 const countryLoaded = ref(false);
+
+async function openAdvertiserStudio(): Promise<void> {
+    if (!advertiserSpace.value || openingStudio.value) return;
+
+    error.value = null;
+    openingStudio.value = true;
+
+    try {
+        if (page.props.auth.active_space_id !== advertiserSpace.value.user_space_id) {
+            await http.post(`/me/spaces/${advertiserSpace.value.user_space_id}/switch`);
+        }
+        router.visit('/studio');
+    } catch (e) {
+        error.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            "Impossible d'ouvrir votre espace annonceur.";
+        openingStudio.value = false;
+    }
+}
 
 async function openForm(): Promise<void> {
     showForm.value = true;
@@ -69,25 +89,31 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-    <a
-        v-if="advertiserSpace"
-        href="/studio"
-        class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-lg shadow-wpx-card-dark flex items-center gap-3 border p-3.5"
-    >
-        <span class="bg-wpx-blue/16 rounded-wpx-sm flex h-10 w-10 shrink-0 items-center justify-center">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-                <rect x="4" y="8" width="16" height="12" rx="2" stroke="#4FA3FF" stroke-width="1.7" />
-                <path d="M8 8V6a4 4 0 018 0v2" stroke="#4FA3FF" stroke-width="1.7" />
-            </svg>
-        </span>
-        <span class="min-w-0 flex-1">
-            <span class="text-wpx-white-soft block text-sm font-bold">Studio annonceur</span>
-            <span class="text-wpx-muted-dark mt-0.5 block truncate text-[11px]">
-                {{ advertiserSpace.organization_name }} · gérer mes campagnes
+    <div v-if="advertiserSpace" class="flex flex-col gap-2">
+        <button
+            type="button"
+            :disabled="openingStudio"
+            class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-lg shadow-wpx-card-dark flex w-full items-center gap-3 border p-3.5 text-left disabled:opacity-60"
+            @click="openAdvertiserStudio"
+        >
+            <span class="bg-wpx-blue/16 rounded-wpx-sm flex h-10 w-10 shrink-0 items-center justify-center">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+                    <rect x="4" y="8" width="16" height="12" rx="2" stroke="#4FA3FF" stroke-width="1.7" />
+                    <path d="M8 8V6a4 4 0 018 0v2" stroke="#4FA3FF" stroke-width="1.7" />
+                </svg>
             </span>
-        </span>
-        <span class="text-wpx-blue text-xs font-bold">Ouvrir ›</span>
-    </a>
+            <span class="min-w-0 flex-1">
+                <span class="text-wpx-white-soft block text-sm font-bold">Studio annonceur</span>
+                <span class="text-wpx-muted-dark mt-0.5 block truncate text-[11px]">
+                    {{ advertiserSpace.organization_name }} · gérer mes campagnes
+                </span>
+            </span>
+            <span class="text-wpx-blue text-xs font-bold">{{ openingStudio ? 'Ouverture…' : 'Ouvrir ›' }}</span>
+        </button>
+        <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md px-3 py-2 text-xs">
+            {{ error }}
+        </p>
+    </div>
 
     <button
         v-else

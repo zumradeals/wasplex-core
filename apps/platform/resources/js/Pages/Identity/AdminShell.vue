@@ -9,6 +9,7 @@ import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';
+import AdminIdentityVerificationsPanel from '@/Components/AdminIdentityVerificationsPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminNavIcon from '@/Components/AdminNavIcon.vue';
 import AdminPaymentsSettingsPanel from '@/Components/AdminPaymentsSettingsPanel.vue';
@@ -23,7 +24,7 @@ const page = usePage<{ auth: AuthShared }>();
 
 const nav = [
     { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
-    { key: 'users', label: 'Utilisateurs', helper: 'Comptes et organisations' },
+    { key: 'users', label: 'Utilisateurs', helper: 'Comptes et identités' },
     { key: 'advertising', label: 'Publicité', helper: 'Campagnes et diffusion' },
     { key: 'finance', label: 'Finance', helper: 'Situation et Grand Livre' },
     { key: 'offers', label: 'Offres', helper: 'Abonnements et gains' },
@@ -31,8 +32,14 @@ const nav = [
 ] as const;
 
 type SectionKey = (typeof nav)[number]['key'];
+type UsersTab = 'accounts' | 'kyc';
 type AdvertisingTab = 'overview' | 'advertisers' | 'feed' | 'matching' | 'smartprofile';
 type SettingsTab = 'capabilities' | 'payments' | 'audit';
+
+const usersTabs: Array<{ key: UsersTab; label: string }> = [
+    { key: 'accounts', label: 'Comptes' },
+    { key: 'kyc', label: 'Identité & KYC' },
+];
 
 const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
     { key: 'overview', label: 'Vue d’ensemble' },
@@ -49,6 +56,7 @@ const settingsTabs: Array<{ key: SettingsTab; label: string }> = [
 ];
 
 const activeSection = ref<SectionKey>('dashboard');
+const activeUsersTab = ref<UsersTab>('accounts');
 const activeAdvertisingTab = ref<AdvertisingTab>('overview');
 const activeSettingsTab = ref<SettingsTab>('capabilities');
 const feedPanel = ref<InstanceType<typeof AdminFeedPanel> | null>(null);
@@ -159,8 +167,27 @@ async function logout(): Promise<void> {
                     <AdminDashboardPanel @navigate="navigateFromDashboard" />
                 </section>
 
-                <section v-else-if="activeSection === 'users'">
-                    <AdminUsersPanel />
+                <section v-else-if="activeSection === 'users'" class="flex flex-col gap-5">
+                    <div
+                        class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
+                    >
+                        <button
+                            v-for="tab in usersTabs"
+                            :key="tab.key"
+                            type="button"
+                            class="rounded-wpx-md shrink-0 px-4 py-2.5 text-xs font-bold"
+                            :class="
+                                activeUsersTab === tab.key
+                                    ? 'bg-wpx-white-soft text-wpx-navy-950'
+                                    : 'text-wpx-muted-dark hover:text-wpx-white-soft'
+                            "
+                            @click="activeUsersTab = tab.key"
+                        >
+                            {{ tab.label }}
+                        </button>
+                    </div>
+                    <AdminUsersPanel v-if="activeUsersTab === 'accounts'" />
+                    <AdminIdentityVerificationsPanel v-else />
                 </section>
 
                 <section v-else-if="activeSection === 'advertising'" class="flex flex-col gap-5">

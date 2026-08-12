@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 use App\Modules\Identity\Http\Controllers\Admin\AccountsController;
 use App\Modules\Identity\Http\Controllers\Admin\CapabilityGrantsController;
+use App\Modules\Identity\Http\Controllers\Admin\IdentityVerificationsController;
 use App\Modules\Identity\Http\Controllers\Api\AuthController;
 use App\Modules\Identity\Http\Controllers\Api\MeController;
+use App\Modules\Identity\Http\Controllers\Api\MeIdentityVerificationController;
 use App\Modules\Identity\Http\Controllers\Api\MeMfaController;
+use App\Modules\Identity\Http\Controllers\Api\MePasswordController;
 use App\Modules\Identity\Http\Controllers\Api\MeSessionsController;
 use App\Modules\Identity\Http\Controllers\Api\MeSpacesController;
 use App\Modules\Identity\Http\Controllers\Api\OrganizationInvitationsController;
@@ -25,6 +28,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
 
     Route::get('/me', [MeController::class, 'show']);
     Route::patch('/me', [MeController::class, 'update']);
+    Route::put('/me/password', [MePasswordController::class, 'update']);
 
     Route::get('/me/spaces', [MeSpacesController::class, 'index']);
     Route::post('/me/spaces/{userSpace}/switch', [MeSpacesController::class, 'switch']);
@@ -35,6 +39,9 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
     Route::post('/me/mfa', [MeMfaController::class, 'store']);
     Route::put('/me/mfa', [MeMfaController::class, 'update']);
     Route::post('/me/mfa/verify', [MeMfaController::class, 'verify']);
+
+    Route::get('/me/identity-verification', [MeIdentityVerificationController::class, 'show']);
+    Route::post('/me/identity-verification', [MeIdentityVerificationController::class, 'store']);
 
     Route::get('/organizations', [OrganizationsController::class, 'index']);
     Route::post('/organizations', [OrganizationsController::class, 'store']);
@@ -67,5 +74,16 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])->group(function (): 
                 ->middleware(EnsureCapability::class.':admin.accounts.restrict');
             Route::post('/accounts/{account}/unrestrict', [AccountsController::class, 'unrestrict'])
                 ->middleware(EnsureCapability::class.':admin.accounts.restrict');
+
+            Route::get('/identity-verifications', [IdentityVerificationsController::class, 'index'])
+                ->middleware(EnsureCapability::class.':admin.identity-verifications.view');
+            Route::get('/identity-verifications/{verification}', [IdentityVerificationsController::class, 'show'])
+                ->middleware(EnsureCapability::class.':admin.identity-verifications.view');
+            Route::get('/identity-verifications/{verification}/documents/{kind}', [IdentityVerificationsController::class, 'document'])
+                ->middleware(EnsureCapability::class.':admin.identity-verifications.view');
+            Route::post('/identity-verifications/{verification}/approve', [IdentityVerificationsController::class, 'approve'])
+                ->middleware(EnsureCapability::class.':admin.identity-verifications.decide');
+            Route::post('/identity-verifications/{verification}/reject', [IdentityVerificationsController::class, 'reject'])
+                ->middleware(EnsureCapability::class.':admin.identity-verifications.decide');
         });
 });
