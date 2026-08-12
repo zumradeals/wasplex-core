@@ -13,10 +13,13 @@ final class FundProgram extends Model
     use HasUlids;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_DISABLED = 'disabled';
 
     protected $table = 'fund_programs';
+
     protected $fillable = ['code', 'name', 'status', 'sort_order'];
 
     public function versions(): HasMany

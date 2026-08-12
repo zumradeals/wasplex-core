@@ -13,6 +13,7 @@ final class FundProgramVersion extends Model
     use HasUlids;
 
     protected $table = 'fund_program_versions';
+
     protected $guarded = [];
 
     protected function casts(): array

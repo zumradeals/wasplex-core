@@ -14,11 +14,15 @@ final class FundMembership extends Model
     use HasUlids;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_GRACE_PERIOD = 'grace_period';
+
     public const STATUS_SUSPENDED = 'suspended';
+
     public const STATUS_ENDED = 'ended';
 
     protected $table = 'fund_memberships';
+
     protected $guarded = [];
 
     protected function casts(): array

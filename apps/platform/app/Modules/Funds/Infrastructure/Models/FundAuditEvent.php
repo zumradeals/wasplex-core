@@ -14,6 +14,7 @@ final class FundAuditEvent extends Model
     public const UPDATED_AT = null;
 
     protected $table = 'fund_audit_events';
+
     protected $fillable = ['account_id', 'event_type', 'subject_type', 'subject_id', 'payload'];
 
     protected function casts(): array

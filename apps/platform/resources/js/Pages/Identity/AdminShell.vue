@@ -10,6 +10,7 @@ import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
 import AdminFeedPanel from '@/Components/AdminFeedPanel.vue';
 import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';
+import AdminFundsPanel from '@/Components/AdminFundsPanel.vue';
 import AdminIdentityVerificationsPanel from '@/Components/AdminIdentityVerificationsPanel.vue';
 import AdminProfessionalSpacesPanel from '@/Components/AdminProfessionalSpacesPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
@@ -28,6 +29,7 @@ const nav = [
     { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
     { key: 'users', label: 'Utilisateurs', helper: 'Comptes et identités' },
     { key: 'alerts', label: 'Alertes', helper: 'Protection et diffusion utile' },
+    { key: 'funds', label: 'Fonds', helper: 'Programmes solidaires et vœux' },
     { key: 'advertising', label: 'Publicité', helper: 'Campagnes et diffusion' },
     { key: 'finance', label: 'Finance', helper: 'Situation et Grand Livre' },
     { key: 'offers', label: 'Offres', helper: 'Abonnements et gains' },
@@ -197,6 +199,10 @@ async function logout(): Promise<void> {
 
                 <section v-else-if="activeSection === 'alerts'">
                     <AdminAlertsPanel />
+                </section>
+
+                <section v-else-if="activeSection === 'funds'">
+                    <AdminFundsPanel />
                 </section>
 
                 <section v-else-if="activeSection === 'advertising'" class="flex flex-col gap-5">

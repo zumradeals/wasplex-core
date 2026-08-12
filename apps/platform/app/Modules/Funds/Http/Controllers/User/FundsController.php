@@ -265,6 +265,7 @@ final class FundsController
                     'suspension_reason' => null,
                 ]);
             }
+
             return;
         }
 

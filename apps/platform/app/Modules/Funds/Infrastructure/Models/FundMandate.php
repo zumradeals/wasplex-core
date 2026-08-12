@@ -13,6 +13,7 @@ final class FundMandate extends Model
     use HasUlids;
 
     protected $table = 'fund_mandates';
+
     protected $guarded = [];
 
     protected function casts(): array

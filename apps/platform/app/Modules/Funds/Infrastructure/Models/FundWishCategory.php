@@ -12,6 +12,7 @@ final class FundWishCategory extends Model
     use HasUlids;
 
     protected $table = 'fund_wish_categories';
+
     protected $guarded = [];
 
     protected function casts(): array
