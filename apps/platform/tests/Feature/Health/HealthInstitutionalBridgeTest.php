@@ -110,7 +110,7 @@ it('requires patient approval before a verified health organization can read the
     test()->getJson('/api/health/me/access-requests')
         ->assertOk()
         ->assertJsonPath('requests.0.id', $requestId)
-        ->assertJsonPath('requests.0.institution_name', 'Centre de santé raccordement Wasplex')
+        ->assertJsonPath('requests.0.institution_name', 'Centre Santé Bridge')
         ->assertJsonPath('requests.0.status', HealthProfessionalAccessRequest::STATUS_PENDING);
 
     test()->postJson("/api/health/me/access-requests/{$requestId}/decision", [
