@@ -63,6 +63,7 @@ const newComment = ref('');
 const gainToast = ref<number | null>(null);
 const holdNotice = ref(false);
 const showAlertCircles = ref(false);
+const alertSurfaces = ref<InstanceType<typeof FeedAlertSurfaces> | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const balance = ref<number | null>(null);
 const buffering = ref(false);
@@ -424,12 +425,17 @@ async function onVideoEnded(): Promise<void> {
     }
 }
 
-function scheduleNext(delayMs: number): void {
+function scheduleNext(delayMs: number, countForUsefulContent = false): void {
     if (transitionTimer !== null) clearTimeout(transitionTimer);
     transitionTimer = setTimeout(() => {
         transitionTimer = null;
         gainToast.value = null;
         holdNotice.value = false;
+
+        if (countForUsefulContent && alertSurfaces.value?.registerAdvertisementCompletion()) {
+            return;
+        }
+
         void activatePrefetchedOrLoadNext();
     }, delayMs);
 }
@@ -459,9 +465,9 @@ async function completeDelivery(): Promise<void> {
 
         if (data.gain_minor > 0) {
             gainToast.value = data.gain_minor;
-            scheduleNext(1600);
+            scheduleNext(1600, true);
         } else {
-            scheduleNext(650);
+            scheduleNext(650, true);
         }
     } catch {
         playerError.value = 'La validation de cette vue a échoué. Réessayez.';
@@ -658,7 +664,12 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <FeedAlertSurfaces :show-circles="showAlertCircles" @close-circles="showAlertCircles = false" />
+        <FeedAlertSurfaces
+            ref="alertSurfaces"
+            :show-circles="showAlertCircles"
+            @close-circles="showAlertCircles = false"
+            @continue="activatePrefetchedOrLoadNext"
+        />
 
         <video
             v-if="delivery?.creative?.type === 'video'"
