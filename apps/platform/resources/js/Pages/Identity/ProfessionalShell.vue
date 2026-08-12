@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
+import ProfessionalInstitutionalCasesPanel from '@/Components/ProfessionalInstitutionalCasesPanel.vue';
 import type { AuthShared } from '@/types/identity';
 
 type Workspace = {
@@ -85,13 +86,13 @@ const contextualReadiness = computed(() => {
     if (kind === 'security_institution') {
         return {
             title: 'Raccordement Alertes',
-            text: 'L’espace est prêt à recevoir les projections institutionnelles. Aucun signalement n’est affiché tant que le raccordement P015 institutionnel n’est pas activé.',
+            text: 'Les signalements explicitement transmis à votre organisation apparaissent dans Dossiers. Une prise en charge n’existe qu’après votre action réelle et horodatée.',
         };
     }
     if (kind === 'healthcare_institution' || kind === 'health_professional') {
         return {
             title: 'Raccordement Santé',
-            text: 'L’espace est prêt pour les accès Santé autorisés. Aucun dossier médical n’est ouvert automatiquement et aucune capsule n’est consultable sans le flux d’autorisation prévu.',
+            text: 'Les demandes d’accès Santé passent par Dossiers. Le patient garde la décision pour l’accès normal et l’urgence exige son consentement d’urgence actif.',
         };
     }
     return {
@@ -310,6 +311,11 @@ onMounted(load);
                             </p>
                         </article>
                     </section>
+
+                    <ProfessionalInstitutionalCasesPanel
+                        v-else-if="activeTab === 'cases'"
+                        :space-kind="workspace.space.space_kind"
+                    />
 
                     <section
                         v-else-if="activeTab === 'team'"

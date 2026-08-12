@@ -40,4 +40,9 @@ final class HealthPatient extends Model
     {
         return $this->hasMany(HealthAccessEvent::class, 'patient_id');
     }
+
+    public function professionalAccessRequests(): HasMany
+    {
+        return $this->hasMany(HealthProfessionalAccessRequest::class, 'patient_id');
+    }
 }

@@ -8,6 +8,7 @@ use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class AlertDeclaration extends Model
 {
@@ -58,6 +59,11 @@ final class AlertDeclaration extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'reviewed_by_account_id');
+    }
+
+    public function institutionalCases(): HasMany
+    {
+        return $this->hasMany(AlertInstitutionalCase::class, 'alert_declaration_id');
     }
 
     public function isPubliclyVisible(): bool

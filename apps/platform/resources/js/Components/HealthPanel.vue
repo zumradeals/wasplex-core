@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import HealthProfessionalAccessRequestsPanel from '@/Components/HealthProfessionalAccessRequestsPanel.vue';
 
 type HealthTab = 'capsule' | 'consents' | 'representatives' | 'accesses';
 
@@ -595,6 +596,8 @@ onMounted(load);
         </template>
 
         <template v-else>
+            <HealthProfessionalAccessRequestsPanel />
+
             <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">
                 <div class="flex items-center gap-3">
                     <span class="bg-wpx-blue/10 flex h-10 w-10 items-center justify-center rounded-xl text-lg">👁️</span>
