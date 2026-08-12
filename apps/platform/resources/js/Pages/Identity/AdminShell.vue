@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdminAdvertisingOverviewPanel from '@/Components/AdminAdvertisingOverviewPanel.vue';
+import AdminAlertsPanel from '@/Components/AdminAlertsPanel.vue';
 import AdminAuditSecurityPanel from '@/Components/AdminAuditSecurityPanel.vue';
 import AdminCampaignsPanel from '@/Components/AdminCampaignsPanel.vue';
 import AdminDashboardPanel from '@/Components/AdminDashboardPanel.vue';
@@ -25,6 +26,7 @@ const page = usePage<{ auth: AuthShared }>();
 const nav = [
     { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
     { key: 'users', label: 'Utilisateurs', helper: 'Comptes et identités' },
+    { key: 'alerts', label: 'Alertes', helper: 'Protection et diffusion utile' },
     { key: 'advertising', label: 'Publicité', helper: 'Campagnes et diffusion' },
     { key: 'finance', label: 'Finance', helper: 'Situation et Grand Livre' },
     { key: 'offers', label: 'Offres', helper: 'Abonnements et gains' },
@@ -188,6 +190,10 @@ async function logout(): Promise<void> {
                     </div>
                     <AdminUsersPanel v-if="activeUsersTab === 'accounts'" />
                     <AdminIdentityVerificationsPanel v-else />
+                </section>
+
+                <section v-else-if="activeSection === 'alerts'">
+                    <AdminAlertsPanel />
                 </section>
 
                 <section v-else-if="activeSection === 'advertising'" class="flex flex-col gap-5">
