@@ -30,6 +30,11 @@ final class FundContributionService
         private readonly UserWalletQueryService $wallet,
     ) {}
 
+    public function walletBalanceMinor(string $accountId): int
+    {
+        return $this->wallet->balanceMinor($accountId);
+    }
+
     public function fundBalanceMinor(string $accountId): int
     {
         return $this->balance($this->fundBalanceReference($accountId));
