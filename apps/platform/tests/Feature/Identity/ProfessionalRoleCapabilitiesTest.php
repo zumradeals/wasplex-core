@@ -23,6 +23,22 @@ function p019RoleVerifyMfa(): void
     test()->postJson('/api/me/mfa/verify', ['code' => $code])->assertOk();
 }
 
+function p019RoleLoginExisting(string $identifier, string $password = 'Password123!'): void
+{
+    test()->withCredentials();
+    $login = test()->postJson('/api/login', [
+        'identifier_value' => $identifier,
+        'password' => $password,
+    ])->assertOk();
+
+    $sessionCookieName = config('session.cookie');
+    foreach ($login->headers->getCookies() as $cookie) {
+        if ($cookie->getName() === $sessionCookieName) {
+            test()->withUnencryptedCookie($sessionCookieName, $cookie->getValue());
+        }
+    }
+}
+
 function p019RoleRequestSpace(string $kind): ProfessionalSpace
 {
     $response = test()->postJson('/api/professional-spaces', [
@@ -61,6 +77,7 @@ test('a security officer receives only security capabilities in a verified secur
     registerAndLogin('p019-security-owner@wasplex.test');
     $owner = p019RoleAccount('p019-security-owner@wasplex.test');
     $space = p019RoleRequestSpace(ProfessionalSpace::KIND_SECURITY_INSTITUTION);
+    test()->postJson('/api/logout')->assertNoContent();
 
     registerAndLogin('p019-security-agent@wasplex.test');
     $agent = p019RoleAccount('p019-security-agent@wasplex.test');
@@ -76,7 +93,7 @@ test('a security officer receives only security capabilities in a verified secur
 
     p019RoleVerifySpace($space);
 
-    p019LoginExisting('p019-security-owner@wasplex.test');
+    p019RoleLoginExisting('p019-security-owner@wasplex.test');
     test()->postJson("/api/me/spaces/{$space->user_space_id}/switch")->assertOk();
     test()->postJson('/api/professional/roles', [
         'account_id' => $agent->id,
@@ -99,6 +116,7 @@ test('a security officer receives only security capabilities in a verified secur
 test('a health role is rejected inside a security institution', function (): void {
     registerAndLogin('p019-incompatible-owner@wasplex.test');
     $space = p019RoleRequestSpace(ProfessionalSpace::KIND_SECURITY_INSTITUTION);
+    test()->postJson('/api/logout')->assertNoContent();
 
     registerAndLogin('p019-incompatible-agent@wasplex.test');
     $agent = p019RoleAccount('p019-incompatible-agent@wasplex.test');
@@ -114,7 +132,7 @@ test('a health role is rejected inside a security institution', function (): voi
 
     p019RoleVerifySpace($space);
 
-    p019LoginExisting('p019-incompatible-owner@wasplex.test');
+    p019RoleLoginExisting('p019-incompatible-owner@wasplex.test');
     test()->postJson("/api/me/spaces/{$space->user_space_id}/switch")->assertOk();
     test()->postJson('/api/professional/roles', [
         'account_id' => $agent->id,
