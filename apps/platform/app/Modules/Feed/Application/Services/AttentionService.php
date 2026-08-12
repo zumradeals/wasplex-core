@@ -49,7 +49,7 @@ final class AttentionService
     ) {}
 
     /**
-     * @return array{delivery: FeedAdDelivery, brand_name: ?string, objective_code: ?string, cta_label: ?string, creative: ?array{url: string, type: string, duration: ?int}}|null
+     * @return array{delivery: FeedAdDelivery, brand_name: ?string, objective_code: ?string, cta_label: ?string, creative: ?array{url: string, type: string, duration: ?int, duration_ms?: ?int}}|null
      */
     public function next(string $feedSessionId, string $accountId): ?array
     {
@@ -63,7 +63,17 @@ final class AttentionService
             if ($this->rewardEligibility->isBlockedForOrganization($accountId, $pending->organization_id)) {
                 $this->neutralizeBlockedDelivery($pending, $accountId);
             } else {
-                return $this->present($pending);
+                $presented = $this->present($pending);
+
+                if (! $this->hasIncompatibleVideoEconomics($presented)) {
+                    return $presented;
+                }
+
+                // Une livraison créée avant la migration peut encore porter
+                // l'ancien quota fixe ou ne pas exiger la fin réelle du média.
+                // On la libère puis on compose une livraison neuve afin de ne
+                // jamais diffuser silencieusement avec une économie obsolète.
+                $this->abandon($pending->id, $accountId);
             }
         }
 
@@ -267,7 +277,10 @@ final class AttentionService
         $claimed = min($visibleDurationMs, $realElapsedMs);
         $toleranceMs = max(0, (int) config('feed.media_end_tolerance_ms'));
 
-        if ($delivery->requires_media_end && $claimed + $toleranceMs < $delivery->required_duration_ms) {
+        if ($delivery->requires_media_end
+            && ($delivery->last_heartbeat_at === null
+                || $delivery->visible_duration_ms + $toleranceMs < $delivery->required_duration_ms
+                || $claimed + $toleranceMs < $delivery->required_duration_ms)) {
             throw new AttentionNotQualifiedException;
         }
 
@@ -554,6 +567,38 @@ final class AttentionService
         return $delivery->reserved_at
             ->addSeconds((int) config('campaigns.envelope_reservation_ttl_seconds'))
             ->isPast();
+    }
+
+    /**
+     * @param  array{delivery: FeedAdDelivery, creative: mixed}  $result
+     */
+    private function hasIncompatibleVideoEconomics(array $result): bool
+    {
+        $delivery = $result['delivery'];
+
+        if ($delivery->is_replay) {
+            return false;
+        }
+
+        $creative = $result['creative'] ?? null;
+        if (! is_array($creative) || ($creative['type'] ?? null) !== 'video') {
+            return true;
+        }
+
+        $durationMs = (int) ($creative['duration_ms'] ?? 0);
+        if ($durationMs <= 0) {
+            $durationMs = ((int) ($creative['duration'] ?? 0)) * 1000;
+        }
+        if ($durationMs <= 0) {
+            return true;
+        }
+
+        $unitMs = max(1, (int) config('campaigns.attention_unit_ms'));
+        $expectedUnits = (int) ceil($durationMs / $unitMs);
+
+        return (int) $delivery->required_duration_ms !== $durationMs
+            || (int) $delivery->quota_units !== $expectedUnits
+            || ! $delivery->requires_media_end;
     }
 
     private function present(FeedAdDelivery $delivery): array
