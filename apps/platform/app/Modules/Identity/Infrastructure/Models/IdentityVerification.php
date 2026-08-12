@@ -14,6 +14,7 @@ final class IdentityVerification extends Model
 
     protected $fillable = [
         'account_id',
+        'reviewed_by_account_id',
         'status',
         'document_type',
         'document_country',
@@ -46,5 +47,10 @@ final class IdentityVerification extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'reviewed_by_account_id');
     }
 }
