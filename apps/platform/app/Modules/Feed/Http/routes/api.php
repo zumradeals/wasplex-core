@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Feed\Http\Controllers\Admin\FeedDashboardController;
 use App\Modules\Feed\Http\Controllers\Admin\FeedRiskReviewController;
 use App\Modules\Feed\Http\Controllers\User\FeedDeliveriesController;
+use App\Modules\Feed\Http\Controllers\User\FeedPreloadController;
 use App\Modules\Feed\Http\Controllers\User\FeedSessionsController;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureRecentMfa;
@@ -18,6 +19,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
     ->group(function (): void {
         Route::post('/sessions', [FeedSessionsController::class, 'store']);
         Route::get('/next', [FeedDeliveriesController::class, 'next']);
+        Route::get('/preload', [FeedPreloadController::class, 'show']);
 
         Route::post('/deliveries/{delivery}/start', [FeedDeliveriesController::class, 'start']);
         Route::post('/deliveries/{delivery}/heartbeat', [FeedDeliveriesController::class, 'heartbeat']);
