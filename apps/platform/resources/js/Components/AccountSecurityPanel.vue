@@ -22,9 +22,21 @@ const enrollment = ref<{ secret: string; otpauth_url: string } | null>(null);
 const code = ref('');
 const mfaBusy = ref(false);
 const mfaMessage = ref<string | null>(null);
+const currentPassword = ref('');
+const newPassword = ref('');
+const newPasswordConfirmation = ref('');
+const passwordBusy = ref(false);
+const passwordMessage = ref<string | null>(null);
+const showPasswordForm = ref(false);
 
 const otherSessions = computed(() => sessions.value.filter((session) => !session.is_current));
 const currentSession = computed(() => sessions.value.find((session) => session.is_current) ?? null);
+const passwordReady = computed(
+    () =>
+        currentPassword.value.length > 0 &&
+        newPassword.value.length >= 10 &&
+        newPassword.value === newPasswordConfirmation.value,
+);
 
 function deviceLabel(userAgent: string | null): string {
     if (!userAgent) return 'Appareil inconnu';
@@ -134,6 +146,35 @@ async function confirmMfa(): Promise<void> {
     }
 }
 
+async function changePassword(): Promise<void> {
+    if (!passwordReady.value) return;
+    passwordBusy.value = true;
+    passwordMessage.value = null;
+    error.value = null;
+    try {
+        const { data } = await http.put<{ message: string; revoked_sessions: number }>('/me/password', {
+            current_password: currentPassword.value,
+            password: newPassword.value,
+            password_confirmation: newPasswordConfirmation.value,
+        });
+        currentPassword.value = '';
+        newPassword.value = '';
+        newPasswordConfirmation.value = '';
+        showPasswordForm.value = false;
+        passwordMessage.value =
+            data.revoked_sessions > 0
+                ? `${data.message} ${data.revoked_sessions} autre${data.revoked_sessions > 1 ? 's' : ''} session${data.revoked_sessions > 1 ? 's' : ''} déconnectée${data.revoked_sessions > 1 ? 's' : ''}.`
+                : data.message;
+        await loadSessions();
+    } catch (e) {
+        error.value =
+            (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+            'Impossible de modifier le mot de passe.';
+    } finally {
+        passwordBusy.value = false;
+    }
+}
+
 watch(
     () => props.open,
     (open) => {
@@ -142,6 +183,11 @@ watch(
             enrollment.value = null;
             code.value = '';
             mfaMessage.value = null;
+            passwordMessage.value = null;
+            currentPassword.value = '';
+            newPassword.value = '';
+            newPasswordConfirmation.value = '';
+            showPasswordForm.value = false;
             void loadSessions();
         }
     },
@@ -263,9 +309,7 @@ watch(
                                     <p class="text-wpx-muted-dark mt-1.5 text-[10px]">Ne partagez jamais cette clé.</p>
                                 </div>
                                 <label class="flex flex-col gap-1.5">
-                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
-                                        >2. Code à 6 chiffres</span
-                                    >
+                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">2. Code à 6 chiffres</span>
                                     <input
                                         v-model="code"
                                         type="text"
@@ -293,6 +337,86 @@ watch(
                                 {{ mfaMessage }}
                             </p>
                         </div>
+                    </section>
+
+                    <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-start gap-3">
+                                <span class="bg-wpx-blue/12 text-wpx-blue rounded-wpx-md flex h-10 w-10 shrink-0 items-center justify-center">•••</span>
+                                <div>
+                                    <p class="text-wpx-white-soft text-sm font-bold">Mot de passe</p>
+                                    <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
+                                        Modifiez votre secret d’accès. Par sécurité, les autres appareils seront déconnectés.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                v-if="!showPasswordForm"
+                                type="button"
+                                class="text-wpx-cyan shrink-0 text-[10px] font-bold"
+                                @click="showPasswordForm = true"
+                            >
+                                Modifier
+                            </button>
+                        </div>
+
+                        <div v-if="showPasswordForm" class="mt-4 flex flex-col gap-2.5">
+                            <label class="flex flex-col gap-1.5">
+                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Mot de passe actuel</span>
+                                <input
+                                    v-model="currentPassword"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                />
+                            </label>
+                            <label class="flex flex-col gap-1.5">
+                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Nouveau mot de passe</span>
+                                <input
+                                    v-model="newPassword"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    placeholder="10 caractères minimum"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                />
+                            </label>
+                            <label class="flex flex-col gap-1.5">
+                                <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Confirmer le nouveau</span>
+                                <input
+                                    v-model="newPasswordConfirmation"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                />
+                            </label>
+                            <p class="text-wpx-muted-dark text-[10px] leading-relaxed">
+                                Utilisez au moins 10 caractères, avec lettres majuscules/minuscules et chiffres.
+                            </p>
+                            <div class="flex gap-2">
+                                <button
+                                    type="button"
+                                    class="border-wpx-border-dark text-wpx-muted-dark rounded-wpx-md border px-4 py-2.5 text-xs font-bold"
+                                    @click="showPasswordForm = false"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="button"
+                                    :disabled="passwordBusy || !passwordReady"
+                                    class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md flex-1 bg-gradient-to-br px-4 py-2.5 text-xs font-bold disabled:opacity-50"
+                                    @click="changePassword"
+                                >
+                                    {{ passwordBusy ? 'Modification…' : 'Modifier et sécuriser' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <p
+                            v-if="passwordMessage"
+                            class="bg-wpx-success/10 text-wpx-success-light rounded-wpx-md mt-3 p-3 text-xs"
+                        >
+                            {{ passwordMessage }}
+                        </p>
                     </section>
 
                     <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4">
@@ -396,8 +520,7 @@ watch(
                             <div>
                                 <p class="text-wpx-white-soft text-xs font-bold">Un accès vous semble suspect ?</p>
                                 <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                                    Déconnectez l’appareil concerné et activez la double authentification. Le changement
-                                    de mot de passe avancé sera ajouté avec le prochain lot d’authentification.
+                                    Déconnectez l’appareil concerné, changez votre mot de passe puis activez la double authentification.
                                 </p>
                             </div>
                         </div>
