@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   finalize:
-    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +47,7 @@ jobs:
               "    publicSummary.value = alert.public_summary || alert.description;\n    rejectionReason.value = '';\n    notice.value = '';",
               1,
           )
-          old_reject = '''async function reject(): Promise<void> {
+          old_reject = """async function reject(): Promise<void> {
     if (!selected.value) return;
     saving.value = true;
     notice.value = '';
@@ -63,8 +62,8 @@ jobs:
     } finally {
         saving.value = false;
     }
-}'''
-          new_reject = '''async function reject(): Promise<void> {
+}"""
+          new_reject = """async function reject(): Promise<void> {
     if (!selected.value) return;
     if (rejectionReason.value.trim().length < 5) {
         error.value = 'Expliquez en quelques mots ce que le citoyen doit corriger.';
@@ -86,24 +85,23 @@ jobs:
     } finally {
         saving.value = false;
     }
-}'''
+}"""
           if old_reject not in text:
               raise SystemExit('AdminAlertsPanel reject marker not found')
           text = text.replace(old_reject, new_reject, 1)
-
-          actions_marker = '''                    <div class="mt-4 grid grid-cols-2 gap-2">
-                        <button type="button" class="border-wpx-danger/40 text-wpx-danger rounded-xl border py-3 text-xs font-black" :disabled="saving" @click="reject">Refuser</button>'''
-          actions_replacement = '''                    <label class="text-wpx-muted-dark mt-3 block text-[10px] font-bold">Motif si vous refusez</label>
+          actions_marker = """                    <div class=\"mt-4 grid grid-cols-2 gap-2\">
+                        <button type=\"button\" class=\"border-wpx-danger/40 text-wpx-danger rounded-xl border py-3 text-xs font-black\" :disabled=\"saving\" @click=\"reject\">Refuser</button>"""
+          actions_replacement = """                    <label class=\"text-wpx-muted-dark mt-3 block text-[10px] font-bold\">Motif si vous refusez</label>
                     <textarea
-                        v-model="rejectionReason"
-                        rows="3"
-                        maxlength="1000"
-                        class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark mt-1 w-full rounded-2xl border px-3 py-3 text-xs leading-relaxed"
-                        placeholder="Ex. Précisez le quartier, sans publier l’adresse exacte."
+                        v-model=\"rejectionReason\"
+                        rows=\"3\"
+                        maxlength=\"1000\"
+                        class=\"bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft placeholder:text-wpx-muted-dark mt-1 w-full rounded-2xl border px-3 py-3 text-xs leading-relaxed\"
+                        placeholder=\"Ex. Précisez le quartier, sans publier l’adresse exacte.\"
                     />
-                    <p class="text-wpx-muted-dark mt-1 text-[9px]">Ce message sera visible par le citoyen dans Mes déclarations.</p>
-                    <div class="mt-4 grid grid-cols-2 gap-2">
-                        <button type="button" class="border-wpx-danger/40 text-wpx-danger rounded-xl border py-3 text-xs font-black" :disabled="saving" @click="reject">Refuser</button>'''
+                    <p class=\"text-wpx-muted-dark mt-1 text-[9px]\">Ce message sera visible par le citoyen dans Mes déclarations.</p>
+                    <div class=\"mt-4 grid grid-cols-2 gap-2\">
+                        <button type=\"button\" class=\"border-wpx-danger/40 text-wpx-danger rounded-xl border py-3 text-xs font-black\" :disabled=\"saving\" @click=\"reject\">Refuser</button>"""
           if actions_marker not in text:
               raise SystemExit('AdminAlertsPanel action marker not found')
           text = text.replace(actions_marker, actions_replacement, 1)
@@ -116,42 +114,34 @@ jobs:
               "    description: string;\n    rejection_reason: string | null;\n    public_visibility: boolean;",
               1,
           )
-          mine_marker = '''                    </div>
+          mine_marker = """                    </div>
                 </article>
                 <div
-                    v-if="!loading && myAlerts.length === 0"'''
-          mine_replacement = '''                    </div>
+                    v-if=\"!loading && myAlerts.length === 0\""""
+          mine_replacement = """                    </div>
                     <div
-                        v-if="alert.status === 'rejected' && alert.rejection_reason"
-                        class="border-wpx-danger/20 bg-wpx-danger/8 mt-3 rounded-xl border px-3 py-2.5"
+                        v-if=\"alert.status === 'rejected' && alert.rejection_reason\"
+                        class=\"border-wpx-danger/20 bg-wpx-danger/8 mt-3 rounded-xl border px-3 py-2.5\"
                     >
-                        <p class="text-wpx-danger text-[9px] font-black tracking-wide uppercase">À corriger</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">{{ alert.rejection_reason }}</p>
+                        <p class=\"text-wpx-danger text-[9px] font-black tracking-wide uppercase\">À corriger</p>
+                        <p class=\"text-wpx-muted-dark mt-1 text-[10px] leading-relaxed\">{{ alert.rejection_reason }}</p>
                     </div>
                 </article>
                 <div
-                    v-if="!loading && myAlerts.length === 0"'''
+                    v-if=\"!loading && myAlerts.length === 0\""""
           if mine_marker not in text:
               raise SystemExit('AlertsPanel mine marker not found')
           text = text.replace(mine_marker, mine_replacement, 1)
           alerts.write_text(text)
           PY
-
       - name: Format touched Vue files
         working-directory: apps/platform
-        run: |
-          npx prettier --write \
-            resources/js/Components/AdminAlertsPanel.vue \
-            resources/js/Components/AlertsPanel.vue \
-            resources/js/Pages/Identity/AdminShell.vue
+        run: npx prettier --write resources/js/Components/AdminAlertsPanel.vue resources/js/Components/AlertsPanel.vue resources/js/Pages/Identity/AdminShell.vue
       - name: Commit final UI
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- \
-            apps/platform/resources/js/Components/AdminAlertsPanel.vue \
-            apps/platform/resources/js/Components/AlertsPanel.vue \
-            apps/platform/resources/js/Pages/Identity/AdminShell.vue
+          git add -- apps/platform/resources/js/Components/AdminAlertsPanel.vue apps/platform/resources/js/Components/AlertsPanel.vue apps/platform/resources/js/Pages/Identity/AdminShell.vue
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
