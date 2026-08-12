@@ -9,6 +9,7 @@ use App\Modules\Feed\Application\Services\AttentionService;
 use App\Modules\Feed\Application\Services\DeliveryNotStartableException;
 use App\Modules\Feed\Application\Services\FeedDeliveryNotFoundException;
 use App\Modules\Feed\Application\Services\FeedInteractionService;
+use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Subscriptions\Application\Services\QuotaExhaustedException;
 use Illuminate\Http\JsonResponse;
@@ -83,6 +84,24 @@ final class FeedDeliveriesController extends Controller
 
         /** @var Account $account */
         $account = $request->user();
+
+        $current = FeedAdDelivery::query()
+            ->whereKey($delivery)
+            ->where('account_id', $account->id)
+            ->first();
+
+        if ($current !== null
+            && $current->status === FeedAdDelivery::STATUS_STARTED
+            && $current->requires_media_end) {
+            $toleranceMs = max(0, (int) config('feed.media_end_tolerance_ms'));
+
+            if ($current->last_heartbeat_at === null
+                || $current->visible_duration_ms + $toleranceMs < $current->required_duration_ms) {
+                return response()->json([
+                    'message' => 'La fin de la vidéo ne peut être validée sans preuve d’attention suffisante.',
+                ], 422);
+            }
+        }
 
         try {
             $updated = $this->attention->markMediaEnded($delivery, $account->id, $data['visible_duration_ms']);
