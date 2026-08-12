@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Funds\Infrastructure\Models;
 
+use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +38,11 @@ final class FundMembership extends Model
         ];
     }
 
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'account_id');
+    }
+
     public function program(): BelongsTo
     {
         return $this->belongsTo(FundProgram::class, 'fund_program_id');
@@ -44,6 +51,11 @@ final class FundMembership extends Model
     public function version(): BelongsTo
     {
         return $this->belongsTo(FundProgramVersion::class, 'program_version_id');
+    }
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(UserSubscription::class, 'user_subscription_id');
     }
 
     public function mandate(): HasOne
