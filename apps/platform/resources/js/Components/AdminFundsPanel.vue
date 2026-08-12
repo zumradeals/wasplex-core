@@ -28,6 +28,10 @@ type Wish = {
     title: string;
     description: string;
     estimated_amount_minor: number | null;
+    required_personal_contribution_minor: number | null;
+    personal_contribution_minor: number;
+    personal_contribution_remaining_minor: number | null;
+    personal_contribution_progress_percent: number;
     currency: string;
     review_note: string | null;
     category?: { name: string; icon: string | null };
@@ -37,7 +41,13 @@ type Dashboard = {
     programs: Program[];
     categories: Category[];
     wishes: Wish[];
-    metrics: { active_programs: number; submitted_wishes: number; approved_wishes: number };
+    metrics: {
+        active_programs: number;
+        submitted_wishes: number;
+        approved_wishes: number;
+        personal_contributions_count: number;
+        personal_contributions_minor: number;
+    };
 };
 
 const loading = ref(true);
@@ -240,7 +250,7 @@ onMounted(load);
         <p v-if="loading" class="text-wpx-muted-dark text-sm">Chargement…</p>
 
         <template v-if="dashboard && !loading">
-            <section class="grid gap-3 sm:grid-cols-3">
+            <section class="grid gap-3 sm:grid-cols-4">
                 <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-xl border p-4">
                     <p class="text-wpx-muted-dark text-xs">Programmes actifs</p>
                     <p class="text-wpx-white-soft mt-2 text-2xl font-extrabold">

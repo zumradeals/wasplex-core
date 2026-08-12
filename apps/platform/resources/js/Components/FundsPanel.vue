@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
+import FundBalanceCard from '@/Components/FundBalanceCard.vue';
+import FundWishContribution from '@/Components/FundWishContribution.vue';
 
 type Program = {
     id: string;
@@ -39,6 +41,16 @@ type Wish = {
     city: string | null;
     estimated_amount_minor: number | null;
     required_personal_contribution_minor: number | null;
+    personal_contribution_minor: number;
+    personal_contribution_remaining_minor: number | null;
+    personal_contribution_progress_percent: number;
+    personal_contribution_completed_at: string | null;
+    personal_contributions: Array<{
+        id: string;
+        source: 'wallet' | 'fund_balance';
+        amount_minor: number;
+        created_at: string;
+    }>;
     currency: string;
     review_note: string | null;
     category: { id: string; name: string; icon: string | null } | null;
@@ -46,6 +58,7 @@ type Wish = {
 type Overview = {
     eligible: boolean;
     membership: Membership | null;
+    balances: { wallet_available_minor: number; fund_balance_minor: number; unit: string; wp_to_xof: number };
     programs: Program[];
     categories: Category[];
     wishes: Wish[];
@@ -316,6 +329,8 @@ onMounted(load);
                 </button>
             </section>
 
+            <FundBalanceCard v-if="activeMembership" :balances="data.balances" @refresh="load" />
+
             <section v-if="wishes.length" class="flex flex-col gap-2.5">
                 <div class="flex items-center justify-between">
                     <h2 class="text-wpx-white-soft text-base font-bold">Mes vœux</h2>
@@ -348,6 +363,12 @@ onMounted(load);
                             money(item.estimated_amount_minor, item.currency)
                         }}</span>
                     </div>
+                    <FundWishContribution
+                        v-if="item.status !== 'draft' && item.status !== 'rejected'"
+                        :wish="item"
+                        :balances="data.balances"
+                        @refresh="load"
+                    />
                     <p v-if="item.review_note" class="text-wpx-gold mt-2 text-xs">{{ item.review_note }}</p>
                     <button
                         v-if="item.status === 'draft' || item.status === 'needs_information'"

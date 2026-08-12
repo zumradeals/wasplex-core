@@ -75,10 +75,15 @@ async function contribute(): Promise<void> {
             <div>
                 <p class="text-wpx-muted-dark text-[10px] font-bold uppercase">Mon apport personnel</p>
                 <p class="text-wpx-white-soft mt-1 text-xs font-extrabold">
-                    {{ format(wish.personal_contribution_minor) }} / {{ format(wish.required_personal_contribution_minor) }} FCFA
+                    {{ format(wish.personal_contribution_minor) }} /
+                    {{ format(wish.required_personal_contribution_minor) }} FCFA
                 </p>
             </div>
-            <span v-if="complete" class="bg-wpx-success/10 text-wpx-success-light rounded-full px-2 py-1 text-[10px] font-bold">Complet ✓</span>
+            <span
+                v-if="complete"
+                class="bg-wpx-success/10 text-wpx-success-light rounded-full px-2 py-1 text-[10px] font-bold"
+                >Complet ✓</span
+            >
             <span v-else class="text-wpx-gold text-[11px] font-bold">{{ format(remaining) }} restant</span>
         </div>
 
@@ -107,20 +112,30 @@ async function contribute(): Promise<void> {
                 <button
                     type="button"
                     class="rounded-xl border p-2.5 text-left"
-                    :class="source === 'fund_balance' ? 'border-wpx-cyan bg-wpx-cyan/8' : 'border-wpx-border-dark bg-wpx-navy-850'"
+                    :class="
+                        source === 'fund_balance'
+                            ? 'border-wpx-cyan bg-wpx-cyan/8'
+                            : 'border-wpx-border-dark bg-wpx-navy-850'
+                    "
                     @click="source = 'fund_balance'"
                 >
                     <span class="text-wpx-white-soft block text-[11px] font-bold">Solde Fonds</span>
-                    <span class="text-wpx-muted-dark mt-0.5 block text-[10px]">{{ format(balances.fund_balance_minor) }} WP</span>
+                    <span class="text-wpx-muted-dark mt-0.5 block text-[10px]"
+                        >{{ format(balances.fund_balance_minor) }} WP</span
+                    >
                 </button>
                 <button
                     type="button"
                     class="rounded-xl border p-2.5 text-left"
-                    :class="source === 'wallet' ? 'border-wpx-cyan bg-wpx-cyan/8' : 'border-wpx-border-dark bg-wpx-navy-850'"
+                    :class="
+                        source === 'wallet' ? 'border-wpx-cyan bg-wpx-cyan/8' : 'border-wpx-border-dark bg-wpx-navy-850'
+                    "
                     @click="source = 'wallet'"
                 >
                     <span class="text-wpx-white-soft block text-[11px] font-bold">Wallet</span>
-                    <span class="text-wpx-muted-dark mt-0.5 block text-[10px]">{{ format(balances.wallet_available_minor) }} WP</span>
+                    <span class="text-wpx-muted-dark mt-0.5 block text-[10px]"
+                        >{{ format(balances.wallet_available_minor) }} WP</span
+                    >
                 </button>
             </div>
             <div class="mt-2 flex gap-2">
@@ -144,15 +159,23 @@ async function contribute(): Promise<void> {
             <button type="button" class="text-wpx-cyan mt-2 text-[10px] font-bold" @click="useRemaining">
                 Mettre le maximum possible
             </button>
-            <p v-if="sourceBalance <= 0" class="text-wpx-gold mt-2 text-[10px]">Ce solde est vide. Choisis l’autre source ou alimente ton Solde Fonds.</p>
+            <p v-if="sourceBalance <= 0" class="text-wpx-gold mt-2 text-[10px]">
+                Ce solde est vide. Choisis l’autre source ou alimente ton Solde Fonds.
+            </p>
             <p v-if="error" class="text-wpx-danger mt-2 text-[10px]">{{ error }}</p>
         </div>
 
         <div v-if="wish.personal_contributions?.length" class="mt-2.5">
             <p class="text-wpx-muted-dark text-[9px] font-bold uppercase">Derniers apports</p>
             <div class="mt-1 space-y-1">
-                <div v-for="item in wish.personal_contributions.slice(0, 3)" :key="item.id" class="flex justify-between text-[10px]">
-                    <span class="text-wpx-muted-dark">{{ item.source === 'fund_balance' ? 'Solde Fonds' : 'Wallet' }}</span>
+                <div
+                    v-for="item in wish.personal_contributions.slice(0, 3)"
+                    :key="item.id"
+                    class="flex justify-between text-[10px]"
+                >
+                    <span class="text-wpx-muted-dark">{{
+                        item.source === 'fund_balance' ? 'Solde Fonds' : 'Wallet'
+                    }}</span>
                     <span class="text-wpx-white-soft font-bold">+ {{ format(item.amount_minor) }} WP</span>
                 </div>
             </div>
