@@ -59,8 +59,6 @@ function p019RoleRequestSpace(string $kind): ProfessionalSpace
 
 function p019RoleVerifySpace(ProfessionalSpace $space): void
 {
-    test()->postJson('/api/logout')->assertNoContent();
-
     registerAndLogin('p019-role-admin@wasplex.test');
     $admin = p019RoleAccount('p019-role-admin@wasplex.test');
     grantFounderAccessForTests($admin, ['admin.professional-spaces.view', 'admin.professional-spaces.decide']);
