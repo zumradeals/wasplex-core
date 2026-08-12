@@ -85,6 +85,8 @@ jobs:
             apps/platform/app/Modules/Funds
             apps/platform/resources/js/Components/AdminFundCollections.vue
             apps/platform/resources/js/Components/FundCollectionStatusCard.vue
+            apps/platform/resources/js/Components/FundBalanceCard.vue
+            apps/platform/resources/js/Components/AdminFundsPanel.vue
             apps/platform/tests/Feature/Funds/FundsAutomaticCollectionTest.php
           retention-days: 1
 
