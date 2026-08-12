@@ -6,6 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -22,7 +23,7 @@ return new class extends Migration
         });
 
         DB::table('alert_feed_settings')->insert([
-            'id' => (string) str()->ulid(),
+            'id' => (string) Str::ulid(),
             'useful_content_interval' => 5,
             'circles_enabled' => true,
             'left_rail_enabled' => true,
