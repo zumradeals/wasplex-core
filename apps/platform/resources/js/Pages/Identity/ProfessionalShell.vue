@@ -72,7 +72,10 @@ const kindLabel = computed(() => {
 const territoryLabel = computed(() => {
     const territory = workspace.value?.space.territory;
     if (!territory) return 'Territoire non précisé';
-    return [territory.area_label, territory.city, territory.country_code].filter(Boolean).join(' · ') || 'Territoire non précisé';
+    return (
+        [territory.area_label, territory.city, territory.country_code].filter(Boolean).join(' · ') ||
+        'Territoire non précisé'
+    );
 });
 
 const myRoleLabels = computed(() => workspace.value?.my_roles.map((role) => role.role_code.replaceAll('_', ' ')) ?? []);
@@ -191,10 +194,16 @@ onMounted(load);
                             :key="tab.key"
                             type="button"
                             class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-xs font-bold transition"
-                            :class="activeTab === tab.key ? 'bg-wpx-cyan/12 text-wpx-cyan' : 'text-wpx-muted-dark hover:bg-white/5'"
+                            :class="
+                                activeTab === tab.key
+                                    ? 'bg-wpx-cyan/12 text-wpx-cyan'
+                                    : 'text-wpx-muted-dark hover:bg-white/5'
+                            "
                             @click="activeTab = tab.key"
                         >
-                            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-black/15 text-base">{{ tab.icon }}</span>
+                            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-black/15 text-base">{{
+                                tab.icon
+                            }}</span>
                             {{ tab.label }}
                         </button>
                     </nav>
@@ -204,9 +213,14 @@ onMounted(load);
             <main class="min-w-0 pb-24 lg:pb-8">
                 <div v-if="loading" class="text-wpx-muted-dark py-16 text-center text-sm">Chargement de l’espace…</div>
 
-                <div v-else-if="errorMessage && !workspace" class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-6 text-center">
-                    <p class="text-red-300 text-sm font-bold">{{ errorMessage }}</p>
-                    <button type="button" class="text-wpx-cyan mt-4 text-xs font-black" @click="backToPersonal">Retour à Mon Espace</button>
+                <div
+                    v-else-if="errorMessage && !workspace"
+                    class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-6 text-center"
+                >
+                    <p class="text-sm font-bold text-red-300">{{ errorMessage }}</p>
+                    <button type="button" class="text-wpx-cyan mt-4 text-xs font-black" @click="backToPersonal">
+                        Retour à Mon Espace
+                    </button>
                 </div>
 
                 <template v-else-if="workspace">
@@ -216,38 +230,52 @@ onMounted(load);
                         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                             <div class="min-w-0">
                                 <div class="mb-2 flex flex-wrap items-center gap-2">
-                                    <span class="bg-emerald-500/12 rounded-full px-2.5 py-1 text-[9px] font-black text-emerald-300">VÉRIFIÉ</span>
-                                    <span class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black">{{ kindLabel }}</span>
+                                    <span
+                                        class="rounded-full bg-emerald-500/12 px-2.5 py-1 text-[9px] font-black text-emerald-300"
+                                        >VÉRIFIÉ</span
+                                    >
+                                    <span
+                                        class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black"
+                                        >{{ kindLabel }}</span
+                                    >
                                 </div>
-                                <h1 class="text-wpx-white-soft text-xl font-black md:text-2xl">{{ workspace.space.organization_name }}</h1>
+                                <h1 class="text-wpx-white-soft text-xl font-black md:text-2xl">
+                                    {{ workspace.space.organization_name }}
+                                </h1>
                                 <p class="text-wpx-muted-dark mt-1 text-xs">{{ territoryLabel }}</p>
                                 <p v-if="myRoleLabels.length" class="text-wpx-muted-dark mt-2 text-[10px] capitalize">
                                     Votre rôle : {{ myRoleLabels.join(' · ') }}
                                 </p>
                             </div>
                             <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                <div class="bg-black/10 rounded-2xl px-4 py-3 text-center">
+                                <div class="rounded-2xl bg-black/10 px-4 py-3 text-center">
                                     <p class="text-wpx-white-soft text-lg font-black">{{ workspace.members.length }}</p>
                                     <p class="text-wpx-muted-dark text-[8px] font-bold uppercase">Équipe</p>
                                 </div>
-                                <div class="bg-black/10 rounded-2xl px-4 py-3 text-center">
-                                    <p class="text-wpx-white-soft text-lg font-black">{{ workspace.service_points.length }}</p>
+                                <div class="rounded-2xl bg-black/10 px-4 py-3 text-center">
+                                    <p class="text-wpx-white-soft text-lg font-black">
+                                        {{ workspace.service_points.length }}
+                                    </p>
                                     <p class="text-wpx-muted-dark text-[8px] font-bold uppercase">Points</p>
                                 </div>
-                                <div class="bg-black/10 col-span-2 rounded-2xl px-4 py-3 text-center sm:col-span-1">
-                                    <p class="text-emerald-300 text-sm font-black">Actif</p>
+                                <div class="col-span-2 rounded-2xl bg-black/10 px-4 py-3 text-center sm:col-span-1">
+                                    <p class="text-sm font-black text-emerald-300">Actif</p>
                                     <p class="text-wpx-muted-dark text-[8px] font-bold uppercase">Accès</p>
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <p v-if="errorMessage" class="mt-3 rounded-2xl bg-red-500/10 px-4 py-3 text-xs text-red-300">{{ errorMessage }}</p>
+                    <p v-if="errorMessage" class="mt-3 rounded-2xl bg-red-500/10 px-4 py-3 text-xs text-red-300">
+                        {{ errorMessage }}
+                    </p>
 
                     <section v-if="activeTab === 'overview'" class="mt-4 grid gap-4 xl:grid-cols-2">
                         <article class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-5">
                             <p class="text-wpx-white-soft text-sm font-black">{{ contextualReadiness.title }}</p>
-                            <p class="text-wpx-muted-dark mt-2 text-[11px] leading-relaxed">{{ contextualReadiness.text }}</p>
+                            <p class="text-wpx-muted-dark mt-2 text-[11px] leading-relaxed">
+                                {{ contextualReadiness.text }}
+                            </p>
                             <div class="mt-4 grid grid-cols-2 gap-2">
                                 <button
                                     type="button"
@@ -274,19 +302,29 @@ onMounted(load);
                                     v-for="purpose in workspace.space.purposes"
                                     :key="purpose"
                                     class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-muted-dark rounded-full border px-2.5 py-1.5 text-[9px]"
-                                >{{ purpose }}</span>
+                                    >{{ purpose }}</span
+                                >
                             </div>
-                            <p v-else class="text-wpx-muted-dark mt-3 text-[10px]">Aucune finalité complémentaire déclarée.</p>
+                            <p v-else class="text-wpx-muted-dark mt-3 text-[10px]">
+                                Aucune finalité complémentaire déclarée.
+                            </p>
                         </article>
                     </section>
 
-                    <section v-else-if="activeTab === 'team'" class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-3xl border p-4 md:p-5">
+                    <section
+                        v-else-if="activeTab === 'team'"
+                        class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-3xl border p-4 md:p-5"
+                    >
                         <div class="mb-4 flex items-center justify-between">
                             <div>
                                 <p class="text-wpx-white-soft text-sm font-black">Équipe nominative</p>
-                                <p class="text-wpx-muted-dark mt-1 text-[10px]">Un compte personnel par agent. Aucun compte générique.</p>
+                                <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                                    Un compte personnel par agent. Aucun compte générique.
+                                </p>
                             </div>
-                            <span class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black">{{ workspace.members.length }}</span>
+                            <span class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black">{{
+                                workspace.members.length
+                            }}</span>
                         </div>
                         <div class="space-y-2">
                             <div
@@ -295,22 +333,32 @@ onMounted(load);
                                 class="border-wpx-border-dark bg-wpx-navy-950/50 flex items-center justify-between rounded-2xl border px-3 py-3"
                             >
                                 <div>
-                                    <p class="text-wpx-white-soft text-xs font-bold">Agent {{ member.account_id.slice(-6).toUpperCase() }}</p>
-                                    <p class="text-wpx-muted-dark mt-0.5 text-[9px] capitalize">{{ member.title || 'membre' }}</p>
+                                    <p class="text-wpx-white-soft text-xs font-bold">
+                                        Agent {{ member.account_id.slice(-6).toUpperCase() }}
+                                    </p>
+                                    <p class="text-wpx-muted-dark mt-0.5 text-[9px] capitalize">
+                                        {{ member.title || 'membre' }}
+                                    </p>
                                 </div>
-                                <span class="text-emerald-300 text-[9px] font-black">ACTIF</span>
+                                <span class="text-[9px] font-black text-emerald-300">ACTIF</span>
                             </div>
                         </div>
                         <p class="text-wpx-muted-dark mt-4 text-[10px] leading-relaxed">
-                            Les invitations utilisent le système d’organisation existant. L’attribution fine des rôles reste séparée des identifiants de connexion.
+                            Les invitations utilisent le système d’organisation existant. L’attribution fine des rôles
+                            reste séparée des identifiants de connexion.
                         </p>
                     </section>
 
-                    <section v-else-if="activeTab === 'points'" class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-3xl border p-4 md:p-5">
+                    <section
+                        v-else-if="activeTab === 'points'"
+                        class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-3xl border p-4 md:p-5"
+                    >
                         <div class="mb-4 flex items-center justify-between gap-3">
                             <div>
                                 <p class="text-wpx-white-soft text-sm font-black">Points de service</p>
-                                <p class="text-wpx-muted-dark mt-1 text-[10px]">Guichets, établissements, antennes ou points terrain.</p>
+                                <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                                    Guichets, établissements, antennes ou points terrain.
+                                </p>
                             </div>
                             <button
                                 type="button"
@@ -321,43 +369,97 @@ onMounted(load);
                             </button>
                         </div>
 
-                        <form v-if="showPointForm" class="mb-4 grid gap-2 rounded-2xl bg-black/10 p-3 md:grid-cols-2" @submit.prevent="addServicePoint">
-                            <input v-model="pointName" required placeholder="Nom du point" class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs" />
-                            <input v-model="pointType" placeholder="Type (antenne, clinique…)" class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs" />
-                            <input v-model="pointCity" placeholder="Ville" class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs" />
-                            <input v-model="pointArea" placeholder="Quartier / zone" class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs" />
-                            <input v-model="pointAddress" placeholder="Adresse" class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs md:col-span-2" />
-                            <button type="submit" :disabled="savingPoint" class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-3 py-3 text-xs font-black md:col-span-2 disabled:opacity-50">
+                        <form
+                            v-if="showPointForm"
+                            class="mb-4 grid gap-2 rounded-2xl bg-black/10 p-3 md:grid-cols-2"
+                            @submit.prevent="addServicePoint"
+                        >
+                            <input
+                                v-model="pointName"
+                                required
+                                placeholder="Nom du point"
+                                class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs"
+                            />
+                            <input
+                                v-model="pointType"
+                                placeholder="Type (antenne, clinique…)"
+                                class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs"
+                            />
+                            <input
+                                v-model="pointCity"
+                                placeholder="Ville"
+                                class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs"
+                            />
+                            <input
+                                v-model="pointArea"
+                                placeholder="Quartier / zone"
+                                class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs"
+                            />
+                            <input
+                                v-model="pointAddress"
+                                placeholder="Adresse"
+                                class="bg-wpx-navy-950 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-xs md:col-span-2"
+                            />
+                            <button
+                                type="submit"
+                                :disabled="savingPoint"
+                                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-3 py-3 text-xs font-black disabled:opacity-50 md:col-span-2"
+                            >
                                 {{ savingPoint ? 'Enregistrement…' : 'Enregistrer le point' }}
                             </button>
                         </form>
 
                         <div v-if="workspace.service_points.length" class="grid gap-2 md:grid-cols-2">
-                            <article v-for="point in workspace.service_points" :key="point.id" class="border-wpx-border-dark bg-wpx-navy-950/50 rounded-2xl border p-3">
+                            <article
+                                v-for="point in workspace.service_points"
+                                :key="point.id"
+                                class="border-wpx-border-dark bg-wpx-navy-950/50 rounded-2xl border p-3"
+                            >
                                 <div class="flex items-start justify-between gap-2">
                                     <div>
                                         <p class="text-wpx-white-soft text-xs font-black">{{ point.name }}</p>
-                                        <p class="text-wpx-muted-dark mt-1 text-[9px]">{{ [point.area_label, point.city].filter(Boolean).join(' · ') || point.country_code }}</p>
+                                        <p class="text-wpx-muted-dark mt-1 text-[9px]">
+                                            {{
+                                                [point.area_label, point.city].filter(Boolean).join(' · ') ||
+                                                point.country_code
+                                            }}
+                                        </p>
                                     </div>
-                                    <span class="text-emerald-300 text-[8px] font-black">{{ point.status.toUpperCase() }}</span>
+                                    <span class="text-[8px] font-black text-emerald-300">{{
+                                        point.status.toUpperCase()
+                                    }}</span>
                                 </div>
                             </article>
                         </div>
-                        <p v-else class="text-wpx-muted-dark py-8 text-center text-xs">Aucun point de service pour le moment.</p>
+                        <p v-else class="text-wpx-muted-dark py-8 text-center text-xs">
+                            Aucun point de service pour le moment.
+                        </p>
                     </section>
 
-                    <section v-else class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-3xl border p-6 text-center">
-                        <span class="bg-wpx-blue/10 mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl">🔐</span>
-                        <p class="text-wpx-white-soft mt-3 text-sm font-black">{{ tabs.find((tab) => tab.key === activeTab)?.label }}</p>
+                    <section
+                        v-else
+                        class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-3xl border p-6 text-center"
+                    >
+                        <span
+                            class="bg-wpx-blue/10 mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl"
+                            >🔐</span
+                        >
+                        <p class="text-wpx-white-soft mt-3 text-sm font-black">
+                            {{ tabs.find((tab) => tab.key === activeTab)?.label }}
+                        </p>
                         <p class="text-wpx-muted-dark mx-auto mt-2 max-w-md text-[11px] leading-relaxed">
-                            Cette zone est prête dans l’espace professionnel, mais son contenu métier sera alimenté uniquement par les modules autorisés. Wasplex n’invente aucun dossier ni aucune intervention.
+                            Cette zone est prête dans l’espace professionnel, mais son contenu métier sera alimenté
+                            uniquement par les modules autorisés. Wasplex n’invente aucun dossier ni aucune
+                            intervention.
                         </p>
                     </section>
                 </template>
             </main>
         </div>
 
-        <nav class="border-wpx-border-dark bg-wpx-navy-850 fixed right-0 bottom-0 left-0 z-30 grid grid-cols-5 border-t px-1 py-1.5 lg:hidden">
+        <nav
+            class="border-wpx-border-dark bg-wpx-navy-850 fixed right-0 bottom-0 left-0 z-30 grid grid-cols-5 border-t px-1 py-1.5 lg:hidden"
+        >
             <button
                 v-for="tab in tabs.slice(0, 5)"
                 :key="tab.key"
@@ -367,7 +469,9 @@ onMounted(load);
                 @click="activeTab = tab.key"
             >
                 <span class="text-base">{{ tab.icon }}</span>
-                <span>{{ tab.label === 'Vue d’ensemble' ? 'Accueil' : tab.label.replace('Points de service', 'Points') }}</span>
+                <span>{{
+                    tab.label === 'Vue d’ensemble' ? 'Accueil' : tab.label.replace('Points de service', 'Points')
+                }}</span>
             </button>
         </nav>
     </div>

@@ -145,11 +145,14 @@ onMounted(load);
         <div class="p-4">
             <div class="flex items-start justify-between gap-3">
                 <div class="flex min-w-0 items-start gap-3">
-                    <span class="bg-wpx-cyan/12 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl">🏛️</span>
+                    <span class="bg-wpx-cyan/12 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl"
+                        >🏛️</span
+                    >
                     <div class="min-w-0">
                         <p class="text-wpx-white-soft text-sm font-black">Espace professionnel</p>
                         <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                            Pour une institution, un établissement, un partenaire ou une équipe professionnelle vérifiée.
+                            Pour une institution, un établissement, un partenaire ou une équipe professionnelle
+                            vérifiée.
                         </p>
                     </div>
                 </div>
@@ -164,7 +167,8 @@ onMounted(load);
 
             <div class="mt-3 rounded-2xl border border-white/5 bg-black/10 p-3">
                 <p class="text-wpx-muted-dark text-[10px] leading-relaxed">
-                    Chaque agent utilise son propre compte. Wasplex vérifie l’organisation avant d’activer les accès sensibles.
+                    Chaque agent utilise son propre compte. Wasplex vérifie l’organisation avant d’activer les accès
+                    sensibles.
                 </p>
             </div>
         </div>
@@ -186,7 +190,10 @@ onMounted(load);
                         </p>
                         <p class="text-wpx-muted-dark mt-0.5 text-[9px]">{{ kindLabel(space.space_kind) }}</p>
                     </div>
-                    <span class="rounded-full px-2 py-1 text-[8px] font-black" :class="statusClass(space.verification_status)">
+                    <span
+                        class="rounded-full px-2 py-1 text-[8px] font-black"
+                        :class="statusClass(space.verification_status)"
+                    >
                         {{ statusLabel(space.verification_status) }}
                     </span>
                 </div>
@@ -204,7 +211,8 @@ onMounted(load);
                     Ouvrir l’espace professionnel
                 </button>
                 <p v-else class="text-wpx-muted-dark mt-3 text-[9px] leading-relaxed">
-                    L’espace deviendra accessible après vérification. Aucun accès institutionnel sensible n’est accordé avant cette étape.
+                    L’espace deviendra accessible après vérification. Aucun accès institutionnel sensible n’est accordé
+                    avant cette étape.
                 </p>
             </article>
         </div>
@@ -243,7 +251,9 @@ onMounted(load);
             </div>
 
             <div>
-                <label class="text-wpx-muted-dark mb-1 block text-[9px] font-bold">N° d’immatriculation / référence officielle</label>
+                <label class="text-wpx-muted-dark mb-1 block text-[9px] font-bold"
+                    >N° d’immatriculation / référence officielle</label
+                >
                 <input
                     v-model="registrationNumber"
                     maxlength="180"

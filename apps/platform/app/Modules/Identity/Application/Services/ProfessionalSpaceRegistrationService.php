@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 final class ProfessionalSpaceRegistrationService
 {
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function register(Account $creator, array $data): ProfessionalSpace
     {

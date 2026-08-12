@@ -21,7 +21,14 @@ type Space = {
     space_status: string | null;
     registration_number?: string | null;
     roles?: Array<{ id: string; account_id: string; role_code: string; status: string }>;
-    service_points?: Array<{ id: string; name: string; type: string | null; city: string | null; area_label: string | null; status: string }>;
+    service_points?: Array<{
+        id: string;
+        name: string;
+        type: string | null;
+        city: string | null;
+        area_label: string | null;
+        status: string;
+    }>;
 };
 
 const statuses = [
@@ -130,13 +137,20 @@ onMounted(load);
 
 <template>
     <div class="flex flex-col gap-4">
-        <section class="border-wpx-border-dark from-wpx-navy-750 to-wpx-navy-850 rounded-wpx-xl border bg-gradient-to-br p-5">
+        <section
+            class="border-wpx-border-dark from-wpx-navy-750 to-wpx-navy-850 rounded-wpx-xl border bg-gradient-to-br p-5"
+        >
             <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                    <p class="text-wpx-cyan text-[10px] font-black tracking-[0.18em] uppercase">P019 · Confiance institutionnelle</p>
-                    <h2 class="text-wpx-white-soft mt-1 text-xl font-black">Espaces professionnels &amp; institutions</h2>
+                    <p class="text-wpx-cyan text-[10px] font-black tracking-[0.18em] uppercase">
+                        P019 · Confiance institutionnelle
+                    </p>
+                    <h2 class="text-wpx-white-soft mt-1 text-xl font-black">
+                        Espaces professionnels &amp; institutions
+                    </h2>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-xs leading-relaxed">
-                        Vérifiez l’organisation, son territoire et sa finalité avant d’ouvrir tout accès métier sensible. Aucun compte partagé n’est accepté.
+                        Vérifiez l’organisation, son territoire et sa finalité avant d’ouvrir tout accès métier
+                        sensible. Aucun compte partagé n’est accepté.
                     </p>
                 </div>
                 <div class="border-wpx-border-dark bg-wpx-navy-950/60 rounded-2xl border px-4 py-3 text-center">
@@ -164,22 +178,32 @@ onMounted(load);
         <div class="grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1.2fr)]">
             <section class="border-wpx-border-dark bg-wpx-navy-850 min-h-80 rounded-3xl border p-3">
                 <div v-if="loading" class="text-wpx-muted-dark py-12 text-center text-xs">Chargement…</div>
-                <div v-else-if="spaces.length === 0" class="text-wpx-muted-dark py-12 text-center text-xs">Aucun dossier dans cette file.</div>
+                <div v-else-if="spaces.length === 0" class="text-wpx-muted-dark py-12 text-center text-xs">
+                    Aucun dossier dans cette file.
+                </div>
                 <div v-else class="space-y-2">
                     <button
                         v-for="space in spaces"
                         :key="space.id"
                         type="button"
                         class="border-wpx-border-dark w-full rounded-2xl border p-3 text-left transition"
-                        :class="selected?.id === space.id ? 'bg-wpx-cyan/10 border-wpx-cyan/30' : 'bg-wpx-navy-950/45 hover:bg-white/5'"
+                        :class="
+                            selected?.id === space.id
+                                ? 'bg-wpx-cyan/10 border-wpx-cyan/30'
+                                : 'bg-wpx-navy-950/45 hover:bg-white/5'
+                        "
                         @click="openSpace(space)"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <p class="text-wpx-white-soft truncate text-xs font-black">{{ space.trade_name || space.legal_name }}</p>
+                                <p class="text-wpx-white-soft truncate text-xs font-black">
+                                    {{ space.trade_name || space.legal_name }}
+                                </p>
                                 <p class="text-wpx-muted-dark mt-1 text-[9px]">{{ labelKind(space.space_kind) }}</p>
                             </div>
-                            <span class="bg-wpx-blue/10 text-wpx-blue rounded-full px-2 py-1 text-[8px] font-black">{{ space.country_code }}</span>
+                            <span class="bg-wpx-blue/10 text-wpx-blue rounded-full px-2 py-1 text-[8px] font-black">{{
+                                space.country_code
+                            }}</span>
                         </div>
                         <p class="text-wpx-muted-dark mt-2 text-[9px]">Soumis {{ formatDate(space.submitted_at) }}</p>
                     </button>
@@ -187,20 +211,37 @@ onMounted(load);
             </section>
 
             <section class="border-wpx-border-dark bg-wpx-navy-850 min-h-80 rounded-3xl border p-4 md:p-5">
-                <div v-if="loadingDetail" class="text-wpx-muted-dark py-12 text-center text-xs">Ouverture du dossier…</div>
-                <div v-else-if="!selected" class="flex h-full min-h-72 flex-col items-center justify-center text-center">
-                    <span class="bg-wpx-cyan/10 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl">🏛️</span>
+                <div v-if="loadingDetail" class="text-wpx-muted-dark py-12 text-center text-xs">
+                    Ouverture du dossier…
+                </div>
+                <div
+                    v-else-if="!selected"
+                    class="flex h-full min-h-72 flex-col items-center justify-center text-center"
+                >
+                    <span class="bg-wpx-cyan/10 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl"
+                        >🏛️</span
+                    >
                     <p class="text-wpx-white-soft mt-3 text-sm font-black">Choisissez une organisation</p>
-                    <p class="text-wpx-muted-dark mt-2 max-w-sm text-[11px] leading-relaxed">La décision doit porter sur une organisation réelle, un territoire et une finalité identifiés.</p>
+                    <p class="text-wpx-muted-dark mt-2 max-w-sm text-[11px] leading-relaxed">
+                        La décision doit porter sur une organisation réelle, un territoire et une finalité identifiés.
+                    </p>
                 </div>
                 <template v-else>
                     <div class="flex flex-col gap-4">
                         <div>
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black">{{ labelKind(selected.space_kind) }}</span>
-                                <span class="border-wpx-border-dark text-wpx-muted-dark rounded-full border px-2.5 py-1 text-[9px]">{{ selected.verification_status }}</span>
+                                <span
+                                    class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-2.5 py-1 text-[9px] font-black"
+                                    >{{ labelKind(selected.space_kind) }}</span
+                                >
+                                <span
+                                    class="border-wpx-border-dark text-wpx-muted-dark rounded-full border px-2.5 py-1 text-[9px]"
+                                    >{{ selected.verification_status }}</span
+                                >
                             </div>
-                            <h3 class="text-wpx-white-soft mt-3 text-lg font-black">{{ selected.trade_name || selected.legal_name }}</h3>
+                            <h3 class="text-wpx-white-soft mt-3 text-lg font-black">
+                                {{ selected.trade_name || selected.legal_name }}
+                            </h3>
                             <p class="text-wpx-muted-dark mt-1 text-[10px]">{{ selected.legal_name }}</p>
                         </div>
 
@@ -211,14 +252,21 @@ onMounted(load);
                             </div>
                             <div class="bg-wpx-navy-950/50 rounded-2xl p-3">
                                 <p class="text-wpx-muted-dark text-[8px] font-bold uppercase">Référence officielle</p>
-                                <p class="text-wpx-white-soft mt-1 break-all text-xs font-bold">{{ selected.registration_number || 'Non renseignée' }}</p>
+                                <p class="text-wpx-white-soft mt-1 text-xs font-bold break-all">
+                                    {{ selected.registration_number || 'Non renseignée' }}
+                                </p>
                             </div>
                         </div>
 
                         <div>
                             <p class="text-wpx-muted-dark text-[9px] font-bold uppercase">Finalités déclarées</p>
                             <div v-if="selected.purposes.length" class="mt-2 flex flex-wrap gap-2">
-                                <span v-for="purpose in selected.purposes" :key="purpose" class="border-wpx-border-dark bg-wpx-navy-950 rounded-full border px-2.5 py-1.5 text-[9px] text-wpx-muted-dark">{{ purpose }}</span>
+                                <span
+                                    v-for="purpose in selected.purposes"
+                                    :key="purpose"
+                                    class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-muted-dark rounded-full border px-2.5 py-1.5 text-[9px]"
+                                    >{{ purpose }}</span
+                                >
                             </div>
                             <p v-else class="text-wpx-muted-dark mt-2 text-[10px]">Aucune finalité complémentaire.</p>
                         </div>
@@ -226,15 +274,25 @@ onMounted(load);
                         <div v-if="selected.roles?.length">
                             <p class="text-wpx-muted-dark text-[9px] font-bold uppercase">Responsables nominatifs</p>
                             <div class="mt-2 space-y-2">
-                                <div v-for="role in selected.roles" :key="role.id" class="border-wpx-border-dark bg-wpx-navy-950/40 flex items-center justify-between rounded-xl border px-3 py-2.5">
-                                    <span class="text-wpx-white-soft text-[10px] font-bold">{{ role.role_code.replaceAll('_', ' ') }}</span>
-                                    <span class="text-wpx-muted-dark font-mono text-[8px]">…{{ role.account_id.slice(-6) }}</span>
+                                <div
+                                    v-for="role in selected.roles"
+                                    :key="role.id"
+                                    class="border-wpx-border-dark bg-wpx-navy-950/40 flex items-center justify-between rounded-xl border px-3 py-2.5"
+                                >
+                                    <span class="text-wpx-white-soft text-[10px] font-bold">{{
+                                        role.role_code.replaceAll('_', ' ')
+                                    }}</span>
+                                    <span class="text-wpx-muted-dark font-mono text-[8px]"
+                                        >…{{ role.account_id.slice(-6) }}</span
+                                    >
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label class="text-wpx-muted-dark mb-1.5 block text-[9px] font-bold uppercase">Note / motif de décision</label>
+                            <label class="text-wpx-muted-dark mb-1.5 block text-[9px] font-bold uppercase"
+                                >Note / motif de décision</label
+                            >
                             <textarea
                                 v-model="reason"
                                 rows="4"
@@ -245,14 +303,43 @@ onMounted(load);
                         </div>
 
                         <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                            <button type="button" :disabled="saving" class="rounded-xl bg-emerald-500/15 px-3 py-3 text-[10px] font-black text-emerald-300 disabled:opacity-50" @click="decide('verify')">Vérifier</button>
-                            <button type="button" :disabled="saving" class="rounded-xl bg-amber-500/12 px-3 py-3 text-[10px] font-black text-amber-300 disabled:opacity-50" @click="decide('restrict')">Restreindre</button>
-                            <button type="button" :disabled="saving" class="rounded-xl bg-red-500/10 px-3 py-3 text-[10px] font-black text-red-300 disabled:opacity-50" @click="decide('reject')">Refuser</button>
-                            <button type="button" :disabled="saving" class="border-wpx-border-dark text-wpx-muted-dark rounded-xl border px-3 py-3 text-[10px] font-black disabled:opacity-50" @click="decide('suspend')">Suspendre</button>
+                            <button
+                                type="button"
+                                :disabled="saving"
+                                class="rounded-xl bg-emerald-500/15 px-3 py-3 text-[10px] font-black text-emerald-300 disabled:opacity-50"
+                                @click="decide('verify')"
+                            >
+                                Vérifier
+                            </button>
+                            <button
+                                type="button"
+                                :disabled="saving"
+                                class="rounded-xl bg-amber-500/12 px-3 py-3 text-[10px] font-black text-amber-300 disabled:opacity-50"
+                                @click="decide('restrict')"
+                            >
+                                Restreindre
+                            </button>
+                            <button
+                                type="button"
+                                :disabled="saving"
+                                class="rounded-xl bg-red-500/10 px-3 py-3 text-[10px] font-black text-red-300 disabled:opacity-50"
+                                @click="decide('reject')"
+                            >
+                                Refuser
+                            </button>
+                            <button
+                                type="button"
+                                :disabled="saving"
+                                class="border-wpx-border-dark text-wpx-muted-dark rounded-xl border px-3 py-3 text-[10px] font-black disabled:opacity-50"
+                                @click="decide('suspend')"
+                            >
+                                Suspendre
+                            </button>
                         </div>
 
                         <p class="text-wpx-muted-dark text-[9px] leading-relaxed">
-                            Vérifier active l’espace et ses capacités de base. Les accès Alertes/Santé restent soumis aux contrôles propres à ces domaines ; cette décision n’ouvre jamais toute la base Wasplex.
+                            Vérifier active l’espace et ses capacités de base. Les accès Alertes/Santé restent soumis
+                            aux contrôles propres à ces domaines ; cette décision n’ouvre jamais toute la base Wasplex.
                         </p>
                     </div>
                 </template>

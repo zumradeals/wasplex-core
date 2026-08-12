@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Infrastructure\Models;
 
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,21 +14,35 @@ final class ProfessionalSpace extends Model
     use HasUlids;
 
     public const KIND_PARTNER = 'partner';
+
     public const KIND_MERCHANT = 'merchant';
+
     public const KIND_SERVICE_PROVIDER = 'service_provider';
+
     public const KIND_SECURITY_INSTITUTION = 'security_institution';
+
     public const KIND_HEALTHCARE_INSTITUTION = 'healthcare_institution';
+
     public const KIND_HEALTH_PROFESSIONAL = 'health_professional';
+
     public const KIND_FINANCIAL_OPERATOR = 'financial_operator';
+
     public const KIND_FIELD_AGENT = 'field_agent';
+
     public const KIND_MODERATION_TEAM = 'moderation_team';
+
     public const KIND_WASPLEX_OPERATIONS = 'wasplex_operations';
 
     public const VERIFICATION_PENDING = 'pending_verification';
+
     public const VERIFICATION_UNDER_REVIEW = 'under_review';
+
     public const VERIFICATION_VERIFIED = 'verified';
+
     public const VERIFICATION_RESTRICTED = 'restricted';
+
     public const VERIFICATION_SUSPENDED = 'suspended';
+
     public const VERIFICATION_REJECTED = 'rejected';
 
     protected $fillable = [
