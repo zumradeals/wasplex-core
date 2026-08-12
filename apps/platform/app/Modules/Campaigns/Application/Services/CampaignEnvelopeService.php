@@ -36,12 +36,10 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
             throw new CampaignNotAvailableForDeliveryException;
         }
 
-        $creative = $campaign->currentVersion()?->creative_configuration ?? [];
-        $creativeUnits = max(1, (int) ($creative['attention_units'] ?? 1));
-        $quotedUnits = max(1, (int) ($classBreakdown['attention_units'] ?? 1));
-        if ($creativeUnits !== $quotedUnits) {
-            throw new CampaignNotAvailableForDeliveryException;
-        }
+        // Valide le snapshot économique avant toute réservation. Cela bloque
+        // les anciennes campagnes image et tout devis dont la durée/unité ne
+        // correspond plus à la vidéo réellement diffusée.
+        $this->creativeEconomics($campaign, $classBreakdown);
 
         return DB::transaction(function () use ($campaign, $quote, $economicClass, $classBreakdown, $idempotencyKey): CampaignEnvelopeSlot {
             CampaignQuote::query()->whereKey($quote->id)->lockForUpdate()->first();
@@ -101,13 +99,7 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
         $quote = $consumption->quote()->first();
         $breakdown = $quote?->class_breakdown ?? [];
         $classBreakdown ??= (array) ($breakdown[$consumption->economic_class] ?? []);
-        $creative = $campaign->currentVersion()?->creative_configuration ?? [];
-        $durationMs = (int) ($creative['duration_ms']
-            ?? (isset($creative['duration_seconds'])
-                ? ((int) $creative['duration_seconds']) * 1000
-                : config('campaigns.default_ad_duration_ms')));
-        $attentionUnits = max(1, (int) ($creative['attention_units'] ?? $classBreakdown['attention_units'] ?? 1));
-        $requiresMediaEnd = ($creative['format'] ?? null) === 'video' && $durationMs > 0;
+        [$durationMs, $attentionUnits] = $this->creativeEconomics($campaign, $classBreakdown);
 
         return new CampaignEnvelopeSlot(
             consumptionId: $consumption->id,
@@ -118,7 +110,41 @@ final class CampaignEnvelopeService implements CampaignEnvelopeContract
             requiredDurationMs: $durationMs,
             expiresAt: $consumption->expires_at->toIso8601String(),
             attentionUnits: $attentionUnits,
-            requiresMediaEnd: $requiresMediaEnd,
+            requiresMediaEnd: true,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $classBreakdown
+     * @return array{0: int, 1: int}
+     */
+    private function creativeEconomics(Campaign $campaign, array $classBreakdown): array
+    {
+        $creative = $campaign->currentVersion()?->creative_configuration ?? [];
+
+        if (($creative['format'] ?? null) !== 'video') {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
+
+        $durationMs = (int) ($creative['duration_ms']
+            ?? (isset($creative['duration_seconds'])
+                ? ((int) $creative['duration_seconds']) * 1000
+                : 0));
+        $maxDurationMs = ((int) config('advertiser_studio.video.max_duration_seconds')) * 1000;
+
+        if ($durationMs <= 0 || $durationMs > $maxDurationMs) {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
+
+        $unitMs = max(1, (int) config('campaigns.attention_unit_ms'));
+        $derivedUnits = (int) ceil($durationMs / $unitMs);
+        $creativeUnits = max(1, (int) ($creative['attention_units'] ?? $derivedUnits));
+        $quotedUnits = max(1, (int) ($classBreakdown['attention_units'] ?? 1));
+
+        if ($creativeUnits !== $derivedUnits || $quotedUnits !== $derivedUnits) {
+            throw new CampaignNotAvailableForDeliveryException;
+        }
+
+        return [$durationMs, $derivedUnits];
     }
 }
