@@ -16,10 +16,15 @@ final class FundQuoteRequest extends Model
     use HasUlids;
 
     public const STATUS_REQUESTED = 'requested';
+
     public const STATUS_RESPONDED = 'responded';
+
     public const STATUS_DECLINED = 'declined';
+
     public const STATUS_EXPIRED = 'expired';
+
     public const STATUS_SELECTED = 'selected';
+
     public const STATUS_NOT_SELECTED = 'not_selected';
 
     protected $guarded = [];

@@ -4,6 +4,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import ProfessionalInstitutionalCasesPanel from '@/Components/ProfessionalInstitutionalCasesPanel.vue';
+import ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';
 import type { AuthShared } from '@/types/identity';
 
 type Workspace = {
@@ -32,7 +33,7 @@ type Workspace = {
     }>;
 };
 
-type Tab = 'overview' | 'cases' | 'operations' | 'team' | 'points' | 'audit';
+type Tab = 'overview' | 'cases' | 'funds' | 'operations' | 'team' | 'points' | 'audit';
 
 const page = usePage<{ auth: AuthShared }>();
 const activeTab = ref<Tab>('overview');
@@ -50,6 +51,7 @@ const pointAddress = ref('');
 const tabs: Array<{ key: Tab; label: string; icon: string }> = [
     { key: 'overview', label: 'Vue d’ensemble', icon: '⌂' },
     { key: 'cases', label: 'Dossiers', icon: '▤' },
+    { key: 'funds', label: 'Fonds', icon: '◇' },
     { key: 'operations', label: 'Opérations', icon: '↻' },
     { key: 'team', label: 'Équipe', icon: '◎' },
     { key: 'points', label: 'Points de service', icon: '⌖' },
@@ -81,6 +83,18 @@ const territoryLabel = computed(() => {
 
 const myRoleLabels = computed(() => workspace.value?.my_roles.map((role) => role.role_code.replaceAll('_', ' ')) ?? []);
 
+const fundsPartnerKinds = ['partner', 'merchant', 'service_provider', 'healthcare_institution', 'financial_operator'];
+const supportsFundsPartner = computed(() => fundsPartnerKinds.includes(workspace.value?.space.space_kind ?? ''));
+const canRespondToFundQuotes = computed(
+    () =>
+        workspace.value?.my_roles.some((role) =>
+            ['organization_owner', 'organization_admin', 'operations_manager', 'reviewer', 'partner_cashier'].includes(
+                role.role_code,
+            ),
+        ) ?? false,
+);
+const visibleTabs = computed(() => tabs.filter((tab) => tab.key !== 'funds' || supportsFundsPartner.value));
+
 const contextualReadiness = computed(() => {
     const kind = workspace.value?.space.space_kind;
     if (kind === 'security_institution') {
@@ -93,6 +107,12 @@ const contextualReadiness = computed(() => {
         return {
             title: 'Raccordement Santé',
             text: 'Les demandes d’accès Santé passent par Dossiers. Le patient garde la décision pour l’accès normal et l’urgence exige son consentement d’urgence actif.',
+        };
+    }
+    if (fundsPartnerKinds.includes(kind ?? '')) {
+        return {
+            title: 'Raccordement Fonds',
+            text: 'Les demandes de devis explicitement adressées à votre organisation apparaissent dans Fonds. Vous ne voyez que les informations nécessaires pour chiffrer le besoin.',
         };
     }
     return {
@@ -191,7 +211,7 @@ onMounted(load);
                 <div class="border-wpx-border-dark bg-wpx-navy-850 sticky top-20 rounded-3xl border p-3">
                     <nav class="space-y-1">
                         <button
-                            v-for="tab in tabs"
+                            v-for="tab in visibleTabs"
                             :key="tab.key"
                             type="button"
                             class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-xs font-bold transition"
@@ -315,6 +335,12 @@ onMounted(load);
                     <ProfessionalInstitutionalCasesPanel
                         v-else-if="activeTab === 'cases'"
                         :space-kind="workspace.space.space_kind"
+                    />
+
+                    <ProfessionalFundQuotesPanel
+                        v-else-if="activeTab === 'funds'"
+                        :can-respond="canRespondToFundQuotes"
+                        class="mt-4"
                     />
 
                     <section
@@ -467,7 +493,7 @@ onMounted(load);
             class="border-wpx-border-dark bg-wpx-navy-850 fixed right-0 bottom-0 left-0 z-30 grid grid-cols-5 border-t px-1 py-1.5 lg:hidden"
         >
             <button
-                v-for="tab in tabs.slice(0, 5)"
+                v-for="tab in visibleTabs.slice(0, 5)"
                 :key="tab.key"
                 type="button"
                 class="flex flex-col items-center gap-1 py-1.5 text-[9px] font-bold"

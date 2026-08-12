@@ -14,8 +14,11 @@ final class FundWishQuote extends Model
     use HasUlids;
 
     public const STATUS_SUBMITTED = 'submitted';
+
     public const STATUS_SELECTED = 'selected';
+
     public const STATUS_NOT_SELECTED = 'not_selected';
+
     public const STATUS_WITHDRAWN = 'withdrawn';
 
     protected $guarded = [];

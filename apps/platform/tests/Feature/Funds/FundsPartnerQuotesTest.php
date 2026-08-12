@@ -112,8 +112,15 @@ function p014cPartner(string $identifier): array
     $space = ProfessionalSpace::query()->findOrFail($response->json('space.id'));
     $space->update(['verification_status' => ProfessionalSpace::VERIFICATION_VERIFIED, 'verified_at' => now()]);
     $space->organization()->update(['status' => 'active']);
+    $space->userSpace()->update(['status' => 'active']);
 
-    foreach (['professional.funds.quote.view', 'professional.funds.quote.respond'] as $capability) {
+    foreach ([
+        'professional.space.access',
+        'professional.team.manage',
+        'professional.service-points.manage',
+        'professional.funds.quote.view',
+        'professional.funds.quote.respond',
+    ] as $capability) {
         CapabilityGrant::query()->create([
             'account_id' => $account->id, 'capability_code' => $capability,
             'scope_type' => CapabilityGrant::SCOPE_ORGANIZATION, 'scope_id' => $space->organization_id,
