@@ -115,10 +115,12 @@ final class AlertsController extends Controller
             'title' => $alert->title,
             'description' => $alert->description,
             'public_summary' => $alert->public_summary,
+            'rejection_reason' => $alert->rejection_reason,
             'city' => $alert->city,
             'area_label' => $alert->area_label,
             'public_visibility' => $alert->public_visibility,
             'submitted_at' => $alert->submitted_at?->toIso8601String(),
+            'reviewed_at' => $alert->reviewed_at?->toIso8601String(),
             'published_at' => $alert->published_at?->toIso8601String(),
             'resolved_at' => $alert->resolved_at?->toIso8601String(),
         ];
