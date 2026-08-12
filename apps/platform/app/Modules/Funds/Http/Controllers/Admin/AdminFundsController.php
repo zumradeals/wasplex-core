@@ -96,6 +96,8 @@ final class AdminFundsController
             'wasplex_fee_minor' => ['required', 'integer', 'min:0'],
             'notice_hours' => ['required', 'integer', 'min:1'],
             'grace_period_days' => ['required', 'integer', 'min:1'],
+            'arrears_grace_days' => ['nullable', 'integer', 'min:1'],
+            'max_simultaneous_collections' => ['nullable', 'integer', 'min:1'],
             'eligible_subscription_classes' => ['nullable', 'array'],
             'eligible_subscription_classes.*' => ['string', 'max:50'],
         ]);
@@ -106,6 +108,8 @@ final class AdminFundsController
             'currency' => Str::upper($data['currency']),
             'version' => $next,
             'minimum_subscription_age_days' => $data['minimum_subscription_age_days'] ?? 0,
+            'arrears_grace_days' => $data['arrears_grace_days'] ?? 7,
+            'max_simultaneous_collections' => $data['max_simultaneous_collections'] ?? 1,
             'status' => 'draft',
         ]);
 

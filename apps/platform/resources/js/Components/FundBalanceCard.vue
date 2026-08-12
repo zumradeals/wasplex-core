@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import http from '@/lib/http';
+import FundCollectionStatusCard from '@/Components/FundCollectionStatusCard.vue';
 
 type Balances = {
     wallet_available_minor: number;
@@ -110,4 +111,6 @@ async function fund(): Promise<void> {
             </div>
         </div>
     </section>
+
+    <FundCollectionStatusCard />
 </template>

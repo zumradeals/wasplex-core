@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Modules\Funds\Http\Controllers\Admin\AdminFundCollectionsController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundPartnerDashboardController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundQuotesController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundsController;
 use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundQuotesController;
+use App\Modules\Funds\Http\Controllers\User\FundCollectionObligationsController;
 use App\Modules\Funds\Http\Controllers\User\FundsController;
 use App\Modules\Identity\Http\Middleware\EnsureActiveProfessionalOrganization;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
@@ -17,6 +19,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
     ->prefix('funds')
     ->group(function (): void {
         Route::get('/', [FundsController::class, 'overview']);
+        Route::get('/collection-obligations', [FundCollectionObligationsController::class, 'index']);
         Route::post('/membership', [FundsController::class, 'join']);
         Route::post('/membership/revoke-mandate', [FundsController::class, 'revokeMandate']);
         Route::post('/balance/fund', [FundsController::class, 'fundBalance']);
@@ -63,5 +66,12 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
         Route::post('/wishes/{wish}/quote-requests', [AdminFundQuotesController::class, 'requestQuotes'])
             ->middleware(EnsureCapability::class.':admin.funds.review');
         Route::post('/wishes/{wish}/quotes/{quote}/select', [AdminFundQuotesController::class, 'selectQuote'])
+            ->middleware(EnsureCapability::class.':admin.funds.review');
+
+        Route::get('/collections', [AdminFundCollectionsController::class, 'index'])
+            ->middleware(EnsureCapability::class.':admin.funds.view');
+        Route::post('/wishes/{wish}/collection-snapshot', [AdminFundCollectionsController::class, 'create'])
+            ->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/collections/{snapshot}/execute', [AdminFundCollectionsController::class, 'execute'])
             ->middleware(EnsureCapability::class.':admin.funds.review');
     });
