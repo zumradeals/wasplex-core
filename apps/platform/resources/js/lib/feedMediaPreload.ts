@@ -69,11 +69,7 @@ export function feedMediaPreloadPlaying(campaignId: string | null): void {
 }
 
 export async function prepareFeedMediaPreload(currentCampaignId: string): Promise<void> {
-    if (
-        typeof document === 'undefined' ||
-        inFlight !== null ||
-        attemptedForCampaignId === currentCampaignId
-    ) {
+    if (typeof document === 'undefined' || inFlight !== null || attemptedForCampaignId === currentCampaignId) {
         return;
     }
 
