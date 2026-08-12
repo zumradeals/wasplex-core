@@ -37,6 +37,13 @@ final class FeedDeliveriesController extends Controller
 
         $result = $this->attention->next($data['feed_session_id'], $account->id);
 
+        if ($result !== null && $this->hasIncompatibleVideoEconomics($result)) {
+            /** @var FeedAdDelivery $staleDelivery */
+            $staleDelivery = $result['delivery'];
+            $this->attention->abandon($staleDelivery->id, $account->id);
+            $result = $this->attention->next($data['feed_session_id'], $account->id);
+        }
+
         if ($result === null) {
             return response()->json(['delivery' => null]);
         }
@@ -201,6 +208,38 @@ final class FeedDeliveriesController extends Controller
         $comment = $this->interactions->addComment($account->id, $campaign, $data['body']);
 
         return response()->json(['comment' => $comment], 201);
+    }
+
+    /**
+     * @param  array{delivery: FeedAdDelivery, brand_name: ?string, objective_code: ?string, cta_label: ?string, creative?: mixed}  $result
+     */
+    private function hasIncompatibleVideoEconomics(array $result): bool
+    {
+        $delivery = $result['delivery'];
+
+        if ($delivery->is_replay) {
+            return false;
+        }
+
+        $creative = $result['creative'] ?? null;
+        if (! is_array($creative) || ($creative['type'] ?? null) !== 'video') {
+            return true;
+        }
+
+        $durationMs = (int) ($creative['duration_ms'] ?? 0);
+        if ($durationMs <= 0) {
+            $durationMs = ((int) ($creative['duration'] ?? 0)) * 1000;
+        }
+        if ($durationMs <= 0) {
+            return true;
+        }
+
+        $unitMs = max(1, (int) config('campaigns.attention_unit_ms'));
+        $expectedUnits = (int) ceil($durationMs / $unitMs);
+
+        return (int) $delivery->required_duration_ms !== $durationMs
+            || (int) $delivery->quota_units !== $expectedUnits
+            || ! $delivery->requires_media_end;
     }
 
     /**
