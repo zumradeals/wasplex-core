@@ -117,6 +117,7 @@ final class MeIdentityVerificationController extends Controller
                 ['account_id' => $account->id],
                 [
                     'id' => $verificationId,
+                    'reviewed_by_account_id' => null,
                     'status' => 'submitted',
                     'document_type' => $data['document_type'],
                     'document_country' => strtoupper($data['document_country']),
