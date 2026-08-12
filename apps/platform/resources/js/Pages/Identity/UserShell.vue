@@ -299,7 +299,9 @@ onMounted(loadMe);
                                 </svg>
                             </span>
                             <p class="text-wpx-white-soft mt-2.5 text-sm font-bold">Identité &amp; KYC</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">Vérification confidentielle</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-[11px] leading-tight">
+                                Vérification confidentielle
+                            </p>
                         </button>
 
                         <button
@@ -360,9 +362,12 @@ onMounted(loadMe);
                                     </svg>
                                 </span>
                                 <span>
-                                    <span class="text-wpx-white-soft block text-sm font-bold">Compte &amp; sécurité</span>
+                                    <span class="text-wpx-white-soft block text-sm font-bold"
+                                        >Compte &amp; sécurité</span
+                                    >
                                     <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">
-                                        MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} · sessions et appareils
+                                        MFA {{ page.props.auth.account.mfa_enabled ? 'activée' : 'non activée' }} ·
+                                        sessions et appareils
                                     </span>
                                 </span>
                             </span>

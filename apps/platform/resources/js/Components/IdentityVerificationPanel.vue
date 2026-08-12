@@ -80,7 +80,8 @@ async function load(): Promise<void> {
         data.value = response.data;
         firstName.value = response.data.identity.first_name ?? '';
         lastName.value = response.data.identity.last_name ?? '';
-        documentCountry.value = response.data.verification.document_country ?? response.data.identity.country_code ?? 'CI';
+        documentCountry.value =
+            response.data.verification.document_country ?? response.data.identity.country_code ?? 'CI';
         documentType.value = response.data.verification.document_type ?? 'national_id';
     } catch (e) {
         error.value =
@@ -172,10 +173,23 @@ watch(
                     <template v-else>
                         <div :class="['rounded-wpx-xl border p-4', statusClass()]">
                             <div class="flex items-start gap-3">
-                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-current/10">
+                                <span
+                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-current/10"
+                                >
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                        <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.7" />
-                                        <path v-if="status === 'approved'" d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                                        <path
+                                            d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
+                                            stroke="currentColor"
+                                            stroke-width="1.7"
+                                        />
+                                        <path
+                                            v-if="status === 'approved'"
+                                            d="M9 12l2 2 4-4"
+                                            stroke="currentColor"
+                                            stroke-width="1.7"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
                                     </svg>
                                 </span>
                                 <div>
@@ -192,7 +206,10 @@ watch(
                             <span class="font-bold">Motif :</span> {{ data.verification.rejection_reason }}
                         </div>
 
-                        <div v-if="status === 'submitted' || status === 'approved'" class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4">
+                        <div
+                            v-if="status === 'submitted' || status === 'approved'"
+                            class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4"
+                        >
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="bg-wpx-navy-750 rounded-wpx-md p-3">
                                     <p class="text-wpx-muted-dark text-[10px] uppercase">Pièce</p>
@@ -204,7 +221,8 @@ watch(
                                 </div>
                             </div>
                             <p v-if="data?.verification.submitted_at" class="text-wpx-muted-dark mt-3 text-[10px]">
-                                Dossier transmis le {{ new Date(data.verification.submitted_at).toLocaleDateString('fr-FR') }}.
+                                Dossier transmis le
+                                {{ new Date(data.verification.submitted_at).toLocaleDateString('fr-FR') }}.
                             </p>
                         </div>
 
@@ -214,70 +232,150 @@ watch(
                                 <div class="mt-3 grid grid-cols-2 gap-2.5">
                                     <label class="flex flex-col gap-1.5">
                                         <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Prénom</span>
-                                        <input v-model="firstName" required maxlength="120" autocomplete="given-name" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none" />
+                                        <input
+                                            v-model="firstName"
+                                            required
+                                            maxlength="120"
+                                            autocomplete="given-name"
+                                            class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                        />
                                     </label>
                                     <label class="flex flex-col gap-1.5">
                                         <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Nom</span>
-                                        <input v-model="lastName" required maxlength="120" autocomplete="family-name" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none" />
+                                        <input
+                                            v-model="lastName"
+                                            required
+                                            maxlength="120"
+                                            autocomplete="family-name"
+                                            class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                        />
                                     </label>
                                 </div>
                                 <label class="mt-2.5 flex flex-col gap-1.5">
-                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">Date de naissance</span>
-                                    <input v-model="birthDate" required type="date" autocomplete="bday" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none" />
+                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
+                                        >Date de naissance</span
+                                    >
+                                    <input
+                                        v-model="birthDate"
+                                        required
+                                        type="date"
+                                        autocomplete="bday"
+                                        class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                    />
                                 </label>
                             </div>
 
                             <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4">
                                 <p class="text-wpx-white-soft text-sm font-bold">2. Votre pièce d’identité</p>
                                 <div class="mt-3 flex flex-col gap-2.5">
-                                    <select v-model="documentType" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none">
+                                    <select
+                                        v-model="documentType"
+                                        class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                    >
                                         <option value="national_id">Carte nationale d’identité</option>
                                         <option value="passport">Passeport</option>
                                         <option value="drivers_license">Permis de conduire</option>
                                         <option value="residence_permit">Titre de séjour</option>
                                     </select>
                                     <div class="grid grid-cols-[90px_1fr] gap-2.5">
-                                        <input v-model="documentCountry" required maxlength="2" placeholder="CI" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm uppercase outline-none" />
-                                        <input v-model="documentNumber" required maxlength="120" placeholder="Numéro de la pièce" class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none" />
+                                        <input
+                                            v-model="documentCountry"
+                                            required
+                                            maxlength="2"
+                                            placeholder="CI"
+                                            class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm uppercase outline-none"
+                                        />
+                                        <input
+                                            v-model="documentNumber"
+                                            required
+                                            maxlength="120"
+                                            placeholder="Numéro de la pièce"
+                                            class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-white-soft rounded-wpx-md border px-3 py-2.5 text-sm outline-none"
+                                        />
                                     </div>
-                                    <label class="border-wpx-border-dark bg-wpx-navy-750 rounded-wpx-md border border-dashed p-3 text-center">
+                                    <label
+                                        class="border-wpx-border-dark bg-wpx-navy-750 rounded-wpx-md border border-dashed p-3 text-center"
+                                    >
                                         <span class="text-wpx-blue block text-xs font-bold">Ajouter la pièce</span>
-                                        <span class="text-wpx-muted-dark mt-1 block text-[10px]">JPG, PNG ou PDF · 8 Mo max.</span>
-                                        <input class="hidden" type="file" accept="image/jpeg,image/png,application/pdf" required @change="selectFile($event, 'document')" />
-                                        <span v-if="documentFront" class="text-wpx-success-light mt-2 block truncate text-[10px]">✓ {{ documentFront.name }}</span>
+                                        <span class="text-wpx-muted-dark mt-1 block text-[10px]"
+                                            >JPG, PNG ou PDF · 8 Mo max.</span
+                                        >
+                                        <input
+                                            class="hidden"
+                                            type="file"
+                                            accept="image/jpeg,image/png,application/pdf"
+                                            required
+                                            @change="selectFile($event, 'document')"
+                                        />
+                                        <span
+                                            v-if="documentFront"
+                                            class="text-wpx-success-light mt-2 block truncate text-[10px]"
+                                            >✓ {{ documentFront.name }}</span
+                                        >
                                     </label>
                                 </div>
                             </div>
 
                             <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-xl border p-4">
                                 <p class="text-wpx-white-soft text-sm font-bold">3. Selfie de vérification</p>
-                                <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">Photo nette, visage découvert, bonne lumière. Elle reste privée.</p>
-                                <label class="border-wpx-border-dark bg-wpx-navy-750 rounded-wpx-md mt-3 block border border-dashed p-3 text-center">
-                                    <span class="text-wpx-cyan block text-xs font-bold">Prendre ou choisir un selfie</span>
-                                    <span class="text-wpx-muted-dark mt-1 block text-[10px]">JPG ou PNG · 8 Mo max.</span>
-                                    <input class="hidden" type="file" accept="image/jpeg,image/png" capture="user" required @change="selectFile($event, 'selfie')" />
-                                    <span v-if="selfie" class="text-wpx-success-light mt-2 block truncate text-[10px]">✓ {{ selfie.name }}</span>
+                                <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
+                                    Photo nette, visage découvert, bonne lumière. Elle reste privée.
+                                </p>
+                                <label
+                                    class="border-wpx-border-dark bg-wpx-navy-750 rounded-wpx-md mt-3 block border border-dashed p-3 text-center"
+                                >
+                                    <span class="text-wpx-cyan block text-xs font-bold"
+                                        >Prendre ou choisir un selfie</span
+                                    >
+                                    <span class="text-wpx-muted-dark mt-1 block text-[10px]"
+                                        >JPG ou PNG · 8 Mo max.</span
+                                    >
+                                    <input
+                                        class="hidden"
+                                        type="file"
+                                        accept="image/jpeg,image/png"
+                                        capture="user"
+                                        required
+                                        @change="selectFile($event, 'selfie')"
+                                    />
+                                    <span v-if="selfie" class="text-wpx-success-light mt-2 block truncate text-[10px]"
+                                        >✓ {{ selfie.name }}</span
+                                    >
                                 </label>
                             </div>
 
                             <div class="bg-wpx-blue/8 border-wpx-blue/20 rounded-wpx-lg border p-3">
                                 <p class="text-wpx-muted-dark text-[10px] leading-relaxed">
-                                    🔒 Vos documents sont stockés dans l’espace privé Wasplex et ne sont jamais affichés aux annonceurs.
+                                    🔒 Vos documents sont stockés dans l’espace privé Wasplex et ne sont jamais affichés
+                                    aux annonceurs.
                                 </p>
                             </div>
 
-                            <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md p-3 text-xs">{{ error }}</p>
+                            <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md p-3 text-xs">
+                                {{ error }}
+                            </p>
 
                             <button
                                 type="submit"
                                 :disabled="submitting"
                                 class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md bg-gradient-to-br px-4 py-3 text-sm font-bold disabled:opacity-50"
                             >
-                                {{ submitting ? 'Envoi sécurisé…' : status === 'rejected' ? 'Renvoyer mon dossier' : 'Envoyer pour vérification' }}
+                                {{
+                                    submitting
+                                        ? 'Envoi sécurisé…'
+                                        : status === 'rejected'
+                                          ? 'Renvoyer mon dossier'
+                                          : 'Envoyer pour vérification'
+                                }}
                             </button>
                         </form>
 
-                        <p v-if="error && !canSubmit" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md p-3 text-xs">{{ error }}</p>
+                        <p
+                            v-if="error && !canSubmit"
+                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md p-3 text-xs"
+                        >
+                            {{ error }}
+                        </p>
                     </template>
                 </div>
             </section>

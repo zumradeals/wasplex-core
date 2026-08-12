@@ -128,8 +128,7 @@ async function confirmMfa(): Promise<void> {
         mfaMessage.value = 'Double authentification activée avec succès.';
         emit('mfa-enabled');
     } catch (e) {
-        error.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Code invalide.';
+        error.value = (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Code invalide.';
     } finally {
         mfaBusy.value = false;
     }
@@ -189,12 +188,24 @@ watch(
                                     <span
                                         :class="[
                                             'rounded-wpx-md flex h-10 w-10 shrink-0 items-center justify-center',
-                                            mfaEnabledLocal ? 'bg-wpx-success/12 text-wpx-success-light' : 'bg-wpx-gold/12 text-wpx-gold',
+                                            mfaEnabledLocal
+                                                ? 'bg-wpx-success/12 text-wpx-success-light'
+                                                : 'bg-wpx-gold/12 text-wpx-gold',
                                         ]"
                                     >
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                            <path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.7" />
-                                            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+                                            <path
+                                                d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"
+                                                stroke="currentColor"
+                                                stroke-width="1.7"
+                                            />
+                                            <path
+                                                d="M9 12l2 2 4-4"
+                                                stroke="currentColor"
+                                                stroke-width="1.7"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            />
                                         </svg>
                                     </span>
                                     <div>
@@ -232,20 +243,29 @@ watch(
 
                             <div v-if="enrollment" class="mt-4 flex flex-col gap-3">
                                 <div class="bg-wpx-blue/8 border-wpx-blue/20 rounded-wpx-lg border p-3">
-                                    <p class="text-wpx-white-soft text-xs font-bold">1. Ajoutez Wasplex dans votre application</p>
+                                    <p class="text-wpx-white-soft text-xs font-bold">
+                                        1. Ajoutez Wasplex dans votre application
+                                    </p>
                                     <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                                        Google Authenticator, Microsoft Authenticator, 1Password ou toute application TOTP compatible.
+                                        Google Authenticator, Microsoft Authenticator, 1Password ou toute application
+                                        TOTP compatible.
                                     </p>
                                 </div>
                                 <div>
-                                    <p class="text-wpx-muted-dark mb-1.5 text-[10px] font-bold uppercase">Clé secrète</p>
-                                    <code class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-cyan rounded-wpx-md block border p-3 text-center text-xs font-bold tracking-wider break-all">
+                                    <p class="text-wpx-muted-dark mb-1.5 text-[10px] font-bold uppercase">
+                                        Clé secrète
+                                    </p>
+                                    <code
+                                        class="border-wpx-border-dark bg-wpx-navy-750 text-wpx-cyan rounded-wpx-md block border p-3 text-center text-xs font-bold tracking-wider break-all"
+                                    >
                                         {{ enrollment.secret }}
                                     </code>
                                     <p class="text-wpx-muted-dark mt-1.5 text-[10px]">Ne partagez jamais cette clé.</p>
                                 </div>
                                 <label class="flex flex-col gap-1.5">
-                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase">2. Code à 6 chiffres</span>
+                                    <span class="text-wpx-muted-dark text-[10px] font-bold uppercase"
+                                        >2. Code à 6 chiffres</span
+                                    >
                                     <input
                                         v-model="code"
                                         type="text"
@@ -266,7 +286,10 @@ watch(
                                 </button>
                             </div>
 
-                            <p v-if="mfaMessage" class="bg-wpx-success/10 text-wpx-success-light rounded-wpx-md mt-3 p-3 text-xs">
+                            <p
+                                v-if="mfaMessage"
+                                class="bg-wpx-success/10 text-wpx-success-light rounded-wpx-md mt-3 p-3 text-xs"
+                            >
                                 {{ mfaMessage }}
                             </p>
                         </div>
@@ -276,7 +299,9 @@ watch(
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="text-wpx-white-soft text-sm font-bold">Appareils connectés</p>
-                                <p class="text-wpx-muted-dark mt-1 text-[11px]">Fermez une session que vous ne reconnaissez pas.</p>
+                                <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                                    Fermez une session que vous ne reconnaissez pas.
+                                </p>
                             </div>
                             <span class="bg-wpx-blue/12 text-wpx-blue rounded-full px-2.5 py-1 text-[10px] font-bold">
                                 {{ sessions.length }} session{{ sessions.length > 1 ? 's' : '' }}
@@ -294,13 +319,21 @@ watch(
                                     <div>
                                         <p class="text-wpx-white-soft text-xs font-bold">
                                             {{ deviceLabel(currentSession.user_agent) }}
-                                            <span v-if="browserLabel(currentSession.user_agent)" class="text-wpx-muted-dark font-normal">· {{ browserLabel(currentSession.user_agent) }}</span>
+                                            <span
+                                                v-if="browserLabel(currentSession.user_agent)"
+                                                class="text-wpx-muted-dark font-normal"
+                                                >· {{ browserLabel(currentSession.user_agent) }}</span
+                                            >
                                         </p>
                                         <p class="text-wpx-muted-dark mt-1 text-[10px]">
-                                            {{ currentSession.ip_address ?? 'IP inconnue' }} · actif {{ sessionWhen(currentSession.last_active_at) }}
+                                            {{ currentSession.ip_address ?? 'IP inconnue' }} · actif
+                                            {{ sessionWhen(currentSession.last_active_at) }}
                                         </p>
                                     </div>
-                                    <span class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2 py-1 text-[9px] font-bold">Cet appareil</span>
+                                    <span
+                                        class="bg-wpx-success/12 text-wpx-success-light rounded-full px-2 py-1 text-[9px] font-bold"
+                                        >Cet appareil</span
+                                    >
                                 </div>
                             </div>
 
@@ -313,10 +346,15 @@ watch(
                                     <div class="min-w-0">
                                         <p class="text-wpx-white-soft text-xs font-bold">
                                             {{ deviceLabel(session.user_agent) }}
-                                            <span v-if="browserLabel(session.user_agent)" class="text-wpx-muted-dark font-normal">· {{ browserLabel(session.user_agent) }}</span>
+                                            <span
+                                                v-if="browserLabel(session.user_agent)"
+                                                class="text-wpx-muted-dark font-normal"
+                                                >· {{ browserLabel(session.user_agent) }}</span
+                                            >
                                         </p>
                                         <p class="text-wpx-muted-dark mt-1 text-[10px]">
-                                            {{ session.ip_address ?? 'IP inconnue' }} · {{ sessionWhen(session.last_active_at) }}
+                                            {{ session.ip_address ?? 'IP inconnue' }} ·
+                                            {{ sessionWhen(session.last_active_at) }}
                                         </p>
                                     </div>
                                     <button
@@ -330,7 +368,10 @@ watch(
                                 </div>
                             </div>
 
-                            <p v-if="otherSessions.length === 0" class="text-wpx-muted-dark py-2 text-center text-[10px]">
+                            <p
+                                v-if="otherSessions.length === 0"
+                                class="text-wpx-muted-dark py-2 text-center text-[10px]"
+                            >
                                 Aucun autre appareil connecté.
                             </p>
                         </div>
@@ -348,17 +389,23 @@ watch(
 
                     <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border p-3.5">
                         <div class="flex items-start gap-3">
-                            <span class="bg-wpx-orange/12 text-wpx-orange flex h-9 w-9 shrink-0 items-center justify-center rounded-full">!</span>
+                            <span
+                                class="bg-wpx-orange/12 text-wpx-orange flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                                >!</span
+                            >
                             <div>
                                 <p class="text-wpx-white-soft text-xs font-bold">Un accès vous semble suspect ?</p>
                                 <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
-                                    Déconnectez l’appareil concerné et activez la double authentification. Le changement de mot de passe avancé sera ajouté avec le prochain lot d’authentification.
+                                    Déconnectez l’appareil concerné et activez la double authentification. Le changement
+                                    de mot de passe avancé sera ajouté avec le prochain lot d’authentification.
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md p-3 text-xs">{{ error }}</p>
+                    <p v-if="error" class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md p-3 text-xs">
+                        {{ error }}
+                    </p>
                 </div>
             </section>
         </div>
