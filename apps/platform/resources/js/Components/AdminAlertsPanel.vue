@@ -44,13 +44,15 @@ const submittedAlerts = computed(() => alerts.value.filter((alert) => alert.stat
 const publishedAlerts = computed(() => alerts.value.filter((alert) => alert.status === 'published'));
 
 function categoryLabel(category: string): string {
-    return {
-        object: 'Objet',
-        document: 'Document',
-        vehicle: 'Véhicule',
-        person: 'Personne',
-        sos: 'SOS',
-    }[category] ?? category;
+    return (
+        {
+            object: 'Objet',
+            document: 'Document',
+            vehicle: 'Véhicule',
+            person: 'Personne',
+            sos: 'SOS',
+        }[category] ?? category
+    );
 }
 
 function choose(alert: AdminAlert): void {
@@ -168,13 +170,12 @@ onMounted(load);
                     </p>
                     <h2 class="text-wpx-white-soft mt-1 text-xl font-black">Pilotage des Alertes</h2>
                     <p class="text-wpx-muted-dark mt-1 max-w-2xl text-xs leading-relaxed">
-                        Vérifiez ce qui peut être montré au public et choisissez le rythme des contenus utiles dans le Feed.
+                        Vérifiez ce qui peut être montré au public et choisissez le rythme des contenus utiles dans le
+                        Feed.
                     </p>
                 </div>
                 <div class="flex gap-2">
-                    <span
-                        class="bg-wpx-danger/10 text-wpx-danger rounded-full px-3 py-1.5 text-[10px] font-black"
-                    >
+                    <span class="bg-wpx-danger/10 text-wpx-danger rounded-full px-3 py-1.5 text-[10px] font-black">
                         {{ submittedAlerts.length }} à vérifier
                     </span>
                     <span class="bg-wpx-cyan/10 text-wpx-cyan rounded-full px-3 py-1.5 text-[10px] font-black">
@@ -203,9 +204,7 @@ onMounted(load);
                             Aucune déclaration n’est publiée automatiquement.
                         </p>
                     </div>
-                    <button type="button" class="text-wpx-cyan text-[10px] font-black" @click="load">
-                        Rafraîchir
-                    </button>
+                    <button type="button" class="text-wpx-cyan text-[10px] font-black" @click="load">Rafraîchir</button>
                 </div>
 
                 <div v-if="loading" class="text-wpx-muted-dark py-10 text-center text-xs">Chargement…</div>
@@ -326,8 +325,8 @@ onMounted(load);
                 <div>
                     <h3 class="text-wpx-white-soft text-base font-black">Rythme du Feed utile</h3>
                     <p class="text-wpx-muted-dark mt-1 max-w-xl text-[11px] leading-relaxed">
-                        Exemple : avec 5, Wasplex peut afficher une alerte ou une astuce après cinq publicités réellement
-                        complétées.
+                        Exemple : avec 5, Wasplex peut afficher une alerte ou une astuce après cinq publicités
+                        réellement complétées.
                     </p>
                 </div>
                 <div class="bg-wpx-navy-950 border-wpx-border-dark rounded-2xl border px-4 py-3 text-center">
@@ -382,9 +381,13 @@ onMounted(load);
                 <div class="mb-3 flex items-center justify-between">
                     <div>
                         <p class="text-wpx-white-soft text-sm font-black">Astuces Wasplex</p>
-                        <p class="text-wpx-muted-dark text-[10px]">Messages non récompensés alternés avec les alertes.</p>
+                        <p class="text-wpx-muted-dark text-[10px]">
+                            Messages non récompensés alternés avec les alertes.
+                        </p>
                     </div>
-                    <button type="button" class="text-wpx-cyan text-[10px] font-black" @click="addTip">+ Ajouter</button>
+                    <button type="button" class="text-wpx-cyan text-[10px] font-black" @click="addTip">
+                        + Ajouter
+                    </button>
                 </div>
                 <div class="grid gap-2 lg:grid-cols-2">
                     <div
@@ -399,7 +402,9 @@ onMounted(load);
                                 class="border-wpx-border-dark text-wpx-white-soft min-w-0 flex-1 rounded-xl border bg-black/20 px-3 py-2 text-xs"
                                 placeholder="Titre de l’astuce"
                             />
-                            <button type="button" class="text-wpx-danger px-2 text-xs" @click="removeTip(index)">×</button>
+                            <button type="button" class="text-wpx-danger px-2 text-xs" @click="removeTip(index)">
+                                ×
+                            </button>
                         </div>
                         <textarea
                             v-model="tip.body"
