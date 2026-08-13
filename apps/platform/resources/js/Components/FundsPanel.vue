@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
 import FundBalanceCard from '@/Components/FundBalanceCard.vue';
 import FundWishContribution from '@/Components/FundWishContribution.vue';
+import FundRealizationStatusCard from '@/Components/FundRealizationStatusCard.vue';
 
 type Program = {
     id: string;
@@ -330,6 +331,8 @@ onMounted(load);
             </section>
 
             <FundBalanceCard v-if="activeMembership" :balances="data.balances" @refresh="load" />
+
+            <FundRealizationStatusCard v-if="activeMembership" />
 
             <section v-if="wishes.length" class="flex flex-col gap-2.5">
                 <div class="flex items-center justify-between">

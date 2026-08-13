@@ -128,6 +128,7 @@ final class AdminFundRealizationsController
     private function payload(FundOrder $order): array
     {
         $order->loadMissing(['wish.category', 'providerOrganization', 'quote']);
+
         return [
             'id' => $order->id,
             'status' => $order->status,

@@ -58,6 +58,7 @@ final class FundRealizationStatusController
     {
         try {
             $order = $this->realizations->confirmBeneficiary($order, (string) $request->user()->id);
+
             return response()->json(['id' => $order->id, 'status' => $order->status, 'beneficiary_confirmed_at' => $order->beneficiary_confirmed_at, 'completed_at' => $order->completed_at]);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], str_contains($e->getMessage(), 'introuvable') ? 404 : 422);

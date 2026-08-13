@@ -29,7 +29,14 @@ type Order = {
     milestones: Milestone[];
     disputes: Dispute[];
 };
-type ReadyWish = { id: string; reference: string; title: string; validated_amount_minor: number; currency: string; provider: { id: string; name: string } | null };
+type ReadyWish = {
+    id: string;
+    reference: string;
+    title: string;
+    validated_amount_minor: number;
+    currency: string;
+    provider: { id: string; name: string } | null;
+};
 
 const loading = ref(false);
 const busy = ref(false);
@@ -136,7 +143,11 @@ async function confirmSettlement(): Promise<void> {
     }
 }
 
-async function resolve(order: Order, dispute: Dispute, resolution: 'accept_delivery' | 'resume' | 'cancel'): Promise<void> {
+async function resolve(
+    order: Order,
+    dispute: Dispute,
+    resolution: 'accept_delivery' | 'resume' | 'cancel',
+): Promise<void> {
     const note = window.prompt('Note de résolution obligatoire :');
     if (!note?.trim()) return;
     busy.value = true;
@@ -161,7 +172,8 @@ onMounted(load);
                     <p class="text-wpx-cyan text-[10px] font-black tracking-[0.16em] uppercase">P014-E · Réalisation</p>
                     <h3 class="text-wpx-white-soft mt-1 text-lg font-black">Commandes, preuves et livraison</h3>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-xs leading-relaxed">
-                        L’allocation Ledger et le règlement externe sont deux preuves distinctes. Aucun statut « payé » n’est simulé.
+                        L’allocation Ledger et le règlement externe sont deux preuves distinctes. Aucun statut « payé »
+                        n’est simulé.
                     </p>
                 </div>
                 <div class="bg-wpx-navy-950 rounded-2xl px-4 py-3 text-right">
@@ -175,22 +187,36 @@ onMounted(load);
 
         <div v-if="readyWishes.length" class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-4">
             <h4 class="text-wpx-white-soft text-sm font-black">Prêts à commander</h4>
-            <p class="text-wpx-muted-dark mt-1 text-[10px]">Uniquement les vœux dont la collecte est réellement financée.</p>
+            <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                Uniquement les vœux dont la collecte est réellement financée.
+            </p>
             <div class="mt-3 space-y-2">
-                <div v-for="wish in readyWishes" :key="wish.id" class="bg-wpx-navy-950 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-3">
+                <div
+                    v-for="wish in readyWishes"
+                    :key="wish.id"
+                    class="bg-wpx-navy-950 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-3"
+                >
                     <div>
                         <p class="text-wpx-cyan text-[9px] font-black">{{ wish.reference }}</p>
                         <p class="text-wpx-white-soft mt-1 text-xs font-bold">{{ wish.title }}</p>
                         <p class="text-wpx-muted-dark mt-1 text-[9px]">{{ wish.provider?.name ?? 'Prestataire' }}</p>
                     </div>
-                    <button class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-3 py-2 text-[10px] font-black" :disabled="busy" @click="createOrder(wish)">
+                    <button
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-3 py-2 text-[10px] font-black"
+                        :disabled="busy"
+                        @click="createOrder(wish)"
+                    >
                         Commander · {{ money(wish.validated_amount_minor, wish.currency) }}
                     </button>
                 </div>
             </div>
         </div>
 
-        <article v-for="order in orders" :key="order.id" class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-4 md:p-5">
+        <article
+            v-for="order in orders"
+            :key="order.id"
+            class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-4 md:p-5"
+        >
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p class="text-wpx-cyan text-[9px] font-black">{{ order.wish.reference }} · {{ order.status }}</p>
@@ -199,55 +225,147 @@ onMounted(load);
                 </div>
                 <div class="text-right">
                     <p class="text-wpx-gold text-sm font-black">{{ money(order.total_minor, order.currency) }}</p>
-                    <p class="text-wpx-muted-dark mt-1 text-[9px]">Ledger {{ money(order.ledger_allocated_minor, order.currency) }} · externe {{ money(order.externally_settled_minor, order.currency) }}</p>
+                    <p class="text-wpx-muted-dark mt-1 text-[9px]">
+                        Ledger {{ money(order.ledger_allocated_minor, order.currency) }} · externe
+                        {{ money(order.externally_settled_minor, order.currency) }}
+                    </p>
                 </div>
             </div>
 
             <div class="mt-4 space-y-2">
-                <div v-for="milestone in order.milestones" :key="milestone.id" class="border-wpx-border-dark bg-wpx-navy-950/60 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3">
+                <div
+                    v-for="milestone in order.milestones"
+                    :key="milestone.id"
+                    class="border-wpx-border-dark bg-wpx-navy-950/60 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3"
+                >
                     <div>
-                        <p class="text-wpx-white-soft text-xs font-bold">{{ milestone.ordinal }}. {{ milestone.label }}</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[9px]">{{ milestone.status }} · {{ milestone.external_settlement_status }}</p>
+                        <p class="text-wpx-white-soft text-xs font-bold">
+                            {{ milestone.ordinal }}. {{ milestone.label }}
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-[9px]">
+                            {{ milestone.status }} · {{ milestone.external_settlement_status }}
+                        </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-wpx-gold text-[10px] font-black">{{ money(milestone.amount_minor, order.currency) }}</span>
-                        <button v-if="milestone.status === 'proof_submitted' || (milestone.status === 'pending' && !milestone.proof_required)" class="bg-wpx-cyan/10 text-wpx-cyan rounded-lg px-2.5 py-1.5 text-[9px] font-black" :disabled="busy" @click="approve(order, milestone)">Valider</button>
-                        <button v-if="milestone.status === 'approved'" class="bg-wpx-blue/10 text-wpx-blue rounded-lg px-2.5 py-1.5 text-[9px] font-black" :disabled="busy" @click="ledgerPost(order, milestone)">Allouer Ledger</button>
-                        <button v-if="milestone.status === 'ledger_posted'" class="bg-wpx-success/10 text-wpx-success-light rounded-lg px-2.5 py-1.5 text-[9px] font-black" :disabled="busy" @click="settlementMilestone = { order, milestone }">Confirmer règlement</button>
+                        <span class="text-wpx-gold text-[10px] font-black">{{
+                            money(milestone.amount_minor, order.currency)
+                        }}</span>
+                        <button
+                            v-if="
+                                milestone.status === 'proof_submitted' ||
+                                (milestone.status === 'pending' && !milestone.proof_required)
+                            "
+                            class="bg-wpx-cyan/10 text-wpx-cyan rounded-lg px-2.5 py-1.5 text-[9px] font-black"
+                            :disabled="busy"
+                            @click="approve(order, milestone)"
+                        >
+                            Valider
+                        </button>
+                        <button
+                            v-if="milestone.status === 'approved'"
+                            class="bg-wpx-blue/10 text-wpx-blue rounded-lg px-2.5 py-1.5 text-[9px] font-black"
+                            :disabled="busy"
+                            @click="ledgerPost(order, milestone)"
+                        >
+                            Allouer Ledger
+                        </button>
+                        <button
+                            v-if="milestone.status === 'ledger_posted'"
+                            class="bg-wpx-success/10 text-wpx-success-light rounded-lg px-2.5 py-1.5 text-[9px] font-black"
+                            :disabled="busy"
+                            @click="settlementMilestone = { order, milestone }"
+                        >
+                            Confirmer règlement
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <button v-if="!['completed', 'cancelled'].includes(order.status)" class="border-wpx-border-dark text-wpx-cyan mt-3 rounded-xl border px-3 py-2 text-[10px] font-black" @click="milestoneOrder = order">+ Ajouter un jalon</button>
+            <button
+                v-if="!['completed', 'cancelled'].includes(order.status)"
+                class="border-wpx-border-dark text-wpx-cyan mt-3 rounded-xl border px-3 py-2 text-[10px] font-black"
+                @click="milestoneOrder = order"
+            >
+                + Ajouter un jalon
+            </button>
 
-            <div v-for="dispute in order.disputes.filter((item) => item.status === 'open')" :key="dispute.id" class="mt-4 rounded-2xl bg-red-500/10 p-3">
+            <div
+                v-for="dispute in order.disputes.filter((item) => item.status === 'open')"
+                :key="dispute.id"
+                class="mt-4 rounded-2xl bg-red-500/10 p-3"
+            >
                 <p class="text-wpx-danger text-xs font-black">Litige ouvert</p>
                 <p class="text-wpx-muted-dark mt-1 text-[10px]">{{ dispute.reason }}</p>
                 <div class="mt-2 flex flex-wrap gap-2">
-                    <button class="text-wpx-success-light text-[9px] font-black" @click="resolve(order, dispute, 'accept_delivery')">Accepter livraison</button>
-                    <button class="text-wpx-cyan text-[9px] font-black" @click="resolve(order, dispute, 'resume')">Reprendre réalisation</button>
-                    <button class="text-wpx-danger text-[9px] font-black" @click="resolve(order, dispute, 'cancel')">Annuler</button>
+                    <button
+                        class="text-wpx-success-light text-[9px] font-black"
+                        @click="resolve(order, dispute, 'accept_delivery')"
+                    >
+                        Accepter livraison
+                    </button>
+                    <button class="text-wpx-cyan text-[9px] font-black" @click="resolve(order, dispute, 'resume')">
+                        Reprendre réalisation
+                    </button>
+                    <button class="text-wpx-danger text-[9px] font-black" @click="resolve(order, dispute, 'cancel')">
+                        Annuler
+                    </button>
                 </div>
             </div>
         </article>
     </section>
 
     <Teleport to="body">
-        <div v-if="milestoneOrder" class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" @click.self="milestoneOrder = null">
+        <div
+            v-if="milestoneOrder"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+            @click.self="milestoneOrder = null"
+        >
             <div class="bg-wpx-navy-950 border-wpx-border-dark w-full max-w-md rounded-t-3xl border p-5 sm:rounded-3xl">
                 <h3 class="text-wpx-white-soft text-lg font-black">Ajouter un jalon</h3>
-                <input v-model="milestoneLabel" placeholder="Ex. Acompte commande" class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border px-3 py-3 text-sm" />
-                <input v-model.number="milestoneAmount" type="number" min="1" placeholder="Montant" class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-2 w-full rounded-xl border px-3 py-3 text-sm" />
-                <button class="bg-wpx-cyan text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40" :disabled="busy || !milestoneLabel.trim() || !milestoneAmount" @click="addMilestone">Enregistrer le jalon</button>
+                <input
+                    v-model="milestoneLabel"
+                    placeholder="Ex. Acompte commande"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border px-3 py-3 text-sm"
+                />
+                <input
+                    v-model.number="milestoneAmount"
+                    type="number"
+                    min="1"
+                    placeholder="Montant"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-2 w-full rounded-xl border px-3 py-3 text-sm"
+                />
+                <button
+                    class="bg-wpx-cyan text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40"
+                    :disabled="busy || !milestoneLabel.trim() || !milestoneAmount"
+                    @click="addMilestone"
+                >
+                    Enregistrer le jalon
+                </button>
             </div>
         </div>
 
-        <div v-if="settlementMilestone" class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" @click.self="settlementMilestone = null">
+        <div
+            v-if="settlementMilestone"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+            @click.self="settlementMilestone = null"
+        >
             <div class="bg-wpx-navy-950 border-wpx-border-dark w-full max-w-md rounded-t-3xl border p-5 sm:rounded-3xl">
                 <h3 class="text-wpx-white-soft text-lg font-black">Confirmer le règlement externe</h3>
-                <p class="text-wpx-muted-dark mt-1 text-xs">Saisissez la référence réelle du paiement au prestataire.</p>
-                <input v-model="settlementReference" placeholder="Référence opérateur / banque" class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border px-3 py-3 text-sm" />
-                <button class="bg-wpx-success text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40" :disabled="busy || !settlementReference.trim()" @click="confirmSettlement">Confirmer</button>
+                <p class="text-wpx-muted-dark mt-1 text-xs">
+                    Saisissez la référence réelle du paiement au prestataire.
+                </p>
+                <input
+                    v-model="settlementReference"
+                    placeholder="Référence opérateur / banque"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border px-3 py-3 text-sm"
+                />
+                <button
+                    class="bg-wpx-success text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40"
+                    :disabled="busy || !settlementReference.trim()"
+                    @click="confirmSettlement"
+                >
+                    Confirmer
+                </button>
             </div>
         </div>
     </Teleport>

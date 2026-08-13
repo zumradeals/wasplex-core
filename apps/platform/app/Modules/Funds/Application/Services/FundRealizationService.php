@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Funds\Application\Services;
 
-use App\Modules\Funds\Infrastructure\Models\FundAuditEvent;
 use App\Modules\Funds\Infrastructure\Models\FundCollectionSnapshot;
 use App\Modules\Funds\Infrastructure\Models\FundOrder;
 use App\Modules\Funds\Infrastructure\Models\FundWish;
@@ -23,6 +22,7 @@ use RuntimeException;
 final class FundRealizationService
 {
     public const RESERVE_ACCOUNT_CODE = 'fund.reserve.wp';
+
     private const RULE_VERSION = 'P014-E-v1';
 
     public function __construct(private readonly LedgerPostingContract $posting) {}
@@ -53,7 +53,9 @@ final class FundRealizationService
 
     public function addMilestone(FundOrder $order, string $label, int $amountMinor, bool $proofRequired, ?string $dueAt): array
     {
-        if ($amountMinor <= 0) throw new RuntimeException('Le montant du jalon doit être positif.');
+        if ($amountMinor <= 0) {
+            throw new RuntimeException('Le montant du jalon doit être positif.');
+        }
 
         return DB::transaction(function () use ($order, $label, $amountMinor, $proofRequired, $dueAt): array {
             $order = FundOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
@@ -86,7 +88,9 @@ final class FundRealizationService
 
     public function submitProof(FundOrder $order, string $organizationId, string $actorAccountId, ?string $milestoneId, string $type, ?string $reference, ?string $description): array
     {
-        if ((string) $order->provider_organization_id !== $organizationId) throw new RuntimeException('Commande introuvable.');
+        if ((string) $order->provider_organization_id !== $organizationId) {
+            throw new RuntimeException('Commande introuvable.');
+        }
         if ($milestoneId !== null && ! DB::table('fund_order_milestones')->where('id', $milestoneId)->where('fund_order_id', $order->id)->exists()) {
             throw new RuntimeException('Jalon introuvable.');
         }
@@ -122,7 +126,9 @@ final class FundRealizationService
     {
         return DB::transaction(function () use ($order, $milestoneId, $actorAccountId): array {
             $milestone = DB::table('fund_order_milestones')->where('id', $milestoneId)->where('fund_order_id', $order->id)->lockForUpdate()->first();
-            if ($milestone === null) throw new RuntimeException('Jalon introuvable.');
+            if ($milestone === null) {
+                throw new RuntimeException('Jalon introuvable.');
+            }
             if ((bool) $milestone->proof_required && ! DB::table('fund_order_proofs')->where('fund_order_milestone_id', $milestoneId)->exists()) {
                 throw new RuntimeException('Une preuve est requise avant validation.');
             }
@@ -132,6 +138,7 @@ final class FundRealizationService
                 'approved_by_account_id' => $actorAccountId,
                 'updated_at' => now(),
             ]);
+
             return (array) DB::table('fund_order_milestones')->where('id', $milestoneId)->first();
         });
     }
@@ -141,8 +148,15 @@ final class FundRealizationService
         return DB::transaction(function () use ($order, $milestoneId, $actorAccountId): array {
             $order = FundOrder::query()->with('wish.collectionSnapshot')->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $milestone = DB::table('fund_order_milestones')->where('id', $milestoneId)->where('fund_order_id', $order->id)->lockForUpdate()->first();
-            if ($milestone === null || $milestone->status !== 'approved') throw new RuntimeException('Le jalon doit être validé avant allocation.');
-            if ($milestone->ledger_transaction_id !== null) return (array) $milestone;
+            if ($milestone === null) {
+                throw new RuntimeException('Jalon introuvable.');
+            }
+            if ($milestone->ledger_transaction_id !== null) {
+                return (array) $milestone;
+            }
+            if ($milestone->status !== 'approved') {
+                throw new RuntimeException('Le jalon doit être validé avant allocation.');
+            }
 
             $amount = (int) $milestone->amount_minor;
             $wishRef = LedgerAccountReference::forIdentityAccount('fund.wish.personal.'.$order->fund_wish_id.'.wp', (string) $order->wish->account_id, UserWalletQueryService::ACCOUNT_TYPE_CODE, 'WP');
@@ -161,12 +175,20 @@ final class FundRealizationService
                 $reserve = min($remaining, $reserveAllowance, $this->balance($reserveRef));
                 $remaining -= $reserve;
             }
-            if ($remaining > 0) throw new RuntimeException('Financement disponible insuffisant pour ce jalon.');
+            if ($remaining > 0) {
+                throw new RuntimeException('Financement disponible insuffisant pour ce jalon.');
+            }
 
             $entries = [];
-            if ($personal > 0) $entries[] = LedgerEntryInput::debit($wishRef, Money::of($personal, 'WP'), 'Apport personnel affecté au prestataire Fonds');
-            if ($collective > 0) $entries[] = LedgerEntryInput::debit($poolRef, Money::of($collective, 'WP'), 'Solidarité affectée au prestataire Fonds');
-            if ($reserve > 0) $entries[] = LedgerEntryInput::debit($reserveRef, Money::of($reserve, 'WP'), 'Réserve Fonds affectée à la réalisation');
+            if ($personal > 0) {
+                $entries[] = LedgerEntryInput::debit($wishRef, Money::of($personal, 'WP'), 'Apport personnel affecté au prestataire Fonds');
+            }
+            if ($collective > 0) {
+                $entries[] = LedgerEntryInput::debit($poolRef, Money::of($collective, 'WP'), 'Solidarité affectée au prestataire Fonds');
+            }
+            if ($reserve > 0) {
+                $entries[] = LedgerEntryInput::debit($reserveRef, Money::of($reserve, 'WP'), 'Réserve Fonds affectée à la réalisation');
+            }
             $entries[] = LedgerEntryInput::credit($providerRef, Money::of($amount, 'WP'), 'Montant à régler au prestataire Fonds');
 
             $tx = $this->posting->post(new PostLedgerTransaction(
@@ -187,70 +209,98 @@ final class FundRealizationService
                 'updated_at' => now(),
             ]);
             $order->increment('ledger_allocated_minor', $amount);
-            if ($order->status === FundOrder::STATUS_ISSUED) $order->update(['status' => FundOrder::STATUS_IN_PROGRESS]);
+            if ($order->status === FundOrder::STATUS_ISSUED) {
+                $order->update(['status' => FundOrder::STATUS_IN_PROGRESS]);
+            }
             if ($reserve > 0) {
                 DB::table('fund_reserve_entries')->insert([
                     'id' => (string) Str::ulid(), 'fund_order_id' => $order->id, 'direction' => 'debit', 'amount_minor' => $reserve,
                     'reason' => 'Complément exceptionnel de réalisation', 'ledger_transaction_id' => $tx->id, 'created_by_account_id' => $actorAccountId, 'created_at' => now(),
                 ]);
             }
+
             return (array) DB::table('fund_order_milestones')->where('id', $milestoneId)->first();
         });
     }
 
     public function confirmExternalSettlement(FundOrder $order, string $milestoneId, string $reference): array
     {
+        if (trim($reference) === '') {
+            throw new RuntimeException('Une référence de règlement externe est obligatoire.');
+        }
+
         return DB::transaction(function () use ($order, $milestoneId, $reference): array {
             $order = FundOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             $milestone = DB::table('fund_order_milestones')->where('id', $milestoneId)->where('fund_order_id', $order->id)->lockForUpdate()->first();
-            if ($milestone === null || $milestone->ledger_transaction_id === null) throw new RuntimeException('L’allocation Ledger doit exister avant confirmation du règlement externe.');
-            if ($milestone->external_settlement_status === 'confirmed') return (array) $milestone;
+            if ($milestone === null || $milestone->ledger_transaction_id === null) {
+                throw new RuntimeException('L’allocation Ledger doit exister avant confirmation du règlement externe.');
+            }
+            if ($milestone->external_settlement_status === 'confirmed') {
+                return (array) $milestone;
+            }
             DB::table('fund_order_milestones')->where('id', $milestoneId)->update([
                 'status' => 'settled', 'external_settlement_status' => 'confirmed', 'external_reference' => $reference,
                 'externally_settled_at' => now(), 'updated_at' => now(),
             ]);
             $order->increment('externally_settled_minor', (int) $milestone->amount_minor);
             $this->refreshCompletion($order->fresh());
+
             return (array) DB::table('fund_order_milestones')->where('id', $milestoneId)->first();
         });
     }
 
     public function authorizeReserve(FundOrder $order, int $amountMinor): FundOrder
     {
-        if ($amountMinor < 0 || $amountMinor > $this->reserveBalanceMinor()) throw new RuntimeException('Montant de réserve indisponible.');
+        if ($amountMinor < 0 || $amountMinor > $this->reserveBalanceMinor()) {
+            throw new RuntimeException('Montant de réserve indisponible.');
+        }
         $order->update(['authorized_reserve_minor' => $amountMinor]);
+
         return $order->refresh();
     }
 
     public function markDelivered(FundOrder $order, string $organizationId, string $actorAccountId, string $reference, ?string $description): FundOrder
     {
-        if ((string) $order->provider_organization_id !== $organizationId) throw new RuntimeException('Commande introuvable.');
+        if ((string) $order->provider_organization_id !== $organizationId) {
+            throw new RuntimeException('Commande introuvable.');
+        }
         $this->submitProof($order, $organizationId, $actorAccountId, null, 'delivery', $reference, $description);
         $order->update(['status' => FundOrder::STATUS_DELIVERED, 'delivered_at' => now()]);
+
         return $order->refresh();
     }
 
     public function confirmBeneficiary(FundOrder $order, string $accountId): FundOrder
     {
         $order->load('wish');
-        if ((string) $order->wish->account_id !== $accountId) throw new RuntimeException('Commande introuvable.');
-        if ($order->delivered_at === null) throw new RuntimeException('La livraison doit être déclarée avant confirmation.');
+        if ((string) $order->wish->account_id !== $accountId) {
+            throw new RuntimeException('Commande introuvable.');
+        }
+        if ($order->delivered_at === null) {
+            throw new RuntimeException('La livraison doit être déclarée avant confirmation.');
+        }
         $order->update(['beneficiary_confirmed_at' => now()]);
         $this->refreshCompletion($order->fresh());
+
         return $order->refresh();
     }
 
     public function openDispute(FundOrder $order, string $accountId, string $reason): array
     {
         $order->load('wish');
-        if ((string) $order->wish->account_id !== $accountId) throw new RuntimeException('Commande introuvable.');
-        if (DB::table('fund_order_disputes')->where('fund_order_id', $order->id)->where('status', 'open')->exists()) throw new RuntimeException('Un litige est déjà ouvert.');
+        if ((string) $order->wish->account_id !== $accountId) {
+            throw new RuntimeException('Commande introuvable.');
+        }
+        if (DB::table('fund_order_disputes')->where('fund_order_id', $order->id)->where('status', 'open')->exists()) {
+            throw new RuntimeException('Un litige est déjà ouvert.');
+        }
         $id = (string) Str::ulid();
         DB::table('fund_order_disputes')->insert([
             'id' => $id, 'fund_order_id' => $order->id, 'opened_by_account_id' => $accountId, 'status' => 'open', 'reason' => $reason,
             'opened_at' => now(), 'created_at' => now(), 'updated_at' => now(),
         ]);
         $order->update(['status' => FundOrder::STATUS_DISPUTED]);
+
         return (array) DB::table('fund_order_disputes')->where('id', $id)->first();
     }
 
@@ -258,7 +308,9 @@ final class FundRealizationService
     {
         return DB::transaction(function () use ($order, $disputeId, $actorAccountId, $resolution, $note): FundOrder {
             $dispute = DB::table('fund_order_disputes')->where('id', $disputeId)->where('fund_order_id', $order->id)->where('status', 'open')->lockForUpdate()->first();
-            if ($dispute === null) throw new RuntimeException('Litige ouvert introuvable.');
+            if ($dispute === null) {
+                throw new RuntimeException('Litige ouvert introuvable.');
+            }
             DB::table('fund_order_disputes')->where('id', $disputeId)->update([
                 'status' => 'resolved', 'resolution_code' => $resolution, 'resolution_note' => $note,
                 'resolved_by_account_id' => $actorAccountId, 'resolved_at' => now(), 'updated_at' => now(),
@@ -271,6 +323,7 @@ final class FundRealizationService
             };
             $order->update(['status' => $status, 'cancelled_at' => $status === FundOrder::STATUS_CANCELLED ? now() : null]);
             $this->refreshCompletion($order->fresh());
+
             return $order->refresh();
         });
     }
@@ -293,9 +346,12 @@ final class FundRealizationService
     private function balance(LedgerAccountReference $reference): int
     {
         $account = LedgerAccount::query()->where('code', $reference->code)->where('owner_type', $reference->ownerType)->where('owner_id', $reference->ownerId)->first();
-        if ($account === null) return 0;
+        if ($account === null) {
+            return 0;
+        }
         $credits = (int) LedgerEntry::query()->where('account_id', $account->id)->where('direction', LedgerEntry::DIRECTION_CREDIT)->sum('amount_minor');
         $debits = (int) LedgerEntry::query()->where('account_id', $account->id)->where('direction', LedgerEntry::DIRECTION_DEBIT)->sum('amount_minor');
+
         return $credits - $debits;
     }
 }

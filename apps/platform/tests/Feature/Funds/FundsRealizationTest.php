@@ -33,6 +33,7 @@ function p014eAccount(string $email): Account
     $account = Account::query()->whereHas('identifiers', fn ($q) => $q->where('value', $email))->firstOrFail();
     $account->update(['country_code' => 'CI']);
     test()->postJson('/api/logout')->assertNoContent();
+
     return $account->refresh();
 }
 
@@ -289,8 +290,9 @@ test('P014-E alloue le jalon une seule fois dans le Ledger et distingue le règl
         ->and($posted['external_settlement_status'])->toBe('pending')
         ->and(LedgerTransaction::query()->where('type', 'FUND_PROVIDER_MILESTONE_ALLOCATION')->count())->toBe(1);
 
-    expect(fn () => $service->postMilestoneToLedger($order->refresh(), $milestone['id'], $fixture['beneficiary']->id))
-        ->toThrow(RuntimeException::class, 'validé');
+    $replayed = $service->postMilestoneToLedger($order->refresh(), $milestone['id'], $fixture['beneficiary']->id);
+    expect($replayed['ledger_transaction_id'])->toBe($posted['ledger_transaction_id'])
+        ->and(LedgerTransaction::query()->where('type', 'FUND_PROVIDER_MILESTONE_ALLOCATION')->count())->toBe(1);
 
     $settled = $service->confirmExternalSettlement($order->refresh(), $milestone['id'], 'MOMO-REAL-001');
     expect($settled['external_settlement_status'])->toBe('confirmed')

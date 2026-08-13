@@ -77,6 +77,7 @@ final class ProfessionalFundOrdersController
         ]);
         try {
             $order = $this->realizations->markDelivered($order, $organizationId, (string) $request->user()->id, $data['reference'], $data['description'] ?? null);
+
             return response()->json(['id' => $order->id, 'status' => $order->status, 'delivered_at' => $order->delivered_at]);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], str_contains($e->getMessage(), 'introuvable') ? 404 : 422);
