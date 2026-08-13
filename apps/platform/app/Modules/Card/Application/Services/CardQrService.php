@@ -42,7 +42,7 @@ final class CardQrService
                 'expires_at' => $expiresAt,
             ]);
 
-            $payload = url('/api/cards/identity/resolve').'?token='.rawurlencode($secret);
+            $payload = url('/api/cards/qr/check').'?token='.rawurlencode($secret);
             $this->audit->record($card, 'CardQrGenerated', [
                 'token_id' => $token->id,
                 'purpose' => $token->purpose,
