@@ -74,6 +74,11 @@ final class FundWish extends Model
         return $this->belongsTo(Organization::class, 'provider_organization_id');
     }
 
+    public function queueEntry(): HasOne
+    {
+        return $this->hasOne(FundWishQueueEntry::class, 'fund_wish_id');
+    }
+
     public function collectionSnapshot(): HasOne
     {
         return $this->hasOne(FundCollectionSnapshot::class, 'fund_wish_id');
