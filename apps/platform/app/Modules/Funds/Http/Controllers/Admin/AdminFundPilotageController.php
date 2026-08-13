@@ -21,6 +21,18 @@ final class AdminFundPilotageController extends Controller
 
     public function index(): JsonResponse
     {
+        $queueCandidates = FundWish::query()
+            ->with(['category:id,name,icon', 'membership.program:id,name,code'])
+            ->where('status', FundWish::STATUS_APPROVED)
+            ->whereNotNull('selected_quote_id')
+            ->whereNotNull('provider_organization_id')
+            ->whereNotNull('validated_amount_minor')
+            ->whereDoesntHave('collectionSnapshot')
+            ->whereDoesntHave('queueEntry')
+            ->oldest('reviewed_at')
+            ->limit(100)
+            ->get();
+
         $queue = FundWishQueueEntry::query()
             ->with(['wish:id,title,account_id,status', 'program:id,name,code'])
             ->orderByRaw("CASE WHEN status = 'queued' THEN 0 ELSE 1 END")
@@ -54,17 +66,20 @@ final class AdminFundPilotageController extends Controller
                 'plan' => $this->pilotage->deficitPlan($snapshot),
             ]);
 
+        $transparency = $this->pilotage->transparency();
+
         return response()->json([
             'data' => [
+                'queue_candidates' => $queueCandidates,
                 'queue' => $queue,
                 'reserve' => [
-                    'balance_minor' => $this->pilotage->transparency()['reserve_balance_minor'],
+                    'balance_minor' => $transparency['reserve_balance_minor'],
                     'available_minor' => $this->pilotage->availableReserveMinor(),
                     'allocations' => $allocations,
                 ],
                 'rehabilitations' => $rehabilitations,
                 'deficits' => $deficits,
-                'transparency' => $this->pilotage->transparency(),
+                'transparency' => $transparency,
             ],
         ]);
     }
