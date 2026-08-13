@@ -77,7 +77,7 @@ final class FundCollectionWaveService
                     ->whereIn('wave_status', [self::WAVE_SCHEDULED, self::WAVE_COLLECTING])
                     ->exists();
                 if ($activeLatest) {
-                    throw new RuntimeException('La dernière vague doit être exécutée avant d’en préparer une nouvelle.');
+                    return $this->wavePayload($snapshot, $latestWave);
                 }
             }
 
@@ -169,7 +169,7 @@ final class FundCollectionWaveService
             }
 
             $snapshot->update([
-                'status' => FundCollectionSnapshot::STATUS_CANCELLED,
+                'status' => FundCollectionSnapshot::STATUS_PARTIALLY_FUNDED,
                 'completed_at' => null,
             ]);
 
@@ -255,13 +255,17 @@ final class FundCollectionWaveService
                     ->where('snapshot_id', $snapshot->id)
                     ->where('wave_number', $waveNumber)
                     ->update(['wave_status' => self::WAVE_PARTIAL]);
-                $snapshot->update(['status' => FundCollectionSnapshot::STATUS_CANCELLED]);
+                $snapshot->update(['status' => FundCollectionSnapshot::STATUS_PARTIALLY_FUNDED]);
             } else {
                 FundCollectionParticipant::query()
                     ->where('snapshot_id', $snapshot->id)
                     ->where('wave_number', $waveNumber)
                     ->update(['wave_status' => self::WAVE_FAILED]);
-                $snapshot->update(['status' => FundCollectionSnapshot::STATUS_CANCELLED]);
+                $snapshot->update([
+                    'status' => $collected > 0
+                        ? FundCollectionSnapshot::STATUS_PARTIALLY_FUNDED
+                        : FundCollectionSnapshot::STATUS_FAILED,
+                ]);
             }
 
             FundAuditEvent::record($actorAccountId, 'FundCollectionWaveExecuted', 'fund_collection_snapshot', $snapshot->id, [
@@ -289,7 +293,7 @@ final class FundCollectionWaveService
 
         $previousFeeAccounts = FundCollectionParticipant::query()
             ->where('snapshot_id', $snapshotId)
-            ->where('fee_due_minor', '>', 0)
+            ->where('fee_paid_minor', '>', 0)
             ->pluck('account_id')
             ->mapWithKeys(fn ($accountId): array => [(string) $accountId => true]);
 
@@ -426,6 +430,11 @@ final class FundCollectionWaveService
                 'funds:collection-target:'.$participant->snapshot_id,
             ]);
 
+            $participantRemaining = max(0, (int) $participant->solidarity_due_minor - (int) $participant->solidarity_paid_minor);
+            if ($participantRemaining === 0) {
+                return $this->recordNoopDebit($participant, 'already_paid');
+            }
+
             $globalCollected = (int) FundCollectionParticipant::query()
                 ->where('snapshot_id', $participant->snapshot_id)
                 ->sum('solidarity_paid_minor');
@@ -434,7 +443,6 @@ final class FundCollectionWaveService
                 return $this->skipParticipantRemainder($participant, 'target_already_funded');
             }
 
-            $participantRemaining = max(0, (int) $participant->solidarity_due_minor - (int) $participant->solidarity_paid_minor);
             $remainingSolidarity = min($participantRemaining, $globalRemaining);
             $remainingFee = max(0, (int) $participant->fee_due_minor - (int) $participant->fee_paid_minor);
             if ($remainingSolidarity === 0) {
@@ -562,6 +570,34 @@ final class FundCollectionWaveService
                 'attempted_at' => now(),
             ]);
         });
+    }
+
+    private function recordNoopDebit(FundCollectionParticipant $participant, string $reason): FundCollectionDebit
+    {
+        $key = implode(':', [
+            'fund-collection-wave',
+            $participant->snapshot_id,
+            $participant->wave_number,
+            $participant->id,
+            'noop',
+            $reason,
+        ]);
+
+        return FundCollectionDebit::query()->firstOrCreate([
+            'idempotency_key' => $key,
+        ], [
+            'snapshot_id' => $participant->snapshot_id,
+            'participant_id' => $participant->id,
+            'account_id' => $participant->account_id,
+            'requested_solidarity_minor' => 0,
+            'requested_fee_minor' => 0,
+            'debited_solidarity_minor' => 0,
+            'debited_fee_minor' => 0,
+            'arrears_minor' => 0,
+            'status' => FundCollectionDebit::STATUS_SUCCESS,
+            'failure_code' => $reason,
+            'attempted_at' => now(),
+        ]);
     }
 
     private function recordFailedDebit(

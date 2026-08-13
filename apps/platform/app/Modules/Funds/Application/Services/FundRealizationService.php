@@ -266,12 +266,7 @@ final class FundRealizationService
 
     public function authorizeReserve(FundOrder $order, int $amountMinor): FundOrder
     {
-        if ($amountMinor < 0 || $amountMinor > $this->reserveBalanceMinor()) {
-            throw new RuntimeException('Montant de réserve indisponible.');
-        }
-        $order->update(['authorized_reserve_minor' => $amountMinor]);
-
-        return $order->refresh();
+        throw new RuntimeException('La réserve Fonds doit être autorisée avant le snapshot de collecte depuis le pilotage Fonds.');
     }
 
     public function markDelivered(FundOrder $order, string $organizationId, string $actorAccountId, string $reference, ?string $description): FundOrder

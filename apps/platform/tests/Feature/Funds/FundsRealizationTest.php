@@ -22,7 +22,6 @@ use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
 use App\Shared\Money\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 beforeEach(function (): void {
     $this->artisan('ledger:seed-catalog')->assertSuccessful();
@@ -261,6 +260,15 @@ test('P014-E refuse toute commande avant financement complet puis crée une comm
     expect($order->id)->toBe($same->id)
         ->and(FundOrder::query()->count())->toBe(1)
         ->and($order->total_minor)->toBe(100000);
+});
+
+test('P014-G interdit toute nouvelle autorisation de réserve après le snapshot', function (): void {
+    $fixture = p014eFixture();
+    $service = app(FundRealizationService::class);
+    $order = $service->createOrder($fixture['wish'], $fixture['beneficiary']->id);
+
+    expect(fn () => $service->authorizeReserve($order, 1000))
+        ->toThrow(RuntimeException::class, 'avant le snapshot');
 });
 
 test('P014-E exige une preuve avant validation du jalon', function (): void {
