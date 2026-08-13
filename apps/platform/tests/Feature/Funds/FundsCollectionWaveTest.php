@@ -276,11 +276,11 @@ it('creates a replacement wave with a fresh notice, unique fee and exact global 
         ->and((int) $waveParticipants->firstWhere('account_id', $memberC->id)->fee_due_minor)->toBe(10);
 
     expect(fn () => $waves->createSecondWave($snapshot->refresh(), $beneficiary->id))
-        ->toThrow(\RuntimeException::class, 'La dernière vague doit être exécutée avant d’en préparer une nouvelle.');
+        ->toThrow(RuntimeException::class, 'La dernière vague doit être exécutée avant d’en préparer une nouvelle.');
     expect(fn () => $collections->execute($snapshot->refresh(), $beneficiary->id))
-        ->toThrow(\RuntimeException::class, 'Cette collecte est annulée.');
+        ->toThrow(RuntimeException::class, 'Cette collecte est annulée.');
     expect(fn () => $waves->executeWave($snapshot->refresh(), 2, $beneficiary->id))
-        ->toThrow(\RuntimeException::class, 'Le préavis de cette vague n’est pas encore terminé.');
+        ->toThrow(RuntimeException::class, 'Le préavis de cette vague n’est pas encore terminé.');
 
     FundCollectionParticipant::query()
         ->where('snapshot_id', $snapshot->id)

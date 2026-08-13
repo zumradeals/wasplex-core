@@ -27,8 +27,8 @@ type Rehabilitation = {
     id: string;
     status: string;
     incident_count: number;
-    account?: { display_name: string | null; phone_e164: string | null };
-    membership?: { program?: { name: string } };
+    account_label: string;
+    program_name: string | null;
 };
 
 type Pilotage = {
@@ -317,11 +317,10 @@ onMounted(load);
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p class="text-wpx-white-soft text-xs font-bold">
-                                    {{ item.account?.display_name || item.account?.phone_e164 || 'Membre' }}
+                                    {{ item.account_label }}
                                 </p>
                                 <p class="text-wpx-muted-dark mt-1 text-[10px]">
-                                    {{ item.membership?.program?.name }} · {{ item.incident_count }} incident(s) ·
-                                    {{ item.status }}
+                                    {{ item.program_name }} · {{ item.incident_count }} incident(s) · {{ item.status }}
                                 </p>
                             </div>
                             <button

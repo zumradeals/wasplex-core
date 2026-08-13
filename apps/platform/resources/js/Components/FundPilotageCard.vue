@@ -110,7 +110,7 @@ onMounted(load);
                     achetable.
                 </p>
             </div>
-            <span class="bg-wpx-blue/10 text-wpx-cyan rounded-xl px-3 py-2 text-sm font-extrabold" v-if="data">
+            <span v-if="data" class="bg-wpx-blue/10 text-wpx-cyan rounded-xl px-3 py-2 text-sm font-extrabold">
                 {{ data.reciprocity.score }}/100
             </span>
         </div>

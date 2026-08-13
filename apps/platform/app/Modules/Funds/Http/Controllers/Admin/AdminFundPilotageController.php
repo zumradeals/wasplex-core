@@ -49,11 +49,19 @@ final class AdminFundPilotageController extends Controller
             ->get();
 
         $rehabilitations = FundRehabilitationCase::query()
-            ->with(['membership.program:id,name,code', 'account:id,display_name,phone_e164'])
+            ->with(['membership.program:id,name,code', 'account.identifiers'])
             ->whereIn('status', [FundRehabilitationCase::STATUS_REQUIRED, FundRehabilitationCase::STATUS_IN_PROGRESS])
             ->latest('opened_at')
             ->limit(100)
-            ->get();
+            ->get()
+            ->map(fn (FundRehabilitationCase $case): array => [
+                'id' => $case->id,
+                'status' => $case->status,
+                'incident_count' => (int) $case->incident_count,
+                'account_label' => $case->account?->primaryIdentifierLabel() ?? 'Membre',
+                'program_name' => $case->membership?->program?->name,
+                'opened_at' => $case->opened_at,
+            ]);
 
         $deficits = FundCollectionSnapshot::query()
             ->with('wish:id,title')
@@ -129,12 +137,12 @@ final class AdminFundPilotageController extends Controller
 
     public function releaseReserve(FundReserveAllocation $allocation): JsonResponse
     {
-        return response()->json(['data' => $this->pilotage->releaseReserveAllocation($allocation)]);
+        return response()->json(['data' => $this->pilotage->releaseReserveAllocation($allocation, (string) request()->user()->id)]);
     }
 
     public function detectRehabilitations(): JsonResponse
     {
-        return response()->json(['data' => ['created' => $this->pilotage->detectRehabilitationCases()]]);
+        return response()->json(['data' => ['created' => $this->pilotage->detectRehabilitationCases((string) request()->user()->id)]]);
     }
 
     public function completeRehabilitation(Request $request, FundRehabilitationCase $case): JsonResponse
