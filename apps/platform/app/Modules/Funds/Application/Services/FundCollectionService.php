@@ -219,6 +219,12 @@ final class FundCollectionService
         if ($snapshot->status === FundCollectionSnapshot::STATUS_FUNDED) {
             return $snapshot->load(['participants.arrear', 'debits']);
         }
+        if (FundCollectionParticipant::query()
+            ->where('snapshot_id', $snapshot->id)
+            ->where('wave_number', '>', 1)
+            ->exists()) {
+            throw new RuntimeException('Une vague complémentaire existe pour cette collecte ; utilisez le moteur de vagues.');
+        }
         if ($snapshot->status === FundCollectionSnapshot::STATUS_CANCELLED) {
             throw new RuntimeException('Cette collecte est annulée.');
         }

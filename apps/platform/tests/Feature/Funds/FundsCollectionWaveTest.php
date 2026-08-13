@@ -265,7 +265,7 @@ it('creates a replacement wave with a fresh notice, unique fee and exact global 
         ->and($wave['solidarity_due_minor'])->toBe(35)
         ->and($wave['fees_due_minor'])->toBe(10)
         ->and(strlen((string) $wave['wave_hash']))->toBe(64)
-        ->and($first->refresh()->status)->toBe(FundCollectionSnapshot::STATUS_CANCELLED)
+        ->and($first->refresh()->status)->toBe(FundCollectionSnapshot::STATUS_PARTIALLY_FUNDED)
         ->and(FundArrear::query()->where('snapshot_id', $snapshot->id)->where('status', FundArrear::STATUS_WAIVED)->count())->toBeGreaterThanOrEqual(1);
 
     $waveParticipants = FundCollectionParticipant::query()
@@ -275,10 +275,11 @@ it('creates a replacement wave with a fresh notice, unique fee and exact global 
     expect((int) $waveParticipants->whereIn('account_id', [$memberA->id, $memberB->id])->sum('fee_due_minor'))->toBe(0)
         ->and((int) $waveParticipants->firstWhere('account_id', $memberC->id)->fee_due_minor)->toBe(10);
 
-    expect(fn () => $waves->createSecondWave($snapshot->refresh(), $beneficiary->id))
-        ->toThrow(RuntimeException::class, 'La dernière vague doit être exécutée avant d’en préparer une nouvelle.');
+    $sameWave = $waves->createSecondWave($snapshot->refresh(), $beneficiary->id);
+    expect($sameWave['wave_number'])->toBe(2)
+        ->and($sameWave['wave_hash'])->toBe($wave['wave_hash']);
     expect(fn () => $collections->execute($snapshot->refresh(), $beneficiary->id))
-        ->toThrow(RuntimeException::class, 'Cette collecte est annulée.');
+        ->toThrow(RuntimeException::class, 'Une vague complémentaire existe');
     expect(fn () => $waves->executeWave($snapshot->refresh(), 2, $beneficiary->id))
         ->toThrow(RuntimeException::class, 'Le préavis de cette vague n’est pas encore terminé.');
 

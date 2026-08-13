@@ -37,8 +37,8 @@ final class AdminFundPilotageController extends Controller
             ->with(['wish:id,title,account_id,status', 'program:id,name,code'])
             ->orderByRaw("CASE WHEN status = 'queued' THEN 0 ELSE 1 END")
             ->orderByRaw("CASE WHEN lane = 'emergency' THEN 0 ELSE 1 END")
-            ->orderByDesc('priority_score')
             ->orderBy('queued_at')
+            ->orderBy('id')
             ->limit(100)
             ->get();
 

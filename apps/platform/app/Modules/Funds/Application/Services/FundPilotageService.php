@@ -128,7 +128,7 @@ final class FundPilotageService
             }
             $priorityScore = $lane === FundWishQueueEntry::LANE_EMERGENCY
                 ? 1_000_000
-                : (int) $reciprocity->score;
+                : 0;
 
             $entry = FundWishQueueEntry::query()->updateOrCreate(
                 ['fund_wish_id' => $wish->id],
@@ -168,8 +168,8 @@ final class FundPilotageService
                     ->where('fund_program_id', $programId)
                     ->where('status', FundWishQueueEntry::STATUS_QUEUED)
                     ->orderByRaw("CASE WHEN lane = 'emergency' THEN 0 ELSE 1 END")
-                    ->orderByDesc('priority_score')
                     ->orderBy('queued_at')
+                    ->orderBy('id')
                     ->lockForUpdate()
                     ->first();
 
@@ -216,6 +216,7 @@ final class FundPilotageService
 
         return DB::transaction(function () use ($wish, $amountMinor, $reason, $justification, $actorAccountId): FundReserveAllocation {
             $wish = FundWish::query()->with('membership.version')->whereKey($wish->id)->lockForUpdate()->firstOrFail();
+            DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ['funds:reserve']);
             if ($wish->collectionSnapshot()->exists()) {
                 throw new RuntimeException('La réserve doit être autorisée avant la création du snapshot immuable.');
             }
@@ -253,16 +254,23 @@ final class FundPilotageService
 
     public function releaseReserveAllocation(FundReserveAllocation $allocation, string $actorAccountId): FundReserveAllocation
     {
-        if ((int) $allocation->consumed_minor > 0) {
-            throw new RuntimeException('Une allocation déjà consommée ne peut pas être libérée intégralement.');
-        }
-        $allocation->update([
-            'status' => FundReserveAllocation::STATUS_RELEASED,
-            'released_at' => now(),
-        ]);
-        FundAuditEvent::record($actorAccountId, 'FundReserveAllocationReleased', 'fund_reserve_allocation', $allocation->id);
+        return DB::transaction(function () use ($allocation, $actorAccountId): FundReserveAllocation {
+            DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ['funds:reserve']);
+            $allocation = FundReserveAllocation::query()->whereKey($allocation->id)->lockForUpdate()->firstOrFail();
+            if ((int) $allocation->consumed_minor > 0) {
+                throw new RuntimeException('Une allocation déjà consommée ne peut pas être libérée intégralement.');
+            }
+            if ($allocation->status === FundReserveAllocation::STATUS_RELEASED) {
+                return $allocation;
+            }
+            $allocation->update([
+                'status' => FundReserveAllocation::STATUS_RELEASED,
+                'released_at' => now(),
+            ]);
+            FundAuditEvent::record($actorAccountId, 'FundReserveAllocationReleased', 'fund_reserve_allocation', $allocation->id);
 
-        return $allocation->refresh();
+            return $allocation->refresh();
+        });
     }
 
     public function availableReserveMinor(): int
@@ -307,52 +315,66 @@ final class FundPilotageService
     public function detectRehabilitationCases(?string $actorAccountId = null): int
     {
         $created = 0;
-        $memberships = FundMembership::query()->with(['version', 'mandate', 'subscription', 'program'])->get();
-        foreach ($memberships as $membership) {
-            $threshold = max(1, (int) ($membership->version?->rehabilitation_incident_threshold ?? 3));
-            $overdue = FundArrear::query()
-                ->where('account_id', $membership->account_id)
-                ->where('status', FundArrear::STATUS_OPEN)
-                ->whereNotNull('grace_ends_at')
-                ->where('grace_ends_at', '<', now())
-                ->count();
-            if ($overdue < $threshold) {
-                continue;
-            }
 
-            $exists = FundRehabilitationCase::query()
-                ->where('fund_membership_id', $membership->id)
-                ->whereIn('status', [FundRehabilitationCase::STATUS_REQUIRED, FundRehabilitationCase::STATUS_IN_PROGRESS])
-                ->exists();
-            if ($exists) {
-                continue;
-            }
+        FundMembership::query()
+            ->select('id')
+            ->orderBy('id')
+            ->lazyById(200)
+            ->each(function (FundMembership $membership) use ($actorAccountId, &$created): void {
+                $createdCase = DB::transaction(function () use ($membership, $actorAccountId): bool {
+                    $membership = FundMembership::query()
+                        ->with('version')
+                        ->whereKey($membership->id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+                    $threshold = max(1, (int) ($membership->version?->rehabilitation_incident_threshold ?? 3));
+                    $overdue = FundArrear::query()
+                        ->where('account_id', $membership->account_id)
+                        ->where('status', FundArrear::STATUS_OPEN)
+                        ->whereNotNull('grace_ends_at')
+                        ->where('grace_ends_at', '<', now())
+                        ->count();
+                    if ($overdue < $threshold) {
+                        return false;
+                    }
 
-            DB::transaction(function () use ($membership, $overdue, $actorAccountId): void {
-                $membership->update([
-                    'status' => FundMembership::STATUS_SUSPENDED,
-                    'suspended_at' => now(),
-                ]);
-                $case = FundRehabilitationCase::query()->create([
-                    'fund_membership_id' => $membership->id,
-                    'account_id' => $membership->account_id,
-                    'status' => FundRehabilitationCase::STATUS_REQUIRED,
-                    'trigger_code' => 'persistent_overdue_arrears',
-                    'incident_count' => $overdue,
-                    'required_actions' => [
-                        'settle_open_arrears',
-                        'keep_eligible_paid_subscription_active',
-                        'keep_valid_fund_mandate',
-                        'request_reactivation_review',
-                    ],
-                    'opened_at' => now(),
-                ]);
-                FundAuditEvent::record($actorAccountId, 'FundRehabilitationRequired', 'fund_rehabilitation_case', $case->id, [
-                    'incident_count' => $overdue,
-                ]);
+                    $exists = FundRehabilitationCase::query()
+                        ->where('fund_membership_id', $membership->id)
+                        ->whereIn('status', [FundRehabilitationCase::STATUS_REQUIRED, FundRehabilitationCase::STATUS_IN_PROGRESS])
+                        ->exists();
+                    if ($exists) {
+                        return false;
+                    }
+
+                    $membership->update([
+                        'status' => FundMembership::STATUS_SUSPENDED,
+                        'suspended_at' => now(),
+                    ]);
+                    $case = FundRehabilitationCase::query()->create([
+                        'fund_membership_id' => $membership->id,
+                        'account_id' => $membership->account_id,
+                        'status' => FundRehabilitationCase::STATUS_REQUIRED,
+                        'trigger_code' => 'persistent_overdue_arrears',
+                        'incident_count' => $overdue,
+                        'required_actions' => [
+                            'settle_open_arrears',
+                            'keep_eligible_paid_subscription_active',
+                            'keep_valid_fund_mandate',
+                            'request_reactivation_review',
+                        ],
+                        'opened_at' => now(),
+                    ]);
+                    FundAuditEvent::record($actorAccountId, 'FundRehabilitationRequired', 'fund_rehabilitation_case', $case->id, [
+                        'incident_count' => $overdue,
+                    ]);
+
+                    return true;
+                });
+
+                if ($createdCase) {
+                    $created++;
+                }
             });
-            $created++;
-        }
 
         return $created;
     }
