@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 return new class extends Migration
 {
     private const ELIGIBLE_KINDS = ['partner', 'merchant', 'service_provider', 'healthcare_institution', 'financial_operator'];
+
     private const ACT_ROLES = ['organization_admin', 'operations_manager', 'reviewer', 'partner_cashier'];
 
     public function up(): void

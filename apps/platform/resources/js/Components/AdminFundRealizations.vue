@@ -13,6 +13,22 @@ type Milestone = {
     external_reference: string | null;
 };
 type Dispute = { id: string; status: string; reason: string; resolution_code: string | null };
+type WarrantyClaim = {
+    id: string;
+    status: string;
+    issue: string;
+    provider_response: string | null;
+    resolution_code: string | null;
+};
+type Warranty = {
+    id: string;
+    status: string;
+    reference: string | null;
+    terms: string | null;
+    starts_at: string;
+    ends_at: string;
+    claims: WarrantyClaim[];
+};
 type Order = {
     id: string;
     status: string;
@@ -28,6 +44,7 @@ type Order = {
     provider: { id: string; name: string } | null;
     milestones: Milestone[];
     disputes: Dispute[];
+    warranty: Warranty | null;
 };
 type ReadyWish = {
     id: string;
@@ -161,6 +178,27 @@ async function resolve(
     }
 }
 
+async function resolveWarranty(
+    order: Order,
+    claim: WarrantyClaim,
+    resolutionCode: 'provider_fix' | 'replacement' | 'accepted_as_is' | 'rejected' | 'closed',
+): Promise<void> {
+    const note = window.prompt('Note de résolution garantie obligatoire :');
+    if (!note?.trim()) return;
+    busy.value = true;
+    try {
+        await http.post(`/admin/funds/orders/${order.id}/warranty-claims/${claim.id}/resolve`, {
+            resolution_code: resolutionCode,
+            resolution_note: note,
+        });
+        await load();
+    } catch {
+        error.value = 'La réclamation de garantie n’a pas pu être résolue.';
+    } finally {
+        busy.value = false;
+    }
+}
+
 onMounted(load);
 </script>
 
@@ -229,6 +267,43 @@ onMounted(load);
                         Ledger {{ money(order.ledger_allocated_minor, order.currency) }} · externe
                         {{ money(order.externally_settled_minor, order.currency) }}
                     </p>
+                </div>
+            </div>
+
+            <div v-if="order.warranty" class="border-wpx-border-dark bg-wpx-navy-950/60 mt-4 rounded-2xl border p-3">
+                <p class="text-wpx-cyan text-[9px] font-black uppercase">Garantie · {{ order.warranty.status }}</p>
+                <p class="text-wpx-white-soft mt-1 text-xs font-bold">
+                    {{ order.warranty.reference ?? 'Sans référence' }}
+                </p>
+                <div
+                    v-for="claim in order.warranty.claims.filter((claim) =>
+                        ['open', 'provider_responded'].includes(claim.status),
+                    )"
+                    :key="claim.id"
+                    class="border-wpx-border-dark mt-2 rounded-xl border p-2"
+                >
+                    <p class="text-wpx-white-soft text-[10px] font-bold">{{ claim.issue }}</p>
+                    <p v-if="claim.provider_response" class="text-wpx-muted-dark mt-1 text-[9px]">
+                        Réponse prestataire : {{ claim.provider_response }}
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        <button
+                            class="bg-wpx-success/15 text-wpx-success-light rounded-lg px-2 py-1 text-[9px] font-black"
+                            @click="resolveWarranty(order, claim, 'provider_fix')"
+                        >
+                            Correction</button
+                        ><button
+                            class="bg-wpx-cyan/10 text-wpx-cyan rounded-lg px-2 py-1 text-[9px] font-black"
+                            @click="resolveWarranty(order, claim, 'replacement')"
+                        >
+                            Remplacement</button
+                        ><button
+                            class="bg-wpx-danger/10 text-wpx-danger rounded-lg px-2 py-1 text-[9px] font-black"
+                            @click="resolveWarranty(order, claim, 'rejected')"
+                        >
+                            Rejeter
+                        </button>
+                    </div>
                 </div>
             </div>
 

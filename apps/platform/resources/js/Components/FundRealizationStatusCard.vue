@@ -10,6 +10,23 @@ type Milestone = {
     status: string;
     external_settlement_status: string;
 };
+type WarrantyClaim = {
+    id: string;
+    status: string;
+    issue: string;
+    provider_response: string | null;
+    resolution_code: string | null;
+    resolution_note: string | null;
+};
+type Warranty = {
+    id: string;
+    status: string;
+    reference: string | null;
+    terms: string | null;
+    starts_at: string;
+    ends_at: string;
+    claims: WarrantyClaim[];
+};
 type Order = {
     id: string;
     status: string;
@@ -24,6 +41,7 @@ type Order = {
     provider: { id: string; name: string } | null;
     milestones: Milestone[];
     open_dispute: boolean;
+    warranty: Warranty | null;
 };
 
 const orders = ref<Order[]>([]);
@@ -32,6 +50,8 @@ const busy = ref(false);
 const error = ref('');
 const disputeOrder = ref<Order | null>(null);
 const disputeReason = ref('');
+const warrantyOrder = ref<Order | null>(null);
+const warrantyIssue = ref('');
 
 function money(value: number, currency: string): string {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
@@ -71,6 +91,21 @@ async function confirm(order: Order): Promise<void> {
         await load();
     } catch {
         error.value = 'La confirmation de livraison n’a pas pu être enregistrée.';
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function openWarrantyClaim(): Promise<void> {
+    if (!warrantyOrder.value || warrantyIssue.value.trim().length < 10) return;
+    busy.value = true;
+    try {
+        await http.post(`/funds/orders/${warrantyOrder.value.id}/warranty-claims`, { issue: warrantyIssue.value });
+        warrantyOrder.value = null;
+        warrantyIssue.value = '';
+        await load();
+    } catch {
+        error.value = 'La réclamation de garantie n’a pas pu être ouverte.';
     } finally {
         busy.value = false;
     }
@@ -179,6 +214,39 @@ onMounted(load);
             <p v-if="order.open_dispute" class="text-wpx-gold mt-3 text-[10px]">
                 Un litige est ouvert : la clôture reste bloquée jusqu’à résolution.
             </p>
+            <div v-if="order.warranty" class="border-wpx-border-dark bg-wpx-navy-950/60 mt-3 rounded-2xl border p-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-wpx-cyan text-[9px] font-black uppercase">Garantie prestataire</p>
+                        <p class="text-wpx-white-soft mt-1 text-xs font-bold">
+                            {{ order.warranty.reference ?? 'Garantie enregistrée' }}
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-[9px]">
+                            Du {{ new Date(order.warranty.starts_at).toLocaleDateString('fr-FR') }} au
+                            {{ new Date(order.warranty.ends_at).toLocaleDateString('fr-FR') }}
+                        </p>
+                    </div>
+                    <span class="text-wpx-success-light text-[9px] font-black">{{ order.warranty.status }}</span>
+                </div>
+                <p v-if="order.warranty.terms" class="text-wpx-muted-dark mt-2 text-[10px] leading-relaxed">
+                    {{ order.warranty.terms }}
+                </p>
+                <p v-for="claim in order.warranty.claims" :key="claim.id" class="text-wpx-muted-dark mt-1 text-[9px]">
+                    Réclamation : {{ claim.status
+                    }}<span v-if="claim.provider_response"> · réponse prestataire reçue</span>
+                </p>
+                <button
+                    v-if="
+                        order.warranty.status === 'active' &&
+                        !order.warranty.claims.some((claim) => ['open', 'provider_responded'].includes(claim.status))
+                    "
+                    class="bg-wpx-cyan/10 text-wpx-cyan mt-3 rounded-xl px-3 py-2 text-[10px] font-black"
+                    :disabled="busy"
+                    @click="warrantyOrder = order"
+                >
+                    Faire jouer la garantie
+                </button>
+            </div>
             <p v-if="order.status === 'completed'" class="text-wpx-success-light mt-3 text-xs font-bold">
                 ✓ Réalisation clôturée avec livraison et règlements confirmés.
             </p>
@@ -186,6 +254,30 @@ onMounted(load);
     </section>
 
     <Teleport to="body">
+        <div
+            v-if="warrantyOrder"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+            @click.self="warrantyOrder = null"
+        >
+            <div class="bg-wpx-navy-950 border-wpx-border-dark w-full max-w-md rounded-t-3xl border p-5 sm:rounded-3xl">
+                <h3 class="text-wpx-white-soft text-lg font-black">Réclamation de garantie</h3>
+                <p class="text-wpx-muted-dark mt-1 text-xs">
+                    Décris le défaut ou le problème constaté après livraison.
+                </p>
+                <textarea
+                    v-model="warrantyIssue"
+                    rows="5"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border p-3 text-sm"
+                /><button
+                    class="bg-wpx-cyan text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40"
+                    :disabled="busy || warrantyIssue.trim().length < 10"
+                    @click="openWarrantyClaim"
+                >
+                    Envoyer la réclamation
+                </button>
+            </div>
+        </div>
+
         <div
             v-if="disputeOrder"
             class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"

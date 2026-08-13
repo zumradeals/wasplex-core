@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Funds\Application\Services\FundRealizationService;
+use App\Modules\Funds\Application\Services\FundWarrantyService;
 use App\Modules\Funds\Infrastructure\Models\FundCollectionSnapshot;
 use App\Modules\Funds\Infrastructure\Models\FundMembership;
 use App\Modules\Funds\Infrastructure\Models\FundOrder;
@@ -318,4 +319,37 @@ test('P014-E bloque la clôture pendant un litige et clôture après livraison r
     $service->confirmBeneficiary($order->refresh(), $fixture['beneficiary']->id);
     expect($order->refresh()->status)->toBe(FundOrder::STATUS_COMPLETED)
         ->and($order->refresh()->completed_at)->not->toBeNull();
+});
+
+test('P014-E garantie prestataire fonctionne de bout en bout', function (): void {
+    $fixture = p014eFixture();
+    $realization = app(FundRealizationService::class);
+    $warranties = app(FundWarrantyService::class);
+    $order = $realization->createOrder($fixture['wish'], $fixture['beneficiary']->id);
+    $realization->markDelivered($order, $fixture['provider']->id, $fixture['beneficiary']->id, 'BL-GAR-001', 'Livraison garantie');
+
+    $warranty = $warranties->register($order->refresh(), $fixture['provider']->id, $fixture['beneficiary']->id, 'GAR-24M-001', 'Pièces et main-d’œuvre couvertes selon les conditions du prestataire.', now()->subDay()->toDateString(), now()->addYear()->toDateString());
+    expect($warranty->status)->toBe('active');
+
+    $claim = $warranties->openClaim($order->refresh(), $fixture['beneficiary']->id, 'Le bien livré présente un défaut couvert par la garantie.');
+    expect($claim->status)->toBe('open')->and($warranty->refresh()->status)->toBe('claim_open');
+
+    $responded = $warranties->respond($order->refresh(), $fixture['provider']->id, $fixture['beneficiary']->id, $claim->id, 'Le prestataire confirme la prise en charge et propose une intervention.');
+    expect($responded->status)->toBe('provider_responded');
+
+    $resolved = $warranties->resolve($order->refresh(), $claim->id, $fixture['beneficiary']->id, 'provider_fix', 'Correction effectuée et dossier clôturé.');
+    expect($resolved->status)->toBe('resolved')->and($resolved->resolution_code)->toBe('provider_fix')->and($warranty->refresh()->status)->toBe('active');
+});
+
+test('P014-E refuse une réclamation sur une garantie expirée', function (): void {
+    $fixture = p014eFixture();
+    $realization = app(FundRealizationService::class);
+    $warranties = app(FundWarrantyService::class);
+    $order = $realization->createOrder($fixture['wish'], $fixture['beneficiary']->id);
+    $realization->markDelivered($order, $fixture['provider']->id, $fixture['beneficiary']->id, 'BL-GAR-EXP', null);
+    $warranty = $warranties->register($order->refresh(), $fixture['provider']->id, $fixture['beneficiary']->id, 'GAR-EXP', null, now()->subDays(10)->toDateString(), now()->addDay()->toDateString());
+    $warranty->update(['ends_at' => now()->subDay()]);
+
+    expect(fn () => $warranties->openClaim($order->refresh(), $fixture['beneficiary']->id, 'Défaut déclaré après expiration de la garantie.'))->toThrow(RuntimeException::class, 'expirée');
+    expect(DB::table('fund_warranty_claims')->count())->toBe(0);
 });

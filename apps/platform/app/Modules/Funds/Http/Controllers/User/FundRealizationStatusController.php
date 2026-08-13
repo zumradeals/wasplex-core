@@ -49,6 +49,18 @@ final class FundRealizationStatusController
                     'external_settlement_status' => $m->external_settlement_status,
                 ]),
                 'open_dispute' => DB::table('fund_order_disputes')->where('fund_order_id', $order->id)->where('status', 'open')->exists(),
+                'warranty' => (function () use ($order): ?array {
+                    $warranty = DB::table('fund_order_warranties')->where('fund_order_id', $order->id)->first();
+                    if ($warranty === null) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => $warranty->id, 'status' => $warranty->status, 'reference' => $warranty->reference,
+                        'terms' => $warranty->terms, 'starts_at' => $warranty->starts_at, 'ends_at' => $warranty->ends_at,
+                        'claims' => DB::table('fund_warranty_claims')->where('fund_order_warranty_id', $warranty->id)->orderByDesc('opened_at')->get(),
+                    ];
+                })(),
             ]);
 
         return response()->json(['orders' => $orders]);

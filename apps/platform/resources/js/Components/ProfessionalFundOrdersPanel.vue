@@ -11,14 +11,26 @@ type Milestone = {
     proof_required: boolean;
     external_settlement_status: string;
 };
+type WarrantyClaim = { id: string; status: string; issue: string; provider_response: string | null };
+type Warranty = {
+    id: string;
+    status: string;
+    reference: string | null;
+    terms: string | null;
+    starts_at: string;
+    ends_at: string;
+    claims: WarrantyClaim[];
+};
 type Order = {
     id: string;
     status: string;
     total_minor: number;
     currency: string;
     externally_settled_minor: number;
+    delivered_at: string | null;
     wish: { reference: string; title: string; category: { name: string; icon: string | null } | null };
     milestones: Milestone[];
+    warranty: Warranty | null;
 };
 
 const props = defineProps<{ canAct: boolean }>();
@@ -33,6 +45,13 @@ const proofDescription = ref('');
 const deliveryOrder = ref<Order | null>(null);
 const deliveryReference = ref('');
 const deliveryDescription = ref('');
+const warrantyOrder = ref<Order | null>(null);
+const warrantyReference = ref('');
+const warrantyTerms = ref('');
+const warrantyStartsAt = ref('');
+const warrantyEndsAt = ref('');
+const warrantyClaim = ref<{ order: Order; claim: WarrantyClaim } | null>(null);
+const warrantyResponse = ref('');
 
 function money(value: number, currency: string): string {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
@@ -91,6 +110,47 @@ async function markDelivered(): Promise<void> {
         await load();
     } catch {
         error.value = 'La livraison n’a pas pu être déclarée.';
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function registerWarranty(): Promise<void> {
+    if (!warrantyOrder.value || !warrantyStartsAt.value || !warrantyEndsAt.value) return;
+    busy.value = true;
+    try {
+        await http.post(`/professional/funds/orders/${warrantyOrder.value.id}/warranty`, {
+            reference: warrantyReference.value || null,
+            terms: warrantyTerms.value || null,
+            starts_at: warrantyStartsAt.value,
+            ends_at: warrantyEndsAt.value,
+        });
+        warrantyOrder.value = null;
+        warrantyReference.value = '';
+        warrantyTerms.value = '';
+        warrantyStartsAt.value = '';
+        warrantyEndsAt.value = '';
+        await load();
+    } catch {
+        error.value = 'La garantie n’a pas pu être enregistrée.';
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function respondWarranty(): Promise<void> {
+    if (!warrantyClaim.value || warrantyResponse.value.trim().length < 5) return;
+    busy.value = true;
+    try {
+        await http.post(
+            `/professional/funds/orders/${warrantyClaim.value.order.id}/warranty-claims/${warrantyClaim.value.claim.id}/response`,
+            { response: warrantyResponse.value },
+        );
+        warrantyClaim.value = null;
+        warrantyResponse.value = '';
+        await load();
+    } catch {
+        error.value = 'La réponse de garantie n’a pas pu être envoyée.';
     } finally {
         busy.value = false;
     }
@@ -171,6 +231,33 @@ onMounted(load);
                     </div>
                 </div>
             </div>
+            <div v-if="order.warranty" class="border-wpx-border-dark bg-wpx-navy-950/60 mt-4 rounded-2xl border p-3">
+                <p class="text-wpx-cyan text-[9px] font-black uppercase">Garantie</p>
+                <p class="text-wpx-white-soft mt-1 text-xs font-bold">
+                    {{ order.warranty.reference ?? 'Garantie enregistrée' }} · {{ order.warranty.status }}
+                </p>
+                <p class="text-wpx-muted-dark mt-1 text-[9px]">
+                    {{ new Date(order.warranty.starts_at).toLocaleDateString('fr-FR') }} →
+                    {{ new Date(order.warranty.ends_at).toLocaleDateString('fr-FR') }}
+                </p>
+                <button
+                    v-for="claim in order.warranty.claims.filter((claim) => claim.status === 'open')"
+                    :key="claim.id"
+                    class="bg-wpx-gold/10 text-wpx-gold mt-2 w-full rounded-xl px-3 py-2 text-[10px] font-black"
+                    :disabled="busy"
+                    @click="warrantyClaim = { order, claim }"
+                >
+                    Répondre à la réclamation
+                </button>
+            </div>
+            <button
+                v-else-if="props.canAct && order.delivered_at"
+                type="button"
+                class="bg-wpx-cyan/10 text-wpx-cyan mt-4 w-full rounded-2xl px-4 py-3 text-[10px] font-black"
+                @click="warrantyOrder = order"
+            >
+                Enregistrer la garantie
+            </button>
             <button
                 v-if="props.canAct && !['completed', 'cancelled', 'delivered'].includes(order.status)"
                 type="button"
@@ -183,6 +270,64 @@ onMounted(load);
     </section>
 
     <Teleport to="body">
+        <div
+            v-if="warrantyOrder"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+            @click.self="warrantyOrder = null"
+        >
+            <div class="bg-wpx-navy-950 border-wpx-border-dark w-full max-w-md rounded-t-3xl border p-5 sm:rounded-3xl">
+                <h3 class="text-wpx-white-soft text-lg font-black">Enregistrer la garantie</h3>
+                <input
+                    v-model="warrantyReference"
+                    placeholder="Référence garantie"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border px-3 py-3 text-sm"
+                /><textarea
+                    v-model="warrantyTerms"
+                    rows="3"
+                    placeholder="Conditions essentielles"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-2 w-full rounded-xl border p-3 text-sm"
+                />
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <input
+                        v-model="warrantyStartsAt"
+                        type="date"
+                        class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-sm"
+                    /><input
+                        v-model="warrantyEndsAt"
+                        type="date"
+                        class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft rounded-xl border px-3 py-3 text-sm"
+                    />
+                </div>
+                <button
+                    class="bg-wpx-cyan text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40"
+                    :disabled="busy || !warrantyStartsAt || !warrantyEndsAt"
+                    @click="registerWarranty"
+                >
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+        <div
+            v-if="warrantyClaim"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+            @click.self="warrantyClaim = null"
+        >
+            <div class="bg-wpx-navy-950 border-wpx-border-dark w-full max-w-md rounded-t-3xl border p-5 sm:rounded-3xl">
+                <h3 class="text-wpx-white-soft text-lg font-black">Répondre à la garantie</h3>
+                <p class="text-wpx-muted-dark mt-2 text-xs">{{ warrantyClaim.claim.issue }}</p>
+                <textarea
+                    v-model="warrantyResponse"
+                    rows="4"
+                    class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-3 w-full rounded-xl border p-3 text-sm"
+                /><button
+                    class="bg-wpx-gold text-wpx-navy-950 mt-3 w-full rounded-xl px-4 py-3 text-sm font-black disabled:opacity-40"
+                    :disabled="busy || warrantyResponse.trim().length < 5"
+                    @click="respondWarranty"
+                >
+                    Envoyer la réponse
+                </button>
+            </div>
+        </div>
         <div
             v-if="proofOrder && proofMilestone"
             class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"

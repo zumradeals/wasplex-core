@@ -203,6 +203,7 @@ final class ProfessionalWorkspaceController extends Controller
                 'professional.funds.order.view',
                 'professional.funds.milestone.submit',
                 'professional.funds.delivery.confirm',
+                'professional.funds.warranty.manage',
             ]
             : [];
 

@@ -39,6 +39,18 @@ final class ProfessionalFundOrdersController
                 ],
                 'milestones' => DB::table('fund_order_milestones')->where('fund_order_id', $order->id)->orderBy('ordinal')->get(),
                 'proofs' => DB::table('fund_order_proofs')->where('fund_order_id', $order->id)->orderByDesc('submitted_at')->get(),
+                'warranty' => (function () use ($order): ?array {
+                    $warranty = DB::table('fund_order_warranties')->where('fund_order_id', $order->id)->first();
+                    if ($warranty === null) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => $warranty->id, 'status' => $warranty->status, 'reference' => $warranty->reference,
+                        'terms' => $warranty->terms, 'starts_at' => $warranty->starts_at, 'ends_at' => $warranty->ends_at,
+                        'claims' => DB::table('fund_warranty_claims')->where('fund_order_warranty_id', $warranty->id)->orderByDesc('opened_at')->get(),
+                    ];
+                })(),
             ]);
 
         return response()->json(['orders' => $orders]);

@@ -7,11 +7,14 @@ use App\Modules\Funds\Http\Controllers\Admin\AdminFundPartnerDashboardController
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundQuotesController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundRealizationsController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundsController;
+use App\Modules\Funds\Http\Controllers\Admin\AdminFundWarrantyController;
 use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundOrdersController;
 use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundQuotesController;
+use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundWarrantyController;
 use App\Modules\Funds\Http\Controllers\User\FundCollectionObligationsController;
 use App\Modules\Funds\Http\Controllers\User\FundRealizationStatusController;
 use App\Modules\Funds\Http\Controllers\User\FundsController;
+use App\Modules\Funds\Http\Controllers\User\FundWarrantyController;
 use App\Modules\Identity\Http\Middleware\EnsureActiveProfessionalOrganization;
 use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureRecentMfa;
@@ -26,6 +29,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
         Route::get('/realizations', [FundRealizationStatusController::class, 'index']);
         Route::post('/orders/{order}/confirm-delivery', [FundRealizationStatusController::class, 'confirmDelivery']);
         Route::post('/orders/{order}/disputes', [FundRealizationStatusController::class, 'dispute']);
+        Route::post('/orders/{order}/warranty-claims', [FundWarrantyController::class, 'claim']);
         Route::post('/membership', [FundsController::class, 'join']);
         Route::post('/membership/revoke-mandate', [FundsController::class, 'revokeMandate']);
         Route::post('/balance/fund', [FundsController::class, 'fundBalance']);
@@ -49,6 +53,10 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureActiveProfessio
             ->middleware(EnsureCapability::class.':professional.funds.milestone.submit,organization:professional_organization_id');
         Route::post('/orders/{order}/delivered', [ProfessionalFundOrdersController::class, 'markDelivered'])
             ->middleware(EnsureCapability::class.':professional.funds.delivery.confirm,organization:professional_organization_id');
+        Route::post('/orders/{order}/warranty', [ProfessionalFundWarrantyController::class, 'register'])
+            ->middleware(EnsureCapability::class.':professional.funds.warranty.manage,organization:professional_organization_id');
+        Route::post('/orders/{order}/warranty-claims/{claimId}/response', [ProfessionalFundWarrantyController::class, 'respond'])
+            ->middleware(EnsureCapability::class.':professional.funds.warranty.manage,organization:professional_organization_id');
     });
 
 Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::class])
@@ -80,4 +88,5 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
         Route::post('/orders/{order}/milestones/{milestoneId}/settlement', [AdminFundRealizationsController::class, 'confirmSettlement'])->middleware(EnsureCapability::class.':admin.funds.review');
         Route::post('/orders/{order}/reserve', [AdminFundRealizationsController::class, 'authorizeReserve'])->middleware(EnsureCapability::class.':admin.funds.manage');
         Route::post('/orders/{order}/disputes/{disputeId}/resolve', [AdminFundRealizationsController::class, 'resolveDispute'])->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/orders/{order}/warranty-claims/{claimId}/resolve', [AdminFundWarrantyController::class, 'resolve'])->middleware(EnsureCapability::class.':admin.funds.review');
     });
