@@ -122,46 +122,79 @@ final class FundsController
         $version = $program->publishedVersion();
         abort_if($version === null, 422, 'Ce programme ne possède aucune version publiée.');
 
+        $eligibleClasses = array_map('strtoupper', $version->eligible_subscription_classes ?? []);
+        $subscriptionClass = strtoupper((string) ($subscription->economicClass?->code ?? ''));
+        abort_if(
+            $eligibleClasses !== [] && ! in_array($subscriptionClass, $eligibleClasses, true),
+            422,
+            'Votre niveau d’abonnement Wasplex n’est pas éligible à ce programme Fonds.',
+        );
+
         $cap = (int) $data['personal_cap_minor'];
         abort_if($cap < (int) $version->min_debit_minor, 422, 'Le plafond personnel est inférieur au minimum du programme.');
         if ($version->max_debit_minor !== null) {
             abort_if($cap > (int) $version->max_debit_minor, 422, 'Le plafond personnel dépasse le maximum du programme.');
         }
 
-        $membership = DB::transaction(function () use ($accountId, $subscription, $program, $version, $cap): FundMembership {
-            $membership = FundMembership::query()->create([
-                'account_id' => $accountId,
-                'fund_program_id' => $program->id,
-                'program_version_id' => $version->id,
-                'user_subscription_id' => $subscription->id,
-                'status' => FundMembership::STATUS_ACTIVE,
-                'started_at' => now(),
-            ]);
+        $feeTransactionId = null;
 
-            FundMandate::query()->create([
-                'fund_membership_id' => $membership->id,
-                'personal_cap_minor' => $cap,
-                'is_active' => true,
-                'terms_version' => 'P014-A-v1',
-                'accepted_at' => now(),
-                'accepted_snapshot' => [
-                    'program_id' => $program->id,
+        try {
+            $membership = DB::transaction(function () use ($accountId, $subscription, $program, $version, $cap, &$feeTransactionId): FundMembership {
+                $membership = FundMembership::query()->create([
+                    'account_id' => $accountId,
+                    'fund_program_id' => $program->id,
                     'program_version_id' => $version->id,
-                    'min_debit_minor' => $version->min_debit_minor,
-                    'max_debit_minor' => $version->max_debit_minor,
-                    'monthly_cap_minor' => $version->monthly_cap_minor,
-                    'notice_hours' => $version->notice_hours,
-                    'grace_period_days' => $version->grace_period_days,
+                    'user_subscription_id' => $subscription->id,
+                    'status' => FundMembership::STATUS_ACTIVE,
+                    'started_at' => now(),
+                ]);
+
+                FundMandate::query()->create([
+                    'fund_membership_id' => $membership->id,
                     'personal_cap_minor' => $cap,
-                ],
-            ]);
+                    'is_active' => true,
+                    'terms_version' => 'P014-A-v1',
+                    'accepted_at' => now(),
+                    'accepted_snapshot' => [
+                        'program_id' => $program->id,
+                        'program_version_id' => $version->id,
+                        'membership_fee_minor' => $version->membership_fee_minor,
+                        'min_debit_minor' => $version->min_debit_minor,
+                        'max_debit_minor' => $version->max_debit_minor,
+                        'monthly_cap_minor' => $version->monthly_cap_minor,
+                        'notice_hours' => $version->notice_hours,
+                        'grace_period_days' => $version->grace_period_days,
+                        'personal_cap_minor' => $cap,
+                    ],
+                ]);
 
-            FundAuditEvent::record($accountId, 'FundMembershipStarted', 'fund_membership', $membership->id, [
-                'program_version_id' => $version->id,
-            ]);
+                $feeTransactionId = $this->contributions->chargeMembershipFee(
+                    $accountId,
+                    (string) $membership->id,
+                    (string) $version->id,
+                    (int) $version->membership_fee_minor,
+                    $accountId,
+                );
 
-            return $membership;
-        });
+                FundAuditEvent::record($accountId, 'FundMembershipStarted', 'fund_membership', $membership->id, [
+                    'program_version_id' => $version->id,
+                    'membership_fee_minor' => (int) $version->membership_fee_minor,
+                    'ledger_transaction_id' => $feeTransactionId,
+                ]);
+
+                return $membership;
+            });
+        } catch (RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        if ($feeTransactionId !== null) {
+            $this->contributions->notifyMembershipFeeCharged(
+                $accountId,
+                (int) $version->membership_fee_minor,
+                $feeTransactionId,
+            );
+        }
 
         return response()->json($this->membershipPayload($membership->load(['program', 'version', 'mandate'])), 201);
     }

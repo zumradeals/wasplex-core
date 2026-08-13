@@ -309,6 +309,10 @@ onMounted(load);
                                 {{ program.max_wishes_per_period }} vœu(x) · apport
                                 {{ program.personal_contribution_percent }}%
                             </p>
+                            <p class="text-wpx-gold mt-1 text-[11px] font-bold">
+                                Adhésion {{ money(program.membership_fee_minor) }} · jusqu’à
+                                {{ money(program.max_wish_amount_minor) }} / vœu
+                            </p>
                         </div>
                         <span class="text-wpx-gold text-sm font-extrabold">Choisir ›</span>
                     </div>

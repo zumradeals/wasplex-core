@@ -111,7 +111,7 @@ function p014bProgram(): FundProgram
         'wasplex_fee_minor' => 0,
         'notice_hours' => 24,
         'grace_period_days' => 7,
-        'eligible_subscription_classes' => ['PREMIUM'],
+        'eligible_subscription_classes' => [],
         'status' => 'published',
         'published_at' => now(),
     ]);
