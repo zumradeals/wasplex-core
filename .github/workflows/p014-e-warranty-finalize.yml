@@ -67,7 +67,9 @@ jobs:
           php artisan key:generate --ansi
 
       - name: Wire warranty end to end
-        run: python3 .github/scripts/p014-e-warranty-finalize.py
+        run: |
+          python3 .github/scripts/p014-e-warranty-finalize.py
+          python3 .github/scripts/p014-e-warranty-type-fix.py
 
       - name: Normalize source
         working-directory: apps/platform
@@ -106,6 +108,7 @@ jobs:
         run: |
           rm .github/workflows/p014-e-warranty-finalize.yml
           rm .github/scripts/p014-e-warranty-finalize.py
+          rm .github/scripts/p014-e-warranty-type-fix.py
           git config user.name "zumradeals"
           git config user.email "zumradeals@gmail.com"
           git add -A
