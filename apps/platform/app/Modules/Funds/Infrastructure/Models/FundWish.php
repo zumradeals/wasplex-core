@@ -78,4 +78,9 @@ final class FundWish extends Model
     {
         return $this->hasOne(FundCollectionSnapshot::class, 'fund_wish_id');
     }
+
+    public function order(): HasOne
+    {
+        return $this->hasOne(FundOrder::class, 'fund_wish_id');
+    }
 }

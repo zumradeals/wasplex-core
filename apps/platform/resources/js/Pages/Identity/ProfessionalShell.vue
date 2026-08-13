@@ -5,6 +5,7 @@ import http from '@/lib/http';
 import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import ProfessionalInstitutionalCasesPanel from '@/Components/ProfessionalInstitutionalCasesPanel.vue';
 import ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';
+import ProfessionalFundOrdersPanel from '@/Components/ProfessionalFundOrdersPanel.vue';
 import type { AuthShared } from '@/types/identity';
 
 type Workspace = {
@@ -337,11 +338,10 @@ onMounted(load);
                         :space-kind="workspace.space.space_kind"
                     />
 
-                    <ProfessionalFundQuotesPanel
-                        v-else-if="activeTab === 'funds'"
-                        :can-respond="canRespondToFundQuotes"
-                        class="mt-4"
-                    />
+                    <div v-else-if="activeTab === 'funds'">
+                        <ProfessionalFundQuotesPanel :can-respond="canRespondToFundQuotes" class="mt-4" />
+                        <ProfessionalFundOrdersPanel :can-act="canRespondToFundQuotes" />
+                    </div>
 
                     <section
                         v-else-if="activeTab === 'team'"

@@ -193,9 +193,18 @@ final class ProfessionalWorkspaceController extends Controller
     private function roleCapabilities(ProfessionalSpace $space, string $roleCode): ?array
     {
         $base = ['professional.space.access'];
-        $fundsView = $this->supportsFundsPartner($space) ? ['professional.funds.quote.view'] : [];
+        $fundsView = $this->supportsFundsPartner($space)
+            ? ['professional.funds.quote.view', 'professional.funds.order.view']
+            : [];
         $fundsRespond = $this->supportsFundsPartner($space)
-            ? ['professional.funds.quote.view', 'professional.funds.quote.respond']
+            ? [
+                'professional.funds.quote.view',
+                'professional.funds.quote.respond',
+                'professional.funds.order.view',
+                'professional.funds.milestone.submit',
+                'professional.funds.delivery.confirm',
+                'professional.funds.warranty.manage',
+            ]
             : [];
 
         return match ($roleCode) {

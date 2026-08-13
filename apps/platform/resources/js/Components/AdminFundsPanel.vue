@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
 import AdminFundPartnerQuotes from '@/Components/AdminFundPartnerQuotes.vue';
 import AdminFundCollections from '@/Components/AdminFundCollections.vue';
+import AdminFundRealizations from '@/Components/AdminFundRealizations.vue';
 
 type ProgramVersion = {
     id: string;
@@ -282,6 +283,8 @@ onMounted(load);
             <AdminFundPartnerQuotes />
 
             <AdminFundCollections />
+
+            <AdminFundRealizations />
 
             <section class="flex flex-col gap-3">
                 <div class="flex items-center justify-between">
