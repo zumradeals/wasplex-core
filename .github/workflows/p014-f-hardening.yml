@@ -71,12 +71,23 @@ jobs:
         working-directory: .
         run: |
           python3 .github/scripts/p014-f-hardening.py
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/platform/app/Modules/Funds/Application/Services/FundPilotageService.php')
+          text = path.read_text()
+          old = 'DB::transaction(function () use ($membership, $overdue): void {'
+          new = 'DB::transaction(function () use ($membership, $overdue, $actorAccountId): void {'
+          if old not in text:
+              raise SystemExit('P014-F rehabilitation closure pattern missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
           python3 .github/scripts/p014-f-ui-fix.py
 
       - name: Normalize source
         run: |
           npx prettier --write resources/js/Components/AdminFundPilotage.vue resources/js/Components/FundPilotageCard.vue
-          ./vendor/bin/pint app/Modules/Funds tests/Feature/Funds/FundsPilotageTest.php
+          ./vendor/bin/pint app/Modules/Funds tests/Feature/Funds/FundsPilotageTest.php tests/Feature/Funds/FundsCollectionWaveTest.php
 
       - name: Validate frontend
         run: |
@@ -97,7 +108,7 @@ jobs:
           REDIS_PORT: 6379
         run: |
           composer lint:check
-          php artisan test tests/Feature/Funds/FundsPilotageTest.php
+          php artisan test tests/Feature/Funds/FundsPilotageTest.php tests/Feature/Funds/FundsCollectionWaveTest.php
           composer test
 
       - name: Commit hardening

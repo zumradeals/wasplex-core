@@ -24,20 +24,28 @@ final class FundCollectionObligationsController
             ->map(function (FundCollectionParticipant $participant): array {
                 $snapshot = $participant->snapshot;
                 $wish = $snapshot?->wish;
+                $waveNumber = max(1, (int) ($participant->wave_number ?? 1));
+                $waveStatus = (string) ($participant->wave_status ?? $snapshot?->status ?? 'scheduled');
+                $collectionStatus = $waveNumber > 1 && $snapshot?->status === 'cancelled'
+                    ? $waveStatus
+                    : $snapshot?->status;
 
                 return [
                     'id' => $participant->id,
                     'reference' => $wish === null ? null : 'FONDS-'.strtoupper(substr((string) $wish->id, -6)),
                     'category' => $wish?->category?->only(['name', 'icon']),
-                    'collection_status' => $snapshot?->status,
+                    'collection_status' => $collectionStatus,
                     'participant_status' => $participant->status,
+                    'wave_number' => $waveNumber,
+                    'wave_status' => $waveStatus,
+                    'wave_hash' => $participant->wave_hash,
                     'solidarity_due_minor' => (int) $participant->solidarity_due_minor,
                     'fee_due_minor' => (int) $participant->fee_due_minor,
                     'solidarity_paid_minor' => (int) $participant->solidarity_paid_minor,
                     'fee_paid_minor' => (int) $participant->fee_paid_minor,
                     'arrears_minor' => (int) $participant->arrears_minor,
-                    'notice_at' => $snapshot?->notice_at,
-                    'scheduled_at' => $snapshot?->scheduled_at,
+                    'notice_at' => $participant->wave_notice_at ?? $snapshot?->notice_at,
+                    'scheduled_at' => $participant->wave_scheduled_at ?? $snapshot?->scheduled_at,
                     'last_attempted_at' => $participant->last_attempted_at,
                     'arrear_grace_ends_at' => $participant->arrear?->grace_ends_at,
                     'currency' => 'WP',

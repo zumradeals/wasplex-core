@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundCollectionsController;
+use App\Modules\Funds\Http\Controllers\Admin\AdminFundCollectionWavesController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundPartnerDashboardController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundPilotageController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundQuotesController;
@@ -91,6 +92,8 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
         Route::get('/collections', [AdminFundCollectionsController::class, 'index'])->middleware(EnsureCapability::class.':admin.funds.view');
         Route::post('/wishes/{wish}/collection-snapshot', [AdminFundCollectionsController::class, 'create'])->middleware(EnsureCapability::class.':admin.funds.review');
         Route::post('/collections/{snapshot}/execute', [AdminFundCollectionsController::class, 'execute'])->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/collections/{snapshot}/waves', [AdminFundCollectionWavesController::class, 'store'])->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/collections/{snapshot}/waves/{waveNumber}/execute', [AdminFundCollectionWavesController::class, 'execute'])->middleware(EnsureCapability::class.':admin.funds.review');
 
         Route::get('/realizations', [AdminFundRealizationsController::class, 'index'])->middleware(EnsureCapability::class.':admin.funds.view');
         Route::post('/wishes/{wish}/order', [AdminFundRealizationsController::class, 'create'])->middleware(EnsureCapability::class.':admin.funds.review');
