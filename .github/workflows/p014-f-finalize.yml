@@ -1,0 +1,109 @@
+name: P014-F Finalize
+
+on:
+  push:
+    branches:
+      - feat/p014-f-fonds-pilotage-avance
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wasplex -d wasplex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: apps/platform
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p014-f-fonds-pilotage-avance
+          persist-credentials: true
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql, redis
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Wire P014-F
+        working-directory: .
+        run: python3 .github/scripts/p014-f-wire.py
+
+      - name: Normalize source
+        run: |
+          npx prettier --write resources/js/Components/FundPilotageCard.vue resources/js/Components/AdminFundPilotage.vue resources/js/Components/FundsPanel.vue resources/js/Components/AdminFundsPanel.vue
+          ./vendor/bin/pint app/Modules/Funds
+
+      - name: Validate frontend
+        run: |
+          npm run format:check
+          npm run lint:check
+          npm run types:check
+          npm run build
+
+      - name: Validate PHP and tests
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: wasplex_test
+          DB_USERNAME: wasplex
+          DB_PASSWORD: wasplex_ci_only
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: |
+          composer lint:check
+          composer test
+
+      - name: Commit wired implementation
+        working-directory: .
+        run: |
+          rm .github/workflows/p014-f-finalize.yml
+          rm .github/scripts/p014-f-wire.py
+          git config user.name "zumradeals"
+          git config user.email "zumradeals@gmail.com"
+          git add -A
+          git commit -m "feat(funds): raccorder P014-F pilotage avance"
+          git push origin HEAD:feat/p014-f-fonds-pilotage-avance
