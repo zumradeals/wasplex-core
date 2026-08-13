@@ -37,11 +37,19 @@ final class DepositService
         // an open PostgreSQL transaction). If this throws, the deposit row
         // stays 'created' with no checkout URL — visible in history as a
         // failed initiation, safely retryable via a new deposit.
+        $appUrl = rtrim((string) config('app.url'), '/');
         $result = $this->provider->createPayment(new CreatePaymentRequest(
             amountMinor: $amountMinor,
             currency: $currency,
             internalReference: $deposit->id,
             idempotencyKey: $deposit->idempotency_key,
+            successUrl: $appUrl.'/studio?payment=success',
+            errorUrl: $appUrl.'/studio?payment=failed',
+            description: "Recharge Wallet annonceur Wasplex {$deposit->id}",
+            metadata: [
+                'payment_context' => 'advertiser_wallet_deposit',
+                'deposit_id' => $deposit->id,
+            ],
         ));
 
         $deposit->update([

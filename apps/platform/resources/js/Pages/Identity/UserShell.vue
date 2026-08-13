@@ -33,7 +33,14 @@ const tabs = [
     { key: 'espace', label: 'Mon Espace' },
 ] as const;
 
-const activeTab = ref<(typeof tabs)[number]['key']>('feed');
+type TabKey = (typeof tabs)[number]['key'];
+const initialTab = ((): TabKey => {
+    if (typeof window === 'undefined') return 'feed';
+    const requested = new URLSearchParams(window.location.search).get('tab');
+
+    return tabs.some((tab) => tab.key === requested) ? (requested as TabKey) : 'feed';
+})();
+const activeTab = ref<TabKey>(initialTab);
 const walletPanel = ref<InstanceType<typeof WalletPanel> | null>(null);
 const smartProfilePanel = ref<InstanceType<typeof SmartProfilePanel> | null>(null);
 const me = ref<MeResponse | null>(null);
@@ -98,7 +105,14 @@ function onMfaEnabled(): void {
     router.reload({ only: ['auth'] });
 }
 
-onMounted(loadMe);
+onMounted(async () => {
+    await loadMe();
+    const section = new URLSearchParams(window.location.search).get('section');
+    if (activeTab.value === 'espace' && section === 'subscription') {
+        await nextTick();
+        scrollToSubscription();
+    }
+});
 </script>
 
 <template>

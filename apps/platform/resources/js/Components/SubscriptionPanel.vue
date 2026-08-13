@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import http from '@/lib/http';
 
 interface Plan {
@@ -45,6 +45,7 @@ const loading = ref(true);
 const loadError = ref<string | null>(null);
 const subscribing = ref<string | null>(null);
 const error = ref<string | null>(null);
+const paymentNotice = ref<string | null>(null);
 const showPlans = ref(false);
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
@@ -119,11 +120,12 @@ async function subscribeTo(plan: Plan): Promise<void> {
         const { data } = await http.post(endpoint, { plan_version_id: plan.plan_version_id });
 
         if (data.payment?.checkout_url) {
-            window.open(data.payment.checkout_url, '_blank', 'noopener,noreferrer');
+            window.location.assign(data.payment.checkout_url);
+            return;
         }
 
         await load();
-        if (!data.payment?.checkout_url) showPlans.value = false;
+        showPlans.value = false;
     } catch (e) {
         error.value =
             (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
@@ -133,11 +135,49 @@ async function subscribeTo(plan: Plan): Promise<void> {
     }
 }
 
-void load();
+async function reconcilePaymentReturn(): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get('payment');
+    const paymentId = params.get('payment_id');
+
+    if (paymentState === 'subscription-failed') {
+        paymentNotice.value = 'Le paiement n’a pas été finalisé. Votre abonnement n’a pas été modifié.';
+    } else if (paymentState === 'subscription-success' && paymentId) {
+        try {
+            const { data } = await http.post(`/subscriptions/payments/${paymentId}/refresh`);
+            paymentNotice.value =
+                data.payment?.status === 'activated'
+                    ? 'Paiement confirmé. Votre nouvel abonnement est maintenant actif.'
+                    : 'Paiement reçu. La confirmation GeniusPay est encore en cours.';
+        } catch (e) {
+            paymentNotice.value =
+                (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
+                'Le paiement est en cours de vérification. Vous pouvez actualiser votre abonnement.';
+        }
+    }
+
+    if (paymentState?.startsWith('subscription-')) {
+        params.delete('payment');
+        params.delete('payment_id');
+        const query = params.toString();
+        window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+    }
+}
+
+onMounted(async () => {
+    await reconcilePaymentReturn();
+    await load();
+});
 </script>
 
 <template>
     <div>
+        <p
+            v-if="paymentNotice"
+            class="border-wpx-cyan/25 bg-wpx-cyan/10 text-wpx-cyan rounded-wpx-md mb-3 border px-3.5 py-3 text-xs leading-relaxed"
+        >
+            {{ paymentNotice }}
+        </p>
         <div v-if="loadError" class="rounded-wpx-lg bg-wpx-danger/10 text-wpx-danger-light p-4 text-sm">
             {{ loadError }}
         </div>

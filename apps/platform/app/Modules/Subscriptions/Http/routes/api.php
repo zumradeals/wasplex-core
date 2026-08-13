@@ -20,6 +20,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
         Route::get('/plans', [PlansController::class, 'index']);
         Route::get('/current', [SubscriptionsController::class, 'current']);
         Route::post('/', [SubscriptionsController::class, 'store']);
+        Route::post('/payments/{payment}/refresh', [SubscriptionsController::class, 'refreshPayment']);
         Route::post('/{subscription}/renew', [SubscriptionsController::class, 'renew']);
         Route::post('/{subscription}/upgrade', [SubscriptionsController::class, 'upgrade']);
         Route::post('/{subscription}/cancel', [SubscriptionsController::class, 'cancel']);

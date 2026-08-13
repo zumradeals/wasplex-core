@@ -12,6 +12,7 @@ use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionEvent;
 use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionPayment;
 use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionPlanVersion;
 use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
+use App\Shared\Http\AppException;
 use App\Shared\Payments\PaymentProviderContract;
 use App\Shared\Payments\ValueObjects\CreatePaymentRequest;
 use Illuminate\Support\Facades\DB;
@@ -265,6 +266,69 @@ final class SubscriptionService
         });
     }
 
+    /**
+     * Réconciliation déclenchée depuis le retour navigateur. Le navigateur
+     * ne confirme jamais le paiement : Wasplex relit le statut directement
+     * chez GeniusPay avant toute activation.
+     */
+    public function reconcilePayment(string $paymentId, string $accountId): SubscriptionPayment
+    {
+        $payment = SubscriptionPayment::query()
+            ->whereKey($paymentId)
+            ->where('account_id', $accountId)
+            ->first();
+
+        if ($payment === null) {
+            throw new AppException('SUBSCRIPTION_PAYMENT_NOT_FOUND', 'Paiement d’abonnement introuvable.', [], 404);
+        }
+
+        if ($payment->isTerminal()) {
+            return $payment;
+        }
+
+        if ($payment->provider_reference === null) {
+            throw new AppException(
+                'SUBSCRIPTION_PAYMENT_NOT_STARTED',
+                'Le paiement n’a pas encore de référence GeniusPay.',
+                ['payment_id' => $payment->id],
+                409,
+            );
+        }
+
+        $verified = $this->provider->fetchPaymentStatus($payment->provider_reference);
+
+        if ($verified->amountMinor !== null && $verified->amountMinor !== $payment->amount_minor) {
+            throw new AppException(
+                'SUBSCRIPTION_PAYMENT_AMOUNT_MISMATCH',
+                'Le montant confirmé par le prestataire ne correspond pas au paiement attendu.',
+                ['payment_id' => $payment->id],
+                409,
+            );
+        }
+
+        if ($verified->currency !== null && $verified->currency !== $payment->currency) {
+            throw new AppException(
+                'SUBSCRIPTION_PAYMENT_CURRENCY_MISMATCH',
+                'La devise confirmée par le prestataire ne correspond pas au paiement attendu.',
+                ['payment_id' => $payment->id],
+                409,
+            );
+        }
+
+        if ($verified->normalizedStatus === 'confirmed') {
+            $payment->update(['status' => SubscriptionPayment::STATUS_CONFIRMED]);
+            $this->activateFromConfirmedPayment($payment->refresh());
+        } elseif ($verified->normalizedStatus === 'rejected') {
+            $payment->update(['status' => SubscriptionPayment::STATUS_REJECTED]);
+        } elseif ($verified->normalizedStatus === 'expired') {
+            $payment->update(['status' => SubscriptionPayment::STATUS_EXPIRED]);
+        } elseif ($verified->normalizedStatus === 'awaiting_payment') {
+            $payment->update(['status' => SubscriptionPayment::STATUS_AWAITING_PAYMENT]);
+        }
+
+        return $payment->refresh();
+    }
+
     private function createPayment(string $accountId, SubscriptionPlanVersion $planVersion, string $subscriptionId, bool $isUpgrade = false): SubscriptionPayment
     {
         $payment = SubscriptionPayment::query()->create([
@@ -287,11 +351,21 @@ final class SubscriptionService
             return $payment->refresh();
         }
 
+        $appUrl = rtrim((string) config('app.url'), '/');
         $result = $this->provider->createPayment(new CreatePaymentRequest(
             amountMinor: $payment->amount_minor,
             currency: $payment->currency,
             internalReference: $payment->id,
             idempotencyKey: $payment->idempotency_key,
+            successUrl: $appUrl.'/app?tab=espace&section=subscription&payment=subscription-success&payment_id='.$payment->id,
+            errorUrl: $appUrl.'/app?tab=espace&section=subscription&payment=subscription-failed&payment_id='.$payment->id,
+            description: "Abonnement Wasplex {$planVersion->id}",
+            metadata: [
+                'payment_context' => 'subscription',
+                'subscription_payment_id' => $payment->id,
+                'user_subscription_id' => $subscriptionId,
+                'is_upgrade' => $isUpgrade,
+            ],
         ));
 
         $payment->update([

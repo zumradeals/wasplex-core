@@ -9,10 +9,9 @@ use App\Shared\Payments\PaymentProviderContract;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Same discipline as P003's GeniusPayWebhookHandler: a subscription is
- * never activated from the webhook body alone or from a browser redirect,
- * only after a signed webhook triggers a server-side re-verification of
- * the payment status directly with the provider.
+ * Le webhook n'est qu'un déclencheur. La confirmation économique passe
+ * toujours par SubscriptionService::reconcilePayment(), qui relit le
+ * paiement directement chez GeniusPay avant activation.
  */
 final class SubscriptionPaymentWebhookHandler
 {
@@ -49,25 +48,11 @@ final class SubscriptionPaymentWebhookHandler
             return;
         }
 
-        // Server-side re-verification: never trust the webhook body alone.
-        $verified = $this->provider->fetchPaymentStatus($payment->provider_reference);
+        $updated = $this->subscriptions->reconcilePayment($payment->id, $payment->account_id);
 
-        Log::channel('structured')->info('subscriptions.webhook.verified', [
+        Log::channel('structured')->info('subscriptions.webhook.reconciled', [
             'payment_id' => $payment->id,
-            'provider_status_raw' => $verified->providerStatusRaw,
+            'status' => $updated->status,
         ]);
-
-        match ($verified->normalizedStatus) {
-            'confirmed' => $this->confirmAndActivate($payment),
-            'rejected' => $payment->update(['status' => SubscriptionPayment::STATUS_REJECTED]),
-            'expired' => $payment->update(['status' => SubscriptionPayment::STATUS_EXPIRED]),
-            default => null,
-        };
-    }
-
-    private function confirmAndActivate(SubscriptionPayment $payment): void
-    {
-        $payment->update(['status' => SubscriptionPayment::STATUS_CONFIRMED]);
-        $this->subscriptions->activateFromConfirmedPayment($payment->refresh());
     }
 }

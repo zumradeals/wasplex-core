@@ -15,11 +15,6 @@ final class GeniusPayConfigurationService
     public function status(): array
     {
         $configuration = GeniusPayConfiguration::query()->latest('updated_at')->first();
-        if ($configuration === null && (! $data['api_key'] || ! $data['api_secret'] || ! $data['webhook_secret'])) {
-            throw ValidationException::withMessages([
-                'api_key' => 'Les trois clés sandbox sont obligatoires lors de la première configuration.',
-            ]);
-        }
 
         return [
             'environment' => 'sandbox',
@@ -30,6 +25,7 @@ final class GeniusPayConfigurationService
             'api_key_hint' => $configuration !== null ? $this->mask($configuration->api_key) : null,
             'updated_at' => $configuration?->updated_at,
             'webhook_url' => rtrim((string) config('app.url'), '/').'/api/webhooks/geniuspay',
+            'webhook_scope' => 'advertiser_wallet, subscriptions, user_wallet',
         ];
     }
 
@@ -37,11 +33,21 @@ final class GeniusPayConfigurationService
     public function save(array $data, string $actorAccountId): array
     {
         $configuration = GeniusPayConfiguration::query()->latest('updated_at')->first();
+        $apiKey = $data['api_key'] ?? null;
+        $apiSecret = $data['api_secret'] ?? null;
+        $webhookSecret = $data['webhook_secret'] ?? null;
+
+        if ($configuration === null && (! $apiKey || ! $apiSecret || ! $webhookSecret)) {
+            throw ValidationException::withMessages([
+                'api_key' => 'Les trois clés sandbox sont obligatoires lors de la première configuration.',
+            ]);
+        }
+
         $values = [
             'environment' => 'sandbox',
-            'api_key' => $data['api_key'] ?: $configuration?->api_key,
-            'api_secret' => $data['api_secret'] ?: $configuration?->api_secret,
-            'webhook_secret' => $data['webhook_secret'] ?: $configuration?->webhook_secret,
+            'api_key' => $apiKey ?: $configuration?->api_key,
+            'api_secret' => $apiSecret ?: $configuration?->api_secret,
+            'webhook_secret' => $webhookSecret ?: $configuration?->webhook_secret,
             'updated_by' => $actorAccountId,
         ];
 
