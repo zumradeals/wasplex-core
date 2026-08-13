@@ -59,6 +59,45 @@ jobs:
       - name: Apply P014-G stabilization
         run: python3 .github/scripts/p014-g-stabilize.py
 
+      - name: Fix P014-G integrity probe
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          command = Path('apps/platform/app/Modules/Funds/Console/FundIntegrityCheckCommand.php')
+          text = command.read_text()
+          old = """            'overcollected_snapshots' => (int) DB::table('fund_collection_snapshots as snapshots')
+                          ->leftJoin('fund_collection_debits as debits', 'debits.snapshot_id', '=', 'snapshots.id')
+                          ->groupBy('snapshots.id', 'snapshots.collective_amount_minor')
+                          ->havingRaw('COALESCE(SUM(debits.debited_solidarity_minor), 0) > snapshots.collective_amount_minor')
+                          ->get()
+                          ->count(),
+          """
+          new = """            'overcollected_snapshots' => (int) DB::query()
+                          ->fromSub(
+                              DB::table('fund_collection_snapshots as snapshots')
+                                  ->leftJoin('fund_collection_debits as debits', 'debits.snapshot_id', '=', 'snapshots.id')
+                                  ->selectRaw('snapshots.id')
+                                  ->groupBy('snapshots.id', 'snapshots.collective_amount_minor')
+                                  ->havingRaw('COALESCE(SUM(debits.debited_solidarity_minor), 0) > snapshots.collective_amount_minor'),
+                              'overcollected',
+                          )
+                          ->count(),
+          """
+          if old not in text:
+              raise SystemExit('P014-G integrity query pattern missing')
+          command.write_text(text.replace(old, new, 1))
+
+          test = Path('apps/platform/tests/Feature/Funds/FundsRealizationTest.php')
+          text = test.read_text().replace('use RuntimeException;\n', '', 1)
+          text = text.replace(
+              "->toThrow(RuntimeException::class, 'avant le snapshot');",
+              "->toThrow(\\RuntimeException::class, 'avant le snapshot');",
+              1,
+          )
+          test.write_text(text)
+          PY
+
       - name: Install dependencies
         working-directory: apps/platform
         run: |
