@@ -43,7 +43,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply Wallet/Funds patch
-        run: python3 scripts/apply_wallet_history_funds_seed.py
+        run: |
+          python3 scripts/apply_wallet_history_funds_seed.py
+          python3 scripts/fix_wallet_history_funds_test_fixtures.py
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -141,6 +143,7 @@ jobs:
       - name: Remove temporary CI helpers
         run: |
           rm -f scripts/apply_wallet_history_funds_seed.py
+          rm -f scripts/fix_wallet_history_funds_test_fixtures.py
           rm -f .github/workflows/wallet-history-funds-seed.yml
 
       - name: Commit validated implementation
@@ -158,7 +161,10 @@ jobs:
             apps/platform/app/Modules/Funds/Console/SeedFundProgramsCommand.php \
             apps/platform/app/Modules/Funds/Infrastructure/Providers/FundsServiceProvider.php \
             apps/platform/tests/Feature/Wallet/WalletHistoryAndFundsSeedTest.php \
+            apps/platform/tests/Feature/Funds/FundsFoundationTest.php \
+            apps/platform/tests/Feature/Funds/FundsPersonalContributionTest.php \
             scripts/apply_wallet_history_funds_seed.py \
+            scripts/fix_wallet_history_funds_test_fixtures.py \
             .github/workflows/wallet-history-funds-seed.yml
           git commit -m "feat(wallet): categoriser historique et initialiser programmes Fonds"
           test -z "$(git status --porcelain)"
