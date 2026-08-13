@@ -13,6 +13,7 @@ use App\Modules\Wallet\Infrastructure\Models\UserWallet;
 use App\Modules\Wallet\Infrastructure\Models\UserWalletDeposit;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -142,22 +143,156 @@ final class UserWalletQueryService implements UserWalletContract
         }
     }
 
-    public function history(string $accountId, int $perPage = 25): LengthAwarePaginator
+    /**
+     * Les accordéons Wallet sont des projections du Grand Livre. On ne crée
+     * jamais un historique parallèle : source_module reste la source de
+     * catégorisation et les écritures Ledger restent la source de vérité.
+     *
+     * @return array<int, array{key: string, label: string, description: string, icon: string, count: int}>
+     */
+    public function historyCategories(string $accountId): array
     {
-        $account = LedgerAccount::query()
-            ->where('code', self::AVAILABLE_ACCOUNT_CODE)
-            ->where('owner_type', LedgerAccount::OWNER_TYPE_IDENTITY_ACCOUNT)
-            ->where('owner_id', $accountId)
-            ->first();
+        $account = $this->availableLedgerAccount($accountId);
+        $counts = [];
+
+        if ($account !== null) {
+            $rows = LedgerEntry::query()
+                ->join('ledger_transactions', 'ledger_transactions.id', '=', 'ledger_entries.transaction_id')
+                ->where('ledger_entries.account_id', $account->id)
+                ->selectRaw('ledger_transactions.source_module AS source_module, COUNT(*) AS total')
+                ->groupBy('ledger_transactions.source_module')
+                ->get();
+
+            foreach ($rows as $row) {
+                $source = $row->source_module === null ? 'other' : (string) $row->source_module;
+                $counts[$source] = (int) $row->total;
+            }
+        }
+
+        $definitions = $this->historyCategoryDefinitions();
+        $categories = [];
+        $knownModules = [];
+
+        foreach ($definitions as $key => $definition) {
+            $count = 0;
+            foreach ($definition['modules'] as $module) {
+                $knownModules[] = $module;
+                $count += $counts[$module] ?? 0;
+            }
+
+            $categories[] = [
+                'key' => $key,
+                'label' => $definition['label'],
+                'description' => $definition['description'],
+                'icon' => $definition['icon'],
+                'count' => $count,
+            ];
+        }
+
+        foreach ($counts as $module => $count) {
+            if ($module === 'other' || in_array($module, $knownModules, true) || $count <= 0) {
+                continue;
+            }
+
+            $categories[] = [
+                'key' => 'module:'.$module,
+                'label' => 'Historique '.Str::headline($module),
+                'description' => 'Mouvements enregistrés par ce module dans le Grand Livre.',
+                'icon' => '•',
+                'count' => $count,
+            ];
+        }
+
+        if (($counts['other'] ?? 0) > 0) {
+            $categories[] = [
+                'key' => 'other',
+                'label' => 'Autres opérations',
+                'description' => 'Écritures Wallet sans module métier identifié.',
+                'icon' => '•',
+                'count' => $counts['other'],
+            ];
+        }
+
+        return $categories;
+    }
+
+    public function history(string $accountId, int $perPage = 10, ?string $category = null): LengthAwarePaginator
+    {
+        $account = $this->availableLedgerAccount($accountId);
 
         if ($account === null) {
             return LedgerEntry::query()->whereRaw('1 = 0')->paginate($perPage);
         }
 
-        return LedgerEntry::query()
+        $query = LedgerEntry::query()
             ->where('account_id', $account->id)
-            ->with('transaction')
-            ->orderByDesc('created_at')
-            ->paginate($perPage);
+            ->with('transaction');
+
+        if ($category !== null && $category !== '') {
+            $definitions = $this->historyCategoryDefinitions();
+
+            if (isset($definitions[$category])) {
+                $modules = $definitions[$category]['modules'];
+                $query->whereHas('transaction', fn ($transaction) => $transaction->whereIn('source_module', $modules));
+            } elseif (str_starts_with($category, 'module:')) {
+                $module = substr($category, 7);
+                $query->whereHas('transaction', fn ($transaction) => $transaction->where('source_module', $module));
+            } elseif ($category === 'other') {
+                $knownModules = collect($definitions)->flatMap(fn (array $definition): array => $definition['modules'])->values()->all();
+                $query->whereHas('transaction', fn ($transaction) => $transaction
+                    ->whereNull('source_module')
+                    ->orWhereNotIn('source_module', $knownModules));
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        return $query->orderByDesc('created_at')->paginate($perPage);
+    }
+
+    private function availableLedgerAccount(string $accountId): ?LedgerAccount
+    {
+        return LedgerAccount::query()
+            ->where('code', self::AVAILABLE_ACCOUNT_CODE)
+            ->where('owner_type', LedgerAccount::OWNER_TYPE_IDENTITY_ACCOUNT)
+            ->where('owner_id', $accountId)
+            ->first();
+    }
+
+    /** @return array<string, array{label: string, description: string, icon: string, modules: array<int, string>}> */
+    private function historyCategoryDefinitions(): array
+    {
+        return [
+            'advertising' => [
+                'label' => 'Historique publicité',
+                'description' => 'Gains issus des publicités et opérations Feed.',
+                'icon' => '↗',
+                'modules' => ['feed', 'campaigns'],
+            ],
+            'wallet' => [
+                'label' => 'Historique Wallet',
+                'description' => 'Dépôts et transferts entre membres.',
+                'icon' => '⇄',
+                'modules' => ['wallet'],
+            ],
+            'funds' => [
+                'label' => 'Historique Fonds',
+                'description' => 'Adhésions et mouvements entre le Wallet et Fonds.',
+                'icon' => '◎',
+                'modules' => ['funds'],
+            ],
+            'card' => [
+                'label' => 'Historique Carte Wasplex',
+                'description' => 'Paiements et opérations Carte Wasplex.',
+                'icon' => '▣',
+                'modules' => ['card', 'cards', 'wasplex_card'],
+            ],
+            'live' => [
+                'label' => 'Historique Live',
+                'description' => 'Gains et dépenses enregistrés par Wasplex Live.',
+                'icon' => '◉',
+                'modules' => ['live'],
+            ],
+        ];
     }
 }

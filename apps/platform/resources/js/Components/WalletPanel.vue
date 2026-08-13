@@ -3,16 +3,8 @@ import { computed, onMounted, ref } from 'vue';
 import { useEcho } from '@laravel/echo-vue';
 import { usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
+import WalletHistoryAccordions from '@/Components/WalletHistoryAccordions.vue';
 import type { AuthShared } from '@/types/identity';
-
-interface HistoryEntry {
-    id: string;
-    direction: 'debit' | 'credit';
-    amount_minor: number;
-    description: string | null;
-    type: string | null;
-    created_at: string | null;
-}
 
 interface WalletSummary {
     today_credits_minor: number;
@@ -37,11 +29,10 @@ const summary = ref<WalletSummary>({
     month_debits_minor: 0,
     pending_deposits_minor: 0,
 });
-const history = ref<HistoryEntry[]>([]);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 const notice = ref<string | null>(null);
-const historyOpen = ref(true);
+const historyRefreshKey = ref(0);
 
 const showDeposit = ref(false);
 const depositAmount = ref<number | null>(null);
@@ -68,10 +59,10 @@ async function load(): Promise<void> {
     loading.value = true;
     loadError.value = null;
     try {
-        const [walletRes, historyRes] = await Promise.all([http.get('/me/wallet'), http.get('/me/wallet/history')]);
+        const walletRes = await http.get('/me/wallet');
         balance.value = walletRes.data.balance_minor;
         summary.value = walletRes.data.summary ?? summary.value;
-        history.value = historyRes.data.history.data ?? historyRes.data.history;
+        historyRefreshKey.value += 1;
     } catch (e) {
         loadError.value =
             (e as { response?: { data?: { message?: string } } }).response?.data?.message ??
@@ -79,14 +70,6 @@ async function load(): Promise<void> {
     } finally {
         loading.value = false;
     }
-}
-
-function describe(entry: HistoryEntry): string {
-    if (entry.description) return entry.description;
-    if (entry.type === 'USER_WALLET_DEPOSIT') return 'Dépôt Wallet';
-    if (entry.type === 'USER_TRANSFER') return entry.direction === 'credit' ? 'Transfert reçu' : 'Transfert envoyé';
-
-    return entry.type ?? (entry.direction === 'credit' ? 'Crédit Wallet' : 'Débit Wallet');
 }
 
 function openDepositModal(): void {
@@ -329,50 +312,7 @@ useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load)
             <span class="text-wpx-blue text-xs font-bold">Voir ›</span>
         </button>
 
-        <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg border">
-            <button
-                type="button"
-                class="flex w-full items-center justify-between gap-3 p-3.5 text-left"
-                @click="historyOpen = !historyOpen"
-            >
-                <span>
-                    <span class="text-wpx-white-soft block text-sm font-bold">Activité du Wallet</span>
-                    <span class="text-wpx-muted-dark mt-0.5 block text-[10px]"
-                        >Publicités, dépôts, transferts et autres mouvements</span
-                    >
-                </span>
-                <span class="flex items-center gap-2">
-                    <span class="bg-wpx-blue/12 text-wpx-blue rounded-full px-2 py-0.5 text-[10px] font-bold">{{
-                        history.length
-                    }}</span>
-                    <span class="text-wpx-muted-dark text-sm">{{ historyOpen ? '⌃' : '⌄' }}</span>
-                </span>
-            </button>
-
-            <div v-if="historyOpen" class="border-wpx-border-dark border-t px-3.5 pb-3.5">
-                <p v-if="loading" class="text-wpx-muted-dark pt-3 text-sm">Chargement…</p>
-                <ul v-else class="divide-wpx-border-dark divide-y">
-                    <li v-for="entry in history" :key="entry.id" class="flex items-center justify-between gap-3 py-3">
-                        <div class="min-w-0">
-                            <p class="text-wpx-white-soft truncate text-sm font-semibold">{{ describe(entry) }}</p>
-                            <p class="text-wpx-muted-dark mt-0.5 text-[10px]">
-                                {{ entry.created_at ? new Date(entry.created_at).toLocaleString('fr-FR') : '' }}
-                            </p>
-                        </div>
-                        <span
-                            class="shrink-0 text-sm font-bold tabular-nums"
-                            :class="entry.direction === 'credit' ? 'text-wpx-success-light' : 'text-wpx-orange'"
-                        >
-                            {{ entry.direction === 'credit' ? '+' : '−'
-                            }}{{ numberFormatter.format(entry.amount_minor) }} WP
-                        </span>
-                    </li>
-                    <li v-if="history.length === 0" class="text-wpx-muted-dark py-5 text-center text-sm">
-                        Aucun mouvement pour le moment.
-                    </li>
-                </ul>
-            </div>
-        </section>
+        <WalletHistoryAccordions :refresh-key="historyRefreshKey" />
 
         <Teleport to="body">
             <div

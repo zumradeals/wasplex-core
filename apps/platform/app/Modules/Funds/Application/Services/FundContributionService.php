@@ -192,6 +192,65 @@ final class FundContributionService
         });
     }
 
+    public function chargeMembershipFee(
+        string $accountId,
+        string $membershipId,
+        string $programVersionId,
+        int $amountMinor,
+        ?string $createdBy = null,
+    ): ?string {
+        if ($amountMinor <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($accountId, $membershipId, $programVersionId, $amountMinor, $createdBy): string {
+            $this->lockAccountFlow($accountId);
+
+            if ($this->wallet->balanceMinor($accountId) < $amountMinor) {
+                throw new RuntimeException('Solde Wallet insuffisant pour payer l’adhésion Fonds.');
+            }
+
+            $transaction = $this->posting->post(new PostLedgerTransaction(
+                type: 'FUND_MEMBERSHIP_FEE',
+                sourceModule: 'funds',
+                idempotencyKey: 'fund-membership-fee:'.$membershipId,
+                entries: [
+                    LedgerEntryInput::debit(
+                        $this->wallet->availableAccountReference($accountId),
+                        Money::of($amountMinor, 'WP'),
+                        'Adhésion au programme Fonds',
+                    ),
+                    LedgerEntryInput::credit(
+                        LedgerAccountReference::system('wasplex.funds.membership.revenue', 'REVENUE', 'WP'),
+                        Money::of($amountMinor, 'WP'),
+                        'Revenu adhésion Fonds Wasplex',
+                    ),
+                ],
+                businessReference: 'fund-membership:'.$membershipId,
+                createdBy: $createdBy,
+                metadata: [
+                    'account_id' => $accountId,
+                    'fund_membership_id' => $membershipId,
+                    'program_version_id' => $programVersionId,
+                ],
+                ruleVersion: 'P014-A-membership-fee-v1',
+            ));
+
+            return (string) $transaction->id;
+        });
+    }
+
+    public function notifyMembershipFeeCharged(string $accountId, int $amountMinor, string $ledgerTransactionId): void
+    {
+        $this->wallet->notifyBalanceChanged(
+            $accountId,
+            -$amountMinor,
+            'funds',
+            'membership_fee',
+            $ledgerTransactionId,
+        );
+    }
+
     private function fundBalanceReference(string $accountId): LedgerAccountReference
     {
         return LedgerAccountReference::forIdentityAccount(

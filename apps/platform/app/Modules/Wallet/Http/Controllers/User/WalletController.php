@@ -43,17 +43,34 @@ final class WalletController extends Controller
     {
         /** @var Account $account */
         $account = $request->user();
-
-        $entries = $this->wallet->history($account->id)->through(fn ($entry) => [
-            'id' => $entry->id,
-            'direction' => $entry->direction,
-            'amount_minor' => $entry->amount_minor,
-            'description' => $entry->description,
-            'type' => $entry->transaction?->type,
-            'created_at' => $entry->created_at?->toIso8601String(),
+        $data = $request->validate([
+            'category' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:25'],
+            'summary' => ['nullable', 'boolean'],
         ]);
 
-        return response()->json(['history' => $entries]);
+        $categories = $this->wallet->historyCategories($account->id);
+        if ((bool) ($data['summary'] ?? false)) {
+            return response()->json(['categories' => $categories]);
+        }
+
+        $entries = $this->wallet
+            ->history($account->id, (int) ($data['per_page'] ?? 10), $data['category'] ?? null)
+            ->through(fn ($entry) => [
+                'id' => $entry->id,
+                'direction' => $entry->direction,
+                'amount_minor' => $entry->amount_minor,
+                'description' => $entry->description,
+                'type' => $entry->transaction?->type,
+                'source_module' => $entry->transaction?->source_module,
+                'created_at' => $entry->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'categories' => $categories,
+            'selected_category' => $data['category'] ?? null,
+            'history' => $entries,
+        ]);
     }
 
     public function createDeposit(Request $request): JsonResponse
