@@ -69,11 +69,13 @@ jobs:
 
       - name: Apply P014-F hardening
         working-directory: .
-        run: python3 .github/scripts/p014-f-hardening.py
+        run: |
+          python3 .github/scripts/p014-f-hardening.py
+          python3 .github/scripts/p014-f-ui-fix.py
 
       - name: Normalize source
         run: |
-          npx prettier --write resources/js/Components/AdminFundPilotage.vue
+          npx prettier --write resources/js/Components/AdminFundPilotage.vue resources/js/Components/FundPilotageCard.vue
           ./vendor/bin/pint app/Modules/Funds tests/Feature/Funds/FundsPilotageTest.php
 
       - name: Validate frontend
@@ -103,6 +105,7 @@ jobs:
         run: |
           rm .github/workflows/p014-f-hardening.yml
           rm .github/scripts/p014-f-hardening.py
+          rm .github/scripts/p014-f-ui-fix.py
           git config user.name "zumradeals"
           git config user.email "zumradeals@gmail.com"
           git add -A
