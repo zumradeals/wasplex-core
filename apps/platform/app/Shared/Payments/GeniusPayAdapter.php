@@ -71,18 +71,21 @@ final class GeniusPayAdapter implements PaymentProviderContract
 
     public function createPayment(CreatePaymentRequest $request): ProviderPaymentResult
     {
+        $appUrl = rtrim((string) config('app.url'), '/');
+        $metadata = array_merge([
+            'internal_reference' => $request->internalReference,
+            'idempotency_key' => $request->idempotencyKey,
+        ], $request->metadata ?? []);
+
         $response = Http::baseUrl($this->baseUrl)
             ->withHeaders($this->authenticationHeaders())
             ->post('/payments', [
                 'amount' => $request->amountMinor,
                 'currency' => $request->currency,
-                'description' => "Recharge Wallet Wasplex {$request->internalReference}",
-                'success_url' => rtrim((string) config('app.url'), '/').'/studio?payment=success',
-                'error_url' => rtrim((string) config('app.url'), '/').'/studio?payment=failed',
-                'metadata' => [
-                    'deposit_id' => $request->internalReference,
-                    'idempotency_key' => $request->idempotencyKey,
-                ],
+                'description' => $request->description ?? "Paiement Wasplex {$request->internalReference}",
+                'success_url' => $request->successUrl ?? $appUrl.'/app',
+                'error_url' => $request->errorUrl ?? $appUrl.'/app?payment=failed',
+                'metadata' => $metadata,
             ])
             ->throw();
 

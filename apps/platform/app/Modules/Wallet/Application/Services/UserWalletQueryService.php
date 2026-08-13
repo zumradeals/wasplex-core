@@ -10,6 +10,7 @@ use App\Modules\Ledger\Infrastructure\Models\LedgerEntry;
 use App\Modules\Wallet\Application\Contracts\UserWalletContract;
 use App\Modules\Wallet\Events\WalletBalanceChanged;
 use App\Modules\Wallet\Infrastructure\Models\UserWallet;
+use App\Modules\Wallet\Infrastructure\Models\UserWalletDeposit;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -58,6 +59,56 @@ final class UserWalletQueryService implements UserWalletContract
             ->sum('amount_minor');
 
         return $credits - $debits;
+    }
+
+    /** @return array{today_credits_minor: int, month_credits_minor: int, month_debits_minor: int, pending_deposits_minor: int} */
+    public function summary(string $accountId): array
+    {
+        $account = LedgerAccount::query()
+            ->where('code', self::AVAILABLE_ACCOUNT_CODE)
+            ->where('owner_type', LedgerAccount::OWNER_TYPE_IDENTITY_ACCOUNT)
+            ->where('owner_id', $accountId)
+            ->first();
+
+        $todayCredits = 0;
+        $monthCredits = 0;
+        $monthDebits = 0;
+
+        if ($account !== null) {
+            $todayCredits = (int) LedgerEntry::query()
+                ->where('account_id', $account->id)
+                ->where('direction', LedgerEntry::DIRECTION_CREDIT)
+                ->where('created_at', '>=', now()->startOfDay())
+                ->sum('amount_minor');
+
+            $monthCredits = (int) LedgerEntry::query()
+                ->where('account_id', $account->id)
+                ->where('direction', LedgerEntry::DIRECTION_CREDIT)
+                ->where('created_at', '>=', now()->startOfMonth())
+                ->sum('amount_minor');
+
+            $monthDebits = (int) LedgerEntry::query()
+                ->where('account_id', $account->id)
+                ->where('direction', LedgerEntry::DIRECTION_DEBIT)
+                ->where('created_at', '>=', now()->startOfMonth())
+                ->sum('amount_minor');
+        }
+
+        $pendingDeposits = (int) UserWalletDeposit::query()
+            ->where('account_id', $accountId)
+            ->whereIn('status', [
+                UserWalletDeposit::STATUS_CREATED,
+                UserWalletDeposit::STATUS_AWAITING_PAYMENT,
+                UserWalletDeposit::STATUS_CONFIRMED,
+            ])
+            ->sum('amount_minor');
+
+        return [
+            'today_credits_minor' => $todayCredits,
+            'month_credits_minor' => $monthCredits,
+            'month_debits_minor' => $monthDebits,
+            'pending_deposits_minor' => $pendingDeposits,
+        ];
     }
 
     /**

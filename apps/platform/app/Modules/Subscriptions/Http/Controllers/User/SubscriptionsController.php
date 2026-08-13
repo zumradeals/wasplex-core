@@ -48,6 +48,13 @@ final class SubscriptionsController extends Controller
         return response()->json(['payment' => $payment], 201);
     }
 
+    public function refreshPayment(Request $request, string $payment): JsonResponse
+    {
+        $updated = $this->subscriptions->reconcilePayment($payment, (string) $request->user()->id);
+
+        return response()->json(['payment' => $updated]);
+    }
+
     public function renew(Request $request, string $subscription): JsonResponse
     {
         $this->ownedSubscription($request, $subscription);
