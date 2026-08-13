@@ -98,6 +98,10 @@ final class AdminFundsController
             'grace_period_days' => ['required', 'integer', 'min:1'],
             'arrears_grace_days' => ['nullable', 'integer', 'min:1'],
             'max_simultaneous_collections' => ['nullable', 'integer', 'min:1'],
+            'emergency_queue_share_percent' => ['nullable', 'integer', 'between:0,100'],
+            'reserve_min_balance_minor' => ['nullable', 'integer', 'min:0'],
+            'reciprocity_min_score' => ['nullable', 'integer', 'between:0,100'],
+            'rehabilitation_incident_threshold' => ['nullable', 'integer', 'min:1', 'max:100'],
             'eligible_subscription_classes' => ['nullable', 'array'],
             'eligible_subscription_classes.*' => ['string', 'max:50'],
         ]);
@@ -110,6 +114,10 @@ final class AdminFundsController
             'minimum_subscription_age_days' => $data['minimum_subscription_age_days'] ?? 0,
             'arrears_grace_days' => $data['arrears_grace_days'] ?? 7,
             'max_simultaneous_collections' => $data['max_simultaneous_collections'] ?? 1,
+            'emergency_queue_share_percent' => $data['emergency_queue_share_percent'] ?? 20,
+            'reserve_min_balance_minor' => $data['reserve_min_balance_minor'] ?? 0,
+            'reciprocity_min_score' => $data['reciprocity_min_score'] ?? 0,
+            'rehabilitation_incident_threshold' => $data['rehabilitation_incident_threshold'] ?? 3,
             'status' => 'draft',
         ]);
 
