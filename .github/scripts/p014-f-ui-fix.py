@@ -5,8 +5,14 @@ root = Path('apps/platform/resources/js/Components')
 admin = root / 'AdminFundPilotage.vue'
 text = admin.read_text()
 text = text.replace(
-    """                                <p class=\"text-wpx-white-soft text-xs font-bold\">\n                                    {{ item.account?.display_name || item.account?.phone_e164 || 'Membre' }}\n                                </p>\n                                <p class=\"text-wpx-muted-dark mt-1 text-[10px]\">\n                                    {{ item.membership?.program?.name }} · {{ item.incident_count }} incident(s) ·\n                                    {{ item.status }}\n                                </p>\n""",
-    """                                <p class=\"text-wpx-white-soft text-xs font-bold\">{{ item.account_label }}</p>\n                                <p class=\"text-wpx-muted-dark mt-1 text-[10px]\">\n                                    {{ item.program_name }} · {{ item.incident_count }} incident(s) · {{ item.status }}\n                                </p>\n""",
+    "{{ item.account?.display_name || item.account?.phone_e164 || 'Membre' }}",
+    "{{ item.account_label }}",
+    1,
+)
+text = text.replace(
+    """{{ item.membership?.program?.name }} · {{ item.incident_count }} incident(s) ·
+                                    {{ item.status }}""",
+    "{{ item.program_name }} · {{ item.incident_count }} incident(s) · {{ item.status }}",
     1,
 )
 admin.write_text(text)
