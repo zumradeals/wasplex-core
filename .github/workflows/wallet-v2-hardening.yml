@@ -1,0 +1,132 @@
+name: Wallet V2 Hardening
+
+on:
+  push:
+    branches:
+      - fix/wallet-subscription-geniuspay-v2
+
+permissions:
+  contents: write
+
+jobs:
+  wallet-v2:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wasplex -d wasplex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: apps/platform
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+
+      - name: Apply Wallet V2 patch
+        working-directory: .
+        run: python3 tools/apply_wallet_v2.py
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, pdo_pgsql, redis
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Format changed sources
+        run: |
+          npm run format
+          vendor/bin/pint
+
+      - name: Wallet and subscription regression tests
+        run: php artisan test tests/Feature/Wallet/WalletV2Test.php tests/Feature/Subscriptions/SubscriptionLifecycleTest.php
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: wasplex_test
+          DB_USERNAME: wasplex
+          DB_PASSWORD: wasplex_ci_only
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+
+      - name: Check frontend formatting
+        run: npm run format:check
+
+      - name: Run ESLint
+        run: npm run lint:check
+
+      - name: Check Vue TypeScript
+        run: npm run types:check
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check PHP formatting
+        run: composer lint:check
+
+      - name: Full Laravel test suite
+        run: composer test
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: wasplex_test
+          DB_USERNAME: wasplex
+          DB_PASSWORD: wasplex_ci_only
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+
+      - name: Commit validated Wallet V2
+        working-directory: .
+        run: |
+          rm -f tools/apply_wallet_v2.py .github/workflows/wallet-v2-hardening.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(wallet): fiabiliser abonnement GeniusPay et Wallet V2"
+          git push origin HEAD:fix/wallet-subscription-geniuspay-v2
