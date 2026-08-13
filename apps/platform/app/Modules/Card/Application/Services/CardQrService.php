@@ -7,7 +7,6 @@ namespace App\Modules\Card\Application\Services;
 use App\Modules\Card\Infrastructure\Models\Card;
 use App\Modules\Card\Infrastructure\Models\CardQrToken;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
@@ -34,15 +33,16 @@ final class CardQrService
                 ->update(['status' => CardQrToken::STATUS_REVOKED]);
 
             $expiresAt = now()->addMinutes(2);
+            $secret = (string) Str::uuid();
             $token = CardQrToken::query()->create([
                 'card_id' => $card->id,
                 'purpose' => 'public_identity',
-                'token_hash' => hash('sha256', (string) Str::uuid()),
+                'token_hash' => hash('sha256', $secret),
                 'status' => CardQrToken::STATUS_ACTIVE,
                 'expires_at' => $expiresAt,
             ]);
 
-            $payload = URL::temporarySignedRoute('card.scan.resolve', $expiresAt, ['token' => $token->id]);
+            $payload = url('/api/cards/identity/resolve').'?token='.rawurlencode($secret);
             $this->audit->record($card, 'CardQrGenerated', [
                 'token_id' => $token->id,
                 'purpose' => $token->purpose,
@@ -58,12 +58,12 @@ final class CardQrService
         });
     }
 
-    public function resolve(CardQrToken $token): array
+    public function resolve(string $secret): array
     {
-        return DB::transaction(function () use ($token): array {
+        return DB::transaction(function () use ($secret): array {
             $locked = CardQrToken::query()
                 ->with('card.account.profile', 'card.offerVersion.offer')
-                ->whereKey($token->id)
+                ->where('token_hash', hash('sha256', $secret))
                 ->lockForUpdate()
                 ->first();
 
