@@ -1,0 +1,110 @@
+name: P014-F Hardening
+
+on:
+  push:
+    branches:
+      - feat/p014-f-fonds-pilotage-avance
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: wasplex_test
+          POSTGRES_USER: wasplex
+          POSTGRES_PASSWORD: wasplex_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wasplex -d wasplex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: apps/platform
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p014-f-fonds-pilotage-avance
+          persist-credentials: true
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql, redis
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Apply P014-F hardening
+        working-directory: .
+        run: python3 .github/scripts/p014-f-hardening.py
+
+      - name: Normalize source
+        run: |
+          npx prettier --write resources/js/Components/AdminFundPilotage.vue
+          ./vendor/bin/pint app/Modules/Funds tests/Feature/Funds/FundsPilotageTest.php
+
+      - name: Validate frontend
+        run: |
+          npm run format:check
+          npm run lint:check
+          npm run types:check
+          npm run build
+
+      - name: Validate P014-F and full suite
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: wasplex_test
+          DB_USERNAME: wasplex
+          DB_PASSWORD: wasplex_ci_only
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: |
+          composer lint:check
+          php artisan test tests/Feature/Funds/FundsPilotageTest.php
+          composer test
+
+      - name: Commit hardening
+        working-directory: .
+        run: |
+          rm .github/workflows/p014-f-hardening.yml
+          rm .github/scripts/p014-f-hardening.py
+          git config user.name "zumradeals"
+          git config user.email "zumradeals@gmail.com"
+          git add -A
+          git commit -m "fix(funds): durcir P014-F pilotage et rehabilitation"
+          git push origin HEAD:feat/p014-f-fonds-pilotage-avance
