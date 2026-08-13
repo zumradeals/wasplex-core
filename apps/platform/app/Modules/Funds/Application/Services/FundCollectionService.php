@@ -9,6 +9,7 @@ use App\Modules\Funds\Infrastructure\Models\FundCollectionDebit;
 use App\Modules\Funds\Infrastructure\Models\FundCollectionParticipant;
 use App\Modules\Funds\Infrastructure\Models\FundCollectionSnapshot;
 use App\Modules\Funds\Infrastructure\Models\FundMembership;
+use App\Modules\Funds\Infrastructure\Models\FundReserveAllocation;
 use App\Modules\Funds\Infrastructure\Models\FundWish;
 use App\Modules\Ledger\Application\Services\LedgerPostingContract;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
@@ -73,15 +74,31 @@ final class FundCollectionService
 
             $validatedCost = (int) $wish->validated_amount_minor;
             $personalApplied = min($personalContribution, $validatedCost);
-            $collectiveAmount = max(0, $validatedCost - $personalApplied);
-            if ($collectiveAmount <= 0) {
-                throw new RuntimeException('Aucun montant collectif ne reste à financer.');
-            }
+            $reserveAuthorized = (int) FundReserveAllocation::query()
+                ->where('fund_wish_id', $wish->id)
+                ->whereIn('status', [FundReserveAllocation::STATUS_AUTHORIZED, FundReserveAllocation::STATUS_PARTIALLY_CONSUMED])
+                ->get()
+                ->sum(fn (FundReserveAllocation $allocation): int => max(0, (int) $allocation->amount_minor - (int) $allocation->consumed_minor));
+            $reserveApplied = min($reserveAuthorized, max(0, $validatedCost - $personalApplied));
+            $collectiveAmount = max(0, $validatedCost - $personalApplied - $reserveApplied);
 
             $programId = (string) $wish->membership->fund_program_id;
             $country = strtoupper((string) $wish->country_code);
             $currency = strtoupper((string) $wish->currency);
             $version = $wish->membership->version;
+
+            if ($collectiveAmount <= 0) {
+                return $this->createReserveFundedSnapshot(
+                    $wish,
+                    $programId,
+                    $country,
+                    $currency,
+                    $validatedCost,
+                    $personalApplied,
+                    $reserveApplied,
+                    $actorAccountId,
+                );
+            }
 
             DB::select('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [
                 'funds:collection:'.$programId.':'.$country.':'.$currency,
@@ -124,6 +141,7 @@ final class FundCollectionService
                 'validated_cost_minor' => $validatedCost,
                 'personal_contribution_minor' => $personalApplied,
                 'collective_amount_minor' => $collectiveAmount,
+                'reserve_contribution_minor' => $reserveApplied,
                 'participants' => $participants->map(fn (array $item): array => [
                     'account_id' => $item['account_id'],
                     'membership_id' => $item['membership_id'],
@@ -145,7 +163,7 @@ final class FundCollectionService
                 'validated_cost_minor' => $validatedCost,
                 'personal_contribution_minor' => $personalApplied,
                 'partner_contribution_minor' => 0,
-                'reserve_contribution_minor' => 0,
+                'reserve_contribution_minor' => $reserveApplied,
                 'collective_amount_minor' => $collectiveAmount,
                 'default_wasplex_fee_minor' => (int) ($version->wasplex_fee_minor ?? 0),
                 'participant_count' => $participants->count(),
@@ -218,6 +236,63 @@ final class FundCollectionService
         }
 
         return $this->refreshSnapshotStatus($snapshot);
+    }
+
+    private function createReserveFundedSnapshot(
+        FundWish $wish,
+        string $programId,
+        string $country,
+        string $currency,
+        int $validatedCost,
+        int $personalApplied,
+        int $reserveApplied,
+        string $actorAccountId,
+    ): FundCollectionSnapshot {
+        $payload = [
+            'fund_wish_id' => (string) $wish->id,
+            'fund_program_id' => $programId,
+            'program_version_id' => (string) $wish->membership->program_version_id,
+            'country_code' => $country,
+            'currency' => $currency,
+            'validated_cost_minor' => $validatedCost,
+            'personal_contribution_minor' => $personalApplied,
+            'reserve_contribution_minor' => $reserveApplied,
+            'collective_amount_minor' => 0,
+            'participants' => [],
+            'rule_version' => self::RULE_VERSION,
+        ];
+        $now = now();
+
+        return FundCollectionSnapshot::query()->create([
+            'fund_wish_id' => $wish->id,
+            'fund_program_id' => $programId,
+            'program_version_id' => $wish->membership->program_version_id,
+            'country_code' => $country,
+            'currency' => $currency,
+            'validated_cost_minor' => $validatedCost,
+            'personal_contribution_minor' => $personalApplied,
+            'partner_contribution_minor' => 0,
+            'reserve_contribution_minor' => $reserveApplied,
+            'collective_amount_minor' => 0,
+            'default_wasplex_fee_minor' => (int) ($wish->membership->version->wasplex_fee_minor ?? 0),
+            'participant_count' => 0,
+            'solidarity_base_minor' => 0,
+            'solidarity_remainder_minor' => 0,
+            'rule_version' => self::RULE_VERSION,
+            'snapshot_hash' => hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)),
+            'rules_snapshot' => [
+                'wp_to_xof' => 1,
+                'reserve_funded_without_collective_debit' => true,
+                'beneficiary_excluded' => true,
+                'fee_separate_from_solidarity' => true,
+            ],
+            'status' => FundCollectionSnapshot::STATUS_FUNDED,
+            'notice_at' => $now,
+            'scheduled_at' => $now,
+            'started_at' => $now,
+            'completed_at' => $now,
+            'created_by_account_id' => $actorAccountId,
+        ]);
     }
 
     private function eligibleCandidates(FundWish $wish, int $collectiveAmount): Collection

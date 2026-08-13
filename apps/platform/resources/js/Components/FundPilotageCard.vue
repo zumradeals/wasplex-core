@@ -43,7 +43,9 @@ const error = ref('');
 const data = ref<PilotageData | null>(null);
 
 function money(value: number): string {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(
+        value,
+    );
 }
 
 function levelLabel(level: string): string {
@@ -99,10 +101,13 @@ onMounted(load);
     <section class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-xl border p-4">
         <div class="flex items-start justify-between gap-3">
             <div>
-                <p class="text-wpx-cyan text-[10px] font-bold tracking-[0.14em] uppercase">Réciprocité & transparence</p>
+                <p class="text-wpx-cyan text-[10px] font-bold tracking-[0.14em] uppercase">
+                    Réciprocité & transparence
+                </p>
                 <h3 class="text-wpx-white-soft mt-1 text-base font-extrabold">Ma participation Fonds</h3>
                 <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                    Cet indice reflète votre régularité. Ce n’est ni de l’argent, ni une garantie, ni une priorité achetable.
+                    Cet indice reflète votre régularité. Ce n’est ni de l’argent, ni une garantie, ni une priorité
+                    achetable.
                 </p>
             </div>
             <span class="bg-wpx-blue/10 text-wpx-cyan rounded-xl px-3 py-2 text-sm font-extrabold" v-if="data">
@@ -129,7 +134,9 @@ onMounted(load);
                 </div>
                 <div class="bg-wpx-navy-950 rounded-xl p-3">
                     <p class="text-wpx-muted-dark text-[10px] uppercase">Réserve Fonds</p>
-                    <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ money(data.transparency.reserve_balance_minor) }}</p>
+                    <p class="text-wpx-white-soft mt-1 text-sm font-bold">
+                        {{ money(data.transparency.reserve_balance_minor) }}
+                    </p>
                 </div>
             </div>
 
@@ -138,13 +145,19 @@ onMounted(load);
                 <div class="mt-2 flex flex-col gap-2">
                     <div v-for="entry in data.queue" :key="entry.id" class="bg-wpx-navy-950 rounded-lg p-3">
                         <div class="flex items-center justify-between gap-3">
-                            <p class="text-wpx-white-soft min-w-0 truncate text-xs font-semibold">{{ entry.wish_title }}</p>
-                            <span class="text-wpx-cyan shrink-0 text-[10px] font-bold">{{ queueLabel(entry.status) }}</span>
+                            <p class="text-wpx-white-soft min-w-0 truncate text-xs font-semibold">
+                                {{ entry.wish_title }}
+                            </p>
+                            <span class="text-wpx-cyan shrink-0 text-[10px] font-bold">{{
+                                queueLabel(entry.status)
+                            }}</span>
                         </div>
                         <p class="text-wpx-muted-dark mt-1 text-[10px]">
                             {{ entry.lane === 'emergency' ? 'Urgence vérifiée' : 'File ordinaire' }}
                         </p>
-                        <p v-if="entry.blocked_reason" class="text-wpx-gold mt-1 text-[10px]">{{ entry.blocked_reason }}</p>
+                        <p v-if="entry.blocked_reason" class="text-wpx-gold mt-1 text-[10px]">
+                            {{ entry.blocked_reason }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -152,7 +165,8 @@ onMounted(load);
             <div v-if="data.rehabilitation" class="bg-wpx-gold/10 border-wpx-gold/20 mt-4 rounded-xl border p-3">
                 <p class="text-wpx-gold text-xs font-extrabold">Réhabilitation Fonds requise</p>
                 <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                    Des contributions anciennes doivent être régularisées avant de reprendre de nouveaux engagements Fonds.
+                    Des contributions anciennes doivent être régularisées avant de reprendre de nouveaux engagements
+                    Fonds.
                 </p>
                 <button
                     v-if="data.rehabilitation.status === 'required'"
@@ -166,7 +180,8 @@ onMounted(load);
             </div>
 
             <p class="text-wpx-muted-dark mt-4 text-[10px] leading-relaxed">
-                Les statistiques publiques restent agrégées : aucune identité de bénéficiaire, donnée médicale ou détail financier d’un autre membre n’est exposé.
+                Les statistiques publiques restent agrégées : aucune identité de bénéficiaire, donnée médicale ou détail
+                financier d’un autre membre n’est exposé.
             </p>
         </template>
     </section>

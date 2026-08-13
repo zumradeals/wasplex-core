@@ -120,6 +120,10 @@ final class FundPilotageService
             }
 
             $reciprocity = $this->refreshReciprocity((string) $wish->account_id);
+            $minimumScore = (int) ($wish->membership->version->reciprocity_min_score ?? 0);
+            if ($lane === FundWishQueueEntry::LANE_ORDINARY && (int) $reciprocity->score < $minimumScore) {
+                throw new RuntimeException('L’indice de réciprocité minimum du programme n’est pas encore atteint.');
+            }
             $priorityScore = $lane === FundWishQueueEntry::LANE_EMERGENCY
                 ? 1_000_000
                 : (int) $reciprocity->score;
@@ -189,7 +193,7 @@ final class FundPilotageService
         }
 
         return DB::transaction(function () use ($wish, $amountMinor, $reason, $justification, $actorAccountId): FundReserveAllocation {
-            $wish = FundWish::query()->with('membership')->whereKey($wish->id)->lockForUpdate()->firstOrFail();
+            $wish = FundWish::query()->with('membership.version')->whereKey($wish->id)->lockForUpdate()->firstOrFail();
             if ($wish->collectionSnapshot()->exists()) {
                 throw new RuntimeException('La réserve doit être autorisée avant la création du snapshot immuable.');
             }
@@ -198,8 +202,10 @@ final class FundPilotageService
             }
 
             $available = $this->availableReserveMinor();
-            if ($amountMinor > $available) {
-                throw new RuntimeException('Réserve disponible insuffisante.');
+            $minimumBalance = max(0, (int) ($wish->membership->version->reserve_min_balance_minor ?? 0));
+            $allocatable = max(0, $available - $minimumBalance);
+            if ($amountMinor > $allocatable) {
+                throw new RuntimeException('Cette allocation ferait passer la réserve sous le plancher du programme.');
             }
 
             return FundReserveAllocation::query()->create([

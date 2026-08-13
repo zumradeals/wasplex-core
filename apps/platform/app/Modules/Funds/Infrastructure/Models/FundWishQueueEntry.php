@@ -13,11 +13,15 @@ final class FundWishQueueEntry extends Model
     use HasUlids;
 
     public const LANE_ORDINARY = 'ordinary';
+
     public const LANE_EMERGENCY = 'emergency';
 
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_RELEASED = 'released';
+
     public const STATUS_BLOCKED = 'blocked';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $table = 'fund_wish_queue_entries';

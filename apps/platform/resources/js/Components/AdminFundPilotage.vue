@@ -66,7 +66,9 @@ const data = ref<Pilotage | null>(null);
 const reserveAmounts = ref<Record<string, number>>({});
 
 function money(value: number): string {
-    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(
+        value,
+    );
 }
 
 async function load(): Promise<void> {
@@ -168,7 +170,8 @@ onMounted(load);
                 <p class="text-wpx-cyan text-[10px] font-bold tracking-[0.14em] uppercase">P014-F</p>
                 <h3 class="text-wpx-white-soft mt-1 text-base font-extrabold">Files, réserve & réhabilitation</h3>
                 <p class="text-wpx-muted-dark mt-1 max-w-2xl text-xs leading-relaxed">
-                    L’urgence vérifiée passe avant la réciprocité. La réserve est autorisée avant snapshot et les suspensions Fonds restent séparées du reste de Wasplex.
+                    L’urgence vérifiée passe avant la réciprocité. La réserve est autorisée avant snapshot et les
+                    suspensions Fonds restent séparées du reste de Wasplex.
                 </p>
             </div>
             <button
@@ -206,20 +209,35 @@ onMounted(load);
             <div v-if="data.queue_candidates.length" class="mt-5">
                 <p class="text-wpx-white-soft text-sm font-bold">Prêts à entrer en file</p>
                 <div class="mt-2 flex flex-col gap-2">
-                    <article v-for="wish in data.queue_candidates" :key="wish.id" class="bg-wpx-navy-950 rounded-xl p-3">
+                    <article
+                        v-for="wish in data.queue_candidates"
+                        :key="wish.id"
+                        class="bg-wpx-navy-950 rounded-xl p-3"
+                    >
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="text-wpx-cyan text-[10px] font-bold uppercase">
-                                    {{ wish.category?.icon }} {{ wish.category?.name }} · {{ wish.membership?.program?.name }}
+                                    {{ wish.category?.icon }} {{ wish.category?.name }} ·
+                                    {{ wish.membership?.program?.name }}
                                 </p>
                                 <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ wish.title }}</p>
-                                <p class="text-wpx-muted-dark mt-1 text-xs">Coût validé : {{ money(wish.validated_amount_minor) }}</p>
+                                <p class="text-wpx-muted-dark mt-1 text-xs">
+                                    Coût validé : {{ money(wish.validated_amount_minor) }}
+                                </p>
                             </div>
                             <div class="flex gap-2">
-                                <button class="border-wpx-border-dark text-wpx-cyan rounded-lg border px-3 py-2 text-xs font-bold" :disabled="busy" @click="queueWish(wish.id, false)">
+                                <button
+                                    class="border-wpx-border-dark text-wpx-cyan rounded-lg border px-3 py-2 text-xs font-bold"
+                                    :disabled="busy"
+                                    @click="queueWish(wish.id, false)"
+                                >
                                     File ordinaire
                                 </button>
-                                <button class="bg-wpx-danger/10 text-wpx-danger rounded-lg px-3 py-2 text-xs font-bold" :disabled="busy" @click="queueWish(wish.id, true)">
+                                <button
+                                    class="bg-wpx-danger/10 text-wpx-danger rounded-lg px-3 py-2 text-xs font-bold"
+                                    :disabled="busy"
+                                    @click="queueWish(wish.id, true)"
+                                >
                                     Urgence vérifiée
                                 </button>
                             </div>
@@ -232,7 +250,11 @@ onMounted(load);
                                 placeholder="Réserve FCFA"
                                 class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft rounded-lg border px-3 py-2 text-xs"
                             />
-                            <button class="text-wpx-gold text-xs font-bold" :disabled="busy" @click="allocateReserve(wish.id)">
+                            <button
+                                class="text-wpx-gold text-xs font-bold"
+                                :disabled="busy"
+                                @click="allocateReserve(wish.id)"
+                            >
                                 Autoriser avant snapshot
                             </button>
                         </div>
@@ -248,9 +270,12 @@ onMounted(load);
                             <div>
                                 <p class="text-wpx-white-soft text-xs font-bold">{{ entry.wish?.title }}</p>
                                 <p class="text-wpx-muted-dark mt-1 text-[10px]">
-                                    {{ entry.lane === 'emergency' ? 'Urgence vérifiée' : 'Ordinaire' }} · {{ entry.program?.name }} · {{ entry.status }}
+                                    {{ entry.lane === 'emergency' ? 'Urgence vérifiée' : 'Ordinaire' }} ·
+                                    {{ entry.program?.name }} · {{ entry.status }}
                                 </p>
-                                <p v-if="entry.blocked_reason" class="text-wpx-gold mt-1 text-[10px]">{{ entry.blocked_reason }}</p>
+                                <p v-if="entry.blocked_reason" class="text-wpx-gold mt-1 text-[10px]">
+                                    {{ entry.blocked_reason }}
+                                </p>
                             </div>
                             <button
                                 v-if="entry.status === 'queued'"
@@ -268,11 +293,19 @@ onMounted(load);
             <div v-if="data.deficits.length" class="mt-5">
                 <p class="text-wpx-white-soft text-sm font-bold">Collectes incomplètes</p>
                 <div class="mt-2 flex flex-col gap-2">
-                    <article v-for="item in data.deficits" :key="item.snapshot.id" class="bg-wpx-gold/5 border-wpx-gold/10 rounded-xl border p-3">
+                    <article
+                        v-for="item in data.deficits"
+                        :key="item.snapshot.id"
+                        class="bg-wpx-gold/5 border-wpx-gold/10 rounded-xl border p-3"
+                    >
                         <p class="text-wpx-white-soft text-xs font-bold">{{ item.snapshot.wish?.title }}</p>
                         <p class="text-wpx-gold mt-1 text-xs">Manque : {{ money(item.plan.missing_minor) }}</p>
-                        <p class="text-wpx-muted-dark mt-1 text-[10px]">Arriérés inclus : {{ money(item.plan.arrears_minor) }}</p>
-                        <p class="text-wpx-muted-dark mt-2 text-[10px]">Options : {{ item.plan.recommended_actions.join(' · ') }}</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                            Arriérés inclus : {{ money(item.plan.arrears_minor) }}
+                        </p>
+                        <p class="text-wpx-muted-dark mt-2 text-[10px]">
+                            Options : {{ item.plan.recommended_actions.join(' · ') }}
+                        </p>
                     </article>
                 </div>
             </div>
@@ -283,10 +316,19 @@ onMounted(load);
                     <article v-for="item in data.rehabilitations" :key="item.id" class="bg-wpx-navy-950 rounded-xl p-3">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p class="text-wpx-white-soft text-xs font-bold">{{ item.account?.display_name || item.account?.phone_e164 || 'Membre' }}</p>
-                                <p class="text-wpx-muted-dark mt-1 text-[10px]">{{ item.membership?.program?.name }} · {{ item.incident_count }} incident(s) · {{ item.status }}</p>
+                                <p class="text-wpx-white-soft text-xs font-bold">
+                                    {{ item.account?.display_name || item.account?.phone_e164 || 'Membre' }}
+                                </p>
+                                <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                                    {{ item.membership?.program?.name }} · {{ item.incident_count }} incident(s) ·
+                                    {{ item.status }}
+                                </p>
                             </div>
-                            <button class="text-wpx-success-light text-xs font-bold" :disabled="busy" @click="completeRehabilitation(item.id)">
+                            <button
+                                class="text-wpx-success-light text-xs font-bold"
+                                :disabled="busy"
+                                @click="completeRehabilitation(item.id)"
+                            >
                                 Vérifier et réactiver
                             </button>
                         </div>

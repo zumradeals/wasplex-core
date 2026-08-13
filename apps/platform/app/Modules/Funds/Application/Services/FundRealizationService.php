@@ -6,6 +6,7 @@ namespace App\Modules\Funds\Application\Services;
 
 use App\Modules\Funds\Infrastructure\Models\FundCollectionSnapshot;
 use App\Modules\Funds\Infrastructure\Models\FundOrder;
+use App\Modules\Funds\Infrastructure\Models\FundReserveAllocation;
 use App\Modules\Funds\Infrastructure\Models\FundWish;
 use App\Modules\Ledger\Application\Services\LedgerPostingContract;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
@@ -39,15 +40,28 @@ final class FundRealizationService
                 throw new RuntimeException('La collecte doit être entièrement financée avant la commande.');
             }
 
-            return FundOrder::query()->firstOrCreate(['fund_wish_id' => $wish->id], [
+            $authorizedReserve = (int) FundReserveAllocation::query()
+                ->where('fund_wish_id', $wish->id)
+                ->whereIn('status', [FundReserveAllocation::STATUS_AUTHORIZED, FundReserveAllocation::STATUS_PARTIALLY_CONSUMED])
+                ->get()
+                ->sum(fn (FundReserveAllocation $allocation): int => max(0, (int) $allocation->amount_minor - (int) $allocation->consumed_minor));
+
+            $order = FundOrder::query()->firstOrCreate(['fund_wish_id' => $wish->id], [
                 'quote_id' => $wish->selected_quote_id,
                 'provider_organization_id' => $wish->provider_organization_id,
                 'status' => FundOrder::STATUS_ISSUED,
                 'total_minor' => (int) $wish->validated_amount_minor,
                 'currency' => $wish->currency,
+                'authorized_reserve_minor' => $authorizedReserve,
                 'ordered_by_account_id' => $actorAccountId,
                 'ordered_at' => now(),
             ]);
+            FundReserveAllocation::query()
+                ->where('fund_wish_id', $wish->id)
+                ->whereNull('fund_order_id')
+                ->update(['fund_order_id' => $order->id]);
+
+            return $order;
         });
     }
 
@@ -217,6 +231,7 @@ final class FundRealizationService
                     'id' => (string) Str::ulid(), 'fund_order_id' => $order->id, 'direction' => 'debit', 'amount_minor' => $reserve,
                     'reason' => 'Complément exceptionnel de réalisation', 'ledger_transaction_id' => $tx->id, 'created_by_account_id' => $actorAccountId, 'created_at' => now(),
                 ]);
+                $this->consumeReserveAllocations($order, $reserve);
             }
 
             return (array) DB::table('fund_order_milestones')->where('id', $milestoneId)->first();
@@ -326,6 +341,41 @@ final class FundRealizationService
 
             return $order->refresh();
         });
+    }
+
+    private function consumeReserveAllocations(FundOrder $order, int $amountMinor): void
+    {
+        $remaining = $amountMinor;
+        $allocations = FundReserveAllocation::query()
+            ->where('fund_order_id', $order->id)
+            ->whereIn('status', [FundReserveAllocation::STATUS_AUTHORIZED, FundReserveAllocation::STATUS_PARTIALLY_CONSUMED])
+            ->orderBy('authorized_at')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($allocations as $allocation) {
+            if ($remaining <= 0) {
+                break;
+            }
+            $available = max(0, (int) $allocation->amount_minor - (int) $allocation->consumed_minor);
+            $consume = min($available, $remaining);
+            if ($consume <= 0) {
+                continue;
+            }
+            $consumed = (int) $allocation->consumed_minor + $consume;
+            $allocation->update([
+                'consumed_minor' => $consumed,
+                'status' => $consumed >= (int) $allocation->amount_minor
+                    ? FundReserveAllocation::STATUS_CONSUMED
+                    : FundReserveAllocation::STATUS_PARTIALLY_CONSUMED,
+                'consumed_at' => $consumed >= (int) $allocation->amount_minor ? now() : null,
+            ]);
+            $remaining -= $consume;
+        }
+
+        if ($remaining > 0) {
+            throw new RuntimeException('La consommation de réserve dépasse les allocations autorisées.');
+        }
     }
 
     public function reserveBalanceMinor(): int

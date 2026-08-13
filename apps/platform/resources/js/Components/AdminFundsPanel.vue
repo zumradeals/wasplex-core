@@ -4,6 +4,7 @@ import http from '@/lib/http';
 import AdminFundPartnerQuotes from '@/Components/AdminFundPartnerQuotes.vue';
 import AdminFundCollections from '@/Components/AdminFundCollections.vue';
 import AdminFundRealizations from '@/Components/AdminFundRealizations.vue';
+import AdminFundPilotage from '@/Components/AdminFundPilotage.vue';
 
 type ProgramVersion = {
     id: string;
@@ -24,6 +25,10 @@ type ProgramVersion = {
     grace_period_days: number;
     arrears_grace_days: number;
     max_simultaneous_collections: number;
+    emergency_queue_share_percent: number;
+    reserve_min_balance_minor: number;
+    reciprocity_min_score: number;
+    rehabilitation_incident_threshold: number;
 };
 type Program = { id: string; code: string; name: string; status: string; versions: ProgramVersion[] };
 type Category = { id: string; code: string; name: string; icon: string | null; is_active: boolean };
@@ -81,6 +86,10 @@ const programForm = ref({
     grace_period_days: 7,
     arrears_grace_days: 7,
     max_simultaneous_collections: 1,
+    emergency_queue_share_percent: 20,
+    reserve_min_balance_minor: 0,
+    reciprocity_min_score: 0,
+    rehabilitation_incident_threshold: 3,
 });
 const categoryForm = ref({ code: '', name: '', icon: '🎯', description: '' });
 const reviewForm = ref({ decision: 'approve', note: '' });
@@ -124,6 +133,10 @@ function resetProgram(): void {
         grace_period_days: 7,
         arrears_grace_days: 7,
         max_simultaneous_collections: 1,
+        emergency_queue_share_percent: 20,
+        reserve_min_balance_minor: 0,
+        reciprocity_min_score: 0,
+        rehabilitation_incident_threshold: 3,
     };
     showProgram.value = true;
 }
@@ -155,6 +168,10 @@ async function createProgram(): Promise<void> {
             grace_period_days: programForm.value.grace_period_days,
             arrears_grace_days: programForm.value.arrears_grace_days,
             max_simultaneous_collections: programForm.value.max_simultaneous_collections,
+            emergency_queue_share_percent: programForm.value.emergency_queue_share_percent,
+            reserve_min_balance_minor: programForm.value.reserve_min_balance_minor,
+            reciprocity_min_score: programForm.value.reciprocity_min_score,
+            rehabilitation_incident_threshold: programForm.value.rehabilitation_incident_threshold,
         });
         await http.post(`/admin/funds/program-versions/${version.data.id}/publish`);
         showProgram.value = false;
@@ -285,6 +302,8 @@ onMounted(load);
             <AdminFundCollections />
 
             <AdminFundRealizations />
+
+            <AdminFundPilotage />
 
             <section class="flex flex-col gap-3">
                 <div class="flex items-center justify-between">
@@ -534,6 +553,36 @@ onMounted(load);
                         <label class="text-wpx-muted-dark text-xs"
                             >Collectes simultanées<input
                                 v-model.number="programForm.max_simultaneous_collections"
+                                type="number"
+                                min="1"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs"
+                            >Part urgence réservée (%)<input
+                                v-model.number="programForm.emergency_queue_share_percent"
+                                type="number"
+                                min="0"
+                                max="100"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs"
+                            >Plancher de réserve<input
+                                v-model.number="programForm.reserve_min_balance_minor"
+                                type="number"
+                                min="0"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs"
+                            >Réciprocité minimale<input
+                                v-model.number="programForm.reciprocity_min_score"
+                                type="number"
+                                min="0"
+                                max="100"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs"
+                            >Incidents avant réhabilitation<input
+                                v-model.number="programForm.rehabilitation_incident_threshold"
                                 type="number"
                                 min="1"
                                 class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"

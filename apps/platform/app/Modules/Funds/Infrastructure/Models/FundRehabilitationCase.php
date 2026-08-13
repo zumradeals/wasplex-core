@@ -14,8 +14,11 @@ final class FundRehabilitationCase extends Model
     use HasUlids;
 
     public const STATUS_REQUIRED = 'required';
+
     public const STATUS_IN_PROGRESS = 'in_progress';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $table = 'fund_rehabilitation_cases';

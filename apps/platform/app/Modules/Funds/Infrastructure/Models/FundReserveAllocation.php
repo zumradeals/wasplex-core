@@ -13,8 +13,11 @@ final class FundReserveAllocation extends Model
     use HasUlids;
 
     public const STATUS_AUTHORIZED = 'authorized';
+
     public const STATUS_PARTIALLY_CONSUMED = 'partially_consumed';
+
     public const STATUS_CONSUMED = 'consumed';
+
     public const STATUS_RELEASED = 'released';
 
     protected $table = 'fund_reserve_allocations';
