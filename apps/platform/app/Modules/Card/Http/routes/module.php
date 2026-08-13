@@ -14,3 +14,5 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])
         Route::post('/{card}/qr', [CardsController::class, 'qr']);
         Route::post('/{card}/suspend', [CardsController::class, 'suspend']);
     });
+
+require __DIR__.'/page.php';
