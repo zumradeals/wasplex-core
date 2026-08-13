@@ -19,7 +19,6 @@ use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionEntitlement;
 use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 function p014fAccount(string $email): Account
 {
@@ -185,7 +184,7 @@ function p014fOverdueArrear(Account $account, FundMembership $membership, int $a
         'arrears_minor' => $amount,
         'mandate_cap_minor' => 100000,
         'rule_snapshot' => ['test' => true],
-        'status' => FundCollectionParticipant::STATUS_FAILED,
+        'status' => FundCollectionParticipant::STATUS_ARREARS,
         'last_attempted_at' => now()->subDays(9),
     ]);
 
