@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Card\Http\Controllers\CardsController;
+use App\Modules\Card\Http\Controllers\CardQrCheckController;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,7 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])
         Route::post('/', [CardsController::class, 'store']);
         Route::post('/{card}/qr', [CardsController::class, 'qr']);
         Route::post('/{card}/suspend', [CardsController::class, 'suspend']);
+        Route::get('/qr/check', CardQrCheckController::class);
     });
 
 require __DIR__.'/page.php';
