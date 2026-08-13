@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundCollectionsController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundPartnerDashboardController;
+use App\Modules\Funds\Http\Controllers\Admin\AdminFundPilotageController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundQuotesController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundRealizationsController;
 use App\Modules\Funds\Http\Controllers\Admin\AdminFundsController;
@@ -12,6 +13,7 @@ use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundOrdersContro
 use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundQuotesController;
 use App\Modules\Funds\Http\Controllers\Professional\ProfessionalFundWarrantyController;
 use App\Modules\Funds\Http\Controllers\User\FundCollectionObligationsController;
+use App\Modules\Funds\Http\Controllers\User\FundPilotageController;
 use App\Modules\Funds\Http\Controllers\User\FundRealizationStatusController;
 use App\Modules\Funds\Http\Controllers\User\FundsController;
 use App\Modules\Funds\Http\Controllers\User\FundWarrantyController;
@@ -26,6 +28,8 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
     ->group(function (): void {
         Route::get('/', [FundsController::class, 'overview']);
         Route::get('/collection-obligations', [FundCollectionObligationsController::class, 'index']);
+        Route::get('/pilotage', [FundPilotageController::class, 'index']);
+        Route::post('/rehabilitations/{case}/start', [FundPilotageController::class, 'startRehabilitation']);
         Route::get('/realizations', [FundRealizationStatusController::class, 'index']);
         Route::post('/orders/{order}/confirm-delivery', [FundRealizationStatusController::class, 'confirmDelivery']);
         Route::post('/orders/{order}/disputes', [FundRealizationStatusController::class, 'dispute']);
@@ -70,6 +74,14 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
         Route::post('/categories', [AdminFundsController::class, 'storeCategory'])->middleware(EnsureCapability::class.':admin.funds.manage');
         Route::patch('/categories/{category}', [AdminFundsController::class, 'updateCategory'])->middleware(EnsureCapability::class.':admin.funds.manage');
         Route::post('/wishes/{wish}/review', [AdminFundsController::class, 'reviewWish'])->middleware(EnsureCapability::class.':admin.funds.review');
+
+        Route::get('/pilotage', [AdminFundPilotageController::class, 'index'])->middleware(EnsureCapability::class.':admin.funds.view');
+        Route::post('/wishes/{wish}/queue', [AdminFundPilotageController::class, 'queue'])->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/programs/{program}/queue/release-next', [AdminFundPilotageController::class, 'releaseNext'])->middleware(EnsureCapability::class.':admin.funds.review');
+        Route::post('/wishes/{wish}/reserve-allocation', [AdminFundPilotageController::class, 'reserve'])->middleware(EnsureCapability::class.':admin.funds.manage');
+        Route::post('/reserve-allocations/{allocation}/release', [AdminFundPilotageController::class, 'releaseReserve'])->middleware(EnsureCapability::class.':admin.funds.manage');
+        Route::post('/rehabilitations/detect', [AdminFundPilotageController::class, 'detectRehabilitations'])->middleware(EnsureCapability::class.':admin.funds.manage');
+        Route::post('/rehabilitations/{case}/complete', [AdminFundPilotageController::class, 'completeRehabilitation'])->middleware(EnsureCapability::class.':admin.funds.manage');
 
         Route::get('/partner-dashboard', [AdminFundPartnerDashboardController::class, 'index'])->middleware(EnsureCapability::class.':admin.funds.view');
         Route::get('/partners', [AdminFundQuotesController::class, 'partners'])->middleware(EnsureCapability::class.':admin.funds.view');
