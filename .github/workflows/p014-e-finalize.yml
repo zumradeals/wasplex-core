@@ -70,13 +70,17 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           def replace_once(path, old, new):
               p = Path(path)
               text = p.read_text()
-              if old not in text:
-                  raise SystemExit(f"Pattern not found in {path}: {old[:80]!r}")
-              p.write_text(text.replace(old, new, 1))
+              if old in text:
+                  p.write_text(text.replace(old, new, 1))
+                  return
+              if new in text:
+                  return
+              raise SystemExit(f"Pattern not found in {path}: {old[:80]!r}")
 
           funds = 'apps/platform/resources/js/Components/FundsPanel.vue'
           replace_once(funds,
@@ -94,20 +98,27 @@ jobs:
               '            <AdminFundCollections />',
               '            <AdminFundCollections />\n\n            <AdminFundRealizations />')
 
-          pro = 'apps/platform/resources/js/Pages/Identity/ProfessionalShell.vue'
-          replace_once(pro,
-              "import ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';",
-              "import ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';\nimport ProfessionalFundOrdersPanel from '@/Components/ProfessionalFundOrdersPanel.vue';")
-          old = '''                    <ProfessionalFundQuotesPanel
-                        v-else-if="activeTab === 'funds'"
-                        :can-respond="canRespondToFundQuotes"
-                        class="mt-4"
-                    />'''
-          new = '''                    <div v-else-if="activeTab === 'funds'">
+          pro = Path('apps/platform/resources/js/Pages/Identity/ProfessionalShell.vue')
+          text = pro.read_text()
+          if "import ProfessionalFundOrdersPanel" not in text:
+              text = text.replace(
+                  "import ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';",
+                  "import ProfessionalFundQuotesPanel from '@/Components/ProfessionalFundQuotesPanel.vue';\nimport ProfessionalFundOrdersPanel from '@/Components/ProfessionalFundOrdersPanel.vue';",
+                  1,
+              )
+          if '<ProfessionalFundOrdersPanel' not in text:
+              pattern = re.compile(
+                  r'<ProfessionalFundQuotesPanel\s+v-else-if="activeTab === \'funds\'"\s+:can-respond="canRespondToFundQuotes"\s+class="mt-4"\s*/>',
+                  re.MULTILINE,
+              )
+              replacement = '''<div v-else-if="activeTab === 'funds'">
                         <ProfessionalFundQuotesPanel :can-respond="canRespondToFundQuotes" class="mt-4" />
                         <ProfessionalFundOrdersPanel :can-act="canRespondToFundQuotes" />
                     </div>'''
-          replace_once(pro, old, new)
+              text, count = pattern.subn(replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit('Professional Funds panel block not found')
+          pro.write_text(text)
 
           workspace = 'apps/platform/app/Modules/Identity/Http/Controllers/Api/ProfessionalWorkspaceController.php'
           replace_once(workspace,
