@@ -13,7 +13,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $provider = 'App\\Modules\\Card\\Infrastructure\\Providers\\CardServiceProvider';
+        $this->app->register($provider);
     }
 
     /**
