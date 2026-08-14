@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\Card\Http\Controllers\CardsController;
 use App\Modules\Card\Http\Controllers\CardQrCheckController;
+use App\Modules\Card\Http\Controllers\CardsController;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use Illuminate\Support\Facades\Route;
 
