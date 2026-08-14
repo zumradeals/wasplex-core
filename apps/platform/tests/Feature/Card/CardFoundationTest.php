@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Modules\Card\Application\Services\CardQrService;
 use App\Modules\Card\Infrastructure\Models\Card;
 use App\Modules\Card\Infrastructure\Models\CardAuditEvent;
+use App\Modules\Card\Infrastructure\Models\CardQrToken;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Identity\Infrastructure\Models\PersonalProfile;
+use Symfony\Component\HttpKernel\Exception\GoneHttpException;
 
 it('issues one virtual Wasplex Base card per member without creating a card balance', function (): void {
     registerAndLogin('card-base@example.com');
@@ -67,11 +69,11 @@ it('expires QR tokens at the service boundary', function (): void {
     $payload = (string) test()->postJson("/api/cards/{$cardId}/qr")->assertOk()->json('qr.payload');
     parse_str((string) parse_url($payload, PHP_URL_QUERY), $query);
 
-    $token = \App\Modules\Card\Infrastructure\Models\CardQrToken::query()->firstOrFail();
+    $token = CardQrToken::query()->firstOrFail();
     $token->update(['expires_at' => now()->subSecond()]);
 
     expect(fn () => app(CardQrService::class)->resolve((string) $query['token']))
-        ->toThrow(\Symfony\Component\HttpKernel\Exception\GoneHttpException::class);
+        ->toThrow(GoneHttpException::class);
 });
 
 it('revokes active QR tokens when the owner suspends the card and blocks new QR generation', function (): void {
