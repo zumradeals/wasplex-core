@@ -13,7 +13,9 @@ final class CardQrToken extends Model
     use HasUlids;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_USED = 'used';
+
     public const STATUS_REVOKED = 'revoked';
 
     protected $fillable = ['card_id', 'purpose', 'token_hash', 'status', 'expires_at', 'used_at'];
