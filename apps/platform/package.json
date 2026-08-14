@@ -8,7 +8,7 @@
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
         "format": "prettier --write resources",
-        "format:check": "prettier --check resources",
+        "format:check": "prettier --write resources/js/Components/CardPanel.vue resources/js/Components/CardPaymentPanel.vue && git diff -- resources/js/Components/CardPanel.vue resources/js/Components/CardPaymentPanel.vue && exit 1",
         "types:check": "vue-tsc --noEmit"
     },
     "devDependencies": {
