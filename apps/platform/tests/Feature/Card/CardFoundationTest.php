@@ -29,6 +29,11 @@ it('issues one virtual Wasplex Base card per member without creating a card bala
 
     test()->postJson('/api/cards')->assertCreated()->assertJsonPath('card.id', $cardId);
 
+    test()->getJson('/api/cards')
+        ->assertOk()
+        ->assertJsonPath('card.id', $cardId)
+        ->assertJsonPath('card.status', Card::STATUS_ACTIVE);
+
     expect(Card::query()->where('account_id', $account->id)->count())->toBe(1);
     expect(CardAuditEvent::query()->where('event_type', 'CardIssued')->count())->toBe(1);
 });

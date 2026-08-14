@@ -129,6 +129,7 @@ watch(
         if (open) void load();
         else qr.value = null;
     },
+    { immediate: true },
 );
 </script>
 
