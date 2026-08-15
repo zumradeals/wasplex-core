@@ -173,14 +173,23 @@ onMounted(load);
                     </button>
                 </div>
 
-                <div class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center">
+                <div
+                    class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center"
+                >
                     <div>
                         <span class="text-3xl">◉</span>
                         <p class="text-wpx-white-soft mt-2 text-sm font-bold">
-                            {{ selected.status === 'paused' ? 'Live en pause' : selected.status === 'scheduled' ? 'Live à venir' : 'Salle Live ouverte' }}
+                            {{
+                                selected.status === 'paused'
+                                    ? 'Live en pause'
+                                    : selected.status === 'scheduled'
+                                      ? 'Live à venir'
+                                      : 'Salle Live ouverte'
+                            }}
                         </p>
                         <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                            Le cycle Live et les présences sont actifs. La diffusion vidéo réelle sera branchée dans le lot média suivant.
+                            Le cycle Live et les présences sont actifs. La diffusion vidéo réelle sera branchée dans le
+                            lot média suivant.
                         </p>
                     </div>
                 </div>
@@ -230,7 +239,9 @@ onMounted(load);
                 <section v-if="activeLives.length" class="mt-6">
                     <div class="flex items-center justify-between">
                         <h2 class="text-wpx-white-soft text-base font-extrabold">En direct</h2>
-                        <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">Actualiser</button>
+                        <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">
+                            Actualiser
+                        </button>
                     </div>
                     <div class="mt-2 space-y-2">
                         <article
@@ -270,7 +281,9 @@ onMounted(load);
                             class="border-wpx-border-dark bg-wpx-navy-850 w-full rounded-2xl border p-4 text-left"
                             @click="selected = live"
                         >
-                            <p class="text-wpx-gold text-[10px] font-bold uppercase">{{ formatDate(live.scheduled_at) }}</p>
+                            <p class="text-wpx-gold text-[10px] font-bold uppercase">
+                                {{ formatDate(live.scheduled_at) }}
+                            </p>
                             <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ live.title }}</p>
                             <p class="text-wpx-muted-dark mt-1 text-[11px]">{{ live.owner.display_name }}</p>
                         </button>
@@ -283,7 +296,9 @@ onMounted(load);
                         <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">
                             Les Lives créés et programmés depuis le Studio annonceur apparaîtront ici.
                         </p>
-                        <button type="button" class="text-wpx-blue mt-4 text-xs font-bold" @click="load">Actualiser</button>
+                        <button type="button" class="text-wpx-blue mt-4 text-xs font-bold" @click="load">
+                            Actualiser
+                        </button>
                     </div>
                 </section>
             </template>

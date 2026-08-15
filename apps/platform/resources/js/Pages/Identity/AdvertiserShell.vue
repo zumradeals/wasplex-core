@@ -31,7 +31,9 @@ const advertiserSpace = computed(
     () =>
         page.props.auth.spaces.find(
             (space) => space.space_type === 'advertiser' && space.user_space_id === page.props.auth.active_space_id,
-        ) ?? page.props.auth.spaces.find((space) => space.space_type === 'advertiser') ?? null,
+        ) ??
+        page.props.auth.spaces.find((space) => space.space_type === 'advertiser') ??
+        null,
 );
 const organizationId = computed(() => advertiserSpace.value?.organization_id ?? null);
 const organizationName = computed(() => advertiserSpace.value?.organization_name?.trim() || 'Mon activité');
@@ -154,13 +156,7 @@ async function logout(): Promise<void> {
                                     stroke-linejoin="round"
                                 />
                             </svg>
-                            <svg
-                                v-else-if="item.key === 'live'"
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                            >
+                            <svg v-else-if="item.key === 'live'" width="18" height="18" viewBox="0 0 24 24" fill="none">
                                 <rect
                                     x="3"
                                     y="6"
@@ -360,13 +356,7 @@ async function logout(): Promise<void> {
                                     stroke-width="1.6"
                                 />
                             </svg>
-                            <svg
-                                v-else-if="item.key === 'live'"
-                                width="21"
-                                height="21"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                            >
+                            <svg v-else-if="item.key === 'live'" width="21" height="21" viewBox="0 0 24 24" fill="none">
                                 <rect
                                     x="3"
                                     y="6"

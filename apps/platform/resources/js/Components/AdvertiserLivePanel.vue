@@ -44,7 +44,9 @@ const form = ref({
     planned_duration_minutes: '60',
 });
 
-const activeCount = computed(() => myLives.value.filter((live) => live.status === 'live' || live.status === 'paused').length);
+const activeCount = computed(
+    () => myLives.value.filter((live) => live.status === 'live' || live.status === 'paused').length,
+);
 const scheduledCount = computed(() => myLives.value.filter((live) => live.status === 'scheduled').length);
 
 function messageFrom(cause: unknown): string {
@@ -146,13 +148,18 @@ onMounted(load);
 
 <template>
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-4 lg:gap-5">
-        <section class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 border-wpx-border-dark overflow-hidden rounded-3xl border bg-gradient-to-br p-5 sm:p-6">
+        <section
+            class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 border-wpx-border-dark overflow-hidden rounded-3xl border bg-gradient-to-br p-5 sm:p-6"
+        >
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-wpx-danger text-[10px] font-bold tracking-[0.18em] uppercase">Studio annonceur · Live</p>
+                    <p class="text-wpx-danger text-[10px] font-bold tracking-[0.18em] uppercase">
+                        Studio annonceur · Live
+                    </p>
                     <h1 class="text-wpx-white-soft mt-1 text-2xl font-extrabold">Mes Lives</h1>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm leading-relaxed">
-                        La création, la programmation et le pilotage d’un Live Wasplex se font ici, depuis l’espace annonceur actif.
+                        La création, la programmation et le pilotage d’un Live Wasplex se font ici, depuis l’espace
+                        annonceur actif.
                     </p>
                 </div>
                 <button
@@ -243,7 +250,11 @@ onMounted(load);
                     <div>
                         <span
                             class="rounded-full px-2.5 py-1 text-[10px] font-bold"
-                            :class="selected.status === 'live' ? 'bg-wpx-danger/15 text-wpx-danger' : 'bg-wpx-gold/10 text-wpx-gold'"
+                            :class="
+                                selected.status === 'live'
+                                    ? 'bg-wpx-danger/15 text-wpx-danger'
+                                    : 'bg-wpx-gold/10 text-wpx-gold'
+                            "
                         >
                             {{ statusLabel(selected.status) }}
                         </span>
@@ -255,14 +266,23 @@ onMounted(load);
                     </button>
                 </div>
 
-                <div class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center">
+                <div
+                    class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center"
+                >
                     <div>
                         <span class="text-3xl">◉</span>
                         <p class="text-wpx-white-soft mt-2 text-sm font-bold">
-                            {{ selected.status === 'paused' ? 'Live en pause' : selected.status === 'live' ? 'Live en cours' : 'Salle prête' }}
+                            {{
+                                selected.status === 'paused'
+                                    ? 'Live en pause'
+                                    : selected.status === 'live'
+                                      ? 'Live en cours'
+                                      : 'Salle prête'
+                            }}
                         </p>
                         <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                            Le transport vidéo réel n’est pas encore branché. Le cycle de vie, la programmation et les présences sont opérationnels.
+                            Le transport vidéo réel n’est pas encore branché. Le cycle de vie, la programmation et les
+                            présences sont opérationnels.
                         </p>
                     </div>
                 </div>
@@ -274,7 +294,9 @@ onMounted(load);
                     </div>
                     <div class="bg-wpx-navy-950 rounded-2xl p-3">
                         <p class="text-wpx-muted-dark text-[10px] uppercase">Programmation</p>
-                        <p class="text-wpx-white-soft mt-1 text-xs font-extrabold">{{ formatDate(selected.scheduled_at) }}</p>
+                        <p class="text-wpx-white-soft mt-1 text-xs font-extrabold">
+                            {{ formatDate(selected.scheduled_at) }}
+                        </p>
                     </div>
                 </div>
 
@@ -327,7 +349,9 @@ onMounted(load);
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h2 class="text-wpx-white-soft text-base font-extrabold">Historique Live</h2>
-                    <p class="text-wpx-muted-dark mt-1 text-[11px]">Uniquement les Lives de l’espace annonceur actif.</p>
+                    <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                        Uniquement les Lives de l’espace annonceur actif.
+                    </p>
                 </div>
                 <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">Actualiser</button>
             </div>
@@ -344,7 +368,8 @@ onMounted(load);
                     <span>
                         <span class="text-wpx-white-soft block text-sm font-bold">{{ live.title }}</span>
                         <span class="text-wpx-muted-dark mt-1 block text-[11px]">
-                            {{ statusLabel(live.status) }} · {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
+                            {{ statusLabel(live.status) }} ·
+                            {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
                         </span>
                     </span>
                     <span class="text-wpx-gold text-lg">›</span>
