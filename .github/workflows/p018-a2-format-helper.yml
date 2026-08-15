@@ -1,0 +1,42 @@
+name: p018-a2-format-helper
+
+on:
+  push:
+    branches:
+      - feat/p018-a2-realtime-live
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/platform
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Format P018-A.2 frontend
+        run: npm run format
+      - name: Emit formatted files
+        shell: bash
+        run: |
+          for file in \
+            resources/js/Components/AdvertiserLivePanel.vue \
+            resources/js/Components/LivePanel.vue \
+            resources/js/Components/LiveRealtimeRoom.vue
+          do
+            echo "===P018_FORMAT_FILE:${file}==="
+            base64 -w0 "$file"
+            echo
+            echo "===P018_FORMAT_END:${file}==="
+          done
