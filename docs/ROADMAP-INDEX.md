@@ -24,7 +24,7 @@
 | P015 | Alertes | P001, P009, P011, P012, P019 | Extension | En attente |
 | P016 | Santé | P001, P012, P015, P019 | Extension | En attente |
 | P017 | Carte et partenaires | P003, P011, P012, P019 | Extension | ready_for_review (P017-A identité/QR + P017-B paiement QR validés en production ; P017-B.1 clôture ; avantages partenaires conservés en roadmap) |
-| P018 | Live | P006-P012, P020 | Extension | in_progress (P018-A fondation sans WP ; P018-A.1 création/pilotage exclusivement Studio annonceur, espace membre spectateur ; transport média externe différé) |
+| P018 | Live | P006-P012, P020 | Extension | in_progress (P018-A.1 propriété Studio annonceur ; P018-A.2 transport LiveKit/WebRTC, caméra/micro et montée de spectateurs sur scène) |
 | P019 | Espaces professionnels/institutionnels | P001, P012 | Extension | En attente |
 | P020 | Communication, modération et risques | P001, P011, P012 | Extension | En attente |
 | P021 | Intégrations et production | modules stabilisés | Production | En attente |
@@ -42,6 +42,10 @@ P018-A peut démarrer avant l'achèvement complet de P020 à condition de rester
 ## Décision produit du 2026-08-15 — P018-A.1 Live Annonceur
 
 La création, la programmation et le pilotage d'un Live Wasplex sont réservés au **Studio annonceur** dans un espace annonceur actif. L'espace membre et le bouton Live du Feed sont une surface spectateur uniquement. Les Lives portent désormais leur organisation annonceur afin d'éviter tout mélange entre plusieurs espaces annonceurs d'un même compte. Cette décision est détaillée dans [`chantiers/P018-A1-LIVE-ANNONCEUR.md`](./chantiers/P018-A1-LIVE-ANNONCEUR.md).
+
+## Décision produit du 2026-08-15 — P018-A.2 Live temps réel
+
+Le Live Wasplex devient une vraie salle audiovisuelle temps réel : transport **LiveKit/WebRTC**, aperçu caméra/micro côté Studio, lecture vidéo côté membre et permissions dynamiques permettant à un spectateur de demander à monter sur scène. Wasplex reste la source de vérité des identités, présences, demandes de scène et audits. Le démarrage d'un Live est refusé si le transport média n'est pas configuré. Cette décision est détaillée dans [`chantiers/P018-A2-LIVE-TEMPS-REEL.md`](./chantiers/P018-A2-LIVE-TEMPS-REEL.md).
 
 ## Décision fondatrice P009
 

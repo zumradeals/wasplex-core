@@ -21,6 +21,9 @@ final class LivePresenter
         $publisherName = $live->advertiserOrganization?->name
             ?? $live->owner->profile?->resolvedDisplayName()
             ?? 'Annonceur Wasplex';
+        $liveKitConfigured = trim((string) config('services.livekit.url')) !== ''
+            && trim((string) config('services.livekit.api_key')) !== ''
+            && (string) config('services.livekit.api_secret') !== '';
 
         return [
             'id' => $live->id,
@@ -44,7 +47,8 @@ final class LivePresenter
             'stream' => [
                 'status' => $stream?->status,
                 'provider' => $stream?->provider,
-                'media_ready' => $stream !== null && $stream->provider !== 'pending_adapter',
+                'room' => $stream?->provider_session_reference,
+                'media_ready' => $liveKitConfigured && $stream?->provider === 'livekit',
             ],
         ];
     }

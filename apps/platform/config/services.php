@@ -9,8 +9,8 @@ return [
     |
     | This file is for storing the credentials for third party services such
     | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | location for this type of information, allowing packages to have a
+    | conventional file to locate the various service credentials.
     |
     */
 
@@ -47,6 +47,16 @@ return [
         'api_secret' => env('GENIUSPAY_API_SECRET'),
         'webhook_secret' => env('GENIUSPAY_WEBHOOK_SECRET'),
         'checkout_hosts' => array_filter(explode(',', (string) env('GENIUSPAY_CHECKOUT_HOSTS', 'geniuspay.ci,pay.genius.ci'))),
+    ],
+
+    /*
+     * P018-A.2 — LiveKit carries only realtime audio/video. Wasplex keeps
+     * identity, stage requests, viewer sessions and audit as source of truth.
+     */
+    'livekit' => [
+        'url' => env('LIVEKIT_URL'),
+        'api_key' => env('LIVEKIT_API_KEY'),
+        'api_secret' => env('LIVEKIT_API_SECRET'),
     ],
 
 ];

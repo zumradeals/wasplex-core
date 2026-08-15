@@ -7,6 +7,7 @@ use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use App\Modules\Live\Http\Controllers\CreatorLiveController;
 use App\Modules\Live\Http\Controllers\LiveController;
+use App\Modules\Live\Http\Controllers\LiveRealtimeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -18,6 +19,10 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
         Route::get('/{live}', [LiveController::class, 'show']);
         Route::post('/{live}/join', [LiveController::class, 'join']);
         Route::post('/{live}/leave', [LiveController::class, 'leave']);
+        Route::post('/{live}/media-token', [LiveRealtimeController::class, 'viewerCredentials']);
+        Route::post('/{live}/stage-request', [LiveRealtimeController::class, 'requestStage']);
+        Route::delete('/{live}/stage-request', [LiveRealtimeController::class, 'withdrawStage']);
+        Route::post('/{live}/stage-request/leave', [LiveRealtimeController::class, 'leaveStage']);
     });
 
     Route::prefix('api/advertiser/lives')
@@ -38,6 +43,16 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
             Route::post('/{live}/resume', [CreatorLiveController::class, 'resume'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
             Route::post('/{live}/end', [CreatorLiveController::class, 'end'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/media-token', [LiveRealtimeController::class, 'hostCredentials'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::get('/{live}/stage-requests', [LiveRealtimeController::class, 'stageRequests'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/stage-requests/{stageRequest}/approve', [LiveRealtimeController::class, 'approve'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/stage-requests/{stageRequest}/reject', [LiveRealtimeController::class, 'reject'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/stage-requests/{stageRequest}/lower', [LiveRealtimeController::class, 'lower'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
         });
 });

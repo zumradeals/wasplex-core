@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import LiveRealtimeRoom from '@/Components/LiveRealtimeRoom.vue';
 import http from '@/lib/http';
 
 type LiveStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'ended';
@@ -21,7 +22,7 @@ interface LiveSummary {
     viewer_count: number;
     is_owner: boolean;
     can_join: boolean;
-    stream: { status: string | null; provider: string | null; media_ready: boolean };
+    stream: { status: string | null; provider: string | null; room: string | null; media_ready: boolean };
 }
 
 interface ApiError {
@@ -34,6 +35,9 @@ const showCreate = ref(false);
 const busy = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const previewVideo = ref<HTMLVideoElement | null>(null);
+const previewActive = ref(false);
+let previewStream: MediaStream | null = null;
 const form = ref({
     title: '',
     description: '',
@@ -129,9 +133,34 @@ async function createLive(): Promise<void> {
     }
 }
 
+async function startPreview(): Promise<void> {
+    error.value = null;
+    stopPreview();
+    try {
+        previewStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' },
+            audio: true,
+        });
+        if (previewVideo.value) {
+            previewVideo.value.srcObject = previewStream;
+        }
+        previewActive.value = true;
+    } catch {
+        error.value = 'Autorisez la caméra et le microphone pour préparer votre direct.';
+    }
+}
+
+function stopPreview(): void {
+    previewStream?.getTracks().forEach((track) => track.stop());
+    previewStream = null;
+    previewActive.value = false;
+    if (previewVideo.value) previewVideo.value.srcObject = null;
+}
+
 async function creatorAction(live: LiveSummary, action: 'start' | 'pause' | 'resume' | 'end'): Promise<void> {
     busy.value = true;
     error.value = null;
+    if (action === 'start') stopPreview();
     try {
         const { data } = await http.post(`/advertiser/lives/${live.id}/${action}`);
         selected.value = data.live;
@@ -143,7 +172,18 @@ async function creatorAction(live: LiveSummary, action: 'start' | 'pause' | 'res
     }
 }
 
+function selectLive(live: LiveSummary): void {
+    stopPreview();
+    selected.value = live;
+}
+
+function closeSelected(): void {
+    stopPreview();
+    selected.value = null;
+}
+
 onMounted(load);
+onBeforeUnmount(stopPreview);
 </script>
 
 <template>
@@ -154,12 +194,11 @@ onMounted(load);
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="text-wpx-danger text-[10px] font-bold tracking-[0.18em] uppercase">
-                        Studio annonceur · Live
+                        Studio annonceur · Live temps réel
                     </p>
                     <h1 class="text-wpx-white-soft mt-1 text-2xl font-extrabold">Mes Lives</h1>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm leading-relaxed">
-                        La création, la programmation et le pilotage d’un Live Wasplex se font ici, depuis l’espace
-                        annonceur actif.
+                        Préparez votre caméra, lancez le direct et accueillez des spectateurs ou des invités sur scène.
                     </p>
                 </div>
                 <button
@@ -194,7 +233,8 @@ onMounted(load);
         <section v-if="showCreate" class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
             <h2 class="text-wpx-white-soft text-base font-bold">Nouveau Live</h2>
             <p class="text-wpx-muted-dark mt-1 text-[11px]">
-                P018-A reste sans sponsorisation ni rémunération WP. Le financement Live viendra dans un lot ultérieur.
+                P018-A.2 active le transport audiovisuel temps réel. La sponsorisation et les gains WP restent hors de
+                ce lot.
             </p>
 
             <label class="text-wpx-muted-dark mt-4 block text-[11px]">Titre</label>
@@ -261,30 +301,62 @@ onMounted(load);
                         <h2 class="text-wpx-white-soft mt-3 text-xl font-extrabold">{{ selected.title }}</h2>
                         <p class="text-wpx-muted-dark mt-1 text-xs">Publié par {{ selected.owner.display_name }}</p>
                     </div>
-                    <button type="button" class="text-wpx-muted-dark text-xs font-semibold" @click="selected = null">
+                    <button type="button" class="text-wpx-muted-dark text-xs font-semibold" @click="closeSelected">
                         Fermer
                     </button>
                 </div>
 
+                <LiveRealtimeRoom
+                    v-if="selected.status === 'live'"
+                    :live-id="selected.id"
+                    mode="host"
+                    :viewer-count="selected.viewer_count"
+                    class="mt-4"
+                />
+
                 <div
-                    class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center"
+                    v-else-if="selected.status === 'paused'"
+                    class="bg-wpx-navy-950 mt-4 rounded-3xl px-5 py-12 text-center"
                 >
-                    <div>
-                        <span class="text-3xl">◉</span>
-                        <p class="text-wpx-white-soft mt-2 text-sm font-bold">
-                            {{
-                                selected.status === 'paused'
-                                    ? 'Live en pause'
-                                    : selected.status === 'live'
-                                      ? 'Live en cours'
-                                      : 'Salle prête'
-                            }}
-                        </p>
-                        <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                            Le transport vidéo réel n’est pas encore branché. Le cycle de vie, la programmation et les
-                            présences sont opérationnels.
-                        </p>
+                    <p class="text-wpx-white-soft text-sm font-bold">⏸ Live en pause</p>
+                    <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                        La connexion média reprendra quand vous relancerez le direct.
+                    </p>
+                </div>
+
+                <div v-else-if="selected.status === 'draft' || selected.status === 'scheduled'" class="mt-4">
+                    <div
+                        class="bg-wpx-navy-950 relative aspect-[9/16] max-h-[560px] overflow-hidden rounded-3xl sm:aspect-video"
+                    >
+                        <video ref="previewVideo" autoplay muted playsinline class="h-full w-full object-cover"></video>
+                        <div
+                            v-if="!previewActive"
+                            class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
+                        >
+                            <p class="text-wpx-white-soft text-sm font-bold">
+                                Préparez votre caméra avant de passer en direct
+                            </p>
+                            <button
+                                type="button"
+                                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-4 rounded-full bg-gradient-to-r px-4 py-2.5 text-xs font-black"
+                                @click="startPreview"
+                            >
+                                📹 Tester caméra + micro
+                            </button>
+                        </div>
                     </div>
+                    <button
+                        v-if="previewActive"
+                        type="button"
+                        class="text-wpx-blue mt-2 text-xs font-bold"
+                        @click="startPreview"
+                    >
+                        Changer / relancer l’aperçu
+                    </button>
+                </div>
+
+                <div v-else class="bg-wpx-navy-950 mt-4 rounded-3xl px-5 py-10 text-center">
+                    <p class="text-wpx-white-soft text-sm font-bold">Live terminé</p>
                 </div>
 
                 <div class="mt-4 grid grid-cols-2 gap-2">
@@ -293,9 +365,13 @@ onMounted(load);
                         <p class="text-wpx-white-soft mt-1 text-xl font-extrabold">{{ selected.viewer_count }}</p>
                     </div>
                     <div class="bg-wpx-navy-950 rounded-2xl p-3">
-                        <p class="text-wpx-muted-dark text-[10px] uppercase">Programmation</p>
+                        <p class="text-wpx-muted-dark text-[10px] uppercase">Transport</p>
                         <p class="text-wpx-white-soft mt-1 text-xs font-extrabold">
-                            {{ formatDate(selected.scheduled_at) }}
+                            {{
+                                selected.stream.provider === 'livekit'
+                                    ? 'LiveKit · WebRTC'
+                                    : formatDate(selected.scheduled_at)
+                            }}
                         </p>
                     </div>
                 </div>
@@ -312,7 +388,7 @@ onMounted(load);
                         :disabled="busy"
                         @click="creatorAction(selected, 'start')"
                     >
-                        Démarrer le Live
+                        🔴 Lancer le Live
                     </button>
                     <button
                         v-if="selected.status === 'live'"
@@ -363,7 +439,7 @@ onMounted(load);
                     :key="live.id"
                     type="button"
                     class="border-wpx-border-dark bg-wpx-navy-950 flex w-full items-center justify-between gap-3 rounded-2xl border p-4 text-left"
-                    @click="selected = live"
+                    @click="selectLive(live)"
                 >
                     <span>
                         <span class="text-wpx-white-soft block text-sm font-bold">{{ live.title }}</span>
