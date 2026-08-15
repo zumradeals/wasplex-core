@@ -6,7 +6,7 @@ on:
       - feat/p018-a2-realtime-live
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -27,16 +27,16 @@ jobs:
         run: npm ci
       - name: Format P018-A.2 frontend
         run: npm run format
-      - name: Emit formatted files
+      - name: Commit exact formatter output and remove helper
         shell: bash
+        working-directory: .
         run: |
-          for file in \
-            resources/js/Components/AdvertiserLivePanel.vue \
-            resources/js/Components/LivePanel.vue \
-            resources/js/Components/LiveRealtimeRoom.vue
-          do
-            echo "===P018_FORMAT_FILE:${file}==="
-            base64 -w0 "$file"
-            echo
-            echo "===P018_FORMAT_END:${file}==="
-          done
+          rm .github/workflows/p018-a2-format-helper.yml
+          git config user.name "zumradeals"
+          git config user.email "zumradeals@gmail.com"
+          git add -- apps/platform/resources/js/Components/AdvertiserLivePanel.vue \
+            apps/platform/resources/js/Components/LivePanel.vue \
+            apps/platform/resources/js/Components/LiveRealtimeRoom.vue \
+            .github/workflows/p018-a2-format-helper.yml
+          git commit -m "fix(P018-A.2): appliquer le formatage frontend CI"
+          git push origin HEAD:feat/p018-a2-realtime-live
