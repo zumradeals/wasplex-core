@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
 use App\Modules\Live\Infrastructure\Models\LiveAuditEvent;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use App\Modules\Live\Infrastructure\Models\LiveStreamSession;
 use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
-use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
 
 it('creates schedules starts pauses resumes and ends a standard live without touching the Ledger', function (): void {
     registerAndLogin('live-owner@example.com');
