@@ -23,11 +23,21 @@
 | P014 | Fonds | P003, P004, P011, P012, P019 | Extension | in_progress (P014-A : programmes, adhésion, mandat, grâce, catégories, vœux et revue admin) |
 | P015 | Alertes | P001, P009, P011, P012, P019 | Extension | En attente |
 | P016 | Santé | P001, P012, P015, P019 | Extension | En attente |
-| P017 | Carte et partenaires | P003, P011, P012, P019 | Extension | En attente |
-| P018 | Live | P006-P012, P020 | Extension | En attente |
+| P017 | Carte et partenaires | P003, P011, P012, P019 | Extension | ready_for_review (P017-A identité/QR + P017-B paiement QR validés en production ; P017-B.1 clôture ; avantages partenaires conservés en roadmap) |
+| P018 | Live | P006-P012, P020 | Extension | in_progress (P018-A : fondation Live standard, sans WP ni sponsorisation ; transport média externe différé) |
 | P019 | Espaces professionnels/institutionnels | P001, P012 | Extension | En attente |
 | P020 | Communication, modération et risques | P001, P011, P012 | Extension | En attente |
 | P021 | Intégrations et production | modules stabilisés | Production | En attente |
+
+## Décision produit du 2026-08-15 — Carte Wasplex
+
+Le rôle produit prioritaire de la Carte Wasplex est l'identification du membre et l'accès à des **réductions, offres et avantages chez les partenaires Wasplex**. Le paiement QR P017-B reste une capacité secondaire déjà livrée ; il n'est pas le cœur de Wasplex et ne doit pas bloquer les chantiers prioritaires.
+
+La suite fonctionnelle Carte (réseau partenaires, validation d'avantages, cashback éventuel, Carte Pro/Marchand, carte physique/NFC, remboursements et durcissements avancés) est documentée dans [`chantiers/P017-ROADMAP.md`](./chantiers/P017-ROADMAP.md) et n'est pas prioritaire à ce stade.
+
+## Décision d'ordre du 2026-08-15 — démarrage P018-A
+
+P018-A peut démarrer avant l'achèvement complet de P020 à condition de rester strictement limité au **Live standard non rémunéré**, sans sponsorisation, sans crédit Wallet, sans commentaires publics et sans mécanismes de valeur. Le contrôle d'accès, l'audit et les transitions de cycle de vie sont inclus dès P018-A ; la modération sociale avancée demeure une dépendance des lots Live ultérieurs.
 
 ## Décision fondatrice P009
 
