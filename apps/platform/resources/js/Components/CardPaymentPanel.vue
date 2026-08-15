@@ -475,7 +475,7 @@ onBeforeUnmount(stopCamera);
 
                         <div class="mt-4 rounded-2xl bg-slate-100 p-3 text-left">
                             <p class="text-[10px] font-bold tracking-wide text-slate-500 uppercase">Code de paiement</p>
-                            <p class="mt-1 select-all break-all font-mono text-[10px] leading-relaxed text-slate-700">
+                            <p class="mt-1 font-mono text-[10px] leading-relaxed break-all text-slate-700 select-all">
                                 {{ receiveQr.payload }}
                             </p>
                         </div>
