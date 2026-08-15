@@ -19,8 +19,10 @@ final class CreatorLiveController
     public function index(Request $request): JsonResponse
     {
         $accountId = (string) $request->user()->id;
+        $organizationId = $this->advertiserOrganizationId($request);
         $lives = LiveEvent::query()
-            ->with('owner.profile')
+            ->with(['owner.profile', 'advertiserOrganization'])
+            ->where('advertiser_organization_id', $organizationId)
             ->where('owner_account_id', $accountId)
             ->latest('created_at')
             ->limit(50)
@@ -34,7 +36,11 @@ final class CreatorLiveController
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate($this->rules(false));
-        $live = $this->lifecycle->create($request->user(), $data);
+        $live = $this->lifecycle->create(
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+            $data,
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)], 201);
     }
@@ -42,7 +48,12 @@ final class CreatorLiveController
     public function update(Request $request, LiveEvent $live): JsonResponse
     {
         $data = $request->validate($this->rules(true));
-        $live = $this->lifecycle->update($live, $request->user(), $data);
+        $live = $this->lifecycle->update(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+            $data,
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
@@ -51,37 +62,63 @@ final class CreatorLiveController
     {
         $data = $request->validate(['scheduled_at' => ['required', 'date', 'after:now']]);
         $scheduledAt = CarbonImmutable::parse((string) $data['scheduled_at']);
-        $live = $this->lifecycle->schedule($live, $request->user(), $scheduledAt);
+        $live = $this->lifecycle->schedule(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+            $scheduledAt,
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
 
     public function start(Request $request, LiveEvent $live): JsonResponse
     {
-        $live = $this->lifecycle->start($live, $request->user());
+        $live = $this->lifecycle->start(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
 
     public function pause(Request $request, LiveEvent $live): JsonResponse
     {
-        $live = $this->lifecycle->pause($live, $request->user());
+        $live = $this->lifecycle->pause(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
 
     public function resume(Request $request, LiveEvent $live): JsonResponse
     {
-        $live = $this->lifecycle->resume($live, $request->user());
+        $live = $this->lifecycle->resume(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
 
     public function end(Request $request, LiveEvent $live): JsonResponse
     {
-        $live = $this->lifecycle->end($live, $request->user());
+        $live = $this->lifecycle->end(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+        );
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+    }
+
+    private function advertiserOrganizationId(Request $request): string
+    {
+        return (string) $request->attributes->get('advertiser_organization_id');
     }
 
     private function rules(bool $partial): array

@@ -3,7 +3,7 @@ import { router } from '@inertiajs/vue3';
 import LivePanel from '@/Components/LivePanel.vue';
 
 function close(): void {
-    router.visit('/app?tab=espace');
+    router.visit('/app?tab=feed');
 }
 </script>
 

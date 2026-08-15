@@ -19,7 +19,8 @@ final class LiveController
     {
         $accountId = (string) $request->user()->id;
         $lives = LiveEvent::query()
-            ->with('owner.profile')
+            ->with(['owner.profile', 'advertiserOrganization'])
+            ->whereNotNull('advertiser_organization_id')
             ->where('visibility', 'public')
             ->whereIn('status', [LiveEvent::STATUS_SCHEDULED, LiveEvent::STATUS_LIVE, LiveEvent::STATUS_PAUSED])
             ->orderByRaw("CASE WHEN status = 'live' THEN 0 WHEN status = 'paused' THEN 1 ELSE 2 END")
@@ -34,12 +35,11 @@ final class LiveController
 
     public function show(Request $request, LiveEvent $live): JsonResponse
     {
-        $accountId = (string) $request->user()->id;
-        if ($live->status === LiveEvent::STATUS_DRAFT && $live->owner_account_id !== $accountId) {
+        if ($live->advertiser_organization_id === null || $live->status === LiveEvent::STATUS_DRAFT) {
             throw new NotFoundHttpException('Live Wasplex introuvable.');
         }
 
-        return response()->json(['live' => LivePresenter::live($live, $accountId)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
 
     public function join(Request $request, LiveEvent $live): JsonResponse

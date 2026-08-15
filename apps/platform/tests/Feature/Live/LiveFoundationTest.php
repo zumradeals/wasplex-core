@@ -8,36 +8,50 @@ use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use App\Modules\Live\Infrastructure\Models\LiveStreamSession;
 use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
 
-it('creates schedules starts pauses resumes and ends a standard live without touching the Ledger', function (): void {
-    registerAndLogin('live-owner@example.com');
+it('reserves Live creation to the active advertiser Studio', function (): void {
+    registerAndLogin('live-member-only@example.com');
+
+    test()->postJson('/api/advertiser/lives', ['title' => 'Live interdit'])
+        ->assertForbidden();
+
+    test()->postJson('/api/creator/lives', ['title' => 'Ancienne route'])
+        ->assertNotFound();
+});
+
+it('creates schedules starts pauses resumes and ends an advertiser live without touching the Ledger', function (): void {
+    registerAndLogin('live-advertiser@example.com');
+    $organizationId = createAdvertiserOrganization('Wasplex Live Demo');
     $ledgerBefore = LedgerTransaction::query()->count();
 
-    $created = test()->postJson('/api/creator/lives', [
-        'title' => 'Live communauté Wasplex',
-        'description' => 'Premier test du Live standard.',
+    $created = test()->postJson('/api/advertiser/lives', [
+        'title' => 'Live annonceur Wasplex',
+        'description' => 'Premier test du Live depuis le Studio annonceur.',
         'scheduled_at' => now()->addHour()->toIso8601String(),
         'planned_duration_minutes' => 60,
     ])->assertCreated()
         ->assertJsonPath('live.status', LiveEvent::STATUS_SCHEDULED)
-        ->assertJsonPath('live.title', 'Live communauté Wasplex')
+        ->assertJsonPath('live.title', 'Live annonceur Wasplex')
+        ->assertJsonPath('live.owner.display_name', 'Wasplex Live Demo')
         ->assertJsonPath('live.stream.media_ready', false);
 
     $liveId = (string) $created->json('live.id');
 
-    test()->postJson("/api/creator/lives/{$liveId}/start")
+    expect(LiveEvent::query()->findOrFail($liveId)->advertiser_organization_id)->toBe($organizationId);
+
+    test()->postJson("/api/advertiser/lives/{$liveId}/start")
         ->assertOk()
         ->assertJsonPath('live.status', LiveEvent::STATUS_LIVE)
         ->assertJsonPath('live.stream.provider', 'pending_adapter');
 
-    test()->postJson("/api/creator/lives/{$liveId}/pause")
+    test()->postJson("/api/advertiser/lives/{$liveId}/pause")
         ->assertOk()
         ->assertJsonPath('live.status', LiveEvent::STATUS_PAUSED);
 
-    test()->postJson("/api/creator/lives/{$liveId}/resume")
+    test()->postJson("/api/advertiser/lives/{$liveId}/resume")
         ->assertOk()
         ->assertJsonPath('live.status', LiveEvent::STATUS_LIVE);
 
-    test()->postJson("/api/creator/lives/{$liveId}/end")
+    test()->postJson("/api/advertiser/lives/{$liveId}/end")
         ->assertOk()
         ->assertJsonPath('live.status', LiveEvent::STATUS_ENDED);
 
@@ -47,19 +61,20 @@ it('creates schedules starts pauses resumes and ends a standard live without tou
         ->and(LedgerTransaction::query()->count())->toBe($ledgerBefore);
 });
 
-it('lists only public scheduled or active lives and lets another member join and leave', function (): void {
-    registerAndLogin('live-public-owner@example.com');
+it('lists only advertiser-published public lives and lets a member join and leave', function (): void {
+    registerAndLogin('live-public-advertiser@example.com');
+    createAdvertiserOrganization('Annonceur Live Public');
 
-    test()->postJson('/api/creator/lives', [
-        'title' => 'Brouillon secret',
+    test()->postJson('/api/advertiser/lives', [
+        'title' => 'Brouillon annonceur',
     ])->assertCreated();
 
-    $active = test()->postJson('/api/creator/lives', [
+    $active = test()->postJson('/api/advertiser/lives', [
         'title' => 'Live public actif',
         'planned_duration_minutes' => 30,
     ])->assertCreated();
     $activeId = (string) $active->json('live.id');
-    test()->postJson("/api/creator/lives/{$activeId}/start")->assertOk();
+    test()->postJson("/api/advertiser/lives/{$activeId}/start")->assertOk();
 
     test()->postJson('/api/logout')->assertSuccessful();
     registerAndLogin('live-viewer@example.com');
@@ -67,7 +82,8 @@ it('lists only public scheduled or active lives and lets another member join and
     test()->getJson('/api/lives')
         ->assertOk()
         ->assertJsonFragment(['title' => 'Live public actif'])
-        ->assertJsonMissing(['title' => 'Brouillon secret']);
+        ->assertJsonFragment(['display_name' => 'Annonceur Live Public'])
+        ->assertJsonMissing(['title' => 'Brouillon annonceur']);
 
     test()->postJson("/api/lives/{$activeId}/join")
         ->assertOk()
@@ -81,21 +97,27 @@ it('lists only public scheduled or active lives and lets another member join and
     expect(LiveViewerSession::query()->where('live_id', $activeId)->value('status'))->toBe(LiveViewerSession::STATUS_LEFT);
 });
 
-it('prevents another member from controlling a live they do not own', function (): void {
-    registerAndLogin('live-control-owner@example.com');
-    $liveId = (string) test()->postJson('/api/creator/lives', ['title' => 'Live protégé'])
+it('isolates Live management between advertiser organizations', function (): void {
+    registerAndLogin('live-multi-advertiser@example.com');
+    createAdvertiserOrganization('Organisation Live A');
+
+    $liveId = (string) test()->postJson('/api/advertiser/lives', ['title' => 'Live organisation A'])
         ->assertCreated()
         ->json('live.id');
-    test()->postJson("/api/creator/lives/{$liveId}/start")->assertOk();
 
-    test()->postJson('/api/logout')->assertSuccessful();
-    registerAndLogin('live-control-intruder@example.com');
+    createAdvertiserOrganization('Organisation Live B');
 
-    test()->postJson("/api/creator/lives/{$liveId}/pause")->assertForbidden();
-    expect(LiveEvent::query()->findOrFail($liveId)->status)->toBe(LiveEvent::STATUS_LIVE);
+    test()->getJson('/api/advertiser/lives')
+        ->assertOk()
+        ->assertJsonMissing(['title' => 'Live organisation A']);
+
+    test()->postJson("/api/advertiser/lives/{$liveId}/start")
+        ->assertForbidden();
+
+    expect(LiveEvent::query()->findOrFail($liveId)->status)->toBe(LiveEvent::STATUS_DRAFT);
 });
 
-it('exposes the authenticated Live page', function (): void {
+it('exposes the authenticated spectator Live page', function (): void {
     registerAndLogin('live-page@example.com');
 
     test()->get('/live')->assertOk();

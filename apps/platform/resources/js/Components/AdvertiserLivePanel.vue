@@ -1,0 +1,356 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import http from '@/lib/http';
+
+type LiveStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'ended';
+
+interface LiveSummary {
+    id: string;
+    title: string;
+    description: string | null;
+    category: string;
+    language: string;
+    visibility: 'public' | 'unlisted';
+    status: LiveStatus;
+    scheduled_at: string | null;
+    planned_duration_minutes: number | null;
+    started_at: string | null;
+    ended_at: string | null;
+    replay_policy: 'disabled' | 'available';
+    owner: { display_name: string };
+    viewer_count: number;
+    is_owner: boolean;
+    can_join: boolean;
+    stream: { status: string | null; provider: string | null; media_ready: boolean };
+}
+
+interface ApiError {
+    response?: { data?: { message?: string } };
+}
+
+const myLives = ref<LiveSummary[]>([]);
+const selected = ref<LiveSummary | null>(null);
+const showCreate = ref(false);
+const busy = ref(false);
+const loading = ref(true);
+const error = ref<string | null>(null);
+const form = ref({
+    title: '',
+    description: '',
+    category: 'general',
+    language: 'fr',
+    visibility: 'public' as 'public' | 'unlisted',
+    scheduled_at: '',
+    planned_duration_minutes: '60',
+});
+
+const activeCount = computed(() => myLives.value.filter((live) => live.status === 'live' || live.status === 'paused').length);
+const scheduledCount = computed(() => myLives.value.filter((live) => live.status === 'scheduled').length);
+
+function messageFrom(cause: unknown): string {
+    return (cause as ApiError)?.response?.data?.message ?? 'Une erreur est survenue. Réessayez.';
+}
+
+function statusLabel(status: LiveStatus): string {
+    return {
+        draft: 'Brouillon',
+        scheduled: 'Programmé',
+        live: 'En direct',
+        paused: 'En pause',
+        ended: 'Terminé',
+    }[status];
+}
+
+function formatDate(value: string | null): string {
+    if (!value) return 'Sans programmation';
+
+    return new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(new Date(value));
+}
+
+async function load(): Promise<void> {
+    loading.value = true;
+    error.value = null;
+    try {
+        const { data } = await http.get('/advertiser/lives');
+        myLives.value = data.lives ?? [];
+
+        if (selected.value) {
+            const refreshed = myLives.value.find((live) => live.id === selected.value?.id);
+            if (refreshed) selected.value = refreshed;
+        }
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function createLive(): Promise<void> {
+    if (form.value.title.trim() === '') return;
+    busy.value = true;
+    error.value = null;
+    try {
+        const payload = {
+            title: form.value.title.trim(),
+            description: form.value.description.trim() || null,
+            category: form.value.category.trim() || 'general',
+            language: form.value.language.trim() || 'fr',
+            visibility: form.value.visibility,
+            scheduled_at: form.value.scheduled_at || null,
+            planned_duration_minutes: form.value.planned_duration_minutes
+                ? Number(form.value.planned_duration_minutes)
+                : null,
+            replay_policy: 'disabled',
+        };
+        const { data } = await http.post('/advertiser/lives', payload);
+        selected.value = data.live;
+        showCreate.value = false;
+        form.value = {
+            title: '',
+            description: '',
+            category: 'general',
+            language: 'fr',
+            visibility: 'public',
+            scheduled_at: '',
+            planned_duration_minutes: '60',
+        };
+        await load();
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function creatorAction(live: LiveSummary, action: 'start' | 'pause' | 'resume' | 'end'): Promise<void> {
+    busy.value = true;
+    error.value = null;
+    try {
+        const { data } = await http.post(`/advertiser/lives/${live.id}/${action}`);
+        selected.value = data.live;
+        await load();
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    } finally {
+        busy.value = false;
+    }
+}
+
+onMounted(load);
+</script>
+
+<template>
+    <div class="mx-auto flex w-full max-w-5xl flex-col gap-4 lg:gap-5">
+        <section class="from-wpx-navy-750 via-wpx-navy-850 to-wpx-navy-950 border-wpx-border-dark overflow-hidden rounded-3xl border bg-gradient-to-br p-5 sm:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-wpx-danger text-[10px] font-bold tracking-[0.18em] uppercase">Studio annonceur · Live</p>
+                    <h1 class="text-wpx-white-soft mt-1 text-2xl font-extrabold">Mes Lives</h1>
+                    <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm leading-relaxed">
+                        La création, la programmation et le pilotage d’un Live Wasplex se font ici, depuis l’espace annonceur actif.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-2xl bg-gradient-to-r px-5 py-3.5 text-sm font-extrabold"
+                    @click="showCreate = !showCreate"
+                >
+                    {{ showCreate ? 'Fermer' : '+ Créer un Live' }}
+                </button>
+            </div>
+
+            <div class="mt-5 grid grid-cols-3 gap-2.5">
+                <div class="bg-wpx-navy-950 rounded-2xl p-3.5">
+                    <p class="text-wpx-muted-dark text-[10px] uppercase">Total</p>
+                    <p class="text-wpx-white-soft mt-1 text-xl font-extrabold">{{ myLives.length }}</p>
+                </div>
+                <div class="bg-wpx-navy-950 rounded-2xl p-3.5">
+                    <p class="text-wpx-muted-dark text-[10px] uppercase">En direct</p>
+                    <p class="text-wpx-danger mt-1 text-xl font-extrabold">{{ activeCount }}</p>
+                </div>
+                <div class="bg-wpx-navy-950 rounded-2xl p-3.5">
+                    <p class="text-wpx-muted-dark text-[10px] uppercase">À venir</p>
+                    <p class="text-wpx-gold mt-1 text-xl font-extrabold">{{ scheduledCount }}</p>
+                </div>
+            </div>
+        </section>
+
+        <p v-if="error" class="bg-wpx-danger/12 text-wpx-danger rounded-xl px-3 py-2.5 text-xs" aria-live="polite">
+            {{ error }}
+        </p>
+
+        <section v-if="showCreate" class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+            <h2 class="text-wpx-white-soft text-base font-bold">Nouveau Live</h2>
+            <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                P018-A reste sans sponsorisation ni rémunération WP. Le financement Live viendra dans un lot ultérieur.
+            </p>
+
+            <label class="text-wpx-muted-dark mt-4 block text-[11px]">Titre</label>
+            <input
+                v-model="form.title"
+                maxlength="140"
+                placeholder="Ex. Présentation de notre nouveau service"
+                class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none"
+            />
+
+            <label class="text-wpx-muted-dark mt-3 block text-[11px]">Description · facultative</label>
+            <textarea
+                v-model="form.description"
+                rows="3"
+                maxlength="2000"
+                class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft mt-1 w-full resize-none rounded-xl border px-3 py-3 text-sm outline-none"
+            ></textarea>
+
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-wpx-muted-dark block text-[11px]">Date · facultative</label>
+                    <input
+                        v-model="form.scheduled_at"
+                        type="datetime-local"
+                        class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 text-xs outline-none"
+                    />
+                </div>
+                <div>
+                    <label class="text-wpx-muted-dark block text-[11px]">Durée prévue</label>
+                    <input
+                        v-model="form.planned_duration_minutes"
+                        type="number"
+                        min="5"
+                        max="720"
+                        class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none"
+                    />
+                </div>
+            </div>
+
+            <button
+                type="button"
+                class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-4 w-full rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold disabled:opacity-50"
+                :disabled="busy || form.title.trim() === ''"
+                @click="createLive"
+            >
+                {{ busy ? 'Création…' : 'Créer le Live' }}
+            </button>
+        </section>
+
+        <section v-if="selected" class="border-wpx-border-dark bg-wpx-navy-850 overflow-hidden rounded-3xl border">
+            <div class="p-4 sm:p-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <span
+                            class="rounded-full px-2.5 py-1 text-[10px] font-bold"
+                            :class="selected.status === 'live' ? 'bg-wpx-danger/15 text-wpx-danger' : 'bg-wpx-gold/10 text-wpx-gold'"
+                        >
+                            {{ statusLabel(selected.status) }}
+                        </span>
+                        <h2 class="text-wpx-white-soft mt-3 text-xl font-extrabold">{{ selected.title }}</h2>
+                        <p class="text-wpx-muted-dark mt-1 text-xs">Publié par {{ selected.owner.display_name }}</p>
+                    </div>
+                    <button type="button" class="text-wpx-muted-dark text-xs font-semibold" @click="selected = null">
+                        Fermer
+                    </button>
+                </div>
+
+                <div class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center">
+                    <div>
+                        <span class="text-3xl">◉</span>
+                        <p class="text-wpx-white-soft mt-2 text-sm font-bold">
+                            {{ selected.status === 'paused' ? 'Live en pause' : selected.status === 'live' ? 'Live en cours' : 'Salle prête' }}
+                        </p>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
+                            Le transport vidéo réel n’est pas encore branché. Le cycle de vie, la programmation et les présences sont opérationnels.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <div class="bg-wpx-navy-950 rounded-2xl p-3">
+                        <p class="text-wpx-muted-dark text-[10px] uppercase">Spectateurs actifs</p>
+                        <p class="text-wpx-white-soft mt-1 text-xl font-extrabold">{{ selected.viewer_count }}</p>
+                    </div>
+                    <div class="bg-wpx-navy-950 rounded-2xl p-3">
+                        <p class="text-wpx-muted-dark text-[10px] uppercase">Programmation</p>
+                        <p class="text-wpx-white-soft mt-1 text-xs font-extrabold">{{ formatDate(selected.scheduled_at) }}</p>
+                    </div>
+                </div>
+
+                <p v-if="selected.description" class="text-wpx-muted-dark mt-4 text-xs leading-relaxed">
+                    {{ selected.description }}
+                </p>
+
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button
+                        v-if="selected.status === 'draft' || selected.status === 'scheduled'"
+                        type="button"
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex-1 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold"
+                        :disabled="busy"
+                        @click="creatorAction(selected, 'start')"
+                    >
+                        Démarrer le Live
+                    </button>
+                    <button
+                        v-if="selected.status === 'live'"
+                        type="button"
+                        class="border-wpx-border-dark text-wpx-white-soft flex-1 rounded-xl border px-4 py-3 text-sm font-bold"
+                        :disabled="busy"
+                        @click="creatorAction(selected, 'pause')"
+                    >
+                        Mettre en pause
+                    </button>
+                    <button
+                        v-if="selected.status === 'paused'"
+                        type="button"
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex-1 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold"
+                        :disabled="busy"
+                        @click="creatorAction(selected, 'resume')"
+                    >
+                        Reprendre
+                    </button>
+                    <button
+                        v-if="selected.status === 'live' || selected.status === 'paused'"
+                        type="button"
+                        class="border-wpx-danger/35 text-wpx-danger flex-1 rounded-xl border px-4 py-3 text-sm font-bold"
+                        :disabled="busy"
+                        @click="creatorAction(selected, 'end')"
+                    >
+                        Terminer
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-wpx-white-soft text-base font-extrabold">Historique Live</h2>
+                    <p class="text-wpx-muted-dark mt-1 text-[11px]">Uniquement les Lives de l’espace annonceur actif.</p>
+                </div>
+                <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">Actualiser</button>
+            </div>
+
+            <div v-if="loading" class="text-wpx-muted-dark py-8 text-center text-xs">Chargement…</div>
+            <div v-else-if="myLives.length" class="mt-3 space-y-2">
+                <button
+                    v-for="live in myLives"
+                    :key="live.id"
+                    type="button"
+                    class="border-wpx-border-dark bg-wpx-navy-950 flex w-full items-center justify-between gap-3 rounded-2xl border p-4 text-left"
+                    @click="selected = live"
+                >
+                    <span>
+                        <span class="text-wpx-white-soft block text-sm font-bold">{{ live.title }}</span>
+                        <span class="text-wpx-muted-dark mt-1 block text-[11px]">
+                            {{ statusLabel(live.status) }} · {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
+                        </span>
+                    </span>
+                    <span class="text-wpx-gold text-lg">›</span>
+                </button>
+            </div>
+            <p v-else class="text-wpx-muted-dark mt-3 text-xs">Aucun Live créé pour cette activité.</p>
+        </section>
+    </div>
+</template>

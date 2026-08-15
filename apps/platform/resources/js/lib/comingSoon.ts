@@ -1,8 +1,8 @@
 import { ref } from 'vue';
 
 /**
- * Petites actions visuelles encore non livrées. Le raccourci Carte Wasplex
- * est maintenant une vraie entrée transversale et quitte ce mécanisme.
+ * Petites actions visuelles encore non livrées. Les raccourcis Carte Wasplex
+ * et Live sont maintenant de vraies entrées transversales et quittent ce mécanisme.
  */
 export function useComingSoon(message = 'Bientôt disponible') {
     const notice = ref<string | null>(null);
@@ -10,9 +10,18 @@ export function useComingSoon(message = 'Bientôt disponible') {
 
     function announce(event?: Event): void {
         const target = event?.currentTarget;
-        if (target instanceof HTMLElement && target.textContent?.includes('Carte Wasplex')) {
-            window.location.assign('/services/wasplex');
-            return;
+        if (target instanceof HTMLElement) {
+            const label = target.textContent?.trim() ?? '';
+
+            if (label.includes('Carte Wasplex')) {
+                window.location.assign('/services/wasplex');
+                return;
+            }
+
+            if (label === 'Live') {
+                window.location.assign('/live');
+                return;
+            }
         }
 
         notice.value = message;

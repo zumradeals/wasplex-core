@@ -15,12 +15,13 @@ use Illuminate\Support\Facades\DB;
 
 final class LiveLifecycleService
 {
-    public function create(Account $owner, array $attributes): LiveEvent
+    public function create(Account $owner, string $advertiserOrganizationId, array $attributes): LiveEvent
     {
-        return DB::transaction(function () use ($owner, $attributes): LiveEvent {
+        return DB::transaction(function () use ($owner, $advertiserOrganizationId, $attributes): LiveEvent {
             $scheduledAt = $attributes['scheduled_at'] ?? null;
             $live = LiveEvent::query()->create([
                 'owner_account_id' => $owner->id,
+                'advertiser_organization_id' => $advertiserOrganizationId,
                 'title' => trim((string) $attributes['title']),
                 'description' => $this->nullableText($attributes['description'] ?? null),
                 'category' => $attributes['category'] ?? 'general',
@@ -33,6 +34,7 @@ final class LiveLifecycleService
             ]);
 
             $this->audit($live, $owner->id, 'LiveCreated', [
+                'advertiser_organization_id' => $advertiserOrganizationId,
                 'status' => $live->status,
                 'scheduled_at' => $live->scheduled_at?->toIso8601String(),
             ]);
@@ -47,9 +49,13 @@ final class LiveLifecycleService
         });
     }
 
-    public function update(LiveEvent $live, Account $actor, array $attributes): LiveEvent
-    {
-        $this->assertOwner($live, $actor);
+    public function update(
+        LiveEvent $live,
+        Account $actor,
+        string $advertiserOrganizationId,
+        array $attributes,
+    ): LiveEvent {
+        $this->assertAdvertiserOwner($live, $actor, $advertiserOrganizationId);
         if (! in_array($live->status, [LiveEvent::STATUS_DRAFT, LiveEvent::STATUS_SCHEDULED], true)) {
             throw new AppException('LIVE_NOT_EDITABLE', 'Ce Live ne peut plus être modifié dans son état actuel.', [], 409);
         }
@@ -77,9 +83,13 @@ final class LiveLifecycleService
         });
     }
 
-    public function schedule(LiveEvent $live, Account $actor, CarbonInterface $scheduledAt): LiveEvent
-    {
-        $this->assertOwner($live, $actor);
+    public function schedule(
+        LiveEvent $live,
+        Account $actor,
+        string $advertiserOrganizationId,
+        CarbonInterface $scheduledAt,
+    ): LiveEvent {
+        $this->assertAdvertiserOwner($live, $actor, $advertiserOrganizationId);
         if (! in_array($live->status, [LiveEvent::STATUS_DRAFT, LiveEvent::STATUS_SCHEDULED], true)) {
             throw new AppException('LIVE_NOT_SCHEDULABLE', 'Ce Live ne peut pas être reprogrammé dans son état actuel.', [], 409);
         }
@@ -93,9 +103,9 @@ final class LiveLifecycleService
         return $live->refresh();
     }
 
-    public function start(LiveEvent $live, Account $actor): LiveEvent
+    public function start(LiveEvent $live, Account $actor, string $advertiserOrganizationId): LiveEvent
     {
-        $this->assertOwner($live, $actor);
+        $this->assertAdvertiserOwner($live, $actor, $advertiserOrganizationId);
         if (! in_array($live->status, [LiveEvent::STATUS_DRAFT, LiveEvent::STATUS_SCHEDULED], true)) {
             throw new AppException('LIVE_NOT_STARTABLE', 'Ce Live ne peut pas démarrer dans son état actuel.', [], 409);
         }
@@ -120,9 +130,9 @@ final class LiveLifecycleService
         });
     }
 
-    public function pause(LiveEvent $live, Account $actor): LiveEvent
+    public function pause(LiveEvent $live, Account $actor, string $advertiserOrganizationId): LiveEvent
     {
-        $this->assertOwner($live, $actor);
+        $this->assertAdvertiserOwner($live, $actor, $advertiserOrganizationId);
         if ($live->status !== LiveEvent::STATUS_LIVE) {
             throw new AppException('LIVE_NOT_PAUSABLE', 'Seul un Live en cours peut être mis en pause.', [], 409);
         }
@@ -143,9 +153,9 @@ final class LiveLifecycleService
         });
     }
 
-    public function resume(LiveEvent $live, Account $actor): LiveEvent
+    public function resume(LiveEvent $live, Account $actor, string $advertiserOrganizationId): LiveEvent
     {
-        $this->assertOwner($live, $actor);
+        $this->assertAdvertiserOwner($live, $actor, $advertiserOrganizationId);
         if ($live->status !== LiveEvent::STATUS_PAUSED) {
             throw new AppException('LIVE_NOT_RESUMABLE', 'Seul un Live en pause peut reprendre.', [], 409);
         }
@@ -166,9 +176,9 @@ final class LiveLifecycleService
         });
     }
 
-    public function end(LiveEvent $live, Account $actor): LiveEvent
+    public function end(LiveEvent $live, Account $actor, string $advertiserOrganizationId): LiveEvent
     {
-        $this->assertOwner($live, $actor);
+        $this->assertAdvertiserOwner($live, $actor, $advertiserOrganizationId);
         if (! in_array($live->status, [LiveEvent::STATUS_LIVE, LiveEvent::STATUS_PAUSED], true)) {
             throw new AppException('LIVE_NOT_ENDABLE', 'Ce Live n’est pas en cours.', [], 409);
         }
@@ -202,6 +212,9 @@ final class LiveLifecycleService
 
     public function join(LiveEvent $live, Account $viewer): LiveViewerSession
     {
+        if ($live->advertiser_organization_id === null) {
+            throw new AppException('LIVE_NOT_JOINABLE', 'Ce Live n’est pas publié par un annonceur Wasplex.', [], 409);
+        }
         if (! in_array($live->status, [LiveEvent::STATUS_LIVE, LiveEvent::STATUS_PAUSED], true)) {
             throw new AppException('LIVE_NOT_JOINABLE', 'Ce Live n’est pas ouvert aux spectateurs.', [], 409);
         }
@@ -265,8 +278,20 @@ final class LiveLifecycleService
         });
     }
 
-    private function assertOwner(LiveEvent $live, Account $actor): void
-    {
+    private function assertAdvertiserOwner(
+        LiveEvent $live,
+        Account $actor,
+        string $advertiserOrganizationId,
+    ): void {
+        if ((string) $live->advertiser_organization_id !== $advertiserOrganizationId) {
+            throw new AppException(
+                'LIVE_ADVERTISER_CONTEXT_MISMATCH',
+                'Ce Live n’appartient pas à l’espace annonceur actif.',
+                [],
+                403,
+            );
+        }
+
         if ($live->owner_account_id !== $actor->id) {
             throw new AppException('LIVE_OWNER_REQUIRED', 'Seul le créateur de ce Live peut effectuer cette action.', [], 403);
         }
