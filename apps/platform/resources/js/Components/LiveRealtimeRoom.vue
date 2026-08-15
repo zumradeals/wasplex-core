@@ -45,7 +45,9 @@ function messageFrom(cause: unknown): string {
 }
 
 function participantLabel(participant: LiveKitParticipant): string {
-    return participant.name?.trim() || (participant.identity === room?.localParticipant.identity ? 'Vous' : 'Participant');
+    return (
+        participant.name?.trim() || (participant.identity === room?.localParticipant.identity ? 'Vous' : 'Participant')
+    );
 }
 
 function renderParticipants(): void {
@@ -84,13 +86,15 @@ function renderParticipants(): void {
 
         if (!hasVideo) {
             const placeholder = document.createElement('div');
-            placeholder.className = 'absolute inset-0 flex items-center justify-center text-3xl font-black text-white/70';
+            placeholder.className =
+                'absolute inset-0 flex items-center justify-center text-3xl font-black text-white/70';
             placeholder.textContent = participantLabel(participant).slice(0, 1).toUpperCase();
             tile.appendChild(placeholder);
         }
 
         const label = document.createElement('div');
-        label.className = 'absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold text-white';
+        label.className =
+            'absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-bold text-white';
         label.textContent = participantLabel(participant);
         tile.appendChild(label);
         mediaGrid.value?.appendChild(tile);
@@ -309,26 +313,44 @@ onBeforeUnmount(() => void disconnectRoom());
         <div class="relative aspect-[9/16] max-h-[72vh] min-h-[420px] w-full bg-black sm:aspect-video sm:max-h-[620px]">
             <div ref="mediaGrid" class="h-full w-full bg-black"></div>
 
-            <div class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3">
+            <div
+                class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3"
+            >
                 <div class="flex items-center gap-2">
                     <span class="rounded-md bg-red-600 px-2 py-1 text-[10px] font-black tracking-wide">LIVE</span>
                     <span class="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold">👁 {{ viewerCount }}</span>
                 </div>
-                <span v-if="connected" class="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold">Temps réel</span>
+                <span v-if="connected" class="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold"
+                    >Temps réel</span
+                >
             </div>
 
-            <div v-if="connecting" class="absolute inset-0 flex items-center justify-center bg-black/80 text-sm font-bold">
+            <div
+                v-if="connecting"
+                class="absolute inset-0 flex items-center justify-center bg-black/80 text-sm font-bold"
+            >
                 Connexion au direct…
             </div>
-            <div v-else-if="!connected && error" class="absolute inset-0 flex flex-col items-center justify-center bg-black/85 px-6 text-center">
+            <div
+                v-else-if="!connected && error"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-black/85 px-6 text-center"
+            >
                 <p class="text-sm font-bold">{{ error }}</p>
-                <button type="button" class="mt-4 rounded-full bg-white px-4 py-2 text-xs font-black text-black" @click="connectRoom">
+                <button
+                    type="button"
+                    class="mt-4 rounded-full bg-white px-4 py-2 text-xs font-black text-black"
+                    @click="connectRoom"
+                >
                     Réessayer
                 </button>
             </div>
         </div>
 
-        <p v-if="connected && error" class="bg-red-950/80 px-4 py-2 text-center text-[11px] text-red-100" aria-live="polite">
+        <p
+            v-if="connected && error"
+            class="bg-red-950/80 px-4 py-2 text-center text-[11px] text-red-100"
+            aria-live="polite"
+        >
             {{ error }}
         </p>
 
@@ -338,10 +360,18 @@ onBeforeUnmount(() => void disconnectRoom());
             </button>
 
             <template v-if="canPublish">
-                <button type="button" class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold" @click="toggleMicrophone">
+                <button
+                    type="button"
+                    class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold"
+                    @click="toggleMicrophone"
+                >
                     {{ microphoneEnabled ? '🎤 Micro' : '🔇 Micro coupé' }}
                 </button>
-                <button type="button" class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold" @click="toggleCamera">
+                <button
+                    type="button"
+                    class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold"
+                    @click="toggleCamera"
+                >
                     {{ cameraEnabled ? '📹 Caméra' : '🚫 Caméra coupée' }}
                 </button>
             </template>
@@ -382,22 +412,54 @@ onBeforeUnmount(() => void disconnectRoom());
             </template>
         </div>
 
-        <div v-if="mode === 'host' && connected && (pendingRequests.length || activeSpeakers.length)" class="border-t border-white/10 bg-slate-950 p-3">
+        <div
+            v-if="mode === 'host' && connected && (pendingRequests.length || activeSpeakers.length)"
+            class="border-t border-white/10 bg-slate-950 p-3"
+        >
             <p class="text-xs font-black">Scène du Live</p>
             <div class="mt-2 space-y-2">
-                <div v-for="item in pendingRequests" :key="item.id" class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 p-3">
+                <div
+                    v-for="item in pendingRequests"
+                    :key="item.id"
+                    class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 p-3"
+                >
                     <div>
                         <p class="text-xs font-bold">✋ {{ item.participant.display_name }}</p>
                         <p class="mt-0.5 text-[10px] text-white/55">demande à monter</p>
                     </div>
                     <div class="flex gap-1.5">
-                        <button type="button" class="rounded-full bg-emerald-400 px-3 py-1.5 text-[10px] font-black text-slate-950" :disabled="stageBusyId === item.id" @click="stageAction(item, 'approve')">Accepter</button>
-                        <button type="button" class="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-bold" :disabled="stageBusyId === item.id" @click="stageAction(item, 'reject')">Refuser</button>
+                        <button
+                            type="button"
+                            class="rounded-full bg-emerald-400 px-3 py-1.5 text-[10px] font-black text-slate-950"
+                            :disabled="stageBusyId === item.id"
+                            @click="stageAction(item, 'approve')"
+                        >
+                            Accepter
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-bold"
+                            :disabled="stageBusyId === item.id"
+                            @click="stageAction(item, 'reject')"
+                        >
+                            Refuser
+                        </button>
                     </div>
                 </div>
-                <div v-for="item in activeSpeakers" :key="item.id" class="flex items-center justify-between gap-2 rounded-2xl bg-emerald-500/10 p-3">
+                <div
+                    v-for="item in activeSpeakers"
+                    :key="item.id"
+                    class="flex items-center justify-between gap-2 rounded-2xl bg-emerald-500/10 p-3"
+                >
                     <p class="text-xs font-bold">🎥 {{ item.participant.display_name }} est sur scène</p>
-                    <button type="button" class="rounded-full bg-red-600/85 px-3 py-1.5 text-[10px] font-bold" :disabled="stageBusyId === item.id" @click="stageAction(item, 'lower')">Faire descendre</button>
+                    <button
+                        type="button"
+                        class="rounded-full bg-red-600/85 px-3 py-1.5 text-[10px] font-bold"
+                        :disabled="stageBusyId === item.id"
+                        @click="stageAction(item, 'lower')"
+                    >
+                        Faire descendre
+                    </button>
                 </div>
             </div>
         </div>
