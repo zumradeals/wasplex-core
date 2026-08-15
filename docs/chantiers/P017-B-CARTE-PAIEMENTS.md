@@ -67,16 +67,52 @@ Depuis `Ma Carte` :
 - `Recevoir / Payer` ouvre le panneau transversal ;
 - `Recevoir des WP` permet un montant optionnel et une note ;
 - `Scanner pour payer` tente la caméra native lorsque `BarcodeDetector` est disponible ;
-- un fallback permet de coller le contenu du QR ;
+- si le navigateur ne prend pas correctement en charge le scanner, le code `WPLX:RECEIVE:…` peut être copié/collé comme fallback officiel ;
+- un identifiant public `WPLX-CI-…` est explicitement refusé comme code de paiement ;
 - le bénéficiaire, le montant et le solde disponible sont montrés avant confirmation ;
 - le reçu et les dernières opérations Carte sont visibles après comptabilisation.
 
-## Hors périmètre
+## P017-B.1 — finition de clôture
+
+L'affichage membre utilise désormais la priorité suivante :
+
+```text
+display_name
+→ prénom + nom
+→ Membre Wasplex
+```
+
+Cela évite l'affichage générique lorsque le profil possède déjà un prénom et un nom mais pas de `display_name` explicite.
+
+## Validation production du 2026-08-15
+
+Parcours réel validé avec deux comptes :
+
+```text
+Bénéficiaire génère 500 WP
+→ payeur vérifie le bénéficiaire
+→ solde payeur 3 950 WP
+→ confirmation
+→ paiement confirmé 500 WP
+→ solde payeur 3 450 WP
+→ bénéficiaire +500 WP
+→ reçu WPC-…
+→ Historique Carte envoyé -500 WP
+→ Historique Carte reçu +500 WP
+```
+
+Le même QR `WPLX:RECEIVE:…` a ensuite été rejoué volontairement et correctement refusé avec le statut « déjà utilisé ou révoqué », sans second débit.
+
+P017-B est donc validé fonctionnellement en production. P017-B.1 clôt les finitions immédiates ; la suite de la Carte est documentée dans [`P017-ROADMAP.md`](./P017-ROADMAP.md).
+
+## Hors périmètre immédiat
 
 - réseau marchand / partenaires ;
-- cashback ;
+- réductions partenaires et cashback ;
 - remboursement Carte ;
 - carte physique ;
 - NFC ;
 - step-up MFA utilisateur avancé ;
 - paiements hors Wallet WP.
+
+Ces éléments ne bloquent pas les prochains modules cœur de Wasplex.

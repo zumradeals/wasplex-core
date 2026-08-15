@@ -9,6 +9,7 @@ use App\Modules\Funds\Infrastructure\Providers\FundsServiceProvider;
 use App\Modules\Health\Infrastructure\Providers\HealthServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityServiceProvider;
 use App\Modules\Ledger\Infrastructure\Providers\LedgerServiceProvider;
+use App\Modules\Live\Infrastructure\Providers\LiveServiceProvider;
 use App\Modules\Matching\Infrastructure\Providers\MatchingServiceProvider;
 use App\Modules\Reconciliation\Infrastructure\Providers\ReconciliationServiceProvider;
 use App\Modules\Reporting\Infrastructure\Providers\ReportingServiceProvider;
@@ -36,4 +37,5 @@ return [
     HealthServiceProvider::class,
     ReconciliationServiceProvider::class,
     ReportingServiceProvider::class,
+    LiveServiceProvider::class,
 ];
