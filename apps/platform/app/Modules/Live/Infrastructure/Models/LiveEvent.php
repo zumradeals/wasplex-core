@@ -73,6 +73,11 @@ final class LiveEvent extends Model
         return $this->hasMany(LiveViewerSession::class, 'live_id');
     }
 
+    public function stageRequests(): HasMany
+    {
+        return $this->hasMany(LiveStageRequest::class, 'live_id');
+    }
+
     public function auditEvents(): HasMany
     {
         return $this->hasMany(LiveAuditEvent::class, 'live_id');

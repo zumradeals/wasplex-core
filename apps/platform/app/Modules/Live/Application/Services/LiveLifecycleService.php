@@ -7,6 +7,7 @@ namespace App\Modules\Live\Application\Services;
 use App\Modules\Identity\Infrastructure\Models\Account;
 use App\Modules\Live\Infrastructure\Models\LiveAuditEvent;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
+use App\Modules\Live\Infrastructure\Models\LiveStageRequest;
 use App\Modules\Live\Infrastructure\Models\LiveStreamSession;
 use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
 use App\Shared\Http\AppException;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 final class LiveLifecycleService
 {
+    public function __construct(private readonly LiveKitService $liveKit) {}
+
     public function create(Account $owner, string $advertiserOrganizationId, array $attributes): LiveEvent
     {
         return DB::transaction(function () use ($owner, $advertiserOrganizationId, $attributes): LiveEvent {
@@ -109,6 +112,7 @@ final class LiveLifecycleService
         if (! in_array($live->status, [LiveEvent::STATUS_DRAFT, LiveEvent::STATUS_SCHEDULED], true)) {
             throw new AppException('LIVE_NOT_STARTABLE', 'Ce Live ne peut pas démarrer dans son état actuel.', [], 409);
         }
+        $this->liveKit->ensureConfigured();
 
         return DB::transaction(function () use ($live, $actor): LiveEvent {
             $live->update([
@@ -120,11 +124,15 @@ final class LiveLifecycleService
             LiveStreamSession::query()->create([
                 'live_id' => $live->id,
                 'status' => LiveStreamSession::STATUS_ACTIVE,
-                'provider' => 'pending_adapter',
+                'provider' => 'livekit',
+                'provider_session_reference' => 'wasplex-live-'.$live->id,
                 'started_at' => now(),
             ]);
 
-            $this->audit($live, $actor->id, 'LiveStarted', ['transport' => 'pending_adapter']);
+            $this->audit($live, $actor->id, 'LiveStarted', [
+                'transport' => 'livekit',
+                'room' => 'wasplex-live-'.$live->id,
+            ]);
 
             return $live->refresh();
         });
@@ -204,6 +212,16 @@ final class LiveLifecycleService
                 'last_seen_at' => $endedAt,
                 'left_at' => $endedAt,
             ]);
+            $live->stageRequests()->where('status', LiveStageRequest::STATUS_PENDING)->update([
+                'status' => LiveStageRequest::STATUS_REJECTED,
+                'resolved_at' => $endedAt,
+                'resolved_by_account_id' => $actor->id,
+            ]);
+            $live->stageRequests()->where('status', LiveStageRequest::STATUS_APPROVED)->update([
+                'status' => LiveStageRequest::STATUS_LOWERED,
+                'resolved_at' => $endedAt,
+                'resolved_by_account_id' => $actor->id,
+            ]);
             $this->audit($live, $actor->id, 'LiveEnded');
 
             return $live->refresh();
@@ -269,11 +287,24 @@ final class LiveLifecycleService
                 return;
             }
 
+            $now = now();
             $session->update([
                 'status' => LiveViewerSession::STATUS_LEFT,
-                'last_seen_at' => now(),
-                'left_at' => now(),
+                'last_seen_at' => $now,
+                'left_at' => $now,
             ]);
+            $live->stageRequests()
+                ->where('account_id', $viewer->id)
+                ->where('status', LiveStageRequest::STATUS_PENDING)
+                ->update(['status' => LiveStageRequest::STATUS_WITHDRAWN, 'resolved_at' => $now]);
+            $live->stageRequests()
+                ->where('account_id', $viewer->id)
+                ->where('status', LiveStageRequest::STATUS_APPROVED)
+                ->update([
+                    'status' => LiveStageRequest::STATUS_LOWERED,
+                    'resolved_at' => $now,
+                    'resolved_by_account_id' => $viewer->id,
+                ]);
             $this->audit($live, $viewer->id, 'LiveViewerLeft');
         });
     }

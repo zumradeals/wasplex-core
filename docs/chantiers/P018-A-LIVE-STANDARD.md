@@ -1,98 +1,110 @@
-# P018-A — Fondation Live standard
+# P018-A — Live standard Wasplex
 
-**Statut :** implémentation initiale corrigée par P018-A.1  
+**Statut :** implémentation temps réel en P018-A.2  
 **Décision initiale :** 2026-08-15  
-**Décision de cadrage P018-A.1 :** création et pilotage exclusivement depuis le Studio annonceur  
-**Source principale :** `docs/11-live-wasplex.md` complétée par `docs/chantiers/P018-A1-LIVE-ANNONCEUR.md`
+**Cadrage P018-A.1 :** création et pilotage exclusivement depuis le Studio annonceur  
+**Transport P018-A.2 :** LiveKit / WebRTC  
+**Sources :** `docs/11-live-wasplex.md`, `P018-A1-LIVE-ANNONCEUR.md`, `P018-A2-LIVE-TEMPS-REEL.md`
 
 ## 1. Objectif
 
-Ouvrir le module Live Wasplex avec une première verticale volontairement simple et indépendante de l'économie WP, tout en respectant la séparation des espaces :
+Le Live standard est une vraie salle audiovisuelle temps réel, sans économie WP dans cette phase :
 
 ```text
 Annonceur
-→ active son espace annonceur
+→ espace annonceur actif
 → Studio annonceur
 → crée ou programme un Live
-→ démarre la salle
+→ prévisualise caméra + micro
+→ lance la diffusion WebRTC
+→ pilote la scène et les invités
 
 Membre
 → Feed
-→ onglet Live
-→ voit les Lives publics en cours / à venir
+→ Live
+→ voit les directs publics
 → rejoint
+→ regarde et écoute
+→ peut demander à monter
 → quitte
 ```
 
-P018-A construit le **cycle de vie métier** du Live avant la sponsorisation et avant l'intégration d'un fournisseur de transport vidéo.
-
 ## 2. Doctrine d'espace
 
-La création d'un Live Wasplex n'est pas une fonction de l'espace membre.
+- création, programmation et pilotage : **Studio annonceur uniquement** ;
+- consultation et présence : espace membre / Feed Live ;
+- le Live appartient à l'organisation annonceur active ;
+- le compte créateur reste l'acteur nominatif pour l'audit ;
+- aucun bouton de création Live n'est exposé dans l'espace membre.
 
-La règle P018-A.1 est :
+## 3. Inclus après P018-A.2
 
-- **création, programmation et pilotage : Studio annonceur uniquement** ;
-- **consultation et présence : espace membre / Feed Live** ;
-- l'API créateur exige un espace annonceur actif ;
-- les droits sont contrôlés dans le contexte de l'organisation annonceur active ;
-- un Live appartient à une organisation annonceur, même si un compte nominatif reste l'acteur créateur pour l'audit.
-
-Les anciennes routes `/api/creator/lives` sont retirées. Les routes de pilotage sont désormais sous `/api/advertiser/lives`.
-
-## 3. Inclus
-
-- création d'un Live depuis le Studio annonceur ;
+- création, programmation, démarrage, pause, reprise et fin ;
 - rattachement à l'organisation annonceur active ;
-- titre, description, catégorie, langue, visibilité ;
-- programmation facultative ;
-- durée prévue ;
-- états `draft`, `scheduled`, `live`, `paused`, `ended` ;
-- démarrage, pause, reprise et fin par le créateur dans le bon contexte annonceur ;
-- isolation entre organisations annonceurs ;
-- liste des Lives publics programmés/en cours côté membre ;
-- entrée et sortie d'un spectateur ;
-- compteur de sessions spectateurs actives ;
-- session de diffusion provider-neutral ;
-- audit append-only des événements essentiels ;
-- page Inertia `/live` spectateur mobile-first ;
-- section Live dans le Studio annonceur ;
-- bouton Live du haut du Feed raccordé à `/live` ;
-- tests de cycle de vie, séparation membre/annonceur, isolation organisation, présence spectateur et non-impact Ledger.
+- isolation entre organisations ;
+- liste des Lives publics ;
+- sessions spectateurs Wasplex ;
+- transport audio/vidéo WebRTC LiveKit ;
+- jetons média courts signés côté Laravel ;
+- aperçu caméra + microphone côté Studio ;
+- lecteur temps réel mobile-first côté membre ;
+- hôte audio/vidéo ;
+- demande d'un spectateur pour monter ;
+- acceptation/refus par l'hôte ;
+- promotion dynamique `canPublish=true` ;
+- descente par l'hôte ou l'intervenant ;
+- plusieurs intervenants vidéo dans la scène ;
+- audit append-only des décisions essentielles ;
+- aucun impact Ledger/Wallet.
 
-## 4. Explicitement hors périmètre
+## 4. Transport média
 
-P018-A ne contient pas :
-
-- récompense WP ;
-- sponsorisation ;
-- budget annonceur Live ;
-- réservation économique ;
-- bloc d'attention rémunéré ;
-- écriture Ledger ;
-- commentaires ou réactions publics ;
-- sondages/quiz ;
-- billetterie ;
-- cadeaux/pourboires ;
-- replay média ;
-- modération sociale avancée ;
-- fournisseur vidéo réel.
-
-## 5. Transport média
-
-La table `live_stream_sessions` conserve la frontière de transport :
+P018-A.1 avait volontairement laissé :
 
 ```text
 provider = pending_adapter
 ```
 
-P018-A ne simule pas une diffusion vidéo inexistante. L'interface indique clairement que la salle, les présences et le cycle de diffusion sont opérationnels tandis que le **transport média externe** sera branché dans un lot dédié.
+P018-A.2 remplace cette frontière par :
+
+```text
+provider = livekit
+provider_session_reference = wasplex-live-{live_id}
+```
+
+Un Live ne peut plus passer à l'état `live` si `LIVEKIT_URL`, `LIVEKIT_API_KEY` et `LIVEKIT_API_SECRET` ne sont pas configurés.
+
+LiveKit transporte l'audio et la vidéo. Wasplex reste la source de vérité pour les identités, organisations, présences, demandes de scène, audit et futures règles économiques.
+
+## 5. Permissions média
+
+### Hôte
+
+```text
+roomJoin=true
+canSubscribe=true
+canPublish=true
+```
+
+### Spectateur
+
+```text
+roomJoin=true
+canSubscribe=true
+canPublish=false
+```
+
+### Intervenant accepté
+
+Le backend Wasplex appelle l'API LiveKit `UpdateParticipant` pour accorder `canPublish=true`. La révocation de cette permission fait redescendre l'intervenant et dépublie ses pistes.
+
+Les jetons de connexion sont courts afin de limiter la réutilisation de droits anciens, particulièrement en auto-hébergement.
 
 ## 6. Données
 
 ### `lives`
 
-- compte créateur nominatif ;
+- compte créateur ;
 - organisation annonceur ;
 - titre/description ;
 - catégorie/langue ;
@@ -107,8 +119,8 @@ P018-A ne simule pas une diffusion vidéo inexistante. L'interface indique clair
 
 - Live ;
 - statut transport ;
-- fournisseur ;
-- référence fournisseur future ;
+- fournisseur `livekit` ;
+- référence de salle ;
 - début/pause/fin.
 
 ### `live_viewer_sessions`
@@ -120,19 +132,32 @@ P018-A ne simule pas une diffusion vidéo inexistante. L'interface indique clair
 - dernière présence ;
 - sortie.
 
+### `live_stage_requests`
+
+- Live ;
+- membre ;
+- `pending`, `approved`, `rejected`, `withdrawn`, `lowered` ;
+- demande ;
+- résolution ;
+- acteur de résolution.
+
 ### `live_audit_events`
 
-Journal des créations, programmations, démarrages, pauses, reprises, fins et entrées/sorties spectateurs.
+Journal des transitions du Live, entrées/sorties et décisions de scène.
 
-## 7. API P018-A.1
+## 7. API
 
 ### Spectateur
 
 ```text
-GET  /api/lives
-GET  /api/lives/{live}
-POST /api/lives/{live}/join
-POST /api/lives/{live}/leave
+GET    /api/lives
+GET    /api/lives/{live}
+POST   /api/lives/{live}/join
+POST   /api/lives/{live}/leave
+POST   /api/lives/{live}/media-token
+POST   /api/lives/{live}/stage-request
+DELETE /api/lives/{live}/stage-request
+POST   /api/lives/{live}/stage-request/leave
 ```
 
 ### Studio annonceur
@@ -146,44 +171,50 @@ POST  /api/advertiser/lives/{live}/start
 POST  /api/advertiser/lives/{live}/pause
 POST  /api/advertiser/lives/{live}/resume
 POST  /api/advertiser/lives/{live}/end
+POST  /api/advertiser/lives/{live}/media-token
+GET   /api/advertiser/lives/{live}/stage-requests
+POST  /api/advertiser/lives/{live}/stage-requests/{stageRequest}/approve
+POST  /api/advertiser/lives/{live}/stage-requests/{stageRequest}/reject
+POST  /api/advertiser/lives/{live}/stage-requests/{stageRequest}/lower
 ```
-
-### Page spectateur
-
-```text
-GET /live
-```
-
-La surface créateur est intégrée dans `/studio`.
 
 ## 8. Sécurité
 
 - authentification obligatoire ;
 - session non révoquée ;
-- espace annonceur actif obligatoire pour les routes Studio Live ;
-- capacités `advertiser.campaign.view/manage` contrôlées sur l'organisation active tant qu'une capacité Live dédiée n'est pas introduite ;
-- le Live créé porte `advertiser_organization_id` ;
-- un changement d'espace annonceur ne permet pas de voir ni piloter les Lives d'une autre organisation ;
-- seul le compte créateur pilote le Live dans P018-A ;
-- les brouillons ne sont jamais distribués dans la surface membre ;
-- seules les salles `live` ou `paused` sont joignables ;
-- le public voit le nom de l'organisation annonceur, pas une identité technique interne ;
-- audit de toutes les transitions importantes.
+- espace annonceur actif pour les routes Studio ;
+- capacités annonceur contrôlées ;
+- cohérence Live ↔ organisation active ;
+- seul le créateur du Live pilote la scène en A.2 ;
+- un spectateur doit avoir une session Wasplex active avant de recevoir un jeton média ;
+- secrets LiveKit jamais exposés au navigateur ;
+- jetons média courts ;
+- caméra et microphone autorisés uniquement à l'origine Wasplex elle-même ;
+- audit de toutes les décisions de montée/descente.
 
 ## 9. Garantie économique
 
-P018-A n'appelle ni le Grand Livre ni le Wallet. La création, la présence et la durée d'une session Live standard **ne créent aucun WP**.
+P018-A.2 ne crée aucun WP, n'appelle ni le Wallet ni le Grand Livre, et ne réserve aucun budget annonceur.
 
-## 10. Suite de P018
+## 10. Hors périmètre et suite
 
-La progression recommandée reste :
+Restent hors de P018-A.2 :
 
-1. **P018-A.2 — transport média réel** derrière l'interface provider-neutral ;
+- commentaires et réactions publics ;
+- modération sociale avancée ;
+- sponsorisation ;
+- places rémunérées ;
+- attention vérifiée ;
+- cadeaux/pourboires ;
+- replay média ;
+- egress/enregistrement ;
+- partage d'écran.
+
+Progression recommandée :
+
+1. validation réelle du transport P018-A.2 en environnement LiveKit ;
 2. **P018-B — interactions et modération de base** ;
 3. sponsorisation et financement ;
-4. places rémunérées ;
-5. attention vérifiée ;
-6. valeur/Wallet ;
-7. replay et stabilisation.
-
-Les phases économiques ne démarrent qu'après validation réelle du Live standard annonceur → spectateur.
+4. places rémunérées et attention vérifiée ;
+5. Wallet / Grand Livre ;
+6. replay et stabilisation.

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import LiveRealtimeRoom from '@/Components/LiveRealtimeRoom.vue';
 import http from '@/lib/http';
 
 type LiveStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'ended';
@@ -21,7 +22,7 @@ interface LiveSummary {
     viewer_count: number;
     is_owner: boolean;
     can_join: boolean;
-    stream: { status: string | null; provider: string | null; media_ready: boolean };
+    stream: { status: string | null; provider: string | null; room: string | null; media_ready: boolean };
 }
 
 interface ApiError {
@@ -128,13 +129,13 @@ onMounted(load);
 </script>
 
 <template>
-    <div class="mx-auto min-h-screen w-full max-w-md px-4 py-5">
-        <div class="flex items-start justify-between gap-3">
+    <div class="mx-auto min-h-screen w-full max-w-md px-3 py-4 sm:px-4 sm:py-5">
+        <div class="flex items-start justify-between gap-3 px-1">
             <div>
                 <p class="text-wpx-danger text-[10px] font-bold tracking-[0.18em] uppercase">Live Wasplex</p>
                 <h1 class="text-wpx-white-soft mt-1 text-2xl font-extrabold">En direct</h1>
                 <p class="text-wpx-muted-dark mt-1 text-xs leading-relaxed">
-                    Retrouvez les Lives publiés par les annonceurs Wasplex et entrez dans une salle en cours.
+                    Regardez le direct et, si l’hôte vous accepte, montez vous aussi en caméra dans le Live.
                 </p>
             </div>
             <button
@@ -151,79 +152,56 @@ onMounted(load);
             {{ error }}
         </p>
 
-        <section v-if="selected" class="border-wpx-border-dark bg-wpx-navy-850 mt-5 overflow-hidden rounded-3xl border">
-            <div class="p-4">
-                <div class="flex items-start justify-between gap-3">
+        <section v-if="selected" class="mt-4 overflow-hidden rounded-3xl">
+            <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-3xl border p-3">
+                <div class="flex items-start justify-between gap-3 px-1 pb-3">
                     <div>
                         <span
                             class="rounded-full px-2.5 py-1 text-[10px] font-bold"
-                            :class="
-                                selected.status === 'live'
-                                    ? 'bg-wpx-danger/15 text-wpx-danger'
-                                    : 'bg-wpx-gold/10 text-wpx-gold'
-                            "
+                            :class="selected.status === 'live' ? 'bg-wpx-danger/15 text-wpx-danger' : 'bg-wpx-gold/10 text-wpx-gold'"
                         >
                             {{ statusLabel(selected.status) }}
                         </span>
-                        <h2 class="text-wpx-white-soft mt-3 text-xl font-extrabold">{{ selected.title }}</h2>
-                        <p class="text-wpx-muted-dark mt-1 text-xs">{{ selected.owner.display_name }}</p>
+                        <h2 class="text-wpx-white-soft mt-2 text-lg font-extrabold">{{ selected.title }}</h2>
+                        <p class="text-wpx-muted-dark mt-1 text-[11px]">{{ selected.owner.display_name }}</p>
                     </div>
-                    <button type="button" class="text-wpx-muted-dark text-xs font-semibold" @click="closeSelected">
-                        Fermer
-                    </button>
+                    <button type="button" class="text-wpx-muted-dark text-xs font-semibold" @click="closeSelected">Fermer</button>
                 </div>
 
-                <div
-                    class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center"
-                >
-                    <div>
-                        <span class="text-3xl">◉</span>
-                        <p class="text-wpx-white-soft mt-2 text-sm font-bold">
-                            {{
-                                selected.status === 'paused'
-                                    ? 'Live en pause'
-                                    : selected.status === 'scheduled'
-                                      ? 'Live à venir'
-                                      : 'Salle Live ouverte'
-                            }}
-                        </p>
-                        <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                            Le cycle Live et les présences sont actifs. La diffusion vidéo réelle sera branchée dans le
-                            lot média suivant.
-                        </p>
-                    </div>
+                <LiveRealtimeRoom
+                    v-if="selected.status === 'live' && viewerSessionId"
+                    :live-id="selected.id"
+                    mode="viewer"
+                    :viewer-count="selected.viewer_count"
+                />
+
+                <div v-else-if="selected.status === 'paused'" class="bg-wpx-navy-950 rounded-3xl px-5 py-14 text-center">
+                    <p class="text-wpx-white-soft text-sm font-bold">⏸ Le Live est momentanément en pause</p>
+                    <p class="text-wpx-muted-dark mt-2 text-[11px]">Restez dans la salle : l’hôte peut reprendre le direct.</p>
                 </div>
 
-                <div class="mt-4 grid grid-cols-2 gap-2">
-                    <div class="bg-wpx-navy-950 rounded-2xl p-3">
-                        <p class="text-wpx-muted-dark text-[10px] uppercase">Spectateurs actifs</p>
-                        <p class="text-wpx-white-soft mt-1 text-xl font-extrabold">{{ selected.viewer_count }}</p>
-                    </div>
-                    <div class="bg-wpx-navy-950 rounded-2xl p-3">
-                        <p class="text-wpx-muted-dark text-[10px] uppercase">Horaire</p>
-                        <p class="text-wpx-white-soft mt-1 text-xs font-extrabold">
-                            {{ selected.status === 'scheduled' ? formatDate(selected.scheduled_at) : 'Maintenant' }}
-                        </p>
-                    </div>
+                <div v-else class="bg-wpx-navy-950 rounded-3xl px-5 py-12 text-center">
+                    <p class="text-wpx-white-soft text-sm font-bold">{{ selected.status === 'scheduled' ? 'Live à venir' : 'Entrez dans la salle' }}</p>
+                    <p class="text-wpx-muted-dark mt-2 text-[11px]">
+                        {{ selected.status === 'scheduled' ? formatDate(selected.scheduled_at) : 'La vidéo démarrera dès votre entrée.' }}
+                    </p>
                 </div>
 
-                <p v-if="selected.description" class="text-wpx-muted-dark mt-4 text-xs leading-relaxed">
-                    {{ selected.description }}
-                </p>
+                <p v-if="selected.description" class="text-wpx-muted-dark px-1 pt-3 text-xs leading-relaxed">{{ selected.description }}</p>
 
                 <button
                     v-if="selected.can_join && !viewerSessionId"
                     type="button"
-                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-4 w-full rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold disabled:opacity-50"
+                    class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-3 w-full rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold disabled:opacity-50"
                     :disabled="busy"
                     @click="joinLive(selected)"
                 >
-                    {{ busy ? 'Entrée…' : 'Entrer dans le Live' }}
+                    {{ busy ? 'Entrée…' : '🔴 Entrer dans le Live' }}
                 </button>
                 <button
                     v-else-if="viewerSessionId"
                     type="button"
-                    class="border-wpx-border-dark text-wpx-white-soft mt-4 w-full rounded-xl border px-4 py-3 text-sm font-bold"
+                    class="border-wpx-border-dark text-wpx-white-soft mt-3 w-full rounded-xl border px-4 py-3 text-sm font-bold"
                     :disabled="busy"
                     @click="leaveLive"
                 >
@@ -237,42 +215,33 @@ onMounted(load);
 
             <template v-else>
                 <section v-if="activeLives.length" class="mt-6">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-wpx-white-soft text-base font-extrabold">En direct</h2>
-                        <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">
-                            Actualiser
-                        </button>
+                    <div class="flex items-center justify-between px-1">
+                        <h2 class="text-wpx-white-soft text-base font-extrabold">En direct maintenant</h2>
+                        <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">Actualiser</button>
                     </div>
                     <div class="mt-2 space-y-2">
-                        <article
+                        <button
                             v-for="live in activeLives"
                             :key="live.id"
-                            class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4"
+                            type="button"
+                            class="border-wpx-border-dark bg-wpx-navy-850 relative w-full overflow-hidden rounded-3xl border p-4 text-left"
+                            @click="selected = live"
                         >
+                            <div class="absolute inset-y-0 left-0 w-1 bg-red-600"></div>
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="text-wpx-danger text-[10px] font-extrabold uppercase">
-                                        ● {{ statusLabel(live.status) }}
-                                    </p>
+                                    <p class="text-wpx-danger text-[10px] font-extrabold uppercase">● {{ statusLabel(live.status) }}</p>
                                     <h3 class="text-wpx-white-soft mt-1 text-sm font-bold">{{ live.title }}</h3>
-                                    <p class="text-wpx-muted-dark mt-1 text-[11px]">
-                                        {{ live.owner.display_name }} · {{ live.viewer_count }} spectateur(s)
-                                    </p>
+                                    <p class="text-wpx-muted-dark mt-1 text-[11px]">{{ live.owner.display_name }} · 👁 {{ live.viewer_count }}</p>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="bg-wpx-blue/15 text-wpx-blue rounded-xl px-3 py-2 text-xs font-bold"
-                                    @click="selected = live"
-                                >
-                                    Voir
-                                </button>
+                                <span class="bg-wpx-danger/15 text-wpx-danger rounded-full px-3 py-2 text-[10px] font-black">Voir</span>
                             </div>
-                        </article>
+                        </button>
                     </div>
                 </section>
 
                 <section v-if="scheduledLives.length" class="mt-6">
-                    <h2 class="text-wpx-white-soft text-base font-extrabold">À venir</h2>
+                    <h2 class="text-wpx-white-soft px-1 text-base font-extrabold">À venir</h2>
                     <div class="mt-2 space-y-2">
                         <button
                             v-for="live in scheduledLives"
@@ -281,9 +250,7 @@ onMounted(load);
                             class="border-wpx-border-dark bg-wpx-navy-850 w-full rounded-2xl border p-4 text-left"
                             @click="selected = live"
                         >
-                            <p class="text-wpx-gold text-[10px] font-bold uppercase">
-                                {{ formatDate(live.scheduled_at) }}
-                            </p>
+                            <p class="text-wpx-gold text-[10px] font-bold uppercase">{{ formatDate(live.scheduled_at) }}</p>
                             <p class="text-wpx-white-soft mt-1 text-sm font-bold">{{ live.title }}</p>
                             <p class="text-wpx-muted-dark mt-1 text-[11px]">{{ live.owner.display_name }}</p>
                         </button>
@@ -293,12 +260,8 @@ onMounted(load);
                 <section v-if="activeLives.length === 0 && scheduledLives.length === 0" class="mt-10 text-center">
                     <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-3xl border px-6 py-10">
                         <p class="text-wpx-white-soft text-sm font-bold">Aucun Live pour le moment</p>
-                        <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">
-                            Les Lives créés et programmés depuis le Studio annonceur apparaîtront ici.
-                        </p>
-                        <button type="button" class="text-wpx-blue mt-4 text-xs font-bold" @click="load">
-                            Actualiser
-                        </button>
+                        <p class="text-wpx-muted-dark mt-2 text-xs leading-relaxed">Les directs lancés depuis le Studio annonceur apparaîtront ici.</p>
+                        <button type="button" class="text-wpx-blue mt-4 text-xs font-bold" @click="load">Actualiser</button>
                     </div>
                 </section>
             </template>
