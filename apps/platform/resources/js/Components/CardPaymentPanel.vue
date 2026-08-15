@@ -131,7 +131,8 @@ async function generateReceive(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        const amount = receiveAmount.value.trim() === '' ? null : Number(receiveAmount.value);
+        const amountText = String(receiveAmount.value ?? '').trim();
+        const amount = amountText === '' ? null : Number(amountText);
         const { data } = await http.post(`/cards/${props.card.id}/receive-qr`, {
             amount_minor: amount,
             note: receiveNote.value.trim() || null,
