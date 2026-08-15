@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Live\Application\Services;
 
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
-use App\Modules\Live\Infrastructure\Models\LiveStreamSession;
 use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
 
 final class LivePresenter
