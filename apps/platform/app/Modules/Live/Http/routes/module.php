@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Modules\Identity\Http\Middleware\EnsureActiveAdvertiserOrganization;
+use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use App\Modules\Live\Http\Controllers\CreatorLiveController;
 use App\Modules\Live\Http\Controllers\LiveController;
@@ -18,14 +20,24 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
         Route::post('/{live}/leave', [LiveController::class, 'leave']);
     });
 
-    Route::prefix('api/creator/lives')->group(function (): void {
-        Route::get('/', [CreatorLiveController::class, 'index']);
-        Route::post('/', [CreatorLiveController::class, 'store']);
-        Route::patch('/{live}', [CreatorLiveController::class, 'update']);
-        Route::post('/{live}/schedule', [CreatorLiveController::class, 'schedule']);
-        Route::post('/{live}/start', [CreatorLiveController::class, 'start']);
-        Route::post('/{live}/pause', [CreatorLiveController::class, 'pause']);
-        Route::post('/{live}/resume', [CreatorLiveController::class, 'resume']);
-        Route::post('/{live}/end', [CreatorLiveController::class, 'end']);
-    });
+    Route::prefix('api/advertiser/lives')
+        ->middleware(EnsureActiveAdvertiserOrganization::class)
+        ->group(function (): void {
+            Route::get('/', [CreatorLiveController::class, 'index'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+            Route::post('/', [CreatorLiveController::class, 'store'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::patch('/{live}', [CreatorLiveController::class, 'update'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/schedule', [CreatorLiveController::class, 'schedule'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/start', [CreatorLiveController::class, 'start'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/pause', [CreatorLiveController::class, 'pause'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/resume', [CreatorLiveController::class, 'resume'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/end', [CreatorLiveController::class, 'end'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+        });
 });

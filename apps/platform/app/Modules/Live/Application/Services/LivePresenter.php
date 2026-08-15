@@ -11,13 +11,16 @@ final class LivePresenter
 {
     public static function live(LiveEvent $live, ?string $currentAccountId = null): array
     {
-        $live->loadMissing('owner.profile');
+        $live->loadMissing(['owner.profile', 'advertiserOrganization']);
 
         $viewerCount = $live->viewerSessions()
             ->whereIn('status', [LiveViewerSession::STATUS_WATCHING, LiveViewerSession::STATUS_PAUSED])
             ->count();
 
         $stream = $live->streamSessions()->latest('created_at')->first();
+        $publisherName = $live->advertiserOrganization?->name
+            ?? $live->owner->profile?->resolvedDisplayName()
+            ?? 'Annonceur Wasplex';
 
         return [
             'id' => $live->id,
@@ -33,7 +36,7 @@ final class LivePresenter
             'ended_at' => $live->ended_at?->toIso8601String(),
             'replay_policy' => $live->replay_policy,
             'owner' => [
-                'display_name' => $live->owner->profile?->resolvedDisplayName() ?? 'Membre Wasplex',
+                'display_name' => $publisherName,
             ],
             'viewer_count' => $viewerCount,
             'is_owner' => $currentAccountId !== null && $live->owner_account_id === $currentAccountId,

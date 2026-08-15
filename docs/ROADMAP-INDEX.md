@@ -24,7 +24,7 @@
 | P015 | Alertes | P001, P009, P011, P012, P019 | Extension | En attente |
 | P016 | Santé | P001, P012, P015, P019 | Extension | En attente |
 | P017 | Carte et partenaires | P003, P011, P012, P019 | Extension | ready_for_review (P017-A identité/QR + P017-B paiement QR validés en production ; P017-B.1 clôture ; avantages partenaires conservés en roadmap) |
-| P018 | Live | P006-P012, P020 | Extension | in_progress (P018-A : fondation Live standard, sans WP ni sponsorisation ; transport média externe différé) |
+| P018 | Live | P006-P012, P020 | Extension | in_progress (P018-A fondation sans WP ; P018-A.1 création/pilotage exclusivement Studio annonceur, espace membre spectateur ; transport média externe différé) |
 | P019 | Espaces professionnels/institutionnels | P001, P012 | Extension | En attente |
 | P020 | Communication, modération et risques | P001, P011, P012 | Extension | En attente |
 | P021 | Intégrations et production | modules stabilisés | Production | En attente |
@@ -38,6 +38,10 @@ La suite fonctionnelle Carte (réseau partenaires, validation d'avantages, cashb
 ## Décision d'ordre du 2026-08-15 — démarrage P018-A
 
 P018-A peut démarrer avant l'achèvement complet de P020 à condition de rester strictement limité au **Live standard non rémunéré**, sans sponsorisation, sans crédit Wallet, sans commentaires publics et sans mécanismes de valeur. Le contrôle d'accès, l'audit et les transitions de cycle de vie sont inclus dès P018-A ; la modération sociale avancée demeure une dépendance des lots Live ultérieurs.
+
+## Décision produit du 2026-08-15 — P018-A.1 Live Annonceur
+
+La création, la programmation et le pilotage d'un Live Wasplex sont réservés au **Studio annonceur** dans un espace annonceur actif. L'espace membre et le bouton Live du Feed sont une surface spectateur uniquement. Les Lives portent désormais leur organisation annonceur afin d'éviter tout mélange entre plusieurs espaces annonceurs d'un même compte. Cette décision est détaillée dans [`chantiers/P018-A1-LIVE-ANNONCEUR.md`](./chantiers/P018-A1-LIVE-ANNONCEUR.md).
 
 ## Décision fondatrice P009
 

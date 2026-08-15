@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Live\Infrastructure\Models;
 
 use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Identity\Infrastructure\Models\Organization;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,7 @@ final class LiveEvent extends Model
 
     protected $fillable = [
         'owner_account_id',
+        'advertiser_organization_id',
         'title',
         'description',
         'category',
@@ -54,6 +56,11 @@ final class LiveEvent extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'owner_account_id');
+    }
+
+    public function advertiserOrganization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class, 'advertiser_organization_id');
     }
 
     public function streamSessions(): HasMany

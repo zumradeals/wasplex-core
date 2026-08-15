@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
 import AdvertiserDashboardPanel from '@/Components/AdvertiserDashboardPanel.vue';
+import AdvertiserLivePanel from '@/Components/AdvertiserLivePanel.vue';
 import AdvertiserStudioPanel from '@/Components/AdvertiserStudioPanel.vue';
 import AdvertiserWalletPanel from '@/Components/AdvertiserWalletPanel.vue';
 import CampaignsPanel from '@/Components/CampaignsPanel.vue';
@@ -15,6 +16,7 @@ const page = usePage<{ auth: AuthShared }>();
 const nav = [
     { key: 'dashboard', label: 'Accueil', shortLabel: 'Accueil' },
     { key: 'campaigns', label: 'Mes publicités', shortLabel: 'Publicités' },
+    { key: 'live', label: 'Live', shortLabel: 'Live' },
     { key: 'wallet', label: 'Mon solde', shortLabel: 'Solde' },
     { key: 'brands', label: 'Mon activité', shortLabel: 'Activité' },
     { key: 'team', label: 'Équipe & accès', shortLabel: 'Équipe' },
@@ -25,7 +27,14 @@ type SectionKey = (typeof nav)[number]['key'];
 const activeSection = ref<SectionKey>('dashboard');
 const campaignInstanceKey = ref(0);
 
-const advertiserSpace = computed(() => page.props.auth.spaces.find((s) => s.space_type === 'advertiser') ?? null);
+const advertiserSpace = computed(
+    () =>
+        page.props.auth.spaces.find(
+            (space) => space.space_type === 'advertiser' && space.user_space_id === page.props.auth.active_space_id,
+        ) ??
+        page.props.auth.spaces.find((space) => space.space_type === 'advertiser') ??
+        null,
+);
 const organizationId = computed(() => advertiserSpace.value?.organization_id ?? null);
 const organizationName = computed(() => advertiserSpace.value?.organization_name?.trim() || 'Mon activité');
 
@@ -142,6 +151,23 @@ async function logout(): Promise<void> {
                             >
                                 <path
                                     d="M3 10l14-6-4 16-3-6-6-4z"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+                            <svg v-else-if="item.key === 'live'" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <rect
+                                    x="3"
+                                    y="6"
+                                    width="13"
+                                    height="12"
+                                    rx="3"
+                                    stroke="currentColor"
+                                    stroke-width="1.7"
+                                />
+                                <path
+                                    d="M16 10l5-3v10l-5-3"
                                     stroke="currentColor"
                                     stroke-width="1.7"
                                     stroke-linejoin="round"
@@ -265,13 +291,14 @@ async function logout(): Promise<void> {
                         :key="campaignInstanceKey"
                         @navigate-wallet="selectSection('wallet')"
                     />
+                    <AdvertiserLivePanel v-else-if="activeSection === 'live'" />
                     <AdvertiserWalletPanel v-else-if="activeSection === 'wallet'" />
                     <AdvertiserStudioPanel v-else-if="activeSection === 'brands'" />
                     <TeamPanel v-else-if="activeSection === 'team'" :organization-id="organizationId" />
                 </main>
 
                 <nav
-                    class="border-wpx-border-dark bg-wpx-navy-850 fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full grid-cols-5 border-t px-1 pt-1 pb-2 lg:hidden"
+                    class="border-wpx-border-dark bg-wpx-navy-850 fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full grid-cols-6 border-t px-1 pt-1 pb-2 lg:hidden"
                 >
                     <button
                         v-for="item in nav"
@@ -327,6 +354,23 @@ async function logout(): Promise<void> {
                                     rx="2"
                                     stroke="currentColor"
                                     stroke-width="1.6"
+                                />
+                            </svg>
+                            <svg v-else-if="item.key === 'live'" width="21" height="21" viewBox="0 0 24 24" fill="none">
+                                <rect
+                                    x="3"
+                                    y="6"
+                                    width="13"
+                                    height="12"
+                                    rx="3"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                                <path
+                                    d="M16 10l5-3v10l-5-3"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                    stroke-linejoin="round"
                                 />
                             </svg>
                             <svg
