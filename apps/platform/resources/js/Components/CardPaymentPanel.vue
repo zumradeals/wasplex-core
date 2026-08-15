@@ -59,6 +59,7 @@ interface BarcodeDetectorLike {
 
 type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
 type Mode = 'home' | 'receive' | 'scan' | 'confirm' | 'receipt';
+type CameraState = 'idle' | 'starting' | 'active' | 'unavailable';
 
 const props = defineProps<{ open: boolean; card: CardSummary }>();
 const emit = defineEmits<{ close: [] }>();
@@ -69,6 +70,7 @@ const error = ref<string | null>(null);
 const receiveAmount = ref('');
 const receiveNote = ref('');
 const receiveQr = ref<ReceiveQr | null>(null);
+const copyMessage = ref<string | null>(null);
 const scanPayload = ref('');
 const preview = ref<PaymentPreview | null>(null);
 const paymentAmount = ref('');
@@ -77,6 +79,7 @@ const receipt = ref<Receipt | null>(null);
 const operations = ref<Receipt[]>([]);
 const video = ref<HTMLVideoElement | null>(null);
 const cameraMessage = ref<string | null>(null);
+const cameraState = ref<CameraState>('idle');
 let cameraStream: MediaStream | null = null;
 let animationFrame: number | null = null;
 
@@ -111,11 +114,14 @@ function resetFlow(): void {
     mode.value = 'home';
     error.value = null;
     receiveQr.value = null;
+    copyMessage.value = null;
     scanPayload.value = '';
     preview.value = null;
     paymentAmount.value = '';
     idempotencyKey.value = '';
     receipt.value = null;
+    cameraMessage.value = null;
+    cameraState.value = 'idle';
 }
 
 async function loadOperations(): Promise<void> {
@@ -130,6 +136,7 @@ async function loadOperations(): Promise<void> {
 async function generateReceive(): Promise<void> {
     busy.value = true;
     error.value = null;
+    copyMessage.value = null;
     try {
         const amountText = String(receiveAmount.value ?? '').trim();
         const amount = amountText === '' ? null : Number(amountText);
@@ -145,20 +152,44 @@ async function generateReceive(): Promise<void> {
     }
 }
 
+async function copyReceiveCode(): Promise<void> {
+    if (!receiveQr.value) return;
+    copyMessage.value = null;
+    try {
+        if (!navigator.clipboard?.writeText) throw new Error('clipboard-unavailable');
+        await navigator.clipboard.writeText(receiveQr.value.payload);
+        copyMessage.value = 'Code de paiement copié.';
+    } catch {
+        copyMessage.value =
+            'Copie automatique indisponible. Appuyez longuement sur le code de paiement ci-dessus pour le copier.';
+    }
+}
+
 async function openScanner(): Promise<void> {
     mode.value = 'scan';
     error.value = null;
     cameraMessage.value = null;
+    cameraState.value = 'idle';
     await nextTick();
     await startCamera();
 }
 
 async function startCamera(): Promise<void> {
     stopCamera();
+    cameraState.value = 'starting';
     const Detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
-    if (!Detector || !navigator.mediaDevices?.getUserMedia || !video.value) {
+
+    if (!Detector) {
+        cameraState.value = 'unavailable';
         cameraMessage.value =
-            'Scanner caméra indisponible sur ce navigateur. Vous pouvez coller le contenu du QR ci-dessous.';
+            'Lecture automatique des QR non prise en charge par ce navigateur. Utilisez le code de paiement WPLX:RECEIVE:… ci-dessous.';
+        return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || !video.value) {
+        cameraState.value = 'unavailable';
+        cameraMessage.value =
+            'Caméra indisponible sur ce navigateur. Utilisez le code de paiement WPLX:RECEIVE:… ci-dessous.';
         return;
     }
 
@@ -169,6 +200,8 @@ async function startCamera(): Promise<void> {
         });
         video.value.srcObject = cameraStream;
         await video.value.play();
+        cameraState.value = 'active';
+        cameraMessage.value = 'Placez le QR de réception dans le cadre. Aucun débit n’est effectué au scan.';
         const detector = new Detector({ formats: ['qr_code'] });
 
         const scan = async (): Promise<void> => {
@@ -178,13 +211,16 @@ async function startCamera(): Promise<void> {
                 const rawValue = results[0]?.rawValue;
                 if (rawValue) {
                     stopCamera();
+                    cameraState.value = 'idle';
                     scanPayload.value = rawValue;
                     await resolvePayload();
                     return;
                 }
             } catch {
-                cameraMessage.value = 'La caméra est ouverte, mais la lecture automatique du QR n’est pas disponible.';
                 stopCamera();
+                cameraState.value = 'unavailable';
+                cameraMessage.value =
+                    'La caméra est ouverte, mais la lecture automatique du QR a échoué. Réessayez ou utilisez le code de paiement WPLX:RECEIVE:…';
                 return;
             }
             animationFrame = window.requestAnimationFrame(() => void scan());
@@ -192,9 +228,18 @@ async function startCamera(): Promise<void> {
 
         animationFrame = window.requestAnimationFrame(() => void scan());
     } catch {
-        cameraMessage.value = 'Accès caméra refusé ou indisponible. Collez le contenu du QR pour continuer.';
         stopCamera();
+        cameraState.value = 'unavailable';
+        cameraMessage.value =
+            'Accès caméra refusé ou indisponible. Autorisez la caméra dans les permissions de wasplex.com puis appuyez sur « Réessayer la caméra ».';
     }
+}
+
+async function retryCamera(): Promise<void> {
+    error.value = null;
+    cameraMessage.value = null;
+    await nextTick();
+    await startCamera();
 }
 
 function stopCamera(): void {
@@ -208,15 +253,29 @@ function stopCamera(): void {
 }
 
 async function resolvePayload(): Promise<void> {
-    if (scanPayload.value.trim() === '') return;
-    busy.value = true;
+    const payload = scanPayload.value.trim();
+    if (payload === '') return;
+
     error.value = null;
+    if (/^WPLX-CI-/i.test(payload)) {
+        error.value =
+            'Ceci est l’identifiant public de la Carte. Pour payer, scannez le QR de réception ou collez le code commençant par WPLX:RECEIVE:.';
+        return;
+    }
+    if (payload.includes('/api/cards/qr/check')) {
+        error.value =
+            'Ceci est un QR d’identité Wasplex, pas un QR de paiement. Demandez au bénéficiaire de générer un QR de réception.';
+        return;
+    }
+
+    busy.value = true;
     try {
-        const { data } = await http.post('/card-scan/resolve', { payload: scanPayload.value.trim() });
+        const { data } = await http.post('/card-scan/resolve', { payload });
         preview.value = data.payment;
         paymentAmount.value = preview.value?.amount_minor ? String(preview.value.amount_minor) : '';
         idempotencyKey.value = crypto.randomUUID?.() ?? `card-${Date.now()}-${Math.random().toString(16).slice(2)}`;
         stopCamera();
+        cameraState.value = 'idle';
         mode.value = 'confirm';
     } catch (cause) {
         error.value = messageFrom(cause);
@@ -413,6 +472,23 @@ onBeforeUnmount(stopCamera);
                             {{ formatWp(receiveQr.amount_minor) }}
                         </p>
                         <p v-if="receiveQr.note" class="mt-1 text-xs text-slate-600">{{ receiveQr.note }}</p>
+
+                        <div class="mt-4 rounded-2xl bg-slate-100 p-3 text-left">
+                            <p class="text-[10px] font-bold tracking-wide text-slate-500 uppercase">Code de paiement</p>
+                            <p class="mt-1 font-mono text-[10px] leading-relaxed break-all text-slate-700 select-all">
+                                {{ receiveQr.payload }}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="mt-3 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white"
+                            @click="copyReceiveCode"
+                        >
+                            Copier le code de paiement
+                        </button>
+                        <p v-if="copyMessage" class="mt-2 text-[11px] text-slate-600" aria-live="polite">
+                            {{ copyMessage }}
+                        </p>
                     </section>
 
                     <button
@@ -427,7 +503,16 @@ onBeforeUnmount(stopCamera);
                 <template v-else-if="mode === 'scan'">
                     <section class="border-wpx-border-dark bg-wpx-navy-850 mt-5 overflow-hidden rounded-2xl border p-4">
                         <p class="text-wpx-white-soft text-sm font-bold">Scanner un QR de réception</p>
+
+                        <div
+                            v-if="cameraState !== 'active'"
+                            class="bg-wpx-navy-950 text-wpx-muted-dark mt-3 flex aspect-square w-full items-center justify-center rounded-2xl px-6 text-center text-xs leading-relaxed"
+                        >
+                            <span v-if="cameraState === 'starting'">Activation de la caméra…</span>
+                            <span v-else>Le scanner caméra n’est pas actif.</span>
+                        </div>
                         <video
+                            v-show="cameraState === 'active'"
                             ref="video"
                             class="bg-wpx-navy-950 mt-3 aspect-square w-full rounded-2xl object-cover"
                             playsinline
@@ -436,12 +521,26 @@ onBeforeUnmount(stopCamera);
                         <p v-if="cameraMessage" class="text-wpx-gold mt-2 text-[11px] leading-relaxed">
                             {{ cameraMessage }}
                         </p>
-                        <label class="text-wpx-muted-dark mt-4 block text-[11px]">Ou coller le contenu du QR</label>
+                        <button
+                            v-if="cameraState === 'unavailable'"
+                            type="button"
+                            class="border-wpx-gold/30 text-wpx-gold mt-3 w-full rounded-xl border px-4 py-2.5 text-xs font-bold"
+                            @click="retryCamera"
+                        >
+                            Réessayer la caméra
+                        </button>
+
+                        <label class="text-wpx-muted-dark mt-4 block text-[11px]">
+                            Code de paiement · commence par WPLX:RECEIVE:
+                        </label>
+                        <p class="text-wpx-muted-dark mt-1 text-[10px] leading-relaxed">
+                            Ne saisissez pas l’identifiant de Carte WPLX-CI-… : ce n’est pas un code de paiement.
+                        </p>
                         <textarea
                             v-model="scanPayload"
                             rows="2"
                             placeholder="WPLX:RECEIVE:…"
-                            class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft mt-1 w-full resize-none rounded-xl border px-3 py-3 font-mono text-xs outline-none"
+                            class="border-wpx-border-dark bg-wpx-navy-950 text-wpx-white-soft mt-2 w-full resize-none rounded-xl border px-3 py-3 font-mono text-xs outline-none"
                         ></textarea>
                         <button
                             type="button"
