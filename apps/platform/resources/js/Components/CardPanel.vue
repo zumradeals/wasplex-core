@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import CardPaymentPanel from '@/Components/CardPaymentPanel.vue';
 import http from '@/lib/http';
 import { makeQrMatrix } from '@/lib/qrCode';
 
@@ -41,6 +42,7 @@ const error = ref<string | null>(null);
 const card = ref<CardData | null>(null);
 const offer = ref<OfferData | null>(null);
 const qr = ref<QrData | null>(null);
+const paymentsOpen = ref(false);
 
 const statusLabel = computed(() => {
     if (!card.value) return '';
@@ -116,6 +118,7 @@ async function suspend(): Promise<void> {
         const { data } = await http.post(`/cards/${card.value.id}/suspend`);
         card.value = data.card;
         qr.value = null;
+        paymentsOpen.value = false;
     } catch (cause) {
         error.value = messageFrom(cause);
     } finally {
@@ -127,7 +130,10 @@ watch(
     () => props.open,
     (open) => {
         if (open) void load();
-        else qr.value = null;
+        else {
+            qr.value = null;
+            paymentsOpen.value = false;
+        }
     },
     { immediate: true },
 );
@@ -214,13 +220,21 @@ watch(
                             type="button"
                             :disabled="busy || card.status !== 'active'"
                             class="from-wpx-orange to-wpx-gold text-wpx-navy-950 rounded-xl bg-gradient-to-r px-3 py-3 text-sm font-extrabold disabled:opacity-40"
-                            @click="generateQr"
+                            @click="paymentsOpen = true"
                         >
-                            Afficher mon QR
+                            Recevoir / Payer
                         </button>
                         <button
                             type="button"
-                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-xl border px-3 py-3 text-sm font-bold"
+                            :disabled="busy || card.status !== 'active'"
+                            class="border-wpx-gold/25 bg-wpx-navy-850 text-wpx-gold rounded-xl border px-3 py-3 text-sm font-bold disabled:opacity-40"
+                            @click="generateQr"
+                        >
+                            QR identité
+                        </button>
+                        <button
+                            type="button"
+                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft col-span-2 rounded-xl border px-3 py-3 text-sm font-bold"
                             @click="emit('close')"
                         >
                             Fermer
@@ -231,7 +245,8 @@ watch(
                         <p class="text-wpx-white-soft text-sm font-bold">Protection de vos données</p>
                         <p class="text-wpx-muted-dark mt-1.5 text-xs leading-relaxed">
                             Votre QR ne révèle ni téléphone, ni e-mail, ni solde Wallet, ni KYC, ni données Santé ou
-                            Fonds. Il expire après 2 minutes et devient inutilisable après résolution.
+                            Fonds. Le QR d’identité expire après 2 minutes. Un QR de réception ne déclenche aucun débit
+                            au simple scan.
                         </p>
                     </section>
 
@@ -297,6 +312,8 @@ watch(
                     </button>
                 </div>
             </div>
+
+            <CardPaymentPanel v-if="card" :open="paymentsOpen" :card="card" @close="paymentsOpen = false" />
         </div>
     </Teleport>
 </template>

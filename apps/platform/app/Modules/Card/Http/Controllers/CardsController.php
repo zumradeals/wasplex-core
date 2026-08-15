@@ -39,6 +39,23 @@ final class CardsController
         return response()->json(['qr' => $this->qr->generateIdentityQr($card, (string) $request->user()->id)]);
     }
 
+    public function receiveQr(Request $request, Card $card): JsonResponse
+    {
+        $data = $request->validate([
+            'amount_minor' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'note' => ['nullable', 'string', 'max:180'],
+        ]);
+
+        return response()->json([
+            'qr' => $this->qr->generateReceiveQr(
+                $card,
+                (string) $request->user()->id,
+                isset($data['amount_minor']) ? (int) $data['amount_minor'] : null,
+                isset($data['note']) ? (string) $data['note'] : null,
+            ),
+        ]);
+    }
+
     public function suspend(Request $request, Card $card): JsonResponse
     {
         $card = $this->suspension->suspend($card, (string) $request->user()->id);

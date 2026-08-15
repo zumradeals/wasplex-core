@@ -18,11 +18,29 @@ final class CardQrToken extends Model
 
     public const STATUS_REVOKED = 'revoked';
 
-    protected $fillable = ['card_id', 'purpose', 'token_hash', 'status', 'expires_at', 'used_at'];
+    public const PURPOSE_PUBLIC_IDENTITY = 'public_identity';
+
+    public const PURPOSE_RECEIVE_PAYMENT = 'receive_payment';
+
+    protected $fillable = [
+        'card_id',
+        'purpose',
+        'token_hash',
+        'status',
+        'amount_minor',
+        'currency',
+        'note',
+        'expires_at',
+        'used_at',
+    ];
 
     protected function casts(): array
     {
-        return ['expires_at' => 'datetime', 'used_at' => 'datetime'];
+        return [
+            'amount_minor' => 'integer',
+            'expires_at' => 'datetime',
+            'used_at' => 'datetime',
+        ];
     }
 
     public function card(): BelongsTo
