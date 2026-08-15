@@ -46,7 +46,9 @@ const form = ref({
     planned_duration_minutes: '60',
 });
 
-const activeLives = computed(() => publicLives.value.filter((live) => live.status === 'live' || live.status === 'paused'));
+const activeLives = computed(() =>
+    publicLives.value.filter((live) => live.status === 'live' || live.status === 'paused'),
+);
 const scheduledLives = computed(() => publicLives.value.filter((live) => live.status === 'scheduled'));
 
 function messageFrom(cause: unknown): string {
@@ -199,16 +201,17 @@ onMounted(load);
             {{ error }}
         </p>
 
-        <section
-            v-if="selected"
-            class="border-wpx-border-dark bg-wpx-navy-850 mt-5 overflow-hidden rounded-3xl border"
-        >
+        <section v-if="selected" class="border-wpx-border-dark bg-wpx-navy-850 mt-5 overflow-hidden rounded-3xl border">
             <div class="p-4">
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <span
                             class="rounded-full px-2.5 py-1 text-[10px] font-bold"
-                            :class="selected.status === 'live' ? 'bg-wpx-danger/15 text-wpx-danger' : 'bg-wpx-gold/10 text-wpx-gold'"
+                            :class="
+                                selected.status === 'live'
+                                    ? 'bg-wpx-danger/15 text-wpx-danger'
+                                    : 'bg-wpx-gold/10 text-wpx-gold'
+                            "
                         >
                             {{ statusLabel(selected.status) }}
                         </span>
@@ -220,14 +223,17 @@ onMounted(load);
                     </button>
                 </div>
 
-                <div class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center">
+                <div
+                    class="bg-wpx-navy-950 mt-4 flex aspect-video items-center justify-center rounded-2xl px-5 text-center"
+                >
                     <div>
                         <span class="text-3xl">◉</span>
                         <p class="text-wpx-white-soft mt-2 text-sm font-bold">
                             {{ selected.status === 'paused' ? 'Live en pause' : 'Salle Live ouverte' }}
                         </p>
                         <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                            La salle, les présences et le cycle de diffusion sont opérationnels. Le transport vidéo externe sera branché dans le lot média suivant.
+                            La salle, les présences et le cycle de diffusion sont opérationnels. Le transport vidéo
+                            externe sera branché dans le lot média suivant.
                         </p>
                     </div>
                 </div>
@@ -240,7 +246,8 @@ onMounted(load);
                     <div class="bg-wpx-navy-950 rounded-2xl p-3">
                         <p class="text-wpx-muted-dark text-[10px] uppercase">Durée prévue</p>
                         <p class="text-wpx-white-soft mt-1 text-xl font-extrabold">
-                            {{ selected.planned_duration_minutes ?? '—' }}<span v-if="selected.planned_duration_minutes" class="text-xs"> min</span>
+                            {{ selected.planned_duration_minutes ?? '—'
+                            }}<span v-if="selected.planned_duration_minutes" class="text-xs"> min</span>
                         </p>
                     </div>
                 </div>
@@ -311,7 +318,9 @@ onMounted(load);
 
             <section v-if="showCreate" class="border-wpx-border-dark bg-wpx-navy-850 mt-3 rounded-2xl border p-4">
                 <h2 class="text-wpx-white-soft text-base font-bold">Nouveau Live standard</h2>
-                <p class="text-wpx-muted-dark mt-1 text-[11px]">Pas de sponsorisation ni de rémunération dans P018-A.</p>
+                <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                    Pas de sponsorisation ni de rémunération dans P018-A.
+                </p>
 
                 <label class="text-wpx-muted-dark mt-4 block text-[11px]">Titre</label>
                 <input
@@ -373,7 +382,9 @@ onMounted(load);
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <p class="text-wpx-danger text-[10px] font-extrabold uppercase">● {{ statusLabel(live.status) }}</p>
+                                <p class="text-wpx-danger text-[10px] font-extrabold uppercase">
+                                    ● {{ statusLabel(live.status) }}
+                                </p>
                                 <h3 class="text-wpx-white-soft mt-1 text-sm font-bold">{{ live.title }}</h3>
                                 <p class="text-wpx-muted-dark mt-1 text-[11px]">
                                     {{ live.owner.display_name }} · {{ live.viewer_count }} spectateur(s)
@@ -422,7 +433,8 @@ onMounted(load);
                         <span>
                             <span class="text-wpx-white-soft block text-sm font-bold">{{ live.title }}</span>
                             <span class="text-wpx-muted-dark mt-1 block text-[11px]">
-                                {{ statusLabel(live.status) }} · {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
+                                {{ statusLabel(live.status) }} ·
+                                {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
                             </span>
                         </span>
                         <span class="text-wpx-gold text-lg">›</span>
