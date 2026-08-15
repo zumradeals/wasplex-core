@@ -139,24 +139,30 @@ it('lets a viewer request the stage and the host grant and revoke real publishin
     ]);
 
     registerAndLogin('live-stage-host@example.com');
-    $host = Account::query()->latest('created_at')->firstOrFail();
     $organizationId = createAdvertiserOrganization('Annonceur Scène');
     $liveId = (string) test()->postJson('/api/advertiser/lives', ['title' => 'Live scène'])
         ->assertCreated()
         ->json('live.id');
     test()->postJson("/api/advertiser/lives/{$liveId}/start")->assertOk();
 
+    $live = LiveEvent::query()->findOrFail($liveId);
+    $host = Account::query()->findOrFail((string) $live->owner_account_id);
+
     test()->postJson('/api/logout')->assertSuccessful();
     registerAndLogin('live-stage-viewer@example.com');
-    $viewer = Account::query()->latest('created_at')->firstOrFail();
     test()->postJson("/api/lives/{$liveId}/join")->assertOk();
+
+    $viewerAccountId = (string) LiveViewerSession::query()
+        ->where('live_id', $liveId)
+        ->whereIn('status', [LiveViewerSession::STATUS_WATCHING, LiveViewerSession::STATUS_PAUSED])
+        ->value('account_id');
+    $viewer = Account::query()->findOrFail($viewerAccountId);
 
     $requestId = (string) test()->postJson("/api/lives/{$liveId}/stage-request")
         ->assertCreated()
         ->assertJsonPath('stage_request.status', LiveStageRequest::STATUS_PENDING)
         ->json('stage_request.id');
 
-    $live = LiveEvent::query()->findOrFail($liveId);
     $stageRequest = LiveStageRequest::query()->findOrFail($requestId);
     $service = app(LiveRealtimeService::class);
 
