@@ -76,16 +76,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           npx prettier --write resources/js/Components/LivePanel.vue resources/js/Components/LiveSponsorshipPanel.vue
-
           make_blob() {
             local path="$1"
             local payload
-            payload="$(python3 - "$path" <<'PY'
-import base64, json, pathlib, sys
-path = pathlib.Path(sys.argv[1])
-print(json.dumps({"content": base64.b64encode(path.read_bytes()).decode(), "encoding": "base64"}))
-PY
-)"
+            payload="$(node -e "const fs=require('fs'); console.log(JSON.stringify({content:fs.readFileSync(process.argv[1]).toString('base64'),encoding:'base64'}))" "$path")"
             curl -fsS \
               -X POST \
               -H "Authorization: Bearer ${GITHUB_TOKEN}" \
@@ -93,12 +87,10 @@ PY
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs" \
               -d "$payload" \
-              | python3 -c 'import json,sys; print(json.load(sys.stdin)["sha"])'
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).sha))"
           }
-
           echo "FORMATTED_LIVE_PANEL_SHA=$(make_blob resources/js/Components/LivePanel.vue)"
           echo "FORMATTED_LIVE_SPONSORSHIP_PANEL_SHA=$(make_blob resources/js/Components/LiveSponsorshipPanel.vue)"
-          echo "P018_D_DIAGNOSTIC=2"
           exit 1
 
       - name: Check frontend formatting
