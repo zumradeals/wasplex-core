@@ -14,6 +14,7 @@
     100% {
         box-shadow: 0 12px 32px rgba(199, 81, 0, 0.28);
     }
+
     50% {
         box-shadow: 0 16px 46px rgba(242, 193, 78, 0.48);
     }
@@ -23,6 +24,7 @@
     0% {
         transform: translateX(-140%) rotate(10deg);
     }
+
     100% {
         transform: translateX(240%) rotate(10deg);
     }
@@ -34,6 +36,7 @@
         transform: scale(1);
         opacity: 1;
     }
+
     50% {
         transform: scale(1.14);
         opacity: 0.82;
