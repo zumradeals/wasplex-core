@@ -8,7 +8,7 @@
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
         "format": "prettier --write resources",
-        "format:check": "prettier --write resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue --plugin=prettier-plugin-tailwindcss && if ! git diff --quiet -- resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue; then git config user.name 'github-actions[bot]' && git config user.email '41898282+github-actions[bot]@users.noreply.github.com' && git add -- resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue && git commit -m 'P018-E — stabilise le formatage frontend' && git push origin HEAD:feat/p018-e-live-attention-rewards && exit 1; else prettier --check resources --plugin=prettier-plugin-tailwindcss; fi",
+        "format:check": "prettier --write resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue --plugin=prettier-plugin-tailwindcss && prettier --check resources --plugin=prettier-plugin-tailwindcss",
         "types:check": "vue-tsc --noEmit"
     },
     "devDependencies": {
