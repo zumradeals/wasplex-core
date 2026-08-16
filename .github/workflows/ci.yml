@@ -98,6 +98,7 @@ PY
 
           echo "FORMATTED_LIVE_PANEL_SHA=$(make_blob resources/js/Components/LivePanel.vue)"
           echo "FORMATTED_LIVE_SPONSORSHIP_PANEL_SHA=$(make_blob resources/js/Components/LiveSponsorshipPanel.vue)"
+          echo "P018_D_DIAGNOSTIC=2"
           exit 1
 
       - name: Check frontend formatting
