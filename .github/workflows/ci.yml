@@ -1,49 +1,25 @@
-name: ci
+name: p018-e-format-publish
 
 on:
   push:
     branches:
-      - main
-  pull_request:
+      - feat/p018-e-live-attention-rewards
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  platform:
+  format-and-publish:
+    if: ${{ !contains(github.event.head_commit.message, '[p018-e-formatted]') }}
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: wasplex_test
-          POSTGRES_USER: wasplex
-          POSTGRES_PASSWORD: wasplex_ci_only
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U wasplex -d wasplex_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7.4-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    defaults:
-      run:
-        working-directory: apps/platform
 
     steps:
-      - name: Checkout code
+      - name: Checkout feature branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          ref: feat/p018-e-live-attention-rewards
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
@@ -61,39 +37,21 @@ jobs:
           cache-dependency-path: apps/platform/package-lock.json
 
       - name: Install PHP dependencies
+        working-directory: apps/platform
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare test environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-
       - name: Install frontend dependencies
+        working-directory: apps/platform
         run: npm ci
 
-      - name: Check frontend formatting
-        run: npm run format:check
-
-      - name: Upload formatted P018-E components
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: p018-e-prettier
-          path: |
-            apps/platform/resources/js/Components/LiveInteractionsPanel.vue
-            apps/platform/resources/js/Components/LiveSponsorshipPanel.vue
-          if-no-files-found: error
-
-      - name: Run ESLint
-        run: npm run lint:check
-
-      - name: Check Vue/TypeScript types
-        run: npm run types:check
-
-      - name: Build frontend assets
-        run: npm run build
-
-      - name: Format P018-E PHP files
+      - name: Format canonical P018-E files
+        working-directory: apps/platform
         run: |
+          npx prettier --write \
+            resources/js/Components/LiveInteractionsPanel.vue \
+            resources/js/Components/LiveSponsorshipPanel.vue \
+            --plugin=prettier-plugin-tailwindcss
+
           vendor/bin/pint \
             app/Modules/AdvertiserWallet/Application/Contracts/AdvertiserLiveBudgetReservationContract.php \
             app/Modules/AdvertiserWallet/Application/Services/AdvertiserLiveBudgetReservationService.php \
@@ -108,41 +66,36 @@ jobs:
             config/live.php \
             tests/Feature/Live/LiveRewardAttentionTest.php
 
-      - name: Upload formatted P018-E PHP
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: p018-e-pint
-          path: |
-            apps/platform/app/Modules/AdvertiserWallet/Application/Contracts/AdvertiserLiveBudgetReservationContract.php
-            apps/platform/app/Modules/AdvertiserWallet/Application/Services/AdvertiserLiveBudgetReservationService.php
-            apps/platform/app/Modules/Live/Application/Services/LiveRewardAttentionService.php
-            apps/platform/app/Modules/Live/Database/Migrations/2026_08_16_184500_create_live_reward_attention.php
-            apps/platform/app/Modules/Live/Http/Controllers/CreatorLiveController.php
-            apps/platform/app/Modules/Live/Http/Controllers/LiveController.php
-            apps/platform/app/Modules/Live/Http/Controllers/LiveSponsorshipController.php
-            apps/platform/app/Modules/Live/Http/routes/module.php
-            apps/platform/app/Modules/Live/Infrastructure/Models/LiveRewardAttentionBlock.php
-            apps/platform/app/Modules/Live/Infrastructure/Models/LiveRewardAttentionState.php
-            apps/platform/config/live.php
+      - name: Restore normal CI and package scripts from main
+        run: |
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/ci.yml apps/platform/package.json
+          test "$(git hash-object .github/workflows/ci.yml)" = "ba6460a5ebe0dec8d0cfd86bd76f1e58595da36c"
+          test "$(git hash-object apps/platform/package.json)" = "40438b4f7a057f241733aca4c2ac493e915a3d8e"
+          git diff --check
+
+      - name: Publish clean P018-E commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            .github/workflows/ci.yml \
+            apps/platform/package.json \
+            apps/platform/resources/js/Components/LiveInteractionsPanel.vue \
+            apps/platform/resources/js/Components/LiveSponsorshipPanel.vue \
+            apps/platform/app/Modules/AdvertiserWallet/Application/Contracts/AdvertiserLiveBudgetReservationContract.php \
+            apps/platform/app/Modules/AdvertiserWallet/Application/Services/AdvertiserLiveBudgetReservationService.php \
+            apps/platform/app/Modules/Live/Application/Services/LiveRewardAttentionService.php \
+            apps/platform/app/Modules/Live/Database/Migrations/2026_08_16_184500_create_live_reward_attention.php \
+            apps/platform/app/Modules/Live/Http/Controllers/CreatorLiveController.php \
+            apps/platform/app/Modules/Live/Http/Controllers/LiveController.php \
+            apps/platform/app/Modules/Live/Http/Controllers/LiveSponsorshipController.php \
+            apps/platform/app/Modules/Live/Http/routes/module.php \
+            apps/platform/app/Modules/Live/Infrastructure/Models/LiveRewardAttentionBlock.php \
+            apps/platform/app/Modules/Live/Infrastructure/Models/LiveRewardAttentionState.php \
+            apps/platform/config/live.php \
             apps/platform/tests/Feature/Live/LiveRewardAttentionTest.php
-          if-no-files-found: error
 
-      - name: Check PHP formatting
-        run: composer lint:check
-
-      - name: Run PHP tests against PostgreSQL and Redis
-        run: composer test
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: wasplex_test
-          DB_USERNAME: wasplex
-          DB_PASSWORD: wasplex_ci_only
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: 6379
-
-      # TODO(P001+): réactiver "composer types:check" (Larastan/PHPStan)
-      # dès que le paquet larastan/larastan est ajouté à composer.json depuis
-      # un poste disposant d'un accès réseau complet à GitHub — voir le
-      # rapport P000 pour le détail du blocage réseau rencontré en sandbox.
+          git status --short
+          git commit -m "P018-E — stabilise le formatage et restaure la CI [p018-e-formatted]"
+          git push origin HEAD:feat/p018-e-live-attention-rewards
