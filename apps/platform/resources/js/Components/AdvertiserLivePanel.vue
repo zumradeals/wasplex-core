@@ -470,7 +470,9 @@ onBeforeUnmount(stopPreview);
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h2 class="text-wpx-white-soft text-base font-extrabold">Historique Live</h2>
-                    <p class="text-wpx-muted-dark mt-1 text-[11px]">Uniquement les Lives de l’espace annonceur actif.</p>
+                    <p class="text-wpx-muted-dark mt-1 text-[11px]">
+                        Uniquement les Lives de l’espace annonceur actif.
+                    </p>
                 </div>
                 <button type="button" class="text-wpx-blue text-xs font-semibold" @click="load">Actualiser</button>
             </div>
@@ -487,7 +489,8 @@ onBeforeUnmount(stopPreview);
                     <span>
                         <span class="text-wpx-white-soft block text-sm font-bold">{{ live.title }}</span>
                         <span class="text-wpx-muted-dark mt-1 block text-[11px]">
-                            {{ statusLabel(live.status) }} · {{ live.type === 'sponsored' ? 'sponsorisé' : 'standard' }} ·
+                            {{ statusLabel(live.status) }} ·
+                            {{ live.type === 'sponsored' ? 'sponsorisé' : 'standard' }} ·
                             {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
                         </span>
                     </span>
