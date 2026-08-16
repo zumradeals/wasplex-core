@@ -7,6 +7,7 @@ namespace App\Modules\Live\Http\Controllers;
 use App\Modules\Live\Application\Services\LiveInteractionService;
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
+use App\Modules\Live\Application\Services\LiveRewardSeatService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ final class LiveController
     public function __construct(
         private readonly LiveLifecycleService $lifecycle,
         private readonly LiveInteractionService $interactions,
+        private readonly LiveRewardSeatService $rewardSeats,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -46,9 +48,17 @@ final class LiveController
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
     }
 
+    public function rewardSeat(Request $request, LiveEvent $live): JsonResponse
+    {
+        return response()->json([
+            'reward_seat' => $this->rewardSeats->stateForAccount($live, $request->user()),
+        ]);
+    }
+
     public function join(Request $request, LiveEvent $live): JsonResponse
     {
         $session = $this->lifecycle->join($live, $request->user());
+        $rewardSeat = $this->rewardSeats->admit($live, $request->user(), $session);
         $live->refresh();
         $this->interactions->broadcastViewerCount($live);
 
@@ -59,14 +69,45 @@ final class LiveController
                 'status' => $session->status,
                 'joined_at' => $session->joined_at?->toIso8601String(),
             ],
+            'reward_seat' => $rewardSeat,
         ]);
     }
 
     public function leave(Request $request, LiveEvent $live): JsonResponse
     {
+        $this->rewardSeats->leaveWaitlist($live, $request->user());
+        $this->rewardSeats->releaseForViewer($live, $request->user());
         $this->lifecycle->leave($live, $request->user());
         $this->interactions->broadcastViewerCount($live);
 
         return response()->json(['left' => true]);
+    }
+
+    public function joinRewardWaitlist(Request $request, LiveEvent $live): JsonResponse
+    {
+        return response()->json([
+            'reward_seat' => $this->rewardSeats->joinWaitlist($live, $request->user()),
+        ]);
+    }
+
+    public function leaveRewardWaitlist(Request $request, LiveEvent $live): JsonResponse
+    {
+        return response()->json([
+            'reward_seat' => $this->rewardSeats->leaveWaitlist($live, $request->user()),
+        ]);
+    }
+
+    public function acceptRewardSeat(Request $request, LiveEvent $live): JsonResponse
+    {
+        return response()->json([
+            'reward_seat' => $this->rewardSeats->acceptOffer($live, $request->user()),
+        ]);
+    }
+
+    public function declineRewardSeat(Request $request, LiveEvent $live): JsonResponse
+    {
+        return response()->json([
+            'reward_seat' => $this->rewardSeats->declineOffer($live, $request->user()),
+        ]);
     }
 }

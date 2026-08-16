@@ -59,6 +59,7 @@ final class LivePresenter
                 'room' => $stream?->provider_session_reference,
                 'media_ready' => $liveKitConfigured && $stream?->provider === 'livekit',
             ],
+            'reward_plan' => LiveRewardSeatPresenter::publicPlan($live),
             'sponsorship' => $includeSponsorshipManagement ? LiveSponsorshipPresenter::forLive($live) : null,
         ];
     }

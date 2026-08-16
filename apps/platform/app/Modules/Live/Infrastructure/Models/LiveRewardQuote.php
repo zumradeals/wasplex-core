@@ -29,6 +29,12 @@ final class LiveRewardQuote extends Model
         'estimated_reach_max',
         'planned_duration_minutes',
         'block_duration_seconds',
+        'rewarded_seat_capacity',
+        'max_blocks_per_viewer',
+        'funded_blocks',
+        'reward_per_block_minor',
+        'max_reward_per_viewer_minor',
+        'spectator_envelope_remainder_minor',
         'quoted_at',
     ];
 
@@ -42,6 +48,12 @@ final class LiveRewardQuote extends Model
             'estimated_reach_max' => 'integer',
             'planned_duration_minutes' => 'integer',
             'block_duration_seconds' => 'integer',
+            'rewarded_seat_capacity' => 'integer',
+            'max_blocks_per_viewer' => 'integer',
+            'funded_blocks' => 'integer',
+            'reward_per_block_minor' => 'integer',
+            'max_reward_per_viewer_minor' => 'integer',
+            'spectator_envelope_remainder_minor' => 'integer',
             'quoted_at' => 'datetime',
         ];
     }

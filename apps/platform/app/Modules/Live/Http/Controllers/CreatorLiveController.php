@@ -6,6 +6,7 @@ namespace App\Modules\Live\Http\Controllers;
 
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
+use App\Modules\Live\Application\Services\LiveRewardSeatService;
 use App\Modules\Live\Application\Services\LiveSponsorshipService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use Carbon\CarbonImmutable;
@@ -18,6 +19,7 @@ final class CreatorLiveController
     public function __construct(
         private readonly LiveLifecycleService $lifecycle,
         private readonly LiveSponsorshipService $sponsorship,
+        private readonly LiveRewardSeatService $rewardSeats,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -126,6 +128,7 @@ final class CreatorLiveController
             $request->user(),
             $this->advertiserOrganizationId($request),
         );
+        $this->rewardSeats->closeLive($live);
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }

@@ -6,15 +6,20 @@ namespace App\Modules\Live\Http\Controllers;
 
 use App\Modules\AdvertiserWallet\Application\Services\InsufficientAdvertiserBalanceException;
 use App\Modules\Live\Application\Services\LivePresenter;
+use App\Modules\Live\Application\Services\LiveRewardSeatService;
 use App\Modules\Live\Application\Services\LiveSponsorshipService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 final class LiveSponsorshipController
 {
-    public function __construct(private readonly LiveSponsorshipService $sponsorship) {}
+    public function __construct(
+        private readonly LiveSponsorshipService $sponsorship,
+        private readonly LiveRewardSeatService $rewardSeats,
+    ) {}
 
     public function configure(Request $request, LiveEvent $live): JsonResponse
     {
@@ -59,15 +64,24 @@ final class LiveSponsorshipController
         $data = $request->validate([
             'budget_amount_minor' => ['required', 'integer', 'min:2', 'max:2000000000'],
             'block_duration_seconds' => ['sometimes', 'integer', Rule::in([120, 300, 600])],
+            'rewarded_seat_capacity' => ['sometimes', 'integer', 'min:1', 'max:100000'],
+            'max_blocks_per_viewer' => ['sometimes', 'integer', 'min:1', 'max:1000'],
         ]);
 
-        $this->sponsorship->quote(
-            $live,
-            $request->user(),
-            $this->advertiserOrganizationId($request),
-            (int) $data['budget_amount_minor'],
-            (int) ($data['block_duration_seconds'] ?? 300),
-        );
+        DB::transaction(function () use ($request, $live, $data): void {
+            $quote = $this->sponsorship->quote(
+                $live,
+                $request->user(),
+                $this->advertiserOrganizationId($request),
+                (int) $data['budget_amount_minor'],
+                (int) ($data['block_duration_seconds'] ?? 300),
+            );
+            $this->rewardSeats->configureQuotePlan(
+                $quote,
+                isset($data['rewarded_seat_capacity']) ? (int) $data['rewarded_seat_capacity'] : null,
+                isset($data['max_blocks_per_viewer']) ? (int) $data['max_blocks_per_viewer'] : null,
+            );
+        });
 
         return response()->json([
             'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id, true),

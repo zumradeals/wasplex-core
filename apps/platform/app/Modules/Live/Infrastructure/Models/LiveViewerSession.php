@@ -21,10 +21,26 @@ final class LiveViewerSession extends Model
 
     public const STATUS_COMPLETED = 'completed';
 
+    public const REWARDED_NOT_APPLICABLE = 'not_applicable';
+
+    public const REWARDED_ELIGIBLE = 'eligible';
+
+    public const REWARDED_INELIGIBLE = 'ineligible';
+
+    public const REWARDED_NON_REWARDED = 'non_rewarded';
+
+    public const REWARDED_ACTIVE = 'rewarded';
+
+    public const REWARDED_WAITING = 'waiting';
+
+    public const REWARDED_OFFERED = 'offered';
+
     protected $fillable = [
         'live_id',
         'account_id',
         'status',
+        'rewarded_status',
+        'economic_class',
         'joined_at',
         'last_seen_at',
         'left_at',
