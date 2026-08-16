@@ -16,7 +16,9 @@ final class LiveSponsorshipPresenter
             return null;
         }
 
-        $campaign = $live->rewardCampaign()->first();
+        $campaign = $live->relationLoaded('rewardCampaign')
+            ? $live->rewardCampaign
+            : $live->rewardCampaign()->with(['quotes', 'budgetReservations'])->first();
         if ($campaign === null) {
             return [
                 'status' => LiveRewardCampaign::STATUS_DRAFT,
@@ -27,10 +29,12 @@ final class LiveSponsorshipPresenter
             ];
         }
 
-        $quote = $campaign->quotes()->latest('quoted_at')->first();
-        $reservation = $campaign->budgetReservations()
-            ->latest('created_at')
-            ->first();
+        $quote = $campaign->relationLoaded('quotes')
+            ? $campaign->quotes->sortByDesc('quoted_at')->first()
+            : $campaign->quotes()->latest('quoted_at')->first();
+        $reservation = $campaign->relationLoaded('budgetReservations')
+            ? $campaign->budgetReservations->sortByDesc('created_at')->first()
+            : $campaign->budgetReservations()->latest('created_at')->first();
 
         return [
             'status' => $campaign->status,

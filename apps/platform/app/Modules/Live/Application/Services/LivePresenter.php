@@ -9,9 +9,17 @@ use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
 
 final class LivePresenter
 {
-    public static function live(LiveEvent $live, ?string $currentAccountId = null): array
-    {
-        $live->loadMissing(['owner.profile', 'advertiserOrganization']);
+    public static function live(
+        LiveEvent $live,
+        ?string $currentAccountId = null,
+        bool $includeSponsorshipManagement = false,
+    ): array {
+        $relations = ['owner.profile', 'advertiserOrganization'];
+        if ($includeSponsorshipManagement && $live->type === LiveEvent::TYPE_SPONSORED) {
+            $relations[] = 'rewardCampaign.quotes';
+            $relations[] = 'rewardCampaign.budgetReservations';
+        }
+        $live->loadMissing($relations);
 
         $viewerCount = $live->viewerSessions()
             ->whereIn('status', [LiveViewerSession::STATUS_WATCHING, LiveViewerSession::STATUS_PAUSED])
@@ -51,7 +59,7 @@ final class LivePresenter
                 'room' => $stream?->provider_session_reference,
                 'media_ready' => $liveKitConfigured && $stream?->provider === 'livekit',
             ],
-            'sponsorship' => LiveSponsorshipPresenter::forLive($live),
+            'sponsorship' => $includeSponsorshipManagement ? LiveSponsorshipPresenter::forLive($live) : null,
         ];
     }
 }

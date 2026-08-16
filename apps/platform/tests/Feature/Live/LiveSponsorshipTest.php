@@ -265,3 +265,29 @@ it('refuses a sponsored quote when the protected audience is below the minimum s
 
     expect(LiveRewardQuote::query()->count())->toBe(0);
 });
+
+it('does not expose advertiser sponsorship management data on the member Live API', function (): void {
+    createAudienceForSponsoredLiveTests();
+    registerAndLogin('live-sponsored-private-owner@example.com');
+    $organizationId = createAdvertiserOrganization('Annonceur Sponsor Privé');
+    creditAdvertiserWalletForLiveTests($organizationId, 100000);
+
+    $liveId = (string) test()->postJson('/api/advertiser/lives', [
+        'title' => 'Live sponsorisé public protégé',
+        'planned_duration_minutes' => 60,
+    ])->assertCreated()->json('live.id');
+    test()->patchJson("/api/advertiser/lives/{$liveId}/sponsorship", ['country_code' => 'CI'])->assertOk();
+    test()->postJson("/api/advertiser/lives/{$liveId}/quote", ['budget_amount_minor' => 100000])->assertOk();
+    test()->postJson("/api/advertiser/lives/{$liveId}/fund")->assertOk();
+    test()->postJson("/api/advertiser/lives/{$liveId}/schedule", [
+        'scheduled_at' => now()->addHour()->toIso8601String(),
+    ])->assertOk();
+
+    registerAndLogin('live-sponsored-private-viewer@example.com');
+
+    test()->getJson("/api/lives/{$liveId}")
+        ->assertOk()
+        ->assertJsonPath('live.type', LiveEvent::TYPE_SPONSORED)
+        ->assertJsonPath('live.sponsorship', null)
+        ->assertJsonMissingPath('live.sponsorship.latest_quote.budget_amount_minor');
+});

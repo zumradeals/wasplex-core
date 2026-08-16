@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Live\Http\Controllers;
 
+use App\Modules\AdvertiserWallet\Application\Services\InsufficientAdvertiserBalanceException;
 use App\Modules\Live\Application\Services\LivePresenter;
 use App\Modules\Live\Application\Services\LiveSponsorshipService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
@@ -31,7 +32,7 @@ final class LiveSponsorshipController
         );
 
         return response()->json([
-            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id),
+            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id, true),
         ]);
     }
 
@@ -49,7 +50,7 @@ final class LiveSponsorshipController
                 'estimated_reach_max' => $estimate->estimatedMax,
                 'too_small' => $estimate->tooSmall,
             ],
-            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id),
+            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id, true),
         ]);
     }
 
@@ -69,20 +70,29 @@ final class LiveSponsorshipController
         );
 
         return response()->json([
-            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id),
+            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id, true),
         ]);
     }
 
     public function fund(Request $request, LiveEvent $live): JsonResponse
     {
-        $this->sponsorship->fund(
-            $live,
-            $request->user(),
-            $this->advertiserOrganizationId($request),
-        );
+        try {
+            $this->sponsorship->fund(
+                $live,
+                $request->user(),
+                $this->advertiserOrganizationId($request),
+            );
+        } catch (InsufficientAdvertiserBalanceException $exception) {
+            return response()->json([
+                'message' => 'Ton Wallet annonceur ne contient pas encore assez de fonds pour réserver ce Live.',
+                'available_minor' => $exception->availableMinor,
+                'required_minor' => $exception->requestedMinor,
+                'missing_minor' => max(0, $exception->requestedMinor - $exception->availableMinor),
+            ], 422);
+        }
 
         return response()->json([
-            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id),
+            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id, true),
         ]);
     }
 
@@ -95,7 +105,7 @@ final class LiveSponsorshipController
         );
 
         return response()->json([
-            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id),
+            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id, true),
         ]);
     }
 
@@ -108,7 +118,7 @@ final class LiveSponsorshipController
         );
 
         return response()->json([
-            'live' => LivePresenter::live($live, (string) $request->user()->id),
+            'live' => LivePresenter::live($live, (string) $request->user()->id, true),
         ]);
     }
 

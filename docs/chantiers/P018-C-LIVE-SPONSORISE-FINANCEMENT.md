@@ -211,8 +211,8 @@ Le dépôt versionne désormais `infra/deploy-production.sh`.
 Le script :
 
 - utilise `umask 0022` pendant Git, Composer et NPM ;
-- construit les assets avant la maintenance ;
-- migre en maintenance ;
+- passe l’application en maintenance avant toute bascule de code ;
+- synchronise Git, installe les dépendances, construit les assets puis migre pendant la maintenance ;
 - garantit la lecture du code par `www-data` ;
 - garde `.env` en `640 root:www-data` ;
 - sépare les droits runtime de `storage` et `bootstrap/cache` ;

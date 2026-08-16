@@ -161,15 +161,6 @@ final class LiveSponsorshipService
         $campaign = $this->campaignForOwner($live, $actor, $advertiserOrganizationId);
         $this->assertEditable($live);
 
-        if ($campaign->status === LiveRewardCampaign::STATUS_FUNDS_RESERVED) {
-            throw new AppException(
-                'LIVE_SPONSORED_ALREADY_FUNDED',
-                'Le budget de ce Live est déjà réservé.',
-                [],
-                409,
-            );
-        }
-
         if ($budgetAmountMinor < 2 || $budgetAmountMinor % 2 !== 0) {
             throw new AppException(
                 'LIVE_SPONSORED_BUDGET_INVALID',
@@ -192,18 +183,6 @@ final class LiveSponsorshipService
             );
         }
 
-        $estimate = $this->estimate($live, $actor, $advertiserOrganizationId);
-        if ($estimate->tooSmall) {
-            throw new AppException(
-                'LIVE_SPONSORED_AUDIENCE_TOO_SMALL',
-                'L’audience estimée est trop petite pour programmer un Live sponsorisé.',
-                [
-                    'estimated_reach_min' => $estimate->estimatedMin,
-                    'estimated_reach_max' => $estimate->estimatedMax,
-                ],
-            );
-        }
-
         return DB::transaction(function () use (
             $campaign,
             $live,
@@ -211,9 +190,45 @@ final class LiveSponsorshipService
             $budgetAmountMinor,
             $blockDurationSeconds,
             $plannedDurationMinutes,
-            $estimate,
         ): LiveRewardQuote {
             $lockedCampaign = LiveRewardCampaign::query()->lockForUpdate()->findOrFail($campaign->id);
+            if (! in_array($lockedCampaign->status, [
+                LiveRewardCampaign::STATUS_DRAFT,
+                LiveRewardCampaign::STATUS_QUOTED,
+            ], true)) {
+                throw new AppException(
+                    'LIVE_SPONSORED_NOT_QUOTABLE',
+                    'Ce Live sponsorisé ne peut plus recevoir un nouveau devis dans son état actuel.',
+                    [],
+                    409,
+                );
+            }
+
+            $segment = $lockedCampaign->segment_configuration ?? [];
+            $classCodes = $segment['economic_classes'] ?? [];
+            if ($classCodes === []) {
+                throw new AppException(
+                    'LIVE_SPONSORED_SEGMENT_REQUIRED',
+                    'Configurez le ciblage avant de générer le devis.',
+                );
+            }
+
+            $estimate = $this->economicClasses->estimateAudience(
+                $classCodes,
+                $segment['territory']['country_code'] ?? null,
+                (int) config('live.minimum_segment_size'),
+            );
+            if ($estimate->tooSmall) {
+                throw new AppException(
+                    'LIVE_SPONSORED_AUDIENCE_TOO_SMALL',
+                    'L’audience estimée est trop petite pour programmer un Live sponsorisé.',
+                    [
+                        'estimated_reach_min' => $estimate->estimatedMin,
+                        'estimated_reach_max' => $estimate->estimatedMax,
+                    ],
+                );
+            }
+
             $lockedCampaign->quotes()
                 ->where('status', LiveRewardQuote::STATUS_ACTIVE)
                 ->update(['status' => LiveRewardQuote::STATUS_SUPERSEDED]);
@@ -256,44 +271,11 @@ final class LiveSponsorshipService
         $campaign = $this->campaignForOwner($live, $actor, $advertiserOrganizationId);
         $this->assertEditable($live);
 
-        $existing = $campaign->budgetReservations()
-            ->where('status', LiveRewardBudgetReservation::STATUS_RESERVED)
-            ->first();
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        if ($campaign->status !== LiveRewardCampaign::STATUS_QUOTED) {
-            throw new AppException(
-                'LIVE_SPONSORED_QUOTE_REQUIRED',
-                'Générez un devis avant de réserver le budget.',
-                [],
-                409,
-            );
-        }
-
-        $quote = $campaign->quotes()
-            ->where('status', LiveRewardQuote::STATUS_ACTIVE)
-            ->latest('quoted_at')
-            ->first();
-        if ($quote === null) {
-            throw new AppException(
-                'LIVE_SPONSORED_QUOTE_REQUIRED',
-                'Aucun devis actif n’est disponible pour ce Live.',
-                [],
-                409,
-            );
-        }
-
-        $idempotencyKey = "live-budget-reservation:{$quote->id}";
-
         return DB::transaction(function () use (
             $campaign,
-            $quote,
             $live,
             $actor,
             $advertiserOrganizationId,
-            $idempotencyKey,
         ): LiveRewardBudgetReservation {
             $lockedCampaign = LiveRewardCampaign::query()->lockForUpdate()->findOrFail($campaign->id);
             $existing = $lockedCampaign->budgetReservations()
@@ -303,6 +285,30 @@ final class LiveSponsorshipService
                 return $existing;
             }
 
+            if ($lockedCampaign->status !== LiveRewardCampaign::STATUS_QUOTED) {
+                throw new AppException(
+                    'LIVE_SPONSORED_QUOTE_REQUIRED',
+                    'Générez un devis actif avant de réserver le budget.',
+                    [],
+                    409,
+                );
+            }
+
+            $quote = $lockedCampaign->quotes()
+                ->where('status', LiveRewardQuote::STATUS_ACTIVE)
+                ->latest('quoted_at')
+                ->lockForUpdate()
+                ->first();
+            if ($quote === null) {
+                throw new AppException(
+                    'LIVE_SPONSORED_QUOTE_REQUIRED',
+                    'Aucun devis actif n’est disponible pour ce Live.',
+                    [],
+                    409,
+                );
+            }
+
+            $idempotencyKey = "live-budget-reservation:{$quote->id}";
             $ledgerTransactionId = $this->budgets->reserve(
                 $advertiserOrganizationId,
                 $live->id,
@@ -367,6 +373,9 @@ final class LiveSponsorshipService
                 ]);
             }
 
+            $lockedCampaign->quotes()
+                ->where('status', LiveRewardQuote::STATUS_ACTIVE)
+                ->update(['status' => LiveRewardQuote::STATUS_SUPERSEDED]);
             $lockedCampaign->update(['status' => LiveRewardCampaign::STATUS_CANCELLED]);
             $live->update([
                 'type' => LiveEvent::TYPE_STANDARD,
@@ -400,7 +409,10 @@ final class LiveSponsorshipService
         }
 
         $campaign = LiveRewardCampaign::query()->where('live_id', $live->id)->first();
-        if ($campaign?->status !== LiveRewardCampaign::STATUS_FUNDS_RESERVED) {
+        $hasReservedBudget = $campaign?->budgetReservations()
+            ->where('status', LiveRewardBudgetReservation::STATUS_RESERVED)
+            ->exists() ?? false;
+        if ($campaign?->status !== LiveRewardCampaign::STATUS_FUNDS_RESERVED || ! $hasReservedBudget) {
             throw new AppException(
                 'LIVE_SPONSORED_FUNDING_REQUIRED',
                 'Réservez le budget du Live sponsorisé avant sa programmation officielle ou son démarrage.',

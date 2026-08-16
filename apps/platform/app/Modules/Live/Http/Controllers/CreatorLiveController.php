@@ -31,7 +31,7 @@ final class CreatorLiveController
             ->latest('created_at')
             ->limit(50)
             ->get()
-            ->map(fn (LiveEvent $live): array => LivePresenter::live($live, $accountId))
+            ->map(fn (LiveEvent $live): array => LivePresenter::live($live, $accountId, true))
             ->values();
 
         return response()->json(['lives' => $lives]);
@@ -46,7 +46,7 @@ final class CreatorLiveController
             $data,
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)], 201);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)], 201);
     }
 
     public function update(Request $request, LiveEvent $live): JsonResponse
@@ -59,7 +59,7 @@ final class CreatorLiveController
             $data,
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
 
     public function schedule(Request $request, LiveEvent $live): JsonResponse
@@ -78,7 +78,7 @@ final class CreatorLiveController
             $scheduledAt,
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
 
     public function start(Request $request, LiveEvent $live): JsonResponse
@@ -94,7 +94,7 @@ final class CreatorLiveController
             $this->advertiserOrganizationId($request),
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
 
     public function pause(Request $request, LiveEvent $live): JsonResponse
@@ -105,7 +105,7 @@ final class CreatorLiveController
             $this->advertiserOrganizationId($request),
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
 
     public function resume(Request $request, LiveEvent $live): JsonResponse
@@ -116,7 +116,7 @@ final class CreatorLiveController
             $this->advertiserOrganizationId($request),
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
 
     public function end(Request $request, LiveEvent $live): JsonResponse
@@ -127,7 +127,7 @@ final class CreatorLiveController
             $this->advertiserOrganizationId($request),
         );
 
-        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id)]);
+        return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
 
     private function advertiserOrganizationId(Request $request): string

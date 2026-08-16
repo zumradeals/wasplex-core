@@ -32,7 +32,12 @@ on_error() {
 trap restore_site EXIT
 trap on_error ERR
 
-echo "=== 1. Synchronisation Git ==="
+echo "=== 1. Maintenance ==="
+cd "$APP"
+"$PHP_BIN" artisan down || true
+site_was_put_down=1
+
+echo "=== 2. Synchronisation Git ==="
 cd "$REPO"
 git fetch origin main
 git checkout main
@@ -45,7 +50,7 @@ if [[ -n "$EXPECTED_SHA" && "$CURRENT_SHA" != "$EXPECTED_SHA" ]]; then
     false
 fi
 
-echo "=== 2. Dépendances ==="
+echo "=== 3. Dépendances et build ==="
 cd "$APP"
 COMPOSER_ALLOW_SUPERUSER=1 composer install \
     --no-dev \
@@ -55,13 +60,11 @@ COMPOSER_ALLOW_SUPERUSER=1 composer install \
 npm ci
 npm run build
 
-echo "=== 3. Maintenance et migration ==="
-"$PHP_BIN" artisan down || true
-site_was_put_down=1
+echo "=== 4. Migration et nettoyage ==="
 "$PHP_BIN" artisan migrate --force
 "$PHP_BIN" artisan optimize:clear
 
-echo "=== 4. Permissions code PHP-FPM ==="
+echo "=== 5. Permissions code PHP-FPM ==="
 for path in app config database routes resources; do
     chgrp -R www-data "$path"
     find "$path" -type d -exec chmod 750 {} +
@@ -86,7 +89,7 @@ if [[ -f .env ]]; then
     chmod 640 .env
 fi
 
-echo "=== 5. Caches Laravel ==="
+echo "=== 6. Caches Laravel ==="
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan route:cache
 "$PHP_BIN" artisan view:cache
@@ -95,18 +98,18 @@ chown -R root:www-data storage bootstrap/cache
 find storage bootstrap/cache -type d -exec chmod 2770 {} +
 find storage bootstrap/cache -type f -exec chmod 660 {} +
 
-echo "=== 6. Processus longue durée ==="
+echo "=== 7. Processus longue durée ==="
 "$PHP_BIN" artisan queue:restart
 if systemctl list-unit-files --type=service | grep -q '^wasplex-reverb\.service'; then
     systemctl restart wasplex-reverb.service
     systemctl is-active --quiet wasplex-reverb.service
 fi
 
-echo "=== 7. Remise en ligne ==="
+echo "=== 8. Remise en ligne ==="
 "$PHP_BIN" artisan up
 site_was_put_down=0
 
-echo "=== 8. Contrôle HTTP ==="
+echo "=== 9. Contrôle HTTP ==="
 http_code=""
 for attempt in {1..10}; do
     http_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$HEALTH_URL" || true)"
