@@ -7,6 +7,7 @@ namespace App\Modules\Live\Http\Controllers;
 use App\Modules\Live\Application\Services\LiveInteractionService;
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
+use App\Modules\Live\Application\Services\LiveRewardAttentionService;
 use App\Modules\Live\Application\Services\LiveRewardSeatService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ final class LiveController
         private readonly LiveLifecycleService $lifecycle,
         private readonly LiveInteractionService $interactions,
         private readonly LiveRewardSeatService $rewardSeats,
+        private readonly LiveRewardAttentionService $rewardAttention,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -52,6 +54,31 @@ final class LiveController
     {
         return response()->json([
             'reward_seat' => $this->rewardSeats->stateForAccount($live, $request->user()),
+            'reward_attention' => $this->rewardAttention->stateForAccount($live, $request->user()),
+        ]);
+    }
+
+    public function rewardAttention(Request $request, LiveEvent $live): JsonResponse
+    {
+        return response()->json([
+            'reward_attention' => $this->rewardAttention->stateForAccount($live, $request->user()),
+        ]);
+    }
+
+    public function rewardAttentionHeartbeat(Request $request, LiveEvent $live): JsonResponse
+    {
+        $data = $request->validate([
+            'visible' => ['required', 'boolean'],
+            'media_connected' => ['required', 'boolean'],
+        ]);
+
+        return response()->json([
+            'reward_attention' => $this->rewardAttention->heartbeat(
+                $live,
+                $request->user(),
+                (bool) $data['visible'],
+                (bool) $data['media_connected'],
+            ),
         ]);
     }
 
@@ -70,11 +97,13 @@ final class LiveController
                 'joined_at' => $session->joined_at?->toIso8601String(),
             ],
             'reward_seat' => $rewardSeat,
+            'reward_attention' => $this->rewardAttention->stateForAccount($live, $request->user()),
         ]);
     }
 
     public function leave(Request $request, LiveEvent $live): JsonResponse
     {
+        $this->rewardAttention->interrupt($live, $request->user(), 'viewer_left');
         $this->rewardSeats->leaveWaitlist($live, $request->user());
         $this->rewardSeats->releaseForViewer($live, $request->user());
         $this->lifecycle->leave($live, $request->user());
