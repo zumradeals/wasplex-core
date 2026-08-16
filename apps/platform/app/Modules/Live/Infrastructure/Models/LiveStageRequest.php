@@ -26,6 +26,7 @@ final class LiveStageRequest extends Model
     protected $fillable = [
         'live_id',
         'account_id',
+        'provider_participant_identity',
         'status',
         'requested_at',
         'resolved_at',

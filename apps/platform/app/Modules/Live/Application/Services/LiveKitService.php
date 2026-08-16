@@ -19,8 +19,13 @@ final class LiveKitService
     /**
      * @return array{url: string, token: string, room: string, identity: string, role: string, can_publish: bool}
      */
-    public function joinCredentials(LiveEvent $live, Account $account, bool $canPublish, string $role): array
-    {
+    public function joinCredentials(
+        LiveEvent $live,
+        Account $account,
+        bool $canPublish,
+        string $role,
+        string $identity,
+    ): array {
         $this->assertConfigured();
 
         if (! in_array($live->status, [LiveEvent::STATUS_LIVE, LiveEvent::STATUS_PAUSED], true)) {
@@ -28,7 +33,6 @@ final class LiveKitService
         }
 
         $account->loadMissing('profile');
-        $identity = $this->participantIdentity($account->id);
         $displayName = $account->profile?->resolvedDisplayName() ?? 'Membre Wasplex';
         $room = $this->roomName($live);
         $now = now()->timestamp;
@@ -62,7 +66,7 @@ final class LiveKitService
         ];
     }
 
-    public function updateParticipantPublishing(LiveEvent $live, string $accountId, bool $canPublish): void
+    public function updateParticipantPublishing(LiveEvent $live, string $participantIdentity, bool $canPublish): void
     {
         $this->assertConfigured();
         $room = $this->roomName($live);
@@ -84,7 +88,7 @@ final class LiveKitService
                 ->timeout(5)
                 ->post($this->apiBaseUrl().'/twirp/livekit.RoomService/UpdateParticipant', [
                     'room' => $room,
-                    'identity' => $this->participantIdentity($accountId),
+                    'identity' => $participantIdentity,
                     'permission' => [
                         'canSubscribe' => true,
                         'canPublish' => $canPublish,
@@ -126,7 +130,18 @@ final class LiveKitService
         return 'wasplex-live-'.$live->id;
     }
 
-    public function participantIdentity(string $accountId): string
+    public function participantIdentity(string $accountId, string $connectionId, string $scope): string
+    {
+        if (! in_array($scope, ['host', 'viewer'], true)) {
+            throw new \InvalidArgumentException('LiveKit participant scope must be host or viewer.');
+        }
+
+        $connectionKey = substr(hash('sha256', $connectionId), 0, 16);
+
+        return $scope.'-'.$accountId.'-'.$connectionKey;
+    }
+
+    public function legacyParticipantIdentity(string $accountId): string
     {
         return 'account-'.$accountId;
     }
