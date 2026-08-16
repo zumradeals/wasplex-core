@@ -9,9 +9,9 @@ use App\Modules\AdvertiserStudio\Application\Contracts\CreativeAssetDirectoryCon
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
 use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract;
 use App\Modules\Campaigns\Application\Contracts\CampaignEnvelopeContract;
-use App\Modules\Campaigns\Application\ValueObjects\ApprovedCampaignAudience;
 use App\Modules\Campaigns\Application\Services\CampaignEnvelopeExhaustedException;
 use App\Modules\Campaigns\Application\Services\CampaignNotAvailableForDeliveryException;
+use App\Modules\Campaigns\Application\ValueObjects\ApprovedCampaignAudience;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDeliveryHold;
