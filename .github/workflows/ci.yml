@@ -92,6 +92,41 @@ jobs:
       - name: Build frontend assets
         run: npm run build
 
+      - name: Format P018-E PHP files
+        run: |
+          vendor/bin/pint \
+            app/Modules/AdvertiserWallet/Application/Contracts/AdvertiserLiveBudgetReservationContract.php \
+            app/Modules/AdvertiserWallet/Application/Services/AdvertiserLiveBudgetReservationService.php \
+            app/Modules/Live/Application/Services/LiveRewardAttentionService.php \
+            app/Modules/Live/Database/Migrations/2026_08_16_184500_create_live_reward_attention.php \
+            app/Modules/Live/Http/Controllers/CreatorLiveController.php \
+            app/Modules/Live/Http/Controllers/LiveController.php \
+            app/Modules/Live/Http/Controllers/LiveSponsorshipController.php \
+            app/Modules/Live/Http/routes/module.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardAttentionBlock.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardAttentionState.php \
+            config/live.php \
+            tests/Feature/Live/LiveRewardAttentionTest.php
+
+      - name: Upload formatted P018-E PHP
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p018-e-pint
+          path: |
+            apps/platform/app/Modules/AdvertiserWallet/Application/Contracts/AdvertiserLiveBudgetReservationContract.php
+            apps/platform/app/Modules/AdvertiserWallet/Application/Services/AdvertiserLiveBudgetReservationService.php
+            apps/platform/app/Modules/Live/Application/Services/LiveRewardAttentionService.php
+            apps/platform/app/Modules/Live/Database/Migrations/2026_08_16_184500_create_live_reward_attention.php
+            apps/platform/app/Modules/Live/Http/Controllers/CreatorLiveController.php
+            apps/platform/app/Modules/Live/Http/Controllers/LiveController.php
+            apps/platform/app/Modules/Live/Http/Controllers/LiveSponsorshipController.php
+            apps/platform/app/Modules/Live/Http/routes/module.php
+            apps/platform/app/Modules/Live/Infrastructure/Models/LiveRewardAttentionBlock.php
+            apps/platform/app/Modules/Live/Infrastructure/Models/LiveRewardAttentionState.php
+            apps/platform/config/live.php
+            apps/platform/tests/Feature/Live/LiveRewardAttentionTest.php
+          if-no-files-found: error
+
       - name: Check PHP formatting
         run: composer lint:check
 
