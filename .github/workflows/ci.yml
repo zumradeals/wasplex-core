@@ -71,6 +71,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Format diagnostic P018-C
+        run: |
+          npx prettier --write resources/js/Components/AdvertiserLivePanel.vue resources/js/Components/LiveSponsorshipPanel.vue
+          echo "BEGIN_ADVERTISER_LIVE_PANEL_BASE64"
+          base64 -w0 resources/js/Components/AdvertiserLivePanel.vue
+          echo
+          echo "END_ADVERTISER_LIVE_PANEL_BASE64"
+          echo "BEGIN_LIVE_SPONSORSHIP_PANEL_BASE64"
+          base64 -w0 resources/js/Components/LiveSponsorshipPanel.vue
+          echo
+          echo "END_LIVE_SPONSORSHIP_PANEL_BASE64"
+          exit 1
+
       - name: Check frontend formatting
         run: npm run format:check
 
