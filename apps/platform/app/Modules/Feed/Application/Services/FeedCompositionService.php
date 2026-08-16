@@ -60,18 +60,21 @@ final class FeedCompositionService
                 continue;
             }
 
-            $decision = $this->matching->checkEligibility($campaign->campaignId, $accountId);
-
-            if (! $decision->isEligible()) {
-                continue;
-            }
-
             // A rewarded impression must never send an advertiser's own
             // money back to the organization owner or one of its active
-            // team members — but they may still preview their own campaign
-            // in the Feed. It is composed like an already-seen replay:
-            // low priority, zero economics, never a fresh rewardable slot.
+            // team members — but they must always be able to preview their
+            // own campaign in the Feed, regardless of Matching (consent,
+            // territory, profile): none of that ever governs money here,
+            // since the preview pays nothing either way.
             $isOwnOrganization = $this->rewardEligibility->isBlockedForOrganization($accountId, $campaign->organizationId);
+
+            if (! $isOwnOrganization) {
+                $decision = $this->matching->checkEligibility($campaign->campaignId, $accountId);
+
+                if (! $decision->isEligible()) {
+                    continue;
+                }
+            }
 
             if ($rewardedCampaigns->has($campaign->campaignId) || $isOwnOrganization) {
                 $lastSeenAt = FeedAdDelivery::query()

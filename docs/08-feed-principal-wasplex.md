@@ -432,9 +432,11 @@ Le moteur de composition du Feed choisit entre ces files selon :
 | Visibilité renforcée Alertes | Non pour le lecteur | Non | Paiement auteur séparé |
 | Aperçu annonceur (propre organisation) | Non | Non | Non |
 
-L'annonceur et tout membre actif de son équipe peuvent voir leur propre
-campagne dans le Feed, en priorité basse par rapport au contenu réel, mais
-ne peuvent jamais en être récompensés : aucune réservation d'enveloppe
+L'annonceur et tout membre actif de son équipe peuvent toujours voir leur
+propre campagne dans le Feed, en priorité basse par rapport au contenu
+réel — y compris sans consentement publicitaire personnel et hors de la
+zone ciblée, puisque l'aperçu ne rémunère jamais personne. Ils ne peuvent
+en revanche jamais en être récompensés : aucune réservation d'enveloppe
 budgétaire, aucune consommation de quota, aucun gain WP.
 
 ---
