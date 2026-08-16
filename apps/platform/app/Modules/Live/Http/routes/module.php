@@ -7,6 +7,7 @@ use App\Modules\Identity\Http\Middleware\EnsureCapability;
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use App\Modules\Live\Http\Controllers\CreatorLiveController;
 use App\Modules\Live\Http\Controllers\LiveController;
+use App\Modules\Live\Http\Controllers\LiveInteractionController;
 use App\Modules\Live\Http\Controllers\LiveRealtimeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -23,6 +24,14 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
         Route::post('/{live}/stage-request', [LiveRealtimeController::class, 'requestStage']);
         Route::delete('/{live}/stage-request', [LiveRealtimeController::class, 'withdrawStage']);
         Route::post('/{live}/stage-request/leave', [LiveRealtimeController::class, 'leaveStage']);
+
+        Route::get('/{live}/comments', [LiveInteractionController::class, 'viewerIndex']);
+        Route::post('/{live}/comments', [LiveInteractionController::class, 'viewerComment'])
+            ->middleware('throttle:30,1');
+        Route::post('/{live}/reactions', [LiveInteractionController::class, 'viewerReaction'])
+            ->middleware('throttle:120,1');
+        Route::post('/{live}/comments/{comment}/report', [LiveInteractionController::class, 'report'])
+            ->middleware('throttle:20,1');
     });
 
     Route::prefix('api/advertiser/lives')
@@ -53,6 +62,23 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
             Route::post('/{live}/stage-requests/{stageRequest}/reject', [LiveRealtimeController::class, 'reject'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
             Route::post('/{live}/stage-requests/{stageRequest}/lower', [LiveRealtimeController::class, 'lower'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+
+            Route::get('/{live}/comments', [LiveInteractionController::class, 'hostIndex'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/comments', [LiveInteractionController::class, 'hostComment'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/reactions', [LiveInteractionController::class, 'hostReaction'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::patch('/{live}/interactions', [LiveInteractionController::class, 'settings'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/comments/{comment}/pin', [LiveInteractionController::class, 'pin'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/comments/{comment}/hide', [LiveInteractionController::class, 'hide'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/participants/{account}/silence', [LiveInteractionController::class, 'silence'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::delete('/{live}/participants/{account}/silence', [LiveInteractionController::class, 'unsilence'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
         });
 });
