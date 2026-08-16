@@ -222,7 +222,8 @@ it('requires a connection id before issuing realtime media credentials', functio
 
     test()->postJson("/api/advertiser/lives/{$liveId}/media-token")
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('connection_id');
+        ->assertJsonPath('code', 'VALIDATION_FAILED')
+        ->assertJsonStructure(['details' => ['errors' => ['connection_id']]]);
 });
 
 it('lists only advertiser-published public lives and lets a member join and leave', function (): void {
