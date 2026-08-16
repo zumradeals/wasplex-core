@@ -612,45 +612,43 @@ onBeforeUnmount(() => {
         <div
             class="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/80 via-black/45 to-transparent px-3.5 pt-3 pb-7"
         >
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <img
-                        src="/brand/wasplex-logo-transparent.png"
-                        alt="Wasplex"
-                        class="wpx-motion-safe h-6.5 w-6.5 animate-[wpxPulseLogo_2.4s_ease-in-out_infinite] object-contain"
-                    />
-                    <span class="text-sm font-black tracking-tight text-white">Wasplex</span>
-                </div>
+            <div class="flex items-center justify-between gap-2.5">
+                <img
+                    src="/brand/wasplex-logo-transparent.png"
+                    alt="Wasplex"
+                    class="wpx-motion-safe h-6.5 w-6.5 shrink-0 animate-[wpxPulseLogo_2.4s_ease-in-out_infinite] object-contain"
+                />
+
+                <nav class="flex flex-1 items-center justify-center gap-4 text-[12px]" aria-label="Navigation du Feed">
+                    <span aria-current="page" class="border-wpx-blue border-b-2 pb-1 font-bold text-white">Pour toi</span>
+                    <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
+                        Explorer
+                    </button>
+                    <button
+                        type="button"
+                        class="pb-1 font-semibold"
+                        :class="showAlertCircles ? 'text-wpx-gold' : 'text-white/70'"
+                        @click.stop="showAlertCircles = !showAlertCircles"
+                    >
+                        Alertes
+                    </button>
+                    <button
+                        type="button"
+                        class="flex items-center gap-1 pb-1 font-semibold text-white/70"
+                        @click.stop="announceFeedNav"
+                    >
+                        <span class="bg-wpx-danger h-1.5 w-1.5 rounded-full" aria-hidden="true" />
+                        Live
+                    </button>
+                </nav>
+
                 <span
-                    class="border-wpx-gold/40 flex items-center gap-1.5 rounded-full border bg-black/55 px-2.5 py-1.5"
+                    class="border-wpx-gold/40 flex shrink-0 items-center gap-1.5 rounded-full border bg-black/55 px-2.5 py-1.5"
                 >
                     <span class="bg-wpx-gold h-1.5 w-1.5 rounded-full" />
                     <span class="text-wpx-gold text-xs font-bold">{{ balance ?? '…' }} WP</span>
                 </span>
             </div>
-
-            <nav class="mt-2.5 flex items-center justify-center gap-4 text-[12px]" aria-label="Navigation du Feed">
-                <span aria-current="page" class="border-wpx-blue border-b-2 pb-1 font-bold text-white">Pour toi</span>
-                <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
-                    Explorer
-                </button>
-                <button
-                    type="button"
-                    class="pb-1 font-semibold"
-                    :class="showAlertCircles ? 'text-wpx-gold' : 'text-white/70'"
-                    @click.stop="showAlertCircles = !showAlertCircles"
-                >
-                    Alertes
-                </button>
-                <button
-                    type="button"
-                    class="flex items-center gap-1 pb-1 font-semibold text-white/70"
-                    @click.stop="announceFeedNav"
-                >
-                    <span class="bg-wpx-danger h-1.5 w-1.5 rounded-full" aria-hidden="true" />
-                    Live
-                </button>
-            </nav>
 
             <div v-if="feedNavNotice" class="mt-1.5 text-center text-[10px] font-medium text-white/70">
                 {{ feedNavNotice }}
