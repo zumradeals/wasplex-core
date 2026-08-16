@@ -51,7 +51,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "timeout 180 php artisan test --testdox"
         ],
         "lint": "vendor/bin/pint",
         "lint:check": "vendor/bin/pint --test",
