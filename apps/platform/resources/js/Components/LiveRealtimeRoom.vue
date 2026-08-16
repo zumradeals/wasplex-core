@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import LiveInteractionsPanel from '@/Components/LiveInteractionsPanel.vue';
 import http from '@/lib/http';
 import { loadLiveKit, type LiveKitModule, type LiveKitParticipant, type LiveKitRoom } from '@/lib/livekitBrowser';
 
@@ -33,6 +34,7 @@ const stagePending = ref(false);
 const stageRequests = ref<StageRequest[]>([]);
 const stageBusyId = ref<string | null>(null);
 const renderedParticipantCount = ref(0);
+const liveViewerCount = ref(props.viewerCount);
 const connectionId = globalThis.crypto.randomUUID();
 
 let room: LiveKitRoom | null = null;
@@ -41,6 +43,13 @@ let stagePoll: ReturnType<typeof setInterval> | null = null;
 
 const pendingRequests = computed(() => stageRequests.value.filter((item) => item.status === 'pending'));
 const activeSpeakers = computed(() => stageRequests.value.filter((item) => item.status === 'approved'));
+
+watch(
+    () => props.viewerCount,
+    (count) => {
+        liveViewerCount.value = count;
+    },
+);
 
 function messageFrom(cause: unknown): string {
     return (cause as ApiError)?.response?.data?.message ?? 'La connexion vidéo temps réel a échoué.';
@@ -340,11 +349,13 @@ onBeforeUnmount(() => void disconnectRoom());
             <div ref="mediaGrid" class="h-full w-full bg-black"></div>
 
             <div
-                class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3"
+                class="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3"
             >
                 <div class="flex items-center gap-2">
                     <span class="rounded-md bg-red-600 px-2 py-1 text-[10px] font-black tracking-wide">LIVE</span>
-                    <span class="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold">👁 {{ viewerCount }}</span>
+                    <span class="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold"
+                        >👁 {{ liveViewerCount }}</span
+                    >
                 </div>
                 <span v-if="connected" class="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold">
                     Temps réel connecté
@@ -376,6 +387,13 @@ onBeforeUnmount(() => void disconnectRoom());
             >
                 En attente de la vidéo de l’hôte…
             </div>
+
+            <LiveInteractionsPanel
+                v-if="connected"
+                :live-id="liveId"
+                :mode="mode"
+                @viewer-count="liveViewerCount = $event"
+            />
         </div>
 
         <p

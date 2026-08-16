@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Live\Http\Controllers;
 
+use App\Modules\Live\Application\Services\LiveInteractionService;
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
@@ -13,7 +14,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class LiveController
 {
-    public function __construct(private readonly LiveLifecycleService $lifecycle) {}
+    public function __construct(
+        private readonly LiveLifecycleService $lifecycle,
+        private readonly LiveInteractionService $interactions,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -45,9 +49,11 @@ final class LiveController
     public function join(Request $request, LiveEvent $live): JsonResponse
     {
         $session = $this->lifecycle->join($live, $request->user());
+        $live->refresh();
+        $this->interactions->broadcastViewerCount($live);
 
         return response()->json([
-            'live' => LivePresenter::live($live->refresh(), (string) $request->user()->id),
+            'live' => LivePresenter::live($live, (string) $request->user()->id),
             'viewer_session' => [
                 'id' => $session->id,
                 'status' => $session->status,
@@ -59,6 +65,7 @@ final class LiveController
     public function leave(Request $request, LiveEvent $live): JsonResponse
     {
         $this->lifecycle->leave($live, $request->user());
+        $this->interactions->broadcastViewerCount($live);
 
         return response()->json(['left' => true]);
     }

@@ -78,6 +78,16 @@ final class LiveEvent extends Model
         return $this->hasMany(LiveStageRequest::class, 'live_id');
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(LiveComment::class, 'live_id');
+    }
+
+    public function commentRestrictions(): HasMany
+    {
+        return $this->hasMany(LiveCommentRestriction::class, 'live_id');
+    }
+
     public function auditEvents(): HasMany
     {
         return $this->hasMany(LiveAuditEvent::class, 'live_id');
