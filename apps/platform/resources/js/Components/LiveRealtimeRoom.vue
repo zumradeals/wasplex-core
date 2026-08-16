@@ -353,7 +353,9 @@ onBeforeUnmount(() => void disconnectRoom());
             >
                 <div class="flex items-center gap-2">
                     <span class="rounded-md bg-red-600 px-2 py-1 text-[10px] font-black tracking-wide">LIVE</span>
-                    <span class="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold">👁 {{ liveViewerCount }}</span>
+                    <span class="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold"
+                        >👁 {{ liveViewerCount }}</span
+                    >
                 </div>
                 <span v-if="connected" class="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold">
                     Temps réel connecté
