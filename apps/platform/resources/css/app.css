@@ -40,6 +40,67 @@
     }
 }
 
+/* Feed mobile: logo, navigation et wallet sur une seule ligne. */
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.45rem;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+    padding-top: 0.65rem;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child,
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child > div:first-child {
+    display: contents;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child > div:first-child > img {
+    grid-column: 1;
+    width: 1.8rem;
+    height: 1.8rem;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child > div:first-child > span {
+    display: none;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > nav {
+    grid-column: 2;
+    margin-top: 0;
+    min-width: 0;
+    justify-content: space-evenly;
+    gap: 0.25rem;
+    font-size: clamp(0.62rem, 2.75vw, 0.75rem);
+    white-space: nowrap;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child > span {
+    grid-column: 3;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    justify-content: center;
+    border-radius: 9999px;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child > span > span {
+    display: none;
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div:first-child > span::before {
+    content: '';
+    width: 1.15rem;
+    height: 1.15rem;
+    background: center / contain no-repeat url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23f2c14e%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%207.5h14a2%202%200%200%201%202%202v8a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2v-12a2%202%200%200%201%202-2h12%22%2F%3E%3Cpath%20d%3D%22M16%2011h4v4h-4a2%202%200%200%201%200-4Z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div[v-if],
+div[class*='aspect-[9/16]'] > div[class*='from-black/80'][class*='via-black/45'] > div[class*='h-0.5'] {
+    grid-column: 1 / -1;
+}
+
 /* docs/00 §15.5 : mouvement réduit — le pulse et le glow s'arrêtent, l'état final reste visible. */
 @media (prefers-reduced-motion: reduce) {
     .wpx-motion-safe {
