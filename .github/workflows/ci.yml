@@ -71,22 +71,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Diagnose FeedPanel formatting inherited from main
-        run: |
-          npx prettier --write resources/js/Components/FeedPanel.vue
-          git diff -- resources/js/Components/FeedPanel.vue
-
-      - name: Upload formatted FeedPanel
-        uses: actions/upload-artifact@v4
-        with:
-          name: feedpanel-prettier
-          path: apps/platform/resources/js/Components/FeedPanel.vue
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Stop diagnostic run
-        run: exit 1
-
       - name: Check frontend formatting
         run: npm run format:check
 
