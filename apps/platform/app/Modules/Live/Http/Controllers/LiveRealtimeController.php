@@ -17,13 +17,21 @@ final class LiveRealtimeController
     public function viewerCredentials(Request $request, LiveEvent $live): JsonResponse
     {
         return response()->json([
-            'media' => $this->realtime->viewerCredentials($live, $request->user()),
+            'media' => $this->realtime->viewerCredentials(
+                $live,
+                $request->user(),
+                $this->connectionId($request),
+            ),
         ]);
     }
 
     public function requestStage(Request $request, LiveEvent $live): JsonResponse
     {
-        $stageRequest = $this->realtime->requestStage($live, $request->user());
+        $stageRequest = $this->realtime->requestStage(
+            $live,
+            $request->user(),
+            $this->connectionId($request),
+        );
 
         return response()->json(['stage_request' => $this->presentStageRequest($stageRequest)], 201);
     }
@@ -49,6 +57,7 @@ final class LiveRealtimeController
                 $live,
                 $request->user(),
                 $this->advertiserOrganizationId($request),
+                $this->connectionId($request),
             ),
         ]);
     }
@@ -112,6 +121,15 @@ final class LiveRealtimeController
     private function advertiserOrganizationId(Request $request): string
     {
         return (string) $request->attributes->get('advertiser_organization_id');
+    }
+
+    private function connectionId(Request $request): string
+    {
+        $validated = $request->validate([
+            'connection_id' => ['required', 'uuid'],
+        ]);
+
+        return (string) $validated['connection_id'];
     }
 
     /**

@@ -32,6 +32,8 @@ const canPublish = ref(props.mode === 'host');
 const stagePending = ref(false);
 const stageRequests = ref<StageRequest[]>([]);
 const stageBusyId = ref<string | null>(null);
+const renderedParticipantCount = ref(0);
+const connectionId = globalThis.crypto.randomUUID();
 
 let room: LiveKitRoom | null = null;
 let sdk: LiveKitModule | null = null;
@@ -53,7 +55,13 @@ function participantLabel(participant: LiveKitParticipant): string {
 function renderParticipants(): void {
     if (!mediaGrid.value || !room) return;
 
-    const participants = [room.localParticipant, ...Array.from(room.remoteParticipants.values())];
+    const remoteParticipants = Array.from(room.remoteParticipants.values());
+    const includeLocalParticipant = props.mode === 'host' || canPublish.value;
+    const participants = includeLocalParticipant
+        ? [room.localParticipant, ...remoteParticipants]
+        : remoteParticipants;
+
+    renderedParticipantCount.value = participants.length;
     mediaGrid.value.replaceChildren();
     mediaGrid.value.className = [
         'grid h-full w-full gap-1 bg-black',
@@ -125,12 +133,14 @@ function bindRoomEvents(): void {
         room.on(permissionsEvent, () => {
             const allowed = room?.localParticipant.permissions?.canPublish === true;
             canPublish.value = props.mode === 'host' || allowed;
+            if (allowed) stagePending.value = false;
             if (!canPublish.value) {
                 cameraEnabled.value = false;
                 microphoneEnabled.value = false;
                 void room?.localParticipant.setCameraEnabled(false);
                 void room?.localParticipant.setMicrophoneEnabled(false);
             }
+            renderParticipants();
         });
     }
 }
@@ -145,22 +155,29 @@ async function connectRoom(): Promise<void> {
             props.mode === 'host'
                 ? `/advertiser/lives/${props.liveId}/media-token`
                 : `/lives/${props.liveId}/media-token`;
-        const { data } = await http.post(endpoint);
+        const { data } = await http.post(endpoint, { connection_id: connectionId });
         sdk = await loadLiveKit();
         room = new sdk.Room({ adaptiveStream: true, dynacast: true });
         bindRoomEvents();
         await room.connect(data.media.url, data.media.token);
+
         connected.value = true;
+        connecting.value = false;
         canPublish.value = props.mode === 'host' || data.media.can_publish === true;
+        renderParticipants();
 
         if (props.mode === 'host') {
-            await enableCamera();
-            await enableMicrophone();
             startStagePolling();
+            void enableCamera();
+            void enableMicrophone();
         }
-
-        renderParticipants();
     } catch (cause) {
+        if (room) {
+            await room.disconnect().catch(() => undefined);
+            room = null;
+        }
+        connected.value = false;
+        renderedParticipantCount.value = 0;
         error.value = messageFrom(cause);
     } finally {
         connecting.value = false;
@@ -169,6 +186,7 @@ async function connectRoom(): Promise<void> {
 
 async function enableCamera(): Promise<void> {
     if (!room || !canPublish.value) return;
+    error.value = null;
     try {
         await room.localParticipant.setCameraEnabled(true);
         cameraEnabled.value = true;
@@ -181,6 +199,7 @@ async function enableCamera(): Promise<void> {
 async function toggleCamera(): Promise<void> {
     if (!room || !canPublish.value) return;
     const next = !cameraEnabled.value;
+    error.value = null;
     try {
         await room.localParticipant.setCameraEnabled(next);
         cameraEnabled.value = next;
@@ -192,6 +211,7 @@ async function toggleCamera(): Promise<void> {
 
 async function enableMicrophone(): Promise<void> {
     if (!room || !canPublish.value) return;
+    error.value = null;
     try {
         await room.localParticipant.setMicrophoneEnabled(true);
         microphoneEnabled.value = true;
@@ -203,6 +223,7 @@ async function enableMicrophone(): Promise<void> {
 async function toggleMicrophone(): Promise<void> {
     if (!room || !canPublish.value) return;
     const next = !microphoneEnabled.value;
+    error.value = null;
     try {
         await room.localParticipant.setMicrophoneEnabled(next);
         microphoneEnabled.value = next;
@@ -213,6 +234,7 @@ async function toggleMicrophone(): Promise<void> {
 
 async function activateAudio(): Promise<void> {
     if (!room) return;
+    error.value = null;
     try {
         await room.startAudio();
         audioEnabled.value = true;
@@ -224,7 +246,9 @@ async function activateAudio(): Promise<void> {
 async function requestStage(): Promise<void> {
     error.value = null;
     try {
-        const { data } = await http.post(`/lives/${props.liveId}/stage-request`);
+        const { data } = await http.post(`/lives/${props.liveId}/stage-request`, {
+            connection_id: connectionId,
+        });
         stagePending.value = data.stage_request.status === 'pending';
     } catch (cause) {
         error.value = messageFrom(cause);
@@ -301,6 +325,10 @@ async function disconnectRoom(): Promise<void> {
         room = null;
     }
     connected.value = false;
+    renderedParticipantCount.value = 0;
+    cameraEnabled.value = false;
+    microphoneEnabled.value = false;
+    audioEnabled.value = false;
     emit('disconnected');
 }
 
@@ -320,9 +348,9 @@ onBeforeUnmount(() => void disconnectRoom());
                     <span class="rounded-md bg-red-600 px-2 py-1 text-[10px] font-black tracking-wide">LIVE</span>
                     <span class="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-bold">👁 {{ viewerCount }}</span>
                 </div>
-                <span v-if="connected" class="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold"
-                    >Temps réel</span
-                >
+                <span v-if="connected" class="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold">
+                    Temps réel connecté
+                </span>
             </div>
 
             <div
@@ -344,6 +372,12 @@ onBeforeUnmount(() => void disconnectRoom());
                     Réessayer
                 </button>
             </div>
+            <div
+                v-else-if="connected && mode === 'viewer' && renderedParticipantCount === 0"
+                class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/70 px-6 text-center text-sm font-bold text-white/75"
+            >
+                En attente de la vidéo de l’hôte…
+            </div>
         </div>
 
         <p
@@ -355,6 +389,9 @@ onBeforeUnmount(() => void disconnectRoom());
         </p>
 
         <div v-if="connected" class="flex flex-wrap items-center justify-center gap-2 bg-slate-950 px-3 py-3">
+            <span class="rounded-full bg-emerald-500/15 px-3 py-2 text-[10px] font-black text-emerald-200">
+                ● Connecté
+            </span>
             <button type="button" class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold" @click="activateAudio">
                 {{ audioEnabled ? '🔊 Son actif' : '🔈 Activer le son' }}
             </button>
@@ -365,14 +402,14 @@ onBeforeUnmount(() => void disconnectRoom());
                     class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold"
                     @click="toggleMicrophone"
                 >
-                    {{ microphoneEnabled ? '🎤 Micro' : '🔇 Micro coupé' }}
+                    {{ microphoneEnabled ? '🎤 Micro actif' : '🔇 Micro coupé' }}
                 </button>
                 <button
                     type="button"
                     class="rounded-full bg-white/10 px-3 py-2 text-xs font-bold"
                     @click="toggleCamera"
                 >
-                    {{ cameraEnabled ? '📹 Caméra' : '🚫 Caméra coupée' }}
+                    {{ cameraEnabled ? '📹 Caméra active' : '🚫 Caméra coupée' }}
                 </button>
             </template>
 

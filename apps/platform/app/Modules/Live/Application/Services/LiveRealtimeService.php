@@ -20,29 +20,45 @@ final class LiveRealtimeService
     /**
      * @return array{url: string, token: string, room: string, identity: string, role: string, can_publish: bool}
      */
-    public function viewerCredentials(LiveEvent $live, Account $viewer): array
+    public function viewerCredentials(LiveEvent $live, Account $viewer, string $connectionId): array
     {
         $this->assertViewerPresent($live, $viewer);
+        $identity = $this->liveKit->participantIdentity((string) $viewer->id, $connectionId, 'viewer');
         $isSpeaker = LiveStageRequest::query()
             ->where('live_id', $live->id)
             ->where('account_id', $viewer->id)
             ->where('status', LiveStageRequest::STATUS_APPROVED)
+            ->where(function ($query) use ($identity): void {
+                $query->where('provider_participant_identity', $identity)
+                    ->orWhereNull('provider_participant_identity');
+            })
             ->exists();
 
-        return $this->liveKit->joinCredentials($live, $viewer, $isSpeaker, $isSpeaker ? 'speaker' : 'viewer');
+        return $this->liveKit->joinCredentials(
+            $live,
+            $viewer,
+            $isSpeaker,
+            $isSpeaker ? 'speaker' : 'viewer',
+            $identity,
+        );
     }
 
     /**
      * @return array{url: string, token: string, room: string, identity: string, role: string, can_publish: bool}
      */
-    public function hostCredentials(LiveEvent $live, Account $host, string $organizationId): array
-    {
+    public function hostCredentials(
+        LiveEvent $live,
+        Account $host,
+        string $organizationId,
+        string $connectionId,
+    ): array {
         $this->assertHost($live, $host, $organizationId);
+        $identity = $this->liveKit->participantIdentity((string) $host->id, $connectionId, 'host');
 
-        return $this->liveKit->joinCredentials($live, $host, true, 'host');
+        return $this->liveKit->joinCredentials($live, $host, true, 'host', $identity);
     }
 
-    public function requestStage(LiveEvent $live, Account $viewer): LiveStageRequest
+    public function requestStage(LiveEvent $live, Account $viewer, string $connectionId): LiveStageRequest
     {
         if ($live->status !== LiveEvent::STATUS_LIVE) {
             throw new AppException('LIVE_STAGE_NOT_OPEN', 'Les demandes pour monter sont ouvertes uniquement pendant le direct.', [], 409);
@@ -53,8 +69,9 @@ final class LiveRealtimeService
         }
 
         $this->assertViewerPresent($live, $viewer);
+        $participantIdentity = $this->liveKit->participantIdentity((string) $viewer->id, $connectionId, 'viewer');
 
-        return DB::transaction(function () use ($live, $viewer): LiveStageRequest {
+        return DB::transaction(function () use ($live, $viewer, $participantIdentity): LiveStageRequest {
             $existing = LiveStageRequest::query()
                 ->where('live_id', $live->id)
                 ->where('account_id', $viewer->id)
@@ -64,16 +81,32 @@ final class LiveRealtimeService
                 ->first();
 
             if ($existing !== null) {
-                return $existing;
+                if ($existing->status === LiveStageRequest::STATUS_APPROVED
+                    && $existing->provider_participant_identity !== null
+                    && $existing->provider_participant_identity !== $participantIdentity) {
+                    throw new AppException(
+                        'LIVE_STAGE_ALREADY_ACTIVE_ON_ANOTHER_CONNECTION',
+                        'Vous êtes déjà sur scène depuis une autre connexion.',
+                        [],
+                        409,
+                    );
+                }
+
+                if ($existing->status === LiveStageRequest::STATUS_PENDING
+                    && $existing->provider_participant_identity !== $participantIdentity) {
+                    $existing->update(['provider_participant_identity' => $participantIdentity]);
+                }
+
+                return $existing->refresh();
             }
 
             $stageRequest = LiveStageRequest::query()->create([
                 'live_id' => $live->id,
                 'account_id' => $viewer->id,
+                'provider_participant_identity' => $participantIdentity,
                 'status' => LiveStageRequest::STATUS_PENDING,
                 'requested_at' => now(),
             ]);
-
             $this->audit($live, $viewer->id, 'LiveStageRequested', ['stage_request_id' => $stageRequest->id]);
 
             return $stageRequest->refresh();
@@ -95,7 +128,11 @@ final class LiveRealtimeService
             return;
         }
 
-        $this->liveKit->updateParticipantPublishing($live, (string) $viewer->id, false);
+        $this->liveKit->updateParticipantPublishing(
+            $live,
+            $this->stageParticipantIdentity($stageRequest),
+            false,
+        );
         $stageRequest->update([
             'status' => LiveStageRequest::STATUS_LOWERED,
             'resolved_at' => now(),
@@ -156,7 +193,11 @@ final class LiveRealtimeService
             throw new AppException('LIVE_STAGE_REQUEST_NOT_PENDING', 'Cette demande n’est plus en attente.', [], 409);
         }
 
-        $this->liveKit->updateParticipantPublishing($live, (string) $stageRequest->account_id, true);
+        $this->liveKit->updateParticipantPublishing(
+            $live,
+            $this->stageParticipantIdentity($stageRequest),
+            true,
+        );
 
         $stageRequest->update([
             'status' => LiveStageRequest::STATUS_APPROVED,
@@ -207,7 +248,11 @@ final class LiveRealtimeService
             throw new AppException('LIVE_STAGE_PARTICIPANT_NOT_ACTIVE', 'Cet intervenant n’est pas actuellement monté.', [], 409);
         }
 
-        $this->liveKit->updateParticipantPublishing($live, (string) $stageRequest->account_id, false);
+        $this->liveKit->updateParticipantPublishing(
+            $live,
+            $this->stageParticipantIdentity($stageRequest),
+            false,
+        );
 
         $stageRequest->update([
             'status' => LiveStageRequest::STATUS_LOWERED,
@@ -251,6 +296,12 @@ final class LiveRealtimeService
         if ($stageRequest->live_id !== $live->id) {
             throw new AppException('LIVE_STAGE_REQUEST_MISMATCH', 'Cette demande ne correspond pas à ce Live.', [], 404);
         }
+    }
+
+    private function stageParticipantIdentity(LiveStageRequest $stageRequest): string
+    {
+        return $stageRequest->provider_participant_identity
+            ?? $this->liveKit->legacyParticipantIdentity((string) $stageRequest->account_id);
     }
 
     /**

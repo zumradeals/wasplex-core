@@ -11,6 +11,7 @@ use App\Modules\Live\Infrastructure\Models\LiveStageRequest;
 use App\Modules\Live\Infrastructure\Models\LiveStreamSession;
 use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 beforeEach(function (): void {
     config()->set('services.livekit.url', 'wss://live.test');
@@ -91,7 +92,7 @@ it('refuses to mark a Live active when realtime media is not configured', functi
     expect(LiveEvent::query()->findOrFail($liveId)->status)->toBe(LiveEvent::STATUS_DRAFT);
 });
 
-it('issues short lived LiveKit tokens with distinct host and viewer publishing rights', function (): void {
+it('issues short lived LiveKit tokens with distinct host and viewer publishing rights and connection identities', function (): void {
     registerAndLogin('live-token-host@example.com');
     createAdvertiserOrganization('Annonceur Token');
 
@@ -100,11 +101,16 @@ it('issues short lived LiveKit tokens with distinct host and viewer publishing r
         ->json('live.id');
     test()->postJson("/api/advertiser/lives/{$liveId}/start")->assertOk();
 
-    $hostToken = (string) test()->postJson("/api/advertiser/lives/{$liveId}/media-token")
-        ->assertOk()
+    $hostConnectionA = (string) Str::uuid();
+    $hostConnectionB = (string) Str::uuid();
+    $hostMediaA = test()->postJson("/api/advertiser/lives/{$liveId}/media-token", [
+        'connection_id' => $hostConnectionA,
+    ])->assertOk()
         ->assertJsonPath('media.can_publish', true)
-        ->assertJsonPath('media.url', 'wss://live.test')
-        ->json('media.token');
+        ->assertJsonPath('media.url', 'wss://live.test');
+    $hostMediaB = test()->postJson("/api/advertiser/lives/{$liveId}/media-token", [
+        'connection_id' => $hostConnectionB,
+    ])->assertOk();
 
     $decodePayload = static function (string $token): array {
         $payload = explode('.', $token)[1];
@@ -113,27 +119,31 @@ it('issues short lived LiveKit tokens with distinct host and viewer publishing r
         return json_decode(base64_decode(strtr($payload, '-_', '+/')), true, flags: JSON_THROW_ON_ERROR);
     };
 
-    $hostPayload = $decodePayload($hostToken);
+    $hostPayload = $decodePayload((string) $hostMediaA->json('media.token'));
     expect($hostPayload['video']['roomJoin'])->toBeTrue()
         ->and($hostPayload['video']['canPublish'])->toBeTrue()
         ->and($hostPayload['video']['room'])->toBe("wasplex-live-{$liveId}")
-        ->and($hostPayload['exp'] - $hostPayload['nbf'])->toBe(300);
+        ->and($hostPayload['exp'] - $hostPayload['nbf'])->toBe(300)
+        ->and($hostMediaA->json('media.identity'))->not->toBe($hostMediaB->json('media.identity'));
 
     test()->postJson('/api/logout')->assertSuccessful();
     registerAndLogin('live-token-viewer@example.com');
     test()->postJson("/api/lives/{$liveId}/join")->assertOk();
 
-    $viewerToken = (string) test()->postJson("/api/lives/{$liveId}/media-token")
-        ->assertOk()
-        ->assertJsonPath('media.can_publish', false)
-        ->json('media.token');
-    $viewerPayload = $decodePayload($viewerToken);
+    $viewerConnection = (string) Str::uuid();
+    $viewerMedia = test()->postJson("/api/lives/{$liveId}/media-token", [
+        'connection_id' => $viewerConnection,
+    ])->assertOk()
+        ->assertJsonPath('media.can_publish', false);
+    $viewerPayload = $decodePayload((string) $viewerMedia->json('media.token'));
 
     expect($viewerPayload['video']['canPublish'])->toBeFalse()
-        ->and($viewerPayload['video']['canSubscribe'])->toBeTrue();
+        ->and($viewerPayload['video']['canSubscribe'])->toBeTrue()
+        ->and($viewerPayload['sub'])->toBe($viewerMedia->json('media.identity'))
+        ->and($viewerMedia->json('media.identity'))->not->toBe($hostMediaA->json('media.identity'));
 });
 
-it('lets a viewer request the stage and the host grant and revoke real publishing permission', function (): void {
+it('lets a viewer request the stage and grants publishing only to the requesting LiveKit connection', function (): void {
     Http::fake([
         'https://live.test/twirp/livekit.RoomService/UpdateParticipant' => Http::response(['identity' => 'ok'], 200),
     ]);
@@ -157,34 +167,62 @@ it('lets a viewer request the stage and the host grant and revoke real publishin
         ->whereIn('status', [LiveViewerSession::STATUS_WATCHING, LiveViewerSession::STATUS_PAUSED])
         ->value('account_id');
     $viewer = Account::query()->findOrFail($viewerAccountId);
+    $viewerConnection = (string) Str::uuid();
+    $otherViewerConnection = (string) Str::uuid();
 
-    $requestId = (string) test()->postJson("/api/lives/{$liveId}/stage-request")
-        ->assertCreated()
+    $viewerIdentity = (string) test()->postJson("/api/lives/{$liveId}/media-token", [
+        'connection_id' => $viewerConnection,
+    ])->assertOk()
+        ->assertJsonPath('media.can_publish', false)
+        ->json('media.identity');
+
+    $requestId = (string) test()->postJson("/api/lives/{$liveId}/stage-request", [
+        'connection_id' => $viewerConnection,
+    ])->assertCreated()
         ->assertJsonPath('stage_request.status', LiveStageRequest::STATUS_PENDING)
         ->json('stage_request.id');
 
     $stageRequest = LiveStageRequest::query()->findOrFail($requestId);
-    $service = app(LiveRealtimeService::class);
+    expect($stageRequest->provider_participant_identity)->toBe($viewerIdentity);
 
+    $service = app(LiveRealtimeService::class);
     $approved = $service->approve($live, $stageRequest, $host, $organizationId);
     expect($approved->status)->toBe(LiveStageRequest::STATUS_APPROVED);
 
-    $speakerCredentials = $service->viewerCredentials($live, $viewer);
+    $speakerCredentials = $service->viewerCredentials($live, $viewer, $viewerConnection);
+    $otherConnectionCredentials = $service->viewerCredentials($live, $viewer, $otherViewerConnection);
     expect($speakerCredentials['can_publish'])->toBeTrue()
-        ->and($speakerCredentials['role'])->toBe('speaker');
+        ->and($speakerCredentials['role'])->toBe('speaker')
+        ->and($speakerCredentials['identity'])->toBe($viewerIdentity)
+        ->and($otherConnectionCredentials['can_publish'])->toBeFalse()
+        ->and($otherConnectionCredentials['role'])->toBe('viewer');
 
     $lowered = $service->lower($live, $approved, $host, $organizationId);
     expect($lowered->status)->toBe(LiveStageRequest::STATUS_LOWERED);
 
     Http::assertSentCount(2);
-    Http::assertSent(function ($request): bool {
+    Http::assertSent(function ($request) use ($viewerIdentity): bool {
         if (! str_ends_with($request->url(), '/twirp/livekit.RoomService/UpdateParticipant')) {
             return false;
         }
 
-        return $request['permission']['canSubscribe'] === true
+        return $request['identity'] === $viewerIdentity
+            && $request['permission']['canSubscribe'] === true
             && $request['permission']['canPublishData'] === false;
     });
+});
+
+it('requires a connection id before issuing realtime media credentials', function (): void {
+    registerAndLogin('live-connection-host@example.com');
+    createAdvertiserOrganization('Annonceur connexion');
+    $liveId = (string) test()->postJson('/api/advertiser/lives', ['title' => 'Live connexion'])
+        ->assertCreated()
+        ->json('live.id');
+    test()->postJson("/api/advertiser/lives/{$liveId}/start")->assertOk();
+
+    test()->postJson("/api/advertiser/lives/{$liveId}/media-token")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('connection_id');
 });
 
 it('lists only advertiser-published public lives and lets a member join and leave', function (): void {
