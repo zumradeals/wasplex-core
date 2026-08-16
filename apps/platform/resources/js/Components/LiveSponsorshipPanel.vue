@@ -292,7 +292,10 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
                 </button>
             </template>
 
-            <div v-if="sponsorship?.latest_quote" class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-2xl border p-3.5">
+            <div
+                v-if="sponsorship?.latest_quote"
+                class="border-wpx-border-dark bg-wpx-navy-850 mt-4 rounded-2xl border p-3.5"
+            >
                 <div class="grid grid-cols-3 gap-2">
                     <div>
                         <p class="text-wpx-muted-dark text-[10px] uppercase">Budget</p>
