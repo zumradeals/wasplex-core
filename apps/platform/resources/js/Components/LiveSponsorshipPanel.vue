@@ -17,6 +17,12 @@ interface SponsorshipQuote {
     estimated_reach_max: number;
     planned_duration_minutes: number;
     block_duration_seconds: number;
+    rewarded_seat_capacity: number;
+    max_blocks_per_viewer: number;
+    funded_blocks: number;
+    reward_per_block_minor: number;
+    max_reward_per_viewer_minor: number;
+    spectator_envelope_remainder_minor: number;
     quoted_at: string | null;
 }
 
@@ -31,6 +37,12 @@ interface SponsorshipSummary {
         released_at: string | null;
     } | null;
     can_schedule: boolean;
+    seat_runtime: {
+        active: number;
+        offered: number;
+        waiting: number;
+        available: number;
+    } | null;
 }
 
 interface SponsorableLive {
@@ -54,6 +66,8 @@ const estimate = ref<{ estimated_reach_min: number; estimated_reach_max: number;
 const countryCode = ref('CI');
 const budgetAmount = ref('');
 const blockDurationSeconds = ref(300);
+const rewardedSeatCapacity = ref(1);
+const maxBlocksPerViewer = ref(1);
 const plannedSchedule = ref('');
 
 const sponsorship = computed(() => props.live.sponsorship);
@@ -63,7 +77,11 @@ function syncForm(): void {
     countryCode.value = props.live.sponsorship?.segment?.country_code ?? 'CI';
     const quote = props.live.sponsorship?.latest_quote;
     if (quote && budgetAmount.value === '') budgetAmount.value = String(quote.budget_amount_minor);
-    if (quote) blockDurationSeconds.value = quote.block_duration_seconds;
+    if (quote) {
+        blockDurationSeconds.value = quote.block_duration_seconds;
+        rewardedSeatCapacity.value = quote.rewarded_seat_capacity || rewardedSeatCapacity.value;
+        maxBlocksPerViewer.value = quote.max_blocks_per_viewer || maxBlocksPerViewer.value;
+    }
     plannedSchedule.value = toDatetimeLocal(props.live.scheduled_at);
 }
 
@@ -81,6 +99,10 @@ function messageFrom(cause: unknown): string {
 
 function money(value: number): string {
     return new Intl.NumberFormat('fr-FR').format(value) + ' WP';
+}
+
+function minutes(seconds: number): number {
+    return Math.round(seconds / 60);
 }
 
 function updateLive(live: SponsorableLive): void {
@@ -115,6 +137,9 @@ async function estimateAudience(): Promise<void> {
         await configure();
         const { data } = await http.post(`/advertiser/lives/${props.live.id}/segment-estimate`);
         estimate.value = data.estimate;
+        if (estimate.value && rewardedSeatCapacity.value > estimate.value.estimated_reach_max) {
+            rewardedSeatCapacity.value = Math.max(1, estimate.value.estimated_reach_max);
+        }
         updateLive(data.live);
     } catch (cause) {
         error.value = messageFrom(cause);
@@ -137,6 +162,8 @@ async function quote(): Promise<void> {
         const { data } = await http.post(`/advertiser/lives/${props.live.id}/quote`, {
             budget_amount_minor: amount,
             block_duration_seconds: blockDurationSeconds.value,
+            rewarded_seat_capacity: rewardedSeatCapacity.value,
+            max_blocks_per_viewer: maxBlocksPerViewer.value,
         });
         updateLive(data.live);
     } catch (cause) {
@@ -202,10 +229,10 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
         <div class="flex items-start justify-between gap-3">
             <div>
                 <p class="text-wpx-gold text-[10px] font-bold tracking-[0.14em] uppercase">Live sponsorisé</p>
-                <h3 class="text-wpx-white-soft mt-1 text-sm font-extrabold">Financement du direct</h3>
+                <h3 class="text-wpx-white-soft mt-1 text-sm font-extrabold">Financement et places rémunérées</h3>
                 <p class="text-wpx-muted-dark mt-1 text-[11px] leading-relaxed">
-                    Un Live standard ne rémunère personne. La sponsorisation réserve d’abord le budget annonceur avant
-                    toute programmation officielle.
+                    Le budget est réservé avant la programmation. Les places sont limitées et aucun WP n’est promis
+                    avant attribution d’une place rémunérée.
                 </p>
             </div>
             <span
@@ -243,7 +270,7 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
                     />
                 </div>
                 <div>
-                    <label class="text-wpx-muted-dark block text-[11px]">Bloc d’attention</label>
+                    <label class="text-wpx-muted-dark block text-[11px]">Bloc rémunéré</label>
                     <select
                         v-model.number="blockDurationSeconds"
                         :disabled="isFunded"
@@ -272,7 +299,30 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
             </p>
 
             <template v-if="!isFunded">
-                <label class="text-wpx-muted-dark mt-4 block text-[11px]">Budget total · WP</label>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-wpx-muted-dark block text-[11px]">Places rémunérées</label>
+                        <input
+                            v-model.number="rewardedSeatCapacity"
+                            type="number"
+                            min="1"
+                            max="100000"
+                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label class="text-wpx-muted-dark block text-[11px]">Blocs max / membre</label>
+                        <input
+                            v-model.number="maxBlocksPerViewer"
+                            type="number"
+                            min="1"
+                            max="1000"
+                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none"
+                        />
+                    </div>
+                </div>
+
+                <label class="text-wpx-muted-dark mt-3 block text-[11px]">Budget total · WP</label>
                 <input
                     v-model="budgetAmount"
                     type="number"
@@ -316,10 +366,31 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
                         </p>
                     </div>
                 </div>
-                <p class="text-wpx-muted-dark mt-3 text-[11px]">
-                    Audience estimée : {{ sponsorship.latest_quote.estimated_reach_min }}–{{
-                        sponsorship.latest_quote.estimated_reach_max
-                    }}. Les places et le gain par bloc seront attribués par le moteur Live, jamais par le navigateur.
+
+                <div class="border-wpx-border-dark mt-3 grid grid-cols-2 gap-2 border-t pt-3">
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Places : <strong class="text-wpx-white-soft">{{ sponsorship.latest_quote.rewarded_seat_capacity }}</strong>
+                    </p>
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Gain :
+                        <strong class="text-wpx-gold">{{ money(sponsorship.latest_quote.reward_per_block_minor) }}</strong>
+                        / {{ minutes(sponsorship.latest_quote.block_duration_seconds) }} min
+                    </p>
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Plafond :
+                        <strong class="text-wpx-white-soft">{{
+                            money(sponsorship.latest_quote.max_reward_per_viewer_minor)
+                        }}</strong>
+                    </p>
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Blocs financés :
+                        <strong class="text-wpx-white-soft">{{ sponsorship.latest_quote.funded_blocks }}</strong>
+                    </p>
+                </div>
+
+                <p v-if="isFunded && sponsorship.seat_runtime" class="text-wpx-muted-dark mt-3 text-[11px]">
+                    Occupées : {{ sponsorship.seat_runtime.active }} · proposées : {{ sponsorship.seat_runtime.offered }} ·
+                    disponibles : {{ sponsorship.seat_runtime.available }} · attente : {{ sponsorship.seat_runtime.waiting }}
                 </p>
             </div>
 
@@ -334,7 +405,7 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
             </button>
 
             <div v-if="isFunded" class="mt-4">
-                <p class="text-wpx-gold text-xs font-bold">✓ Budget réservé au Grand Livre</p>
+                <p class="text-wpx-gold text-xs font-bold">✓ Budget et plan de places sécurisés</p>
                 <label class="text-wpx-muted-dark mt-3 block text-[11px]">Date officielle</label>
                 <input
                     v-model="plannedSchedule"

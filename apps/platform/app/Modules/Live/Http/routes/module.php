@@ -19,8 +19,17 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
     Route::prefix('api/lives')->group(function (): void {
         Route::get('/', [LiveController::class, 'index']);
         Route::get('/{live}', [LiveController::class, 'show']);
+        Route::get('/{live}/reward-seat', [LiveController::class, 'rewardSeat']);
         Route::post('/{live}/join', [LiveController::class, 'join']);
         Route::post('/{live}/leave', [LiveController::class, 'leave']);
+        Route::post('/{live}/reward-seat/waitlist', [LiveController::class, 'joinRewardWaitlist'])
+            ->middleware('throttle:30,1');
+        Route::delete('/{live}/reward-seat/waitlist', [LiveController::class, 'leaveRewardWaitlist'])
+            ->middleware('throttle:30,1');
+        Route::post('/{live}/reward-seat/accept', [LiveController::class, 'acceptRewardSeat'])
+            ->middleware('throttle:30,1');
+        Route::post('/{live}/reward-seat/decline', [LiveController::class, 'declineRewardSeat'])
+            ->middleware('throttle:30,1');
         Route::post('/{live}/media-token', [LiveRealtimeController::class, 'viewerCredentials']);
         Route::post('/{live}/stage-request', [LiveRealtimeController::class, 'requestStage']);
         Route::delete('/{live}/stage-request', [LiveRealtimeController::class, 'withdrawStage']);

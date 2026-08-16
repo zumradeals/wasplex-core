@@ -62,4 +62,14 @@ final class LiveRewardCampaign extends Model
     {
         return $this->hasMany(LiveRewardBudgetReservation::class, 'live_reward_campaign_id');
     }
+
+    public function rewardSeats(): HasMany
+    {
+        return $this->hasMany(LiveRewardSeat::class, 'live_reward_campaign_id');
+    }
+
+    public function waitlistEntries(): HasMany
+    {
+        return $this->hasMany(LiveRewardWaitlistEntry::class, 'live_reward_campaign_id');
+    }
 }

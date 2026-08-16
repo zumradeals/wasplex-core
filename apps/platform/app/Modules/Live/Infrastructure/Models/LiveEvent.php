@@ -84,6 +84,16 @@ final class LiveEvent extends Model
         return $this->hasMany(LiveViewerSession::class, 'live_id');
     }
 
+    public function rewardSeats(): HasMany
+    {
+        return $this->hasMany(LiveRewardSeat::class, 'live_id');
+    }
+
+    public function rewardWaitlistEntries(): HasMany
+    {
+        return $this->hasMany(LiveRewardWaitlistEntry::class, 'live_id');
+    }
+
     public function stageRequests(): HasMany
     {
         return $this->hasMany(LiveStageRequest::class, 'live_id');

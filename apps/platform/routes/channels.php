@@ -9,6 +9,13 @@ use Illuminate\Support\Facades\Broadcast;
 // peut écouter que son propre canal Wallet — jamais celui d'un autre.
 Broadcast::channel('wallet.{accountId}', fn (Account $account, string $accountId): bool => $account->id === $accountId);
 
+// P018-D : propositions de place rémunérée strictement privées au compte.
+// Le canal ne transporte aucun budget annonceur ni critère de ciblage.
+Broadcast::channel(
+    'live-reward.{accountId}',
+    fn (Account $account, string $accountId): bool => $account->id === $accountId,
+);
+
 // P018-B : le social Live reste privé à la salle. L'hôte propriétaire peut
 // écouter son Live ; un membre doit disposer d'une session spectateur Wasplex
 // active. LiveKit ne transporte jamais les commentaires ni la modération.
