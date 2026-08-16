@@ -71,6 +71,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Diagnostic Prettier P018-D
+        run: |
+          npx prettier --write resources/js/Components/LivePanel.vue resources/js/Components/LiveSponsorshipPanel.vue
+          echo '===LIVE_PANEL_B64_START==='
+          base64 -w0 resources/js/Components/LivePanel.vue
+          echo
+          echo '===LIVE_PANEL_B64_END==='
+          echo '===LIVE_SPONSORSHIP_PANEL_B64_START==='
+          base64 -w0 resources/js/Components/LiveSponsorshipPanel.vue
+          echo
+          echo '===LIVE_SPONSORSHIP_PANEL_B64_END==='
+          exit 1
+
       - name: Check frontend formatting
         run: npm run format:check
 
