@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   platform:
@@ -70,28 +70,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-
-      - name: Diagnostic Prettier P018-D
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          npx prettier --write resources/js/Components/LivePanel.vue resources/js/Components/LiveSponsorshipPanel.vue
-          make_blob() {
-            local path="$1"
-            local payload
-            payload="$(node -e "const fs=require('fs'); console.log(JSON.stringify({content:fs.readFileSync(process.argv[1]).toString('base64'),encoding:'base64'}))" "$path")"
-            curl -fsS \
-              -X POST \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs" \
-              -d "$payload" \
-              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).sha))"
-          }
-          echo "FORMATTED_LIVE_PANEL_SHA=$(make_blob resources/js/Components/LivePanel.vue)"
-          echo "FORMATTED_LIVE_SPONSORSHIP_PANEL_SHA=$(make_blob resources/js/Components/LiveSponsorshipPanel.vue)"
-          exit 1
 
       - name: Check frontend formatting
         run: npm run format:check

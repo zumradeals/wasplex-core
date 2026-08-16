@@ -7,7 +7,8 @@ import http from '@/lib/http';
 import type { AuthShared } from '@/types/identity';
 
 type LiveStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'ended';
-type RewardedStatus = 'not_applicable' | 'eligible' | 'ineligible' | 'non_rewarded' | 'rewarded' | 'waiting' | 'offered';
+type RewardedStatus =
+    'not_applicable' | 'eligible' | 'ineligible' | 'non_rewarded' | 'rewarded' | 'waiting' | 'offered';
 
 interface RewardPlan {
     block_duration_seconds: number;
@@ -245,13 +246,9 @@ function closeSelected(): void {
     rewardSeat.value = null;
 }
 
-useEcho(
-    `live-reward.${page.props.auth.account.id}`,
-    '.live.reward.seat.changed',
-    (payload: { live_id: string }) => {
-        if (selected.value?.id === payload.live_id) void loadRewardSeat();
-    },
-);
+useEcho(`live-reward.${page.props.auth.account.id}`, '.live.reward.seat.changed', (payload: { live_id: string }) => {
+    if (selected.value?.id === payload.live_id) void loadRewardSeat();
+});
 
 onMounted(() => {
     void load();
@@ -327,7 +324,8 @@ onBeforeUnmount(() => {
                     </template>
 
                     <p v-if="rewardSeat?.viewer.status === 'rewarded'" class="mt-2 text-xs font-bold text-emerald-300">
-                        ✓ Votre place rémunérée est active. Les gains seront validés uniquement après vérification des conditions d’attention.
+                        ✓ Votre place rémunérée est active. Les gains seront validés uniquement après vérification des
+                        conditions d’attention.
                     </p>
                     <p v-else-if="rewardSeat?.viewer.status === 'ineligible'" class="text-wpx-muted-dark mt-2 text-xs">
                         Vous pouvez regarder ce Live, mais votre profil n’est pas éligible à une place rémunérée.
@@ -477,10 +475,13 @@ onBeforeUnmount(() => {
                                     </p>
                                     <p v-if="live.reward_plan" class="text-wpx-gold mt-1 text-[10px] font-bold">
                                         {{ money(live.reward_plan.reward_per_block_minor) }} /
-                                        {{ rewardMinutes(live.reward_plan.block_duration_seconds) }} min · places limitées
+                                        {{ rewardMinutes(live.reward_plan.block_duration_seconds) }} min · places
+                                        limitées
                                     </p>
                                 </div>
-                                <span class="bg-wpx-danger/15 text-wpx-danger rounded-full px-3 py-2 text-[10px] font-black">
+                                <span
+                                    class="bg-wpx-danger/15 text-wpx-danger rounded-full px-3 py-2 text-[10px] font-black"
+                                >
                                     Voir
                                 </span>
                             </div>

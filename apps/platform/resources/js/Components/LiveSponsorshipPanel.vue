@@ -369,11 +369,16 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
 
                 <div class="border-wpx-border-dark mt-3 grid grid-cols-2 gap-2 border-t pt-3">
                     <p class="text-wpx-muted-dark text-[11px]">
-                        Places : <strong class="text-wpx-white-soft">{{ sponsorship.latest_quote.rewarded_seat_capacity }}</strong>
+                        Places :
+                        <strong class="text-wpx-white-soft">{{
+                            sponsorship.latest_quote.rewarded_seat_capacity
+                        }}</strong>
                     </p>
                     <p class="text-wpx-muted-dark text-[11px]">
                         Gain :
-                        <strong class="text-wpx-gold">{{ money(sponsorship.latest_quote.reward_per_block_minor) }}</strong>
+                        <strong class="text-wpx-gold">{{
+                            money(sponsorship.latest_quote.reward_per_block_minor)
+                        }}</strong>
                         / {{ minutes(sponsorship.latest_quote.block_duration_seconds) }} min
                     </p>
                     <p class="text-wpx-muted-dark text-[11px]">
@@ -389,8 +394,9 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
                 </div>
 
                 <p v-if="isFunded && sponsorship.seat_runtime" class="text-wpx-muted-dark mt-3 text-[11px]">
-                    Occupées : {{ sponsorship.seat_runtime.active }} · proposées : {{ sponsorship.seat_runtime.offered }} ·
-                    disponibles : {{ sponsorship.seat_runtime.available }} · attente : {{ sponsorship.seat_runtime.waiting }}
+                    Occupées : {{ sponsorship.seat_runtime.active }} · proposées :
+                    {{ sponsorship.seat_runtime.offered }} · disponibles : {{ sponsorship.seat_runtime.available }} ·
+                    attente : {{ sponsorship.seat_runtime.waiting }}
                 </p>
             </div>
 
