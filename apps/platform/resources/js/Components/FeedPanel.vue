@@ -620,7 +620,9 @@ onBeforeUnmount(() => {
                 />
 
                 <nav class="flex flex-1 items-center justify-center gap-4 text-[12px]" aria-label="Navigation du Feed">
-                    <span aria-current="page" class="border-wpx-blue border-b-2 pb-1 font-bold text-white">Pour toi</span>
+                    <span aria-current="page" class="border-wpx-blue border-b-2 pb-1 font-bold text-white"
+                        >Pour toi</span
+                    >
                     <button type="button" class="pb-1 font-semibold text-white/70" @click.stop="announceFeedNav">
                         Explorer
                     </button>

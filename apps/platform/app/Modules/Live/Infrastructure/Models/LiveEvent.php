@@ -10,10 +10,15 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class LiveEvent extends Model
 {
     use HasUlids;
+
+    public const TYPE_STANDARD = 'standard';
+
+    public const TYPE_SPONSORED = 'sponsored';
 
     public const STATUS_DRAFT = 'draft';
 
@@ -30,6 +35,7 @@ final class LiveEvent extends Model
     protected $fillable = [
         'owner_account_id',
         'advertiser_organization_id',
+        'type',
         'title',
         'description',
         'category',
@@ -61,6 +67,11 @@ final class LiveEvent extends Model
     public function advertiserOrganization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'advertiser_organization_id');
+    }
+
+    public function rewardCampaign(): HasOne
+    {
+        return $this->hasOne(LiveRewardCampaign::class, 'live_id');
     }
 
     public function streamSessions(): HasMany

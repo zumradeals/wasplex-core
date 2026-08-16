@@ -1,12 +1,39 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import LiveRealtimeRoom from '@/Components/LiveRealtimeRoom.vue';
+import LiveSponsorshipPanel from '@/Components/LiveSponsorshipPanel.vue';
 import http from '@/lib/http';
 
 type LiveStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'ended';
 
+interface SponsorshipSummary {
+    status: 'draft' | 'quoted' | 'funds_reserved' | 'cancelled';
+    segment: { country_code: string | null; economic_classes: string[] } | null;
+    latest_quote: {
+        id: string;
+        status: 'active' | 'consumed' | 'superseded';
+        currency: string;
+        budget_amount_minor: number;
+        wasplex_share_minor: number;
+        spectator_envelope_minor: number;
+        estimated_reach_min: number;
+        estimated_reach_max: number;
+        planned_duration_minutes: number;
+        block_duration_seconds: number;
+        quoted_at: string | null;
+    } | null;
+    reservation: {
+        status: 'reserved' | 'released';
+        amount_minor: number;
+        reserved_at: string | null;
+        released_at: string | null;
+    } | null;
+    can_schedule: boolean;
+}
+
 interface LiveSummary {
     id: string;
+    type: 'standard' | 'sponsored';
     title: string;
     description: string | null;
     category: string;
@@ -18,6 +45,7 @@ interface LiveSummary {
     started_at: string | null;
     ended_at: string | null;
     replay_policy: 'disabled' | 'available';
+    sponsorship: SponsorshipSummary | null;
     owner: { display_name: string };
     viewer_count: number;
     is_owner: boolean;
@@ -141,9 +169,7 @@ async function startPreview(): Promise<void> {
             video: { facingMode: 'user' },
             audio: true,
         });
-        if (previewVideo.value) {
-            previewVideo.value.srcObject = previewStream;
-        }
+        if (previewVideo.value) previewVideo.value.srcObject = previewStream;
         previewActive.value = true;
     } catch {
         error.value = 'Autorisez la caméra et le microphone pour préparer votre direct.';
@@ -177,6 +203,13 @@ function selectLive(live: LiveSummary): void {
     selected.value = live;
 }
 
+function sponsorshipUpdated(live: unknown): void {
+    const updated = live as LiveSummary;
+    selected.value = updated;
+    const index = myLives.value.findIndex((item) => item.id === updated.id);
+    if (index !== -1) myLives.value[index] = updated;
+}
+
 function closeSelected(): void {
     stopPreview();
     selected.value = null;
@@ -198,7 +231,7 @@ onBeforeUnmount(stopPreview);
                     </p>
                     <h1 class="text-wpx-white-soft mt-1 text-2xl font-extrabold">Mes Lives</h1>
                     <p class="text-wpx-muted-dark mt-2 max-w-2xl text-sm leading-relaxed">
-                        Préparez votre caméra, lancez le direct et accueillez des spectateurs ou des invités sur scène.
+                        Direct standard ou sponsorisé, caméra LiveKit, interactions temps réel et financement protégé.
                     </p>
                 </div>
                 <button
@@ -233,8 +266,7 @@ onBeforeUnmount(stopPreview);
         <section v-if="showCreate" class="border-wpx-border-dark bg-wpx-navy-850 rounded-2xl border p-4 sm:p-5">
             <h2 class="text-wpx-white-soft text-base font-bold">Nouveau Live</h2>
             <p class="text-wpx-muted-dark mt-1 text-[11px]">
-                P018-A.2 active le transport audiovisuel temps réel. La sponsorisation et les gains WP restent hors de
-                ce lot.
+                Créez d’abord le direct. Vous pourrez ensuite le garder standard ou activer un financement sponsorisé.
             </p>
 
             <label class="text-wpx-muted-dark mt-4 block text-[11px]">Titre</label>
@@ -288,16 +320,24 @@ onBeforeUnmount(stopPreview);
             <div class="p-4 sm:p-5">
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <span
-                            class="rounded-full px-2.5 py-1 text-[10px] font-bold"
-                            :class="
-                                selected.status === 'live'
-                                    ? 'bg-wpx-danger/15 text-wpx-danger'
-                                    : 'bg-wpx-gold/10 text-wpx-gold'
-                            "
-                        >
-                            {{ statusLabel(selected.status) }}
-                        </span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span
+                                class="rounded-full px-2.5 py-1 text-[10px] font-bold"
+                                :class="
+                                    selected.status === 'live'
+                                        ? 'bg-wpx-danger/15 text-wpx-danger'
+                                        : 'bg-wpx-gold/10 text-wpx-gold'
+                                "
+                            >
+                                {{ statusLabel(selected.status) }}
+                            </span>
+                            <span
+                                v-if="selected.type === 'sponsored'"
+                                class="bg-wpx-gold/10 text-wpx-gold rounded-full px-2.5 py-1 text-[10px] font-bold"
+                            >
+                                Sponsorisé
+                            </span>
+                        </div>
                         <h2 class="text-wpx-white-soft mt-3 text-xl font-extrabold">{{ selected.title }}</h2>
                         <p class="text-wpx-muted-dark mt-1 text-xs">Publié par {{ selected.owner.display_name }}</p>
                     </div>
@@ -305,6 +345,13 @@ onBeforeUnmount(stopPreview);
                         Fermer
                     </button>
                 </div>
+
+                <LiveSponsorshipPanel
+                    v-if="selected.status === 'draft' || selected.status === 'scheduled'"
+                    :live="selected"
+                    class="mt-4"
+                    @updated="sponsorshipUpdated"
+                />
 
                 <LiveRealtimeRoom
                     v-if="selected.status === 'live'"
@@ -333,9 +380,7 @@ onBeforeUnmount(stopPreview);
                             v-if="!previewActive"
                             class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
                         >
-                            <p class="text-wpx-white-soft text-sm font-bold">
-                                Préparez votre caméra avant de passer en direct
-                            </p>
+                            <p class="text-wpx-white-soft text-sm font-bold">Préparez votre caméra avant le direct</p>
                             <button
                                 type="button"
                                 class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-4 rounded-full bg-gradient-to-r px-4 py-2.5 text-xs font-black"
@@ -384,7 +429,7 @@ onBeforeUnmount(stopPreview);
                     <button
                         v-if="selected.status === 'draft' || selected.status === 'scheduled'"
                         type="button"
-                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex-1 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold"
+                        class="from-wpx-orange to-wpx-gold text-wpx-navy-950 flex-1 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-extrabold disabled:opacity-50"
                         :disabled="busy"
                         @click="creatorAction(selected, 'start')"
                     >
@@ -445,6 +490,7 @@ onBeforeUnmount(stopPreview);
                         <span class="text-wpx-white-soft block text-sm font-bold">{{ live.title }}</span>
                         <span class="text-wpx-muted-dark mt-1 block text-[11px]">
                             {{ statusLabel(live.status) }} ·
+                            {{ live.type === 'sponsored' ? 'sponsorisé' : 'standard' }} ·
                             {{ live.scheduled_at ? formatDate(live.scheduled_at) : 'sans programmation' }}
                         </span>
                     </span>

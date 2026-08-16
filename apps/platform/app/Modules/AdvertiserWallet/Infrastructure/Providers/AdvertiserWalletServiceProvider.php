@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\AdvertiserWallet\Infrastructure\Providers;
 
+use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserLiveBudgetReservationContract;
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserWalletReservationContract;
+use App\Modules\AdvertiserWallet\Application\Services\AdvertiserLiveBudgetReservationService;
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReconcilablePaymentDirectory;
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletReservationService;
 use App\Modules\AdvertiserWallet\Infrastructure\Models\GeniusPayConfiguration;
@@ -21,6 +23,7 @@ final class AdvertiserWalletServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(AdvertiserWalletReservationContract::class, AdvertiserWalletReservationService::class);
+        $this->app->bind(AdvertiserLiveBudgetReservationContract::class, AdvertiserLiveBudgetReservationService::class);
         $this->app->tag([AdvertiserWalletReconcilablePaymentDirectory::class], 'reconciliation.directories');
     }
 
