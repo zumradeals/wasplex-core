@@ -14,7 +14,7 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('live_id')->constrained('lives')->cascadeOnDelete();
             $table->foreignUlid('account_id')->constrained('accounts')->restrictOnDelete();
-            $table->foreignUlid('parent_comment_id')->nullable()->constrained('live_comments')->nullOnDelete();
+            $table->ulid('parent_comment_id')->nullable();
             $table->string('body', 300);
             $table->timestamp('pinned_at')->nullable();
             $table->foreignUlid('pinned_by_account_id')->nullable()->constrained('accounts')->nullOnDelete();
@@ -26,6 +26,13 @@ return new class extends Migration
             $table->index(['live_id', 'pinned_at']);
             $table->index(['live_id', 'hidden_at']);
             $table->index(['account_id', 'created_at']);
+        });
+
+        Schema::table('live_comments', function (Blueprint $table): void {
+            $table->foreign('parent_comment_id')
+                ->references('id')
+                ->on('live_comments')
+                ->nullOnDelete();
         });
 
         Schema::create('live_comment_reports', function (Blueprint $table): void {
