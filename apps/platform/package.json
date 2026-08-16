@@ -8,7 +8,7 @@
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
         "format": "prettier --write resources",
-        "format:check": "prettier --write resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue && printf '\\n===LIVE_INTERACTIONS_B64===\\n' && base64 -w0 resources/js/Components/LiveInteractionsPanel.vue && printf '\\n===LIVE_SPONSORSHIP_B64===\\n' && base64 -w0 resources/js/Components/LiveSponsorshipPanel.vue && printf '\\n===END_FORMATTED_B64===\\n' && exit 1",
+        "format:check": "prettier --write resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue && printf '\\n===PRETTIER_DIFF_BEGIN===\\n' && git diff --no-ext-diff --unified=0 -- resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue && printf '\\n===PRETTIER_DIFF_END===\\n' && exit 1",
         "types:check": "vue-tsc --noEmit"
     },
     "devDependencies": {
