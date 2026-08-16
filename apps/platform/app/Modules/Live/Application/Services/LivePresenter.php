@@ -27,6 +27,7 @@ final class LivePresenter
 
         return [
             'id' => $live->id,
+            'type' => $live->type ?? LiveEvent::TYPE_STANDARD,
             'title' => $live->title,
             'description' => $live->description,
             'category' => $live->category,
@@ -50,6 +51,7 @@ final class LivePresenter
                 'room' => $stream?->provider_session_reference,
                 'media_ready' => $liveKitConfigured && $stream?->provider === 'livekit',
             ],
+            'sponsorship' => LiveSponsorshipPresenter::forLive($live),
         ];
     }
 }

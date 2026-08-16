@@ -6,6 +6,7 @@ namespace App\Modules\Live\Http\Controllers;
 
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
+use App\Modules\Live\Application\Services\LiveSponsorshipService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,10 @@ use Illuminate\Validation\Rule;
 
 final class CreatorLiveController
 {
-    public function __construct(private readonly LiveLifecycleService $lifecycle) {}
+    public function __construct(
+        private readonly LiveLifecycleService $lifecycle,
+        private readonly LiveSponsorshipService $sponsorship,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -61,6 +65,11 @@ final class CreatorLiveController
     public function schedule(Request $request, LiveEvent $live): JsonResponse
     {
         $data = $request->validate(['scheduled_at' => ['required', 'date', 'after:now']]);
+        $this->sponsorship->assertMayScheduleOrStart(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+        );
         $scheduledAt = CarbonImmutable::parse((string) $data['scheduled_at']);
         $live = $this->lifecycle->schedule(
             $live,
@@ -74,6 +83,11 @@ final class CreatorLiveController
 
     public function start(Request $request, LiveEvent $live): JsonResponse
     {
+        $this->sponsorship->assertMayScheduleOrStart(
+            $live,
+            $request->user(),
+            $this->advertiserOrganizationId($request),
+        );
         $live = $this->lifecycle->start(
             $live,
             $request->user(),

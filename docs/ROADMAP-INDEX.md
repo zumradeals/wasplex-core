@@ -24,7 +24,7 @@
 | P015 | Alertes | P001, P009, P011, P012, P019 | Extension | En attente |
 | P016 | Santé | P001, P012, P015, P019 | Extension | En attente |
 | P017 | Carte et partenaires | P003, P011, P012, P019 | Extension | ready_for_review (P017-A identité/QR + P017-B paiement QR validés en production ; P017-B.1 clôture ; avantages partenaires conservés en roadmap) |
-| P018 | Live | P006-P012, P020 | Extension | in_progress (P018-A.1 propriété Studio annonceur ; P018-A.2 transport LiveKit/WebRTC, caméra/micro et montée de spectateurs sur scène) |
+| P018 | Live | P006-P012, P020 | Extension | in_progress (A.1 propriété annonceur ; A.2/A.2.1 LiveKit/WebRTC stabilisé ; B interactions/modération de base ; C sponsorisation, estimation, devis et réservation budget) |
 | P019 | Espaces professionnels/institutionnels | P001, P012 | Extension | En attente |
 | P020 | Communication, modération et risques | P001, P011, P012 | Extension | En attente |
 | P021 | Intégrations et production | modules stabilisés | Production | En attente |
@@ -46,6 +46,14 @@ La création, la programmation et le pilotage d'un Live Wasplex sont réservés 
 ## Décision produit du 2026-08-15 — P018-A.2 Live temps réel
 
 Le Live Wasplex devient une vraie salle audiovisuelle temps réel : transport **LiveKit/WebRTC**, aperçu caméra/micro côté Studio, lecture vidéo côté membre et permissions dynamiques permettant à un spectateur de demander à monter sur scène. Wasplex reste la source de vérité des identités, présences, demandes de scène et audits. Le démarrage d'un Live est refusé si le transport média n'est pas configuré. Cette décision est détaillée dans [`chantiers/P018-A2-LIVE-TEMPS-REEL.md`](./chantiers/P018-A2-LIVE-TEMPS-REEL.md).
+
+## Décision produit du 2026-08-16 — P018-B interactions et modération de base
+
+Le social du Live utilise Laravel Reverb/Echo tandis que LiveKit reste réservé au transport audiovisuel. Les commentaires et décisions de modération sont persistés par Wasplex ; les réactions sont éphémères. Le lot reste sans économie WP. Cette décision est détaillée dans [`chantiers/P018-B-LIVE-INTERACTIONS-MODERATION.md`](./chantiers/P018-B-LIVE-INTERACTIONS-MODERATION.md).
+
+## Décision produit du 2026-08-16 — P018-C Live sponsorisé financé
+
+Un **Live sponsorisé** doit définir son segment, produire une estimation protégée et un devis avant de réserver le budget annonceur. La programmation officielle et le démarrage sont bloqués tant que le budget n'est pas réservé au Grand Livre. Le partage du budget sponsorisé est fixé à **50 % Wasplex / 50 % enveloppe spectateurs**. P018-C ne distribue encore aucun WP : places rémunérées, attention vérifiée et capture Wallet arrivent dans les lots suivants. Cette décision est détaillée dans [`chantiers/P018-C-LIVE-SPONSORISE-FINANCEMENT.md`](./chantiers/P018-C-LIVE-SPONSORISE-FINANCEMENT.md).
 
 ## Décision fondatrice P009
 

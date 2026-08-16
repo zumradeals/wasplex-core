@@ -9,6 +9,7 @@ use App\Modules\Live\Http\Controllers\CreatorLiveController;
 use App\Modules\Live\Http\Controllers\LiveController;
 use App\Modules\Live\Http\Controllers\LiveInteractionController;
 use App\Modules\Live\Http\Controllers\LiveRealtimeController;
+use App\Modules\Live\Http\Controllers\LiveSponsorshipController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -62,6 +63,19 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
             Route::post('/{live}/stage-requests/{stageRequest}/reject', [LiveRealtimeController::class, 'reject'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
             Route::post('/{live}/stage-requests/{stageRequest}/lower', [LiveRealtimeController::class, 'lower'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+
+            Route::patch('/{live}/sponsorship', [LiveSponsorshipController::class, 'configure'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/segment-estimate', [LiveSponsorshipController::class, 'estimate'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/quote', [LiveSponsorshipController::class, 'quote'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::post('/{live}/fund', [LiveSponsorshipController::class, 'fund'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
+            Route::get('/{live}/budget', [LiveSponsorshipController::class, 'budget'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+            Route::post('/{live}/sponsorship/cancel', [LiveSponsorshipController::class, 'cancel'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
 
             Route::get('/{live}/comments', [LiveInteractionController::class, 'hostIndex'])
