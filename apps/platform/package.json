@@ -8,7 +8,7 @@
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
         "format": "prettier --write resources",
-        "format:check": "prettier --write resources/js/Components/LiveRealtimeRoom.vue && git diff -- resources/js/Components/LiveRealtimeRoom.vue && exit 1",
+        "format:check": "prettier --check resources",
         "types:check": "vue-tsc --noEmit"
     },
     "devDependencies": {
