@@ -9,6 +9,7 @@ use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerEntryInput;
 use App\Modules\Ledger\Domain\ValueObjects\PostLedgerTransaction;
 use App\Modules\Ledger\Infrastructure\Models\LedgerTransaction;
+use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LiveRewardSeatService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use App\Modules\Live\Infrastructure\Models\LiveRewardSeat;
@@ -320,7 +321,7 @@ it('keeps an active rewarded seat while the Live is paused', function (): void {
 
     $live = LiveEvent::query()->findOrFail($liveId);
     $host = Account::query()->findOrFail($live->owner_account_id);
-    app(\App\Modules\Live\Application\Services\LiveLifecycleService::class)->pause($live, $host, $organizationId);
+    app(LiveLifecycleService::class)->pause($live, $host, $organizationId);
 
     expect(LiveRewardSeat::query()
         ->where('live_id', $liveId)
@@ -342,7 +343,7 @@ it('closes active seats and pending waitlist entries when the Live ends', functi
 
     $live = LiveEvent::query()->findOrFail($liveId);
     $host = Account::query()->findOrFail($live->owner_account_id);
-    app(\App\Modules\Live\Application\Services\LiveLifecycleService::class)->end($live, $host, $organizationId);
+    app(LiveLifecycleService::class)->end($live, $host, $organizationId);
     app(LiveRewardSeatService::class)->closeLive($live->refresh());
 
     expect(LiveRewardSeat::query()->where('live_id', $liveId)->value('status'))
