@@ -57,9 +57,7 @@ function renderParticipants(): void {
 
     const remoteParticipants = Array.from(room.remoteParticipants.values());
     const includeLocalParticipant = props.mode === 'host' || canPublish.value;
-    const participants = includeLocalParticipant
-        ? [room.localParticipant, ...remoteParticipants]
-        : remoteParticipants;
+    const participants = includeLocalParticipant ? [room.localParticipant, ...remoteParticipants] : remoteParticipants;
 
     renderedParticipantCount.value = participants.length;
     mediaGrid.value.replaceChildren();
