@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\AdvertiserWallet\Application\Services\AdvertiserWalletQueryService;
 use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Identity\Infrastructure\Models\AccountIdentifier;
 use App\Modules\Ledger\Application\Services\LedgerPostingContract;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerAccountReference;
 use App\Modules\Ledger\Domain\ValueObjects\LedgerEntryInput;
@@ -170,7 +171,7 @@ it('promotes the waitlist in FIFO order when a rewarded seat is released', funct
 
     test()->postJson('/api/logout')->assertNoContent();
     registerAndLogin('reward-seat-fifo-one@example.com', country: 'CI');
-    $viewerOne = Account::query()->latest('created_at')->firstOrFail();
+    $viewerOne = AccountIdentifier::query()->where('type', 'email')->where('value', 'reward-seat-fifo-one@example.com')->firstOrFail()->account;
     test()->postJson("/api/lives/{$liveId}/join")
         ->assertOk()
         ->assertJsonPath('reward_seat.viewer.status', 'rewarded');
@@ -214,7 +215,7 @@ it('accepts an offered seat but still performs no Wallet or Ledger reward credit
 
     test()->postJson('/api/logout')->assertNoContent();
     registerAndLogin('reward-seat-owner-release@example.com', country: 'CI');
-    $firstViewer = Account::query()->latest('created_at')->firstOrFail();
+    $firstViewer = AccountIdentifier::query()->where('type', 'email')->where('value', 'reward-seat-owner-release@example.com')->firstOrFail()->account;
     test()->postJson("/api/lives/{$liveId}/join")->assertOk();
 
     test()->postJson('/api/logout')->assertNoContent();
@@ -276,7 +277,7 @@ it('expires an unaccepted offer and proposes the seat to the next active viewer'
 
     test()->postJson('/api/logout')->assertNoContent();
     registerAndLogin('reward-seat-expiry-one@example.com', country: 'CI');
-    $firstViewer = Account::query()->latest('created_at')->firstOrFail();
+    $firstViewer = AccountIdentifier::query()->where('type', 'email')->where('value', 'reward-seat-expiry-one@example.com')->firstOrFail()->account;
     test()->postJson("/api/lives/{$liveId}/join")->assertOk();
 
     test()->postJson('/api/logout')->assertNoContent();
