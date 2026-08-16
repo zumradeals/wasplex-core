@@ -20,6 +20,12 @@ interface SponsorshipSummary {
         estimated_reach_max: number;
         planned_duration_minutes: number;
         block_duration_seconds: number;
+        rewarded_seat_capacity: number;
+        max_blocks_per_viewer: number;
+        funded_blocks: number;
+        reward_per_block_minor: number;
+        max_reward_per_viewer_minor: number;
+        spectator_envelope_remainder_minor: number;
         quoted_at: string | null;
     } | null;
     reservation: {
@@ -29,6 +35,12 @@ interface SponsorshipSummary {
         released_at: string | null;
     } | null;
     can_schedule: boolean;
+    seat_runtime: {
+        active: number;
+        offered: number;
+        waiting: number;
+        available: number;
+    } | null;
 }
 
 interface LiveSummary {

@@ -357,14 +357,7 @@ onBeforeUnmount(() => {
                             </button>
                         </div>
                     </div>
-                    <div
-                        v-else-if="
-                            viewerSessionId &&
-                            rewardSeat?.viewer.can_join_waitlist &&
-                            rewardSeat.viewer.status !== 'waiting'
-                        "
-                        class="mt-2"
-                    >
+                    <div v-else-if="viewerSessionId && rewardSeat?.viewer.can_join_waitlist" class="mt-2">
                         <p class="text-wpx-muted-dark text-[11px]">
                             Les places rémunérées sont complètes. Vous pouvez continuer à regarder gratuitement.
                         </p>
