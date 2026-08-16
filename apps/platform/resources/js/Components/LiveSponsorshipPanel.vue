@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import http from '@/lib/http';
 
 type LiveStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'ended';
@@ -45,6 +45,18 @@ interface SponsorshipSummary {
     } | null;
 }
 
+interface RewardReport {
+    settled: boolean;
+    funded_blocks: number;
+    captured_blocks: number;
+    rewarded_viewers: number;
+    member_rewards_minor: number;
+    wasplex_revenue_minor: number;
+    gross_consumed_minor: number;
+    remaining_reserved_minor: number;
+    released_minor: number;
+}
+
 interface SponsorableLive {
     id: string;
     type: 'standard' | 'sponsored';
@@ -63,12 +75,14 @@ const emit = defineEmits<{ updated: [live: SponsorableLive] }>();
 const busy = ref(false);
 const error = ref<string | null>(null);
 const estimate = ref<{ estimated_reach_min: number; estimated_reach_max: number; too_small: boolean } | null>(null);
+const rewardReport = ref<RewardReport | null>(null);
 const countryCode = ref('CI');
 const budgetAmount = ref('');
 const blockDurationSeconds = ref(300);
 const rewardedSeatCapacity = ref(1);
 const maxBlocksPerViewer = ref(1);
 const plannedSchedule = ref('');
+let rewardReportPoll: ReturnType<typeof setInterval> | null = null;
 
 const sponsorship = computed(() => props.live.sponsorship);
 const isFunded = computed(() => sponsorship.value?.status === 'funds_reserved' && sponsorship.value.can_schedule);
@@ -107,6 +121,20 @@ function minutes(seconds: number): number {
 
 function updateLive(live: SponsorableLive): void {
     emit('updated', live);
+}
+
+async function loadRewardReport(): Promise<void> {
+    if (props.live.type !== 'sponsored' || !props.live.sponsorship?.latest_quote) {
+        rewardReport.value = null;
+        return;
+    }
+
+    try {
+        const { data } = await http.get(`/advertiser/lives/${props.live.id}/reward-report`);
+        rewardReport.value = data.reward_report ?? null;
+    } catch {
+        // Reporting must never block the host controls.
+    }
 }
 
 async function configure(): Promise<SponsorableLive> {
@@ -179,6 +207,7 @@ async function fund(): Promise<void> {
     try {
         const { data } = await http.post(`/advertiser/lives/${props.live.id}/fund`);
         updateLive(data.live);
+        await loadRewardReport();
     } catch (cause) {
         error.value = messageFrom(cause);
     } finally {
@@ -212,6 +241,7 @@ async function cancelSponsorship(): Promise<void> {
     try {
         const { data } = await http.post(`/advertiser/lives/${props.live.id}/sponsorship/cancel`);
         estimate.value = null;
+        rewardReport.value = null;
         budgetAmount.value = '';
         updateLive(data.live);
     } catch (cause) {
@@ -221,7 +251,21 @@ async function cancelSponsorship(): Promise<void> {
     }
 }
 
-watch(() => props.live, syncForm, { immediate: true, deep: true });
+watch(
+    () => props.live,
+    () => {
+        syncForm();
+        void loadRewardReport();
+    },
+    { immediate: true, deep: true },
+);
+
+onMounted(() => {
+    rewardReportPoll = setInterval(() => void loadRewardReport(), 10000);
+});
+onBeforeUnmount(() => {
+    if (rewardReportPoll) clearInterval(rewardReportPoll);
+});
 </script>
 
 <template>
@@ -398,6 +442,49 @@ watch(() => props.live, syncForm, { immediate: true, deep: true });
                     {{ sponsorship.seat_runtime.offered }} · disponibles : {{ sponsorship.seat_runtime.available }} ·
                     attente : {{ sponsorship.seat_runtime.waiting }}
                 </p>
+            </div>
+
+            <div
+                v-if="rewardReport && sponsorship?.latest_quote"
+                class="border-wpx-border-dark bg-wpx-navy-850 mt-3 rounded-2xl border p-3.5"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-wpx-gold text-[10px] font-black tracking-wide uppercase">Exécution rémunérée</p>
+                        <p class="text-wpx-muted-dark mt-1 text-[10px]">
+                            {{ rewardReport.settled ? 'Clôturée et rapprochée' : 'Mise à jour en direct' }}
+                        </p>
+                    </div>
+                    <p class="text-wpx-white-soft text-xs font-extrabold">
+                        {{ rewardReport.captured_blocks }}/{{ rewardReport.funded_blocks }} blocs
+                    </p>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Membres rémunérés :
+                        <strong class="text-wpx-white-soft">{{ rewardReport.rewarded_viewers }}</strong>
+                    </p>
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Distribué :
+                        <strong class="text-wpx-gold">{{ money(rewardReport.member_rewards_minor) }}</strong>
+                    </p>
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        Consommé brut :
+                        <strong class="text-wpx-white-soft">{{ money(rewardReport.gross_consumed_minor) }}</strong>
+                    </p>
+                    <p class="text-wpx-muted-dark text-[11px]">
+                        {{ rewardReport.settled ? 'Libéré' : 'Encore réservé' }} :
+                        <strong class="text-wpx-white-soft">
+                            {{
+                                money(
+                                    rewardReport.settled
+                                        ? rewardReport.released_minor
+                                        : rewardReport.remaining_reserved_minor,
+                                )
+                            }}
+                        </strong>
+                    </p>
+                </div>
             </div>
 
             <button

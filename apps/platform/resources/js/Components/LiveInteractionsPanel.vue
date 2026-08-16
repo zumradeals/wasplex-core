@@ -22,6 +22,21 @@ interface InteractionSettings {
     slow_mode_seconds: number;
 }
 
+interface RewardAttentionState {
+    status: 'inactive' | 'tracking' | 'paused' | 'completed' | 'funding_exhausted';
+    validated_blocks: number;
+    max_blocks: number;
+    current_block_ms: number;
+    block_duration_ms: number;
+    progress_percent: number;
+    reward_per_block_minor: number;
+    earned_minor: number;
+    max_reward_minor: number;
+    funded_blocks: number;
+    captured_blocks: number;
+    balance_minor: number;
+}
+
 interface ApiError {
     response?: { data?: { message?: string } };
 }
@@ -44,8 +59,10 @@ const busy = ref(false);
 const error = ref<string | null>(null);
 const notice = ref<string | null>(null);
 const reactionBursts = ref<Array<{ id: number; emoji: string }>>([]);
+const rewardAttention = ref<RewardAttentionState | null>(null);
 let reactionSequence = 0;
 let syncPoll: ReturnType<typeof setInterval> | null = null;
+let rewardAttentionPoll: ReturnType<typeof setInterval> | null = null;
 const reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
 const isHost = computed(() => props.mode === 'host');
@@ -70,6 +87,19 @@ function commentEndpoint(): string {
 
 function reactionEndpoint(): string {
     return isHost.value ? `/advertiser/lives/${props.liveId}/reactions` : `/lives/${props.liveId}/reactions`;
+}
+
+function money(value: number): string {
+    return new Intl.NumberFormat('fr-FR').format(value) + ' WP';
+}
+
+function rewardStatusLabel(state: RewardAttentionState): string {
+    if (state.status === 'paused') return 'Gain en pause';
+    if (state.status === 'completed') return 'Plafond atteint';
+    if (state.status === 'funding_exhausted') return 'Enveloppe épuisée';
+    if (state.status === 'tracking') return `Bloc en cours · ${state.progress_percent}%`;
+
+    return 'Place non rémunérée';
 }
 
 function upsertComment(comment: LiveComment): void {
@@ -120,6 +150,24 @@ async function load(): Promise<void> {
         }
     } catch (cause) {
         error.value = messageFrom(cause);
+    }
+}
+
+async function heartbeatRewardAttention(
+    visible = document.visibilityState === 'visible',
+    mediaConnected = true,
+): Promise<void> {
+    if (isHost.value) return;
+
+    try {
+        const { data } = await http.post(`/lives/${props.liveId}/reward-attention/heartbeat`, {
+            visible,
+            media_connected: mediaConnected,
+        });
+        rewardAttention.value = data.reward_attention ?? null;
+    } catch {
+        // The Live remains watchable if the reward telemetry endpoint is briefly
+        // unavailable. No optimistic gain is ever shown or credited locally.
     }
 }
 
@@ -272,10 +320,20 @@ useEcho(`live.${props.liveId}`, '.live.reaction', (payload: { emoji: string; acc
 onMounted(() => {
     void load();
     syncPoll = setInterval(() => void load(), 30000);
+
+    if (!isHost.value) {
+        void heartbeatRewardAttention();
+        rewardAttentionPoll = setInterval(() => void heartbeatRewardAttention(), 3000);
+    }
 });
 onBeforeUnmount(() => {
     if (syncPoll) clearInterval(syncPoll);
+    if (rewardAttentionPoll) clearInterval(rewardAttentionPoll);
     reactionTimers.forEach((timer) => clearTimeout(timer));
+
+    if (!isHost.value) {
+        void heartbeatRewardAttention(false, false);
+    }
 });
 </script>
 
@@ -285,6 +343,36 @@ onBeforeUnmount(() => {
             <span v-for="burst in reactionBursts" :key="burst.id" class="animate-bounce text-3xl drop-shadow-lg">
                 {{ burst.emoji }}
             </span>
+        </div>
+
+        <div
+            v-if="!isHost && rewardAttention && rewardAttention.status !== 'inactive'"
+            class="pointer-events-auto mb-2 rounded-xl border border-amber-300/25 bg-black/70 px-3 py-2 backdrop-blur-sm"
+        >
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-[9px] font-black tracking-wide text-amber-200 uppercase">Attention rémunérée</p>
+                    <p class="mt-0.5 text-[10px] font-bold text-white">
+                        {{ rewardStatusLabel(rewardAttention) }} · {{ rewardAttention.validated_blocks }}/{{
+                            rewardAttention.max_blocks
+                        }}
+                        blocs
+                    </p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <p class="text-[11px] font-black text-amber-200">{{ money(rewardAttention.earned_minor) }}</p>
+                    <p class="text-[8px] text-white/50">acquis</p>
+                </div>
+            </div>
+            <div
+                v-if="rewardAttention.status === 'tracking' || rewardAttention.status === 'paused'"
+                class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
+            >
+                <div
+                    class="h-full rounded-full bg-amber-300 transition-[width] duration-500"
+                    :style="{ width: `${rewardAttention.progress_percent}%` }"
+                ></div>
+            </div>
         </div>
 
         <div

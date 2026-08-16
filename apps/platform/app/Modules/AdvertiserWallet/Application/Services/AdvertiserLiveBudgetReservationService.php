@@ -93,4 +93,49 @@ final class AdvertiserLiveBudgetReservationService implements AdvertiserLiveBudg
 
         return $transaction->id;
     }
+
+    public function captureReward(
+        string $organizationId,
+        string $liveId,
+        int $userRewardMinor,
+        LedgerAccountReference $destination,
+        string $idempotencyKey,
+    ): string {
+        $grossAmountMinor = $userRewardMinor * 2;
+
+        $transaction = $this->posting->post(new PostLedgerTransaction(
+            type: 'LIVE_REWARD_BLOCK_CAPTURED',
+            sourceModule: 'live.attention',
+            idempotencyKey: $idempotencyKey,
+            entries: [
+                LedgerEntryInput::debit(
+                    LedgerAccountReference::forOrganization(
+                        self::RESERVED_ACCOUNT_CODE,
+                        $organizationId,
+                        'LIABILITY_ADVERTISER',
+                        'WP',
+                    ),
+                    Money::of($grossAmountMinor, 'WP'),
+                    'Bloc d’attention Live validé',
+                ),
+                LedgerEntryInput::credit(
+                    $destination,
+                    Money::of($userRewardMinor, 'WP'),
+                    'Part membre Live — 50 %',
+                ),
+                LedgerEntryInput::credit(
+                    LedgerAccountReference::system(
+                        'wasplex.live.advertising.revenue',
+                        'REVENUE',
+                        'WP',
+                    ),
+                    Money::of($userRewardMinor, 'WP'),
+                    'Part Wasplex Live — 50 %',
+                ),
+            ],
+            businessReference: $liveId,
+        ));
+
+        return $transaction->id;
+    }
 }

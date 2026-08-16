@@ -20,6 +20,9 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
         Route::get('/', [LiveController::class, 'index']);
         Route::get('/{live}', [LiveController::class, 'show']);
         Route::get('/{live}/reward-seat', [LiveController::class, 'rewardSeat']);
+        Route::get('/{live}/reward-attention', [LiveController::class, 'rewardAttention']);
+        Route::post('/{live}/reward-attention/heartbeat', [LiveController::class, 'rewardAttentionHeartbeat'])
+            ->middleware('throttle:60,1');
         Route::post('/{live}/join', [LiveController::class, 'join']);
         Route::post('/{live}/leave', [LiveController::class, 'leave']);
         Route::post('/{live}/reward-seat/waitlist', [LiveController::class, 'joinRewardWaitlist'])
@@ -83,6 +86,8 @@ Route::middleware(['web', 'auth', EnsureSessionNotRevoked::class])->group(functi
             Route::post('/{live}/fund', [LiveSponsorshipController::class, 'fund'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');
             Route::get('/{live}/budget', [LiveSponsorshipController::class, 'budget'])
+                ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
+            Route::get('/{live}/reward-report', [LiveSponsorshipController::class, 'rewardReport'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.view,organization:advertiser_organization_id');
             Route::post('/{live}/sponsorship/cancel', [LiveSponsorshipController::class, 'cancel'])
                 ->middleware(EnsureCapability::class.':advertiser.campaign.manage,organization:advertiser_organization_id');

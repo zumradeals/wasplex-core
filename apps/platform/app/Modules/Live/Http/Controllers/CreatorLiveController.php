@@ -6,12 +6,14 @@ namespace App\Modules\Live\Http\Controllers;
 
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
+use App\Modules\Live\Application\Services\LiveRewardAttentionService;
 use App\Modules\Live\Application\Services\LiveRewardSeatService;
 use App\Modules\Live\Application\Services\LiveSponsorshipService;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 final class CreatorLiveController
@@ -20,6 +22,7 @@ final class CreatorLiveController
         private readonly LiveLifecycleService $lifecycle,
         private readonly LiveSponsorshipService $sponsorship,
         private readonly LiveRewardSeatService $rewardSeats,
+        private readonly LiveRewardAttentionService $rewardAttention,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -123,12 +126,17 @@ final class CreatorLiveController
 
     public function end(Request $request, LiveEvent $live): JsonResponse
     {
-        $live = $this->lifecycle->end(
-            $live,
-            $request->user(),
-            $this->advertiserOrganizationId($request),
-        );
-        $this->rewardSeats->closeLive($live);
+        $live = DB::transaction(function () use ($request, $live): LiveEvent {
+            $ended = $this->lifecycle->end(
+                $live,
+                $request->user(),
+                $this->advertiserOrganizationId($request),
+            );
+            $this->rewardSeats->closeLive($ended);
+            $this->rewardAttention->settleLive($ended, (string) $request->user()->id);
+
+            return $ended;
+        });
 
         return response()->json(['live' => LivePresenter::live($live, (string) $request->user()->id, true)]);
     }
