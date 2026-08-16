@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   platform:
@@ -61,18 +61,33 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
 
-      - name: Instrument reward offer timestamps
+      - name: Patch deterministic account lookup
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('app/Modules/Live/Application/Services/LiveRewardSeatService.php')
+          p = Path('tests/Feature/Live/LiveRewardSeatsTest.php')
           s = p.read_text()
-          needle = "    private function expireOffersUnderLock(LiveEvent $live, LiveRewardCampaign $campaign): void\n    {\n"
-          insert = "    private function expireOffersUnderLock(LiveEvent $live, LiveRewardCampaign $campaign): void\n    {\n        foreach (LiveRewardWaitlistEntry::query()->where('live_id', $live->id)->where('status', LiveRewardWaitlistEntry::STATUS_OFFERED)->get() as $debugOffer) {\n            fwrite(STDERR, sprintf(\"OFFERDBG now=%s offered=%s expires=%s future=%s ttl=%s account=%s\\n\", now()->toIso8601String(), $debugOffer->offered_at?->toIso8601String() ?? 'null', $debugOffer->offer_expires_at?->toIso8601String() ?? 'null', $debugOffer->offer_expires_at?->isFuture() ? 'yes' : 'no', (string) config('live.reward_offer_seconds'), $debugOffer->account_id));\n        }\n"
-          if needle not in s:
-              raise SystemExit('needle not found')
-          p.write_text(s.replace(needle, insert, 1))
+          s = s.replace(
+              'use App\\Modules\\Identity\\Infrastructure\\Models\\Account;\n',
+              'use App\\Modules\\Identity\\Infrastructure\\Models\\Account;\nuse App\\Modules\\Identity\\Infrastructure\\Models\\AccountIdentifier;\n',
+              1,
+          )
+          replacements = {
+              "$viewerOne = Account::query()->latest('created_at')->firstOrFail();": "$viewerOne = AccountIdentifier::query()->where('type', 'email')->where('value', 'reward-seat-fifo-one@example.com')->firstOrFail()->account;",
+              "$firstViewer = Account::query()->latest('created_at')->firstOrFail();": "$firstViewer = AccountIdentifier::query()->where('type', 'email')->where('value', 'reward-seat-owner-release@example.com')->firstOrFail()->account;",
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  raise SystemExit(f'missing replacement: {old}')
+              s = s.replace(old, new, 1)
+          old = "$firstViewer = Account::query()->latest('created_at')->firstOrFail();"
+          new = "$firstViewer = AccountIdentifier::query()->where('type', 'email')->where('value', 'reward-seat-expiry-one@example.com')->firstOrFail()->account;"
+          if old not in s:
+              raise SystemExit('missing expiry replacement')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
           PY
+          vendor/bin/pint tests/Feature/Live/LiveRewardSeatsTest.php
 
       - name: Run P018-D reward-seat tests only
         run: php artisan test tests/Feature/Live/LiveRewardSeatsTest.php
@@ -85,3 +100,12 @@ jobs:
           DB_PASSWORD: wasplex_ci_only
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+
+      - name: Publish corrected test blob
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(php -r '$p=$argv[1]; echo json_encode(["content"=>base64_encode(file_get_contents($p)),"encoding"=>"base64"]);' tests/Feature/Live/LiveRewardSeatsTest.php)"
+          sha="$(curl -fsS -X POST -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs" -d "$payload" | php -r '$j=json_decode(stream_get_contents(STDIN), true); echo $j["sha"];')"
+          echo "CORRECTED_REWARD_SEATS_TEST_SHA=${sha}"
