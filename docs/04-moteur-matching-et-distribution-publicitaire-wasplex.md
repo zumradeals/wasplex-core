@@ -284,6 +284,12 @@ et sécurité conforme
 et événement non déjà réservé
 ```
 
+Exception : l'aperçu par l'annonceur (ou un membre actif de son équipe) de
+sa propre campagne ignore entièrement ce moteur d'éligibilité — consentement,
+territoire et profil compris. Cet aperçu ne rémunère jamais personne
+(docs/08-feed-principal-wasplex.md §16), donc aucune des garanties que ce
+moteur protège n'est en jeu.
+
 # 16. Score de matching
 
 Facteurs possibles :

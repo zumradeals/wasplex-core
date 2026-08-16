@@ -102,7 +102,7 @@ function activeFeedIntegrityMembership(string $organizationId, string $accountId
     ]);
 }
 
-it('never composes the advertiser owner own campaign into the rewarded feed', function (): void {
+it('composes the advertiser owner own campaign as an unrewarded preview', function (): void {
     ['campaign_id' => $campaignId, 'organization_id' => $organizationId] = approvedCampaignForMatchingTests(
         'feed-own-owner@example.com',
         ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
@@ -121,17 +121,23 @@ it('never composes the advertiser owner own campaign into the rewarded feed', fu
 
     $sessionId = test()->postJson('/api/feed/sessions')->assertCreated()->json('feed_session.id');
 
-    test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
+    $delivery = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
         ->assertOk()
-        ->assertJsonPath('delivery', null);
+        ->assertJsonPath('delivery.campaign_id', $campaignId)
+        ->assertJsonPath('delivery.status', FeedAdDelivery::STATUS_REPLAY)
+        ->assertJsonPath('delivery.gain_minor', 0)
+        ->assertJsonPath('delivery.quota_units', 0)
+        ->json('delivery');
 
-    expect(FeedAdDelivery::query()->where('account_id', $owner->id)->where('campaign_id', $campaignId)->exists())->toBeFalse();
+    expect($delivery['is_replay'])->toBeTrue();
+    expect(feedIntegrityQuotaConsumed($owner->id))->toBe(0);
     expect(CampaignEnvelopeConsumption::query()
         ->whereHas('quote.campaignVersion', fn ($query) => $query->where('campaign_id', $campaignId))
         ->exists())->toBeFalse();
+    expect(FeedCampaignReward::query()->where('account_id', $owner->id)->where('campaign_id', $campaignId)->exists())->toBeFalse();
 });
 
-it('never composes a campaign for an active member of its advertiser team', function (): void {
+it('composes a campaign as an unrewarded preview for an active member of its advertiser team', function (): void {
     ['campaign_id' => $campaignId, 'organization_id' => $organizationId] = approvedCampaignForMatchingTests(
         'feed-own-team-advertiser@example.com',
         ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'CI']],
@@ -143,14 +149,58 @@ it('never composes a campaign for an active member of its advertiser team', func
 
     $sessionId = test()->postJson('/api/feed/sessions')->assertCreated()->json('feed_session.id');
 
-    test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
+    $delivery = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
         ->assertOk()
-        ->assertJsonPath('delivery', null);
+        ->assertJsonPath('delivery.campaign_id', $campaignId)
+        ->assertJsonPath('delivery.status', FeedAdDelivery::STATUS_REPLAY)
+        ->assertJsonPath('delivery.gain_minor', 0)
+        ->assertJsonPath('delivery.quota_units', 0)
+        ->json('delivery');
 
-    expect(FeedAdDelivery::query()->where('account_id', $member->id)->where('campaign_id', $campaignId)->exists())->toBeFalse();
+    expect($delivery['is_replay'])->toBeTrue();
+    expect(feedIntegrityQuotaConsumed($member->id))->toBe(0);
     expect(CampaignEnvelopeConsumption::query()
         ->whereHas('quote.campaignVersion', fn ($query) => $query->where('campaign_id', $campaignId))
         ->exists())->toBeFalse();
+    expect(FeedCampaignReward::query()->where('account_id', $member->id)->where('campaign_id', $campaignId)->exists())->toBeFalse();
+});
+
+it('previews the advertiser owner own campaign even without personal consent or a matching territory', function (): void {
+    ['campaign_id' => $campaignId, 'organization_id' => $organizationId] = approvedCampaignForMatchingTests(
+        'feed-own-bypass-owner@example.com',
+        ['economic_classes' => ['GOLD'], 'territory' => ['country_code' => 'SN']],
+        200000,
+    );
+
+    // registerAndLogin defaults the account's own country to 'CI', which
+    // does not match the campaign's targeted 'SN' territory above, and no
+    // advertising consent is granted at all: Matching would normally
+    // refuse. The preview must still be visible — it never pays anyone.
+    $owner = loginExistingFeedIntegrityAccount('feed-own-bypass-owner@example.com');
+
+    expect(OrganizationMembership::query()
+        ->where('organization_id', $organizationId)
+        ->where('account_id', $owner->id)
+        ->where('title', 'owner')
+        ->where('status', 'active')
+        ->exists())->toBeTrue();
+
+    $sessionId = test()->postJson('/api/feed/sessions')->assertCreated()->json('feed_session.id');
+
+    $delivery = test()->getJson("/api/feed/next?feed_session_id={$sessionId}")
+        ->assertOk()
+        ->assertJsonPath('delivery.campaign_id', $campaignId)
+        ->assertJsonPath('delivery.status', FeedAdDelivery::STATUS_REPLAY)
+        ->assertJsonPath('delivery.gain_minor', 0)
+        ->assertJsonPath('delivery.quota_units', 0)
+        ->json('delivery');
+
+    expect($delivery['is_replay'])->toBeTrue();
+    expect(feedIntegrityQuotaConsumed($owner->id))->toBe(0);
+    expect(CampaignEnvelopeConsumption::query()
+        ->whereHas('quote.campaignVersion', fn ($query) => $query->where('campaign_id', $campaignId))
+        ->exists())->toBeFalse();
+    expect(FeedCampaignReward::query()->where('account_id', $owner->id)->where('campaign_id', $campaignId)->exists())->toBeFalse();
 });
 
 it('neutralizes a stale reserved own campaign before start with zero quota and zero budget consumption', function (): void {

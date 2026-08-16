@@ -10,5 +10,6 @@ final class FeedCandidate
         public readonly string $campaignId,
         public readonly string $economicClass,
         public readonly bool $isReplay = false,
+        public readonly bool $isOwnOrganizationPreview = false,
     ) {}
 }

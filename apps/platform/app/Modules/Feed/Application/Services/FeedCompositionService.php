@@ -62,19 +62,21 @@ final class FeedCompositionService
 
             // A rewarded impression must never send an advertiser's own
             // money back to the organization owner or one of its active
-            // team members. Filter here before Matching and before any
-            // campaign-envelope reservation is created.
-            if ($this->rewardEligibility->isBlockedForOrganization($accountId, $campaign->organizationId)) {
-                continue;
+            // team members — but they must always be able to preview their
+            // own campaign in the Feed, regardless of Matching (consent,
+            // territory, profile): none of that ever governs money here,
+            // since the preview pays nothing either way.
+            $isOwnOrganization = $this->rewardEligibility->isBlockedForOrganization($accountId, $campaign->organizationId);
+
+            if (! $isOwnOrganization) {
+                $decision = $this->matching->checkEligibility($campaign->campaignId, $accountId);
+
+                if (! $decision->isEligible()) {
+                    continue;
+                }
             }
 
-            $decision = $this->matching->checkEligibility($campaign->campaignId, $accountId);
-
-            if (! $decision->isEligible()) {
-                continue;
-            }
-
-            if ($rewardedCampaigns->has($campaign->campaignId)) {
+            if ($rewardedCampaigns->has($campaign->campaignId) || $isOwnOrganization) {
                 $lastSeenAt = FeedAdDelivery::query()
                     ->where('account_id', $accountId)
                     ->where('campaign_id', $campaign->campaignId)
@@ -88,7 +90,12 @@ final class FeedCompositionService
                 $lastSeenAt = $lastSeenAt !== null ? Carbon::parse($lastSeenAt, 'UTC') : Carbon::createFromTimestampUTC(0);
 
                 if ($oldestReplay === null || $lastSeenAt->lt($oldestReplaySeenAt)) {
-                    $oldestReplay = new FeedCandidate($campaign->campaignId, $economicClass, true);
+                    $oldestReplay = new FeedCandidate(
+                        $campaign->campaignId,
+                        $economicClass,
+                        isReplay: ! $isOwnOrganization,
+                        isOwnOrganizationPreview: $isOwnOrganization,
+                    );
                     $oldestReplaySeenAt = $lastSeenAt;
                 }
 

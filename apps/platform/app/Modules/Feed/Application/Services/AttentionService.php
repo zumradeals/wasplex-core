@@ -11,6 +11,7 @@ use App\Modules\Campaigns\Application\Contracts\ApprovedCampaignAudienceContract
 use App\Modules\Campaigns\Application\Contracts\CampaignEnvelopeContract;
 use App\Modules\Campaigns\Application\Services\CampaignEnvelopeExhaustedException;
 use App\Modules\Campaigns\Application\Services\CampaignNotAvailableForDeliveryException;
+use App\Modules\Campaigns\Application\ValueObjects\ApprovedCampaignAudience;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDelivery;
 use App\Modules\Feed\Infrastructure\Models\FeedAdDeliveryHold;
@@ -137,6 +138,18 @@ final class AttentionService
                 ]);
 
                 return $this->present($delivery);
+            }
+
+            if ($candidate->isOwnOrganizationPreview) {
+                $preview = $this->buildOwnOrganizationPreviewDelivery($feedSessionId, $accountId, $campaign, $candidate->economicClass);
+
+                if ($preview === null) {
+                    $excluded[] = $candidate->campaignId;
+
+                    continue;
+                }
+
+                return $this->present($preview);
             }
 
             try {
@@ -515,6 +528,54 @@ final class AttentionService
         $delivery = $this->findOwned($deliveryId, $accountId);
 
         return $this->matching->explain($delivery->campaign_id, $accountId);
+    }
+
+    /**
+     * An advertiser or an active member of its team previewing their own
+     * organization's campaign: shown exactly like a replay — no budget
+     * envelope reservation, no quota consumption, no reward — because no
+     * FeedCampaignReward exists to source the economics from (there never
+     * can be one for a blocked organization).
+     */
+    private function buildOwnOrganizationPreviewDelivery(
+        string $feedSessionId,
+        string $accountId,
+        ApprovedCampaignAudience $campaign,
+        string $economicClass,
+    ): ?FeedAdDelivery {
+        if ($campaign->creativeAssetId === null) {
+            return null;
+        }
+
+        $asset = $this->creativeAssets->find($campaign->organizationId, $campaign->creativeAssetId);
+
+        if ($asset === null || $asset->type !== 'video') {
+            return null;
+        }
+
+        $durationMs = $asset->durationMs ?? (($asset->duration ?? 0) * 1000);
+
+        if ($durationMs <= 0) {
+            return null;
+        }
+
+        return FeedAdDelivery::query()->create([
+            'feed_session_id' => $feedSessionId,
+            'account_id' => $accountId,
+            'campaign_id' => $campaign->campaignId,
+            'organization_id' => $campaign->organizationId,
+            'campaign_envelope_consumption_id' => "preview:{$campaign->organizationId}:{$campaign->campaignId}",
+            'economic_class' => $economicClass,
+            'is_replay' => true,
+            'gain_minor' => 0,
+            'required_duration_ms' => $durationMs,
+            'quota_units' => 0,
+            'requires_media_end' => false,
+            'visible_duration_ms' => 0,
+            'progress_percent' => 0,
+            'status' => FeedAdDelivery::STATUS_REPLAY,
+            'reserved_at' => Carbon::now('UTC'),
+        ]);
     }
 
     private function neutralizeBlockedDelivery(FeedAdDelivery $delivery, string $accountId): FeedAdDelivery
