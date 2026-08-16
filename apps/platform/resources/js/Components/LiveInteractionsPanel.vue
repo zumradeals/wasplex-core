@@ -50,11 +50,11 @@ const reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
 const isHost = computed(() => props.mode === 'host');
 const currentAccountId = computed(() => page.props.auth.account.id);
-const pinnedComment = computed(() => comments.value.find((comment) => comment.is_pinned && comment.status === 'visible'));
-const recentComments = computed(() => comments.value.slice(-8));
-const composerEnabled = computed(
-    () => isHost.value || (settings.value.comments_enabled && canComment.value),
+const pinnedComment = computed(() =>
+    comments.value.find((comment) => comment.is_pinned && comment.status === 'visible'),
 );
+const recentComments = computed(() => comments.value.slice(-8));
+const composerEnabled = computed(() => isHost.value || (settings.value.comments_enabled && canComment.value));
 
 function messageFrom(cause: unknown): string {
     return (cause as ApiError)?.response?.data?.message ?? 'Impossible de mettre à jour les interactions du Live.';
@@ -265,13 +265,9 @@ useEcho(`live.${props.liveId}`, '.live.viewer-count.changed', (payload: { viewer
     emit('viewerCount', payload.viewer_count);
 });
 
-useEcho(
-    `live.${props.liveId}`,
-    '.live.reaction',
-    (payload: { emoji: string; account_id: string }) => {
-        if (payload.account_id !== currentAccountId.value) addReactionBurst(payload.emoji);
-    },
-);
+useEcho(`live.${props.liveId}`, '.live.reaction', (payload: { emoji: string; account_id: string }) => {
+    if (payload.account_id !== currentAccountId.value) addReactionBurst(payload.emoji);
+});
 
 onMounted(() => {
     void load();
@@ -286,23 +282,22 @@ onBeforeUnmount(() => {
 <template>
     <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end p-3 pt-16">
         <div class="pointer-events-none absolute right-3 bottom-16 flex flex-col-reverse items-center gap-1">
-            <span
-                v-for="burst in reactionBursts"
-                :key="burst.id"
-                class="animate-bounce text-3xl drop-shadow-lg"
-            >
+            <span v-for="burst in reactionBursts" :key="burst.id" class="animate-bounce text-3xl drop-shadow-lg">
                 {{ burst.emoji }}
             </span>
         </div>
 
-        <div v-if="pinnedComment" class="pointer-events-auto mb-2 rounded-xl bg-amber-300/95 px-3 py-2 text-slate-950 shadow-lg">
+        <div
+            v-if="pinnedComment"
+            class="pointer-events-auto mb-2 rounded-xl bg-amber-300/95 px-3 py-2 text-slate-950 shadow-lg"
+        >
             <p class="text-[9px] font-black tracking-wide uppercase">📌 Épinglé par l’hôte</p>
             <p class="mt-0.5 text-[11px] font-bold">
                 {{ pinnedComment.author.display_name }} · {{ pinnedComment.body }}
             </p>
         </div>
 
-        <div class="pointer-events-auto max-h-40 space-y-1.5 overflow-y-auto pr-1 [scrollbar-width:none]">
+        <div class="pointer-events-auto max-h-40 [scrollbar-width:none] space-y-1.5 overflow-y-auto pr-1">
             <div
                 v-for="comment in recentComments"
                 :key="comment.id"
@@ -322,7 +317,10 @@ onBeforeUnmount(() => {
                     <span class="shrink-0 text-[8px] text-white/40">{{ formatTime(comment.created_at) }}</span>
                 </div>
 
-                <div v-if="comment.status === 'visible'" class="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-bold text-white/55">
+                <div
+                    v-if="comment.status === 'visible'"
+                    class="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-bold text-white/55"
+                >
                     <button type="button" @click="replyingTo = comment">Répondre</button>
                     <button
                         v-if="!isHost && comment.author.account_id !== currentAccountId"
@@ -349,14 +347,23 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <p v-if="notice" class="pointer-events-auto mt-2 rounded-lg bg-emerald-500/90 px-2.5 py-1.5 text-[10px] font-bold text-white">
+        <p
+            v-if="notice"
+            class="pointer-events-auto mt-2 rounded-lg bg-emerald-500/90 px-2.5 py-1.5 text-[10px] font-bold text-white"
+        >
             {{ notice }}
         </p>
-        <p v-if="error" class="pointer-events-auto mt-2 rounded-lg bg-red-700/90 px-2.5 py-1.5 text-[10px] font-bold text-white">
+        <p
+            v-if="error"
+            class="pointer-events-auto mt-2 rounded-lg bg-red-700/90 px-2.5 py-1.5 text-[10px] font-bold text-white"
+        >
             {{ error }}
         </p>
 
-        <div v-if="isHost" class="pointer-events-auto mt-2 flex items-center gap-2 rounded-xl bg-black/65 p-2 backdrop-blur-sm">
+        <div
+            v-if="isHost"
+            class="pointer-events-auto mt-2 flex items-center gap-2 rounded-xl bg-black/65 p-2 backdrop-blur-sm"
+        >
             <button
                 type="button"
                 class="rounded-full px-2.5 py-1.5 text-[9px] font-black"
@@ -380,20 +387,34 @@ onBeforeUnmount(() => {
             </label>
         </div>
 
-        <div v-if="replyingTo" class="pointer-events-auto mt-2 flex items-center justify-between rounded-lg bg-white/10 px-2.5 py-1.5 text-[9px]">
-            <span>Réponse à <strong>{{ replyingTo.author.display_name }}</strong></span>
+        <div
+            v-if="replyingTo"
+            class="pointer-events-auto mt-2 flex items-center justify-between rounded-lg bg-white/10 px-2.5 py-1.5 text-[9px]"
+        >
+            <span
+                >Réponse à <strong>{{ replyingTo.author.display_name }}</strong></span
+            >
             <button type="button" class="font-black" @click="replyingTo = null">×</button>
         </div>
 
-        <div v-if="!isHost && !settings.comments_enabled" class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold">
+        <div
+            v-if="!isHost && !settings.comments_enabled"
+            class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold"
+        >
             🔒 Les commentaires sont temporairement fermés
         </div>
-        <div v-else-if="!isHost && !canComment" class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold">
+        <div
+            v-else-if="!isHost && !canComment"
+            class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold"
+        >
             {{ restrictionMessage ?? 'Vous pouvez regarder ce Live, mais vous ne pouvez plus commenter.' }}
         </div>
 
         <div class="pointer-events-auto mt-2 flex items-center gap-1.5">
-            <div v-if="composerEnabled" class="flex min-w-0 flex-1 items-center rounded-full bg-black/70 pl-3 pr-1 backdrop-blur-sm">
+            <div
+                v-if="composerEnabled"
+                class="flex min-w-0 flex-1 items-center rounded-full bg-black/70 pr-1 pl-3 backdrop-blur-sm"
+            >
                 <input
                     v-model="draft"
                     maxlength="300"
@@ -411,8 +432,22 @@ onBeforeUnmount(() => {
                 </button>
             </div>
 
-            <button type="button" class="rounded-full bg-black/70 p-2 text-base" aria-label="Envoyer un cœur" @click="react('heart', '❤️')">❤️</button>
-            <button type="button" class="rounded-full bg-black/70 p-2 text-base" aria-label="Applaudir" @click="react('clap', '👏')">👏</button>
+            <button
+                type="button"
+                class="rounded-full bg-black/70 p-2 text-base"
+                aria-label="Envoyer un cœur"
+                @click="react('heart', '❤️')"
+            >
+                ❤️
+            </button>
+            <button
+                type="button"
+                class="rounded-full bg-black/70 p-2 text-base"
+                aria-label="Applaudir"
+                @click="react('clap', '👏')"
+            >
+                👏
+            </button>
         </div>
     </div>
 </template>
