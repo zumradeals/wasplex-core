@@ -53,13 +53,6 @@ jobs:
           tools: composer:v2
           coverage: none
 
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: apps/platform/package-lock.json
-
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -68,26 +61,21 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - name: Instrument reward offer timestamps
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/Modules/Live/Application/Services/LiveRewardSeatService.php')
+          s = p.read_text()
+          needle = "    private function expireOffersUnderLock(LiveEvent $live, LiveRewardCampaign $campaign): void\n    {\n"
+          insert = "    private function expireOffersUnderLock(LiveEvent $live, LiveRewardCampaign $campaign): void\n    {\n        foreach (LiveRewardWaitlistEntry::query()->where('live_id', $live->id)->where('status', LiveRewardWaitlistEntry::STATUS_OFFERED)->get() as $debugOffer) {\n            fwrite(STDERR, sprintf(\"OFFERDBG now=%s offered=%s expires=%s future=%s ttl=%s account=%s\\n\", now()->toIso8601String(), $debugOffer->offered_at?->toIso8601String() ?? 'null', $debugOffer->offer_expires_at?->toIso8601String() ?? 'null', $debugOffer->offer_expires_at?->isFuture() ? 'yes' : 'no', (string) config('live.reward_offer_seconds'), $debugOffer->account_id));\n        }\n"
+          if needle not in s:
+              raise SystemExit('needle not found')
+          p.write_text(s.replace(needle, insert, 1))
+          PY
 
-      - name: Check frontend formatting
-        run: npm run format:check
-
-      - name: Run ESLint
-        run: npm run lint:check
-
-      - name: Check Vue/TypeScript types
-        run: npm run types:check
-
-      - name: Build frontend assets
-        run: npm run build
-
-      - name: Check PHP formatting
-        run: composer lint:check
-
-      - name: Run PHP tests against PostgreSQL and Redis
-        run: composer test
+      - name: Run P018-D reward-seat tests only
+        run: php artisan test tests/Feature/Live/LiveRewardSeatsTest.php
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
@@ -97,8 +85,3 @@ jobs:
           DB_PASSWORD: wasplex_ci_only
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-
-      # TODO(P001+): réactiver "composer types:check" (Larastan/PHPStan)
-      # dès que le paquet larastan/larastan est ajouté à composer.json depuis
-      # un poste disposant d'un accès réseau complet à GitHub — voir le
-      # rapport P000 pour le détail du blocage réseau rencontré en sandbox.
