@@ -137,7 +137,7 @@ final class LiveRewardAttentionService
                 $state->save();
 
                 return $state->refresh();
-         }
+            }
 
             if ($live->status !== LiveEvent::STATUS_LIVE) {
                 $state->current_block_ms = 0;

@@ -153,7 +153,10 @@ async function load(): Promise<void> {
     }
 }
 
-async function heartbeatRewardAttention(visible = document.visibilityState === 'visible', mediaConnected = true): Promise<void> {
+async function heartbeatRewardAttention(
+    visible = document.visibilityState === 'visible',
+    mediaConnected = true,
+): Promise<void> {
     if (isHost.value) return;
 
     try {
@@ -350,8 +353,10 @@ onBeforeUnmount(() => {
                 <div class="min-w-0">
                     <p class="text-[9px] font-black tracking-wide text-amber-200 uppercase">Attention rémunérée</p>
                     <p class="mt-0.5 text-[10px] font-bold text-white">
-                        {{ rewardStatusLabel(rewardAttention) }} ·
-                        {{ rewardAttention.validated_blocks }}/{{ rewardAttention.max_blocks }} blocs
+                        {{ rewardStatusLabel(rewardAttention) }} · {{ rewardAttention.validated_blocks }}/{{
+                            rewardAttention.max_blocks
+                        }}
+                        blocs
                     </p>
                 </div>
                 <div class="shrink-0 text-right">
@@ -474,7 +479,9 @@ onBeforeUnmount(() => {
             v-if="replyingTo"
             class="pointer-events-auto mt-2 flex items-center justify-between rounded-lg bg-white/10 px-2.5 py-1.5 text-[9px]"
         >
-            <span>Réponse à <strong>{{ replyingTo.author.display_name }}</strong></span>
+            <span
+                >Réponse à <strong>{{ replyingTo.author.display_name }}</strong></span
+            >
             <button type="button" class="font-black" @click="replyingTo = null">×</button>
         </div>
 

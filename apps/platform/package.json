@@ -8,7 +8,7 @@
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
         "format": "prettier --write resources",
-        "format:check": "prettier --write resources/js/Components/LiveInteractionsPanel.vue resources/js/Components/LiveSponsorshipPanel.vue --plugin=prettier-plugin-tailwindcss && prettier --check resources --plugin=prettier-plugin-tailwindcss",
+        "format:check": "prettier --check resources",
         "types:check": "vue-tsc --noEmit"
     },
     "devDependencies": {
