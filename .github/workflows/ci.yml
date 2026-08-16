@@ -71,22 +71,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Format diagnostic P018-C
-        run: npx prettier --write resources/js/Components/AdvertiserLivePanel.vue resources/js/Components/LiveSponsorshipPanel.vue
-
-      - name: Upload formatted P018-C files
-        uses: actions/upload-artifact@v4
-        with:
-          name: p018c-prettier
-          path: |
-            apps/platform/resources/js/Components/AdvertiserLivePanel.vue
-            apps/platform/resources/js/Components/LiveSponsorshipPanel.vue
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Stop diagnostic run
-        run: exit 1
-
       - name: Check frontend formatting
         run: npm run format:check
 
