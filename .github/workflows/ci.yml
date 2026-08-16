@@ -7,7 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   platform:
@@ -72,16 +72,32 @@ jobs:
         run: npm ci
 
       - name: Diagnostic Prettier P018-D
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           npx prettier --write resources/js/Components/LivePanel.vue resources/js/Components/LiveSponsorshipPanel.vue
-          echo '===LIVE_PANEL_B64_START==='
-          base64 -w0 resources/js/Components/LivePanel.vue
-          echo
-          echo '===LIVE_PANEL_B64_END==='
-          echo '===LIVE_SPONSORSHIP_PANEL_B64_START==='
-          base64 -w0 resources/js/Components/LiveSponsorshipPanel.vue
-          echo
-          echo '===LIVE_SPONSORSHIP_PANEL_B64_END==='
+
+          make_blob() {
+            local path="$1"
+            local payload
+            payload="$(python3 - "$path" <<'PY'
+import base64, json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+print(json.dumps({"content": base64.b64encode(path.read_bytes()).decode(), "encoding": "base64"}))
+PY
+)"
+            curl -fsS \
+              -X POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs" \
+              -d "$payload" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["sha"])'
+          }
+
+          echo "FORMATTED_LIVE_PANEL_SHA=$(make_blob resources/js/Components/LivePanel.vue)"
+          echo "FORMATTED_LIVE_SPONSORSHIP_PANEL_SHA=$(make_blob resources/js/Components/LiveSponsorshipPanel.vue)"
           exit 1
 
       - name: Check frontend formatting
