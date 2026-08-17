@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Live\Http\Controllers;
 
+use App\Modules\Identity\Infrastructure\Models\AccountSession;
 use App\Modules\Live\Application\Services\LiveInteractionService;
 use App\Modules\Live\Application\Services\LiveLifecycleService;
 use App\Modules\Live\Application\Services\LivePresenter;
@@ -60,9 +61,7 @@ final class LiveController
 
     public function rewardAttention(Request $request, LiveEvent $live): JsonResponse
     {
-        return response()->json([
-            'reward_attention' => $this->rewardAttention->stateForAccount($live, $request->user()),
-        ]);
+        return response()->json(['reward_attention' => $this->rewardAttention->stateForAccount($live, $request->user())]);
     }
 
     public function rewardAttentionHeartbeat(Request $request, LiveEvent $live): JsonResponse
@@ -71,6 +70,7 @@ final class LiveController
             'visible' => ['required', 'boolean'],
             'media_connected' => ['required', 'boolean'],
         ]);
+        $session = $request->attributes->get('account_session');
 
         return response()->json([
             'reward_attention' => $this->rewardAttention->heartbeat(
@@ -78,6 +78,7 @@ final class LiveController
                 $request->user(),
                 (bool) $data['visible'],
                 (bool) $data['media_connected'],
+                $session instanceof AccountSession ? $session : null,
             ),
         ]);
     }
@@ -114,29 +115,21 @@ final class LiveController
 
     public function joinRewardWaitlist(Request $request, LiveEvent $live): JsonResponse
     {
-        return response()->json([
-            'reward_seat' => $this->rewardSeats->joinWaitlist($live, $request->user()),
-        ]);
+        return response()->json(['reward_seat' => $this->rewardSeats->joinWaitlist($live, $request->user())]);
     }
 
     public function leaveRewardWaitlist(Request $request, LiveEvent $live): JsonResponse
     {
-        return response()->json([
-            'reward_seat' => $this->rewardSeats->leaveWaitlist($live, $request->user()),
-        ]);
+        return response()->json(['reward_seat' => $this->rewardSeats->leaveWaitlist($live, $request->user())]);
     }
 
     public function acceptRewardSeat(Request $request, LiveEvent $live): JsonResponse
     {
-        return response()->json([
-            'reward_seat' => $this->rewardSeats->acceptOffer($live, $request->user()),
-        ]);
+        return response()->json(['reward_seat' => $this->rewardSeats->acceptOffer($live, $request->user())]);
     }
 
     public function declineRewardSeat(Request $request, LiveEvent $live): JsonResponse
     {
-        return response()->json([
-            'reward_seat' => $this->rewardSeats->declineOffer($live, $request->user()),
-        ]);
+        return response()->json(['reward_seat' => $this->rewardSeats->declineOffer($live, $request->user())]);
     }
 }

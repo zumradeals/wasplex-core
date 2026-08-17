@@ -6,16 +6,17 @@ namespace App\Modules\Live\Application\Services;
 
 use App\Modules\AdvertiserWallet\Application\Contracts\AdvertiserLiveBudgetReservationContract;
 use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Identity\Infrastructure\Models\AccountSession;
 use App\Modules\Live\Infrastructure\Models\LiveAuditEvent;
 use App\Modules\Live\Infrastructure\Models\LiveEvent;
 use App\Modules\Live\Infrastructure\Models\LiveRewardAttentionBlock;
 use App\Modules\Live\Infrastructure\Models\LiveRewardAttentionState;
 use App\Modules\Live\Infrastructure\Models\LiveRewardBudgetReservation;
 use App\Modules\Live\Infrastructure\Models\LiveRewardCampaign;
+use App\Modules\Live\Infrastructure\Models\LiveRewardRiskEvent;
 use App\Modules\Live\Infrastructure\Models\LiveRewardSeat;
 use App\Modules\Live\Infrastructure\Models\LiveViewerSession;
 use App\Modules\Wallet\Application\Contracts\UserWalletContract;
-use App\Shared\Http\AppException;
 use Illuminate\Support\Facades\DB;
 
 final class LiveRewardAttentionService
@@ -23,38 +24,27 @@ final class LiveRewardAttentionService
     public function __construct(
         private readonly AdvertiserLiveBudgetReservationContract $budgets,
         private readonly UserWalletContract $userWallet,
+        private readonly LiveRewardRiskService $risk,
+        private readonly LiveRewardHoldService $holds,
+        private readonly LiveRewardSettlementService $settlement,
     ) {}
 
-    /**
-     * A heartbeat never trusts a client duration. The server only receives
-     * boolean presence signals and derives qualified time from its own clock.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function heartbeat(
         LiveEvent $live,
         Account $viewer,
         bool $visible,
         bool $mediaConnected,
+        ?AccountSession $accountSession = null,
     ): array {
         $capturedRewards = [];
 
-        $state = DB::transaction(function () use (
-            $live,
-            $viewer,
-            $visible,
-            $mediaConnected,
-            &$capturedRewards,
-        ): ?LiveRewardAttentionState {
+        $state = DB::transaction(function () use ($live, $viewer, $visible, $mediaConnected, $accountSession, &$capturedRewards): ?LiveRewardAttentionState {
             if ($live->type !== LiveEvent::TYPE_SPONSORED) {
                 return null;
             }
 
-            /** @var LiveRewardCampaign|null $campaign */
-            $campaign = LiveRewardCampaign::query()
-                ->where('live_id', $live->id)
-                ->lockForUpdate()
-                ->first();
+            $campaign = LiveRewardCampaign::query()->where('live_id', $live->id)->lockForUpdate()->first();
             if ($campaign === null || $campaign->status !== LiveRewardCampaign::STATUS_FUNDS_RESERVED) {
                 return null;
             }
@@ -65,7 +55,7 @@ final class LiveRewardAttentionService
                 ->lockForUpdate()
                 ->first();
             $quote = $reservation?->quote;
-            if ($reservation === null || $quote === null || $quote->reward_per_block_minor < 1) {
+            if ($reservation === null || $quote === null || (int) $quote->reward_per_block_minor < 1) {
                 return null;
             }
 
@@ -76,7 +66,7 @@ final class LiveRewardAttentionService
                 ->lockForUpdate()
                 ->first();
             if ($seat === null) {
-                $this->resetState($live, $viewer->id);
+                $this->resetState($live, (string) $viewer->id);
 
                 return null;
             }
@@ -87,12 +77,8 @@ final class LiveRewardAttentionService
                 ->where('live_id', $live->id)
                 ->lockForUpdate()
                 ->first();
-            if ($viewerSession === null
-                || ! in_array($viewerSession->status, [
-                    LiveViewerSession::STATUS_WATCHING,
-                    LiveViewerSession::STATUS_PAUSED,
-                ], true)) {
-                $this->resetState($live, $viewer->id);
+            if ($viewerSession === null || ! in_array($viewerSession->status, [LiveViewerSession::STATUS_WATCHING, LiveViewerSession::STATUS_PAUSED], true)) {
+                $this->resetState($live, (string) $viewer->id);
 
                 return null;
             }
@@ -116,11 +102,34 @@ final class LiveRewardAttentionService
                 ]);
             }
 
-            $now = now();
             $state->live_reward_seat_id = $seat->id;
             $state->viewer_session_id = $viewerSession->id;
 
-            if ($state->validated_blocks >= $quote->max_blocks_per_viewer) {
+            if ($this->risk->isSelfRewardBlocked($live, (string) $viewer->id)) {
+                $this->risk->selfRewardAttempt($live, $campaign, $state, $accountSession);
+                $state->current_block_ms = 0;
+                $state->last_heartbeat_at = now();
+                $state->last_heartbeat_qualified = false;
+                $state->risk_hold_required = false;
+                $state->save();
+
+                return $state->refresh();
+            }
+
+            $this->risk->bindSession($live, $campaign, $state, $accountSession);
+            $state->refresh();
+
+            if (! $this->risk->rewardsEnabled()) {
+                $state->current_block_ms = 0;
+                $state->last_heartbeat_at = now();
+                $state->last_heartbeat_qualified = false;
+                $state->save();
+
+                return $state->refresh();
+            }
+
+            $now = now();
+            if ((int) $state->validated_blocks >= (int) $quote->max_blocks_per_viewer) {
                 $state->current_block_ms = 0;
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = false;
@@ -129,8 +138,6 @@ final class LiveRewardAttentionService
                 return $state->refresh();
             }
 
-            // Host pause is neutral: preserve partial progress but do not count
-            // paused time. The browser keeps heartbeating, so resume starts cleanly.
             if ($live->status === LiveEvent::STATUS_PAUSED) {
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = false;
@@ -148,8 +155,6 @@ final class LiveRewardAttentionService
                 return $state->refresh();
             }
 
-            // A hidden tab or disconnected media breaks a continuous attention
-            // block. Incomplete time is never transformed into value.
             if (! $visible || ! $mediaConnected) {
                 $state->current_block_ms = 0;
                 $state->last_heartbeat_at = $now;
@@ -173,8 +178,8 @@ final class LiveRewardAttentionService
             $maximumGapMs = max($minimumMs, (int) config('live.reward_heartbeat_max_gap_ms'));
 
             if ($elapsedMs < $minimumMs) {
-                $state->risk_signal_count++;
-                $state->last_risk_signal_code = 'heartbeat_rate_abuse';
+                $this->risk->timingSignal($live, $campaign, $state, $accountSession, 'heartbeat_rate_abuse', $elapsedMs);
+                $state->refresh();
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = true;
                 $state->save();
@@ -183,8 +188,8 @@ final class LiveRewardAttentionService
             }
 
             if ($elapsedMs > $maximumGapMs) {
-                $state->risk_signal_count++;
-                $state->last_risk_signal_code = 'heartbeat_gap';
+                $this->risk->timingSignal($live, $campaign, $state, $accountSession, 'heartbeat_gap', $elapsedMs);
+                $state->refresh();
                 $state->current_block_ms = 0;
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = true;
@@ -193,26 +198,25 @@ final class LiveRewardAttentionService
                 return $state->refresh();
             }
 
-            $state->current_block_ms += $elapsedMs;
+            $state->current_block_ms = (int) $state->current_block_ms + $elapsedMs;
             $state->last_heartbeat_at = $now;
             $state->last_qualified_at = $now;
             $state->last_heartbeat_qualified = true;
-
             $requiredMs = max(1, (int) $quote->block_duration_seconds * 1000);
 
-            while ($state->current_block_ms >= $requiredMs
-                && $state->validated_blocks < $quote->max_blocks_per_viewer) {
-                $capturedGlobally = LiveRewardAttentionBlock::query()
+            while ((int) $state->current_block_ms >= $requiredMs && (int) $state->validated_blocks < (int) $quote->max_blocks_per_viewer) {
+                $committedGlobally = LiveRewardAttentionBlock::query()
                     ->where('live_reward_campaign_id', $campaign->id)
-                    ->where('status', LiveRewardAttentionBlock::STATUS_CAPTURED)
+                    ->whereIn('status', [LiveRewardAttentionBlock::STATUS_CAPTURED, LiveRewardAttentionBlock::STATUS_HELD])
                     ->count();
 
-                if ($capturedGlobally >= $quote->funded_blocks) {
+                if ($committedGlobally >= (int) $quote->funded_blocks) {
                     $state->current_block_ms = 0;
                     break;
                 }
 
-                $blockIndex = $state->validated_blocks + 1;
+                $blockIndex = (int) $state->validated_blocks + 1;
+                $holdRequired = $this->risk->mode() === LiveRewardRiskService::MODE_ENFORCE && (bool) $state->risk_hold_required;
                 $block = LiveRewardAttentionBlock::query()->create([
                     'live_reward_campaign_id' => $campaign->id,
                     'live_reward_quote_id' => $quote->id,
@@ -223,42 +227,64 @@ final class LiveRewardAttentionService
                     'block_index' => $blockIndex,
                     'attention_ms' => $requiredMs,
                     'reward_minor' => $quote->reward_per_block_minor,
-                    'gross_amount_minor' => $quote->reward_per_block_minor * 2,
-                    'status' => LiveRewardAttentionBlock::STATUS_CAPTURED,
+                    'gross_amount_minor' => (int) $quote->reward_per_block_minor * 2,
+                    'risk_mode' => $this->risk->mode(),
+                    'status' => $holdRequired ? LiveRewardAttentionBlock::STATUS_HELD : LiveRewardAttentionBlock::STATUS_CAPTURED,
                 ]);
 
-                $ledgerTransactionId = $this->budgets->captureReward(
-                    $campaign->advertiser_organization_id,
-                    $live->id,
-                    $quote->reward_per_block_minor,
-                    $this->userWallet->availableAccountReference($viewer->id),
-                    "live-reward-block:{$live->id}:{$viewer->id}:{$blockIndex}",
-                );
+                if ($holdRequired) {
+                    $recentRiskCodes = LiveRewardRiskEvent::query()
+                        ->where('live_id', $live->id)
+                        ->where('account_id', $viewer->id)
+                        ->whereIn('severity', [LiveRewardRiskEvent::SEVERITY_HIGH, LiveRewardRiskEvent::SEVERITY_CRITICAL])
+                        ->where('occurred_at', '>=', now()->subMinutes(15))
+                        ->orderBy('occurred_at')
+                        ->pluck('signal_code')
+                        ->unique()
+                        ->values()
+                        ->all();
 
-                $block->update([
-                    'ledger_transaction_id' => $ledgerTransactionId,
-                    'captured_at' => $now,
-                ]);
+                    $this->holds->open($block, $recentRiskCodes ?: ['risk_signal_threshold'], [
+                        'risk_signal_count' => (int) $state->risk_signal_count,
+                        'attention_ms' => $requiredMs,
+                    ]);
+                    $this->audit($live, (string) $viewer->id, 'LiveRewardBlockHeld', [
+                        'block_id' => $block->id,
+                        'block_index' => $blockIndex,
+                        'reward_minor' => (int) $quote->reward_per_block_minor,
+                    ]);
+                } else {
+                    $ledgerTransactionId = $this->budgets->captureReward(
+                        $campaign->advertiser_organization_id,
+                        $live->id,
+                        (int) $quote->reward_per_block_minor,
+                        $this->userWallet->availableAccountReference((string) $viewer->id),
+                        "live-reward-block:{$live->id}:{$viewer->id}:{$blockIndex}",
+                    );
+                    $block->update([
+                        'ledger_transaction_id' => $ledgerTransactionId,
+                        'captured_at' => $now,
+                    ]);
+                    $capturedRewards[] = [
+                        'amount_minor' => (int) $quote->reward_per_block_minor,
+                        'ledger_transaction_id' => $ledgerTransactionId,
+                    ];
+                    $this->audit($live, (string) $viewer->id, 'LiveRewardBlockCaptured', [
+                        'block_id' => $block->id,
+                        'block_index' => $blockIndex,
+                        'reward_minor' => (int) $quote->reward_per_block_minor,
+                        'ledger_transaction_id' => $ledgerTransactionId,
+                    ]);
+                }
 
                 $state->validated_blocks = $blockIndex;
-                $state->current_block_ms -= $requiredMs;
-                $capturedRewards[] = [
-                    'amount_minor' => (int) $quote->reward_per_block_minor,
-                    'ledger_transaction_id' => $ledgerTransactionId,
-                ];
-
-                $this->audit($live, $viewer->id, 'LiveRewardBlockCaptured', [
-                    'block_id' => $block->id,
-                    'block_index' => $blockIndex,
-                    'reward_minor' => (int) $quote->reward_per_block_minor,
-                    'ledger_transaction_id' => $ledgerTransactionId,
-                ]);
+                $state->current_block_ms = (int) $state->current_block_ms - $requiredMs;
+                $state->risk_hold_required = false;
             }
 
-            if ($state->validated_blocks >= $quote->max_blocks_per_viewer) {
+            if ((int) $state->validated_blocks >= (int) $quote->max_blocks_per_viewer) {
                 $state->current_block_ms = 0;
             }
-
             $state->save();
 
             return $state->refresh();
@@ -266,7 +292,7 @@ final class LiveRewardAttentionService
 
         foreach ($capturedRewards as $captured) {
             $this->userWallet->notifyBalanceChanged(
-                $viewer->id,
+                (string) $viewer->id,
                 $captured['amount_minor'],
                 'live.attention',
                 'credit',
@@ -274,12 +300,10 @@ final class LiveRewardAttentionService
             );
         }
 
-        return $this->present($live, $viewer->id, $state);
+        return $this->present($live, (string) $viewer->id, $state);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function stateForAccount(LiveEvent $live, Account $viewer): array
     {
         $state = LiveRewardAttentionState::query()
@@ -287,7 +311,7 @@ final class LiveRewardAttentionService
             ->where('account_id', $viewer->id)
             ->first();
 
-        return $this->present($live, $viewer->id, $state);
+        return $this->present($live, (string) $viewer->id, $state);
     }
 
     public function interrupt(LiveEvent $live, Account $viewer, string $reason = 'viewer_interrupted'): void
@@ -298,11 +322,9 @@ final class LiveRewardAttentionService
                 ->where('account_id', $viewer->id)
                 ->lockForUpdate()
                 ->first();
-
             if ($state === null) {
                 return;
             }
-
             $state->update([
                 'current_block_ms' => 0,
                 'last_heartbeat_at' => now(),
@@ -312,126 +334,16 @@ final class LiveRewardAttentionService
         });
     }
 
-    /**
-     * Finalizes the reserved Live budget. Qualified blocks are already captured
-     * append-only; every remaining WP returns to the advertiser exactly once.
-     *
-     * @return array<string, int|bool>
-     */
+    /** @return array<string, int|bool|string> */
     public function settleLive(LiveEvent $live, ?string $actorAccountId = null): array
     {
-        return DB::transaction(function () use ($live, $actorAccountId): array {
-            $campaign = LiveRewardCampaign::query()
-                ->where('live_id', $live->id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($campaign === null) {
-                return $this->report($live);
-            }
-
-            $reservation = $campaign->budgetReservations()
-                ->latest('reserved_at')
-                ->lockForUpdate()
-                ->first();
-
-            if ($reservation === null || $reservation->status !== LiveRewardBudgetReservation::STATUS_RESERVED) {
-                return $this->report($live);
-            }
-
-            $grossCaptured = (int) LiveRewardAttentionBlock::query()
-                ->where('live_reward_campaign_id', $campaign->id)
-                ->where('status', LiveRewardAttentionBlock::STATUS_CAPTURED)
-                ->sum('gross_amount_minor');
-
-            if ($grossCaptured > $reservation->amount_minor) {
-                throw new AppException(
-                    'LIVE_REWARD_BUDGET_INCONSISTENT',
-                    'La consommation récompensée dépasse le budget Live réservé.',
-                    [],
-                    409,
-                );
-            }
-
-            $remaining = $reservation->amount_minor - $grossCaptured;
-            $releaseTransactionId = null;
-
-            if ($remaining > 0) {
-                $releaseTransactionId = $this->budgets->release(
-                    $campaign->advertiser_organization_id,
-                    $live->id,
-                    $remaining,
-                    "live-budget-settlement:{$reservation->id}",
-                );
-            }
-
-            $reservation->update([
-                'status' => LiveRewardBudgetReservation::STATUS_RELEASED,
-                'released_at' => now(),
-            ]);
-
-            $this->audit($live, $actorAccountId, 'LiveRewardBudgetSettled', [
-                'reservation_id' => $reservation->id,
-                'captured_gross_minor' => $grossCaptured,
-                'released_minor' => $remaining,
-                'release_ledger_transaction_id' => $releaseTransactionId,
-            ]);
-
-            return $this->report($live);
-        });
+        return $this->settlement->settleLive($live, $actorAccountId);
     }
 
-    /**
-     * Aggregate only: never exposes rewarded member identities to the Studio.
-     *
-     * @return array<string, int|bool>
-     */
+    /** @return array<string, int|bool|string> */
     public function report(LiveEvent $live): array
     {
-        $campaign = LiveRewardCampaign::query()->where('live_id', $live->id)->first();
-
-        if ($campaign === null) {
-            return [
-                'settled' => false,
-                'funded_blocks' => 0,
-                'captured_blocks' => 0,
-                'rewarded_viewers' => 0,
-                'member_rewards_minor' => 0,
-                'wasplex_revenue_minor' => 0,
-                'gross_consumed_minor' => 0,
-                'remaining_reserved_minor' => 0,
-                'released_minor' => 0,
-            ];
-        }
-
-        $reservation = $campaign->budgetReservations()->latest('reserved_at')->first();
-        $quote = $reservation?->quote ?? $campaign->quotes()->latest('quoted_at')->first();
-
-        $blocks = LiveRewardAttentionBlock::query()
-            ->where('live_reward_campaign_id', $campaign->id)
-            ->where('status', LiveRewardAttentionBlock::STATUS_CAPTURED);
-
-        $capturedBlocks = (clone $blocks)->count();
-        $memberRewards = (int) (clone $blocks)->sum('reward_minor');
-        $grossConsumed = (int) (clone $blocks)->sum('gross_amount_minor');
-        $rewardedViewers = (clone $blocks)->distinct()->count('account_id');
-
-        $reservedAmount = (int) ($reservation?->amount_minor ?? 0);
-        $settled = $reservation?->status === LiveRewardBudgetReservation::STATUS_RELEASED;
-        $remainingReserved = $settled ? 0 : max(0, $reservedAmount - $grossConsumed);
-        $released = $settled ? max(0, $reservedAmount - $grossConsumed) : 0;
-
-        return [
-            'settled' => $settled,
-            'funded_blocks' => (int) ($quote?->funded_blocks ?? 0),
-            'captured_blocks' => $capturedBlocks,
-            'rewarded_viewers' => $rewardedViewers,
-            'member_rewards_minor' => $memberRewards,
-            'wasplex_revenue_minor' => $memberRewards,
-            'gross_consumed_minor' => $grossConsumed,
-            'remaining_reserved_minor' => $remainingReserved,
-            'released_minor' => $released,
-        ];
+        return $this->settlement->report($live);
     }
 
     private function resetState(LiveEvent $live, string $accountId): void
@@ -446,14 +358,9 @@ final class LiveRewardAttentionService
             ]);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function present(
-        LiveEvent $live,
-        string $accountId,
-        ?LiveRewardAttentionState $state,
-    ): array {
+    /** @return array<string, mixed> */
+    private function present(LiveEvent $live, string $accountId, ?LiveRewardAttentionState $state): array
+    {
         $campaign = LiveRewardCampaign::query()->where('live_id', $live->id)->first();
         $reservation = $campaign?->budgetReservations()->latest('reserved_at')->first();
         $quote = $reservation?->quote;
@@ -468,17 +375,28 @@ final class LiveRewardAttentionService
         $validatedBlocks = (int) ($state?->validated_blocks ?? 0);
         $maxBlocks = (int) ($quote?->max_blocks_per_viewer ?? 0);
         $rewardPerBlock = (int) ($quote?->reward_per_block_minor ?? 0);
-        $globalCapturedBlocks = $campaign === null ? 0 : LiveRewardAttentionBlock::query()
+        $accountBlocks = LiveRewardAttentionBlock::query()->where('live_id', $live->id)->where('account_id', $accountId);
+        $capturedForAccount = (clone $accountBlocks)->where('status', LiveRewardAttentionBlock::STATUS_CAPTURED);
+        $heldForAccount = (clone $accountBlocks)->where('status', LiveRewardAttentionBlock::STATUS_HELD);
+        $capturedBlocks = (clone $capturedForAccount)->count();
+        $earnedMinor = (int) (clone $capturedForAccount)->sum('reward_minor');
+        $pendingReviewBlocks = (clone $heldForAccount)->count();
+        $pendingReviewMinor = (int) (clone $heldForAccount)->sum('reward_minor');
+        $globalCommittedBlocks = $campaign === null ? 0 : LiveRewardAttentionBlock::query()
             ->where('live_reward_campaign_id', $campaign->id)
-            ->where('status', LiveRewardAttentionBlock::STATUS_CAPTURED)
+            ->whereIn('status', [LiveRewardAttentionBlock::STATUS_CAPTURED, LiveRewardAttentionBlock::STATUS_HELD])
             ->count();
         $fundedBlocks = (int) ($quote?->funded_blocks ?? 0);
 
         $status = 'inactive';
         if ($seatActive && $quote !== null) {
-            if ($validatedBlocks >= $maxBlocks && $maxBlocks > 0) {
+            if (! $this->risk->rewardsEnabled()) {
+                $status = 'rewards_paused';
+            } elseif ($this->risk->isSelfRewardBlocked($live, $accountId)) {
+                $status = 'unavailable';
+            } elseif ($validatedBlocks >= $maxBlocks && $maxBlocks > 0) {
                 $status = 'completed';
-            } elseif ($fundedBlocks > 0 && $globalCapturedBlocks >= $fundedBlocks) {
+            } elseif ($fundedBlocks > 0 && $globalCommittedBlocks >= $fundedBlocks) {
                 $status = 'funding_exhausted';
             } elseif ($live->status === LiveEvent::STATUS_PAUSED) {
                 $status = 'paused';
@@ -490,27 +408,26 @@ final class LiveRewardAttentionService
         return [
             'status' => $status,
             'validated_blocks' => $validatedBlocks,
+            'captured_blocks' => $capturedBlocks,
+            'pending_review_blocks' => $pendingReviewBlocks,
             'max_blocks' => $maxBlocks,
             'current_block_ms' => $currentMs,
             'block_duration_ms' => $requiredMs,
-            'progress_percent' => $requiredMs > 0
-                ? (int) min(100, intdiv($currentMs * 100, $requiredMs))
-                : 0,
+            'progress_percent' => $requiredMs > 0 ? (int) min(100, intdiv($currentMs * 100, $requiredMs)) : 0,
             'reward_per_block_minor' => $rewardPerBlock,
-            'earned_minor' => $validatedBlocks * $rewardPerBlock,
+            'earned_minor' => $earnedMinor,
+            'pending_review_minor' => $pendingReviewMinor,
             'max_reward_minor' => $maxBlocks * $rewardPerBlock,
             'funded_blocks' => $fundedBlocks,
-            'captured_blocks' => $globalCapturedBlocks,
+            'committed_blocks' => $globalCommittedBlocks,
+            'rewards_paused' => ! $this->risk->rewardsEnabled(),
             'balance_minor' => $this->userWallet->balanceMinor($accountId),
         ];
     }
 
-    private function audit(
-        LiveEvent $live,
-        ?string $actorAccountId,
-        string $eventType,
-        array $metadata = [],
-    ): void {
+    /** @param array<string, mixed> $metadata */
+    private function audit(LiveEvent $live, ?string $actorAccountId, string $eventType, array $metadata = []): void
+    {
         LiveAuditEvent::query()->create([
             'live_id' => $live->id,
             'actor_account_id' => $actorAccountId,

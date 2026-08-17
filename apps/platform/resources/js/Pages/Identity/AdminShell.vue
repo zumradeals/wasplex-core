@@ -12,6 +12,7 @@ import AdminFeedRiskPanel from '@/Components/AdminFeedRiskPanel.vue';
 import AdminFinanceOverviewPanel from '@/Components/AdminFinanceOverviewPanel.vue';
 import AdminFundsPanel from '@/Components/AdminFundsPanel.vue';
 import AdminIdentityVerificationsPanel from '@/Components/AdminIdentityVerificationsPanel.vue';
+import AdminLiveRewardsPanel from '@/Components/AdminLiveRewardsPanel.vue';
 import AdminProfessionalSpacesPanel from '@/Components/AdminProfessionalSpacesPanel.vue';
 import AdminMatchingPanel from '@/Components/AdminMatchingPanel.vue';
 import AdminNavIcon from '@/Components/AdminNavIcon.vue';
@@ -24,7 +25,6 @@ import SpaceSwitcher from '@/Components/SpaceSwitcher.vue';
 import type { AuthShared } from '@/types/identity';
 
 const page = usePage<{ auth: AuthShared }>();
-
 const nav = [
     { key: 'dashboard', label: 'Accueil', helper: 'Priorités et santé' },
     { key: 'users', label: 'Utilisateurs', helper: 'Comptes et identités' },
@@ -46,7 +46,6 @@ const usersTabs: Array<{ key: UsersTab; label: string }> = [
     { key: 'kyc', label: 'Identité & KYC' },
     { key: 'professionals', label: 'Professionnels & institutions' },
 ];
-
 const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
     { key: 'overview', label: 'Vue d’ensemble' },
     { key: 'advertisers', label: 'Campagnes & annonceurs' },
@@ -54,7 +53,6 @@ const advertisingTabs: Array<{ key: AdvertisingTab; label: string }> = [
     { key: 'matching', label: 'Diffusion & ciblage' },
     { key: 'smartprofile', label: 'Profil intelligent' },
 ];
-
 const settingsTabs: Array<{ key: SettingsTab; label: string }> = [
     { key: 'capabilities', label: 'Équipe & permissions' },
     { key: 'payments', label: 'Paiements & intégrations' },
@@ -66,21 +64,17 @@ const activeUsersTab = ref<UsersTab>('accounts');
 const activeAdvertisingTab = ref<AdvertisingTab>('overview');
 const activeSettingsTab = ref<SettingsTab>('capabilities');
 const feedPanel = ref<InstanceType<typeof AdminFeedPanel> | null>(null);
-
 const activeNavItem = computed(() => nav.find((item) => item.key === activeSection.value) ?? nav[0]);
 
 function onFeedHoldResolved(): void {
     void feedPanel.value?.load();
 }
-
 function selectSection(key: SectionKey): void {
     activeSection.value = key;
 }
-
 function navigateFromDashboard(section: 'users' | 'advertising' | 'finance' | 'offers'): void {
     activeSection.value = section;
 }
-
 async function logout(): Promise<void> {
     await http.post('/logout');
     router.visit('/');
@@ -97,7 +91,6 @@ async function logout(): Promise<void> {
                     <p class="text-wpx-muted-dark text-[11px]">Console fondateur</p>
                 </div>
             </div>
-
             <nav class="flex flex-1 flex-col gap-1.5 p-3">
                 <button
                     v-for="item in nav"
@@ -114,16 +107,14 @@ async function logout(): Promise<void> {
                     <span
                         class="rounded-wpx-sm flex h-9 w-9 shrink-0 items-center justify-center"
                         :class="activeSection === item.key ? 'bg-wpx-cyan/12' : 'bg-wpx-navy-850'"
+                        ><AdminNavIcon :section="item.key" :active="activeSection === item.key"
+                    /></span>
+                    <span class="min-w-0"
+                        ><span class="block text-[13px] font-bold">{{ item.label }}</span
+                        ><span class="text-wpx-muted-dark block truncate text-[10px]">{{ item.helper }}</span></span
                     >
-                        <AdminNavIcon :section="item.key" :active="activeSection === item.key" />
-                    </span>
-                    <span class="min-w-0">
-                        <span class="block text-[13px] font-bold">{{ item.label }}</span>
-                        <span class="text-wpx-muted-dark block truncate text-[10px]">{{ item.helper }}</span>
-                    </span>
                 </button>
             </nav>
-
             <div class="border-wpx-border-dark border-t p-4">
                 <p class="text-wpx-muted-dark text-[10px] tracking-[0.16em] uppercase">Wasplex Core</p>
                 <p class="mt-1 text-xs font-semibold">Piloter sans jargon technique</p>
@@ -149,7 +140,6 @@ async function logout(): Promise<void> {
                         <button class="text-wpx-danger shrink-0 text-xs font-bold" @click="logout">Sortir</button>
                     </div>
                 </div>
-
                 <nav class="mt-3 flex gap-2 overflow-x-auto pb-1 md:hidden">
                     <button
                         v-for="item in nav"
@@ -172,7 +162,6 @@ async function logout(): Promise<void> {
                 <section v-if="activeSection === 'dashboard'">
                     <AdminDashboardPanel @navigate="navigateFromDashboard" />
                 </section>
-
                 <section v-else-if="activeSection === 'users'" class="flex flex-col gap-5">
                     <div
                         class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
@@ -192,19 +181,12 @@ async function logout(): Promise<void> {
                             {{ tab.label }}
                         </button>
                     </div>
-                    <AdminUsersPanel v-if="activeUsersTab === 'accounts'" />
-                    <AdminIdentityVerificationsPanel v-else-if="activeUsersTab === 'kyc'" />
-                    <AdminProfessionalSpacesPanel v-else />
+                    <AdminUsersPanel v-if="activeUsersTab === 'accounts'" /><AdminIdentityVerificationsPanel
+                        v-else-if="activeUsersTab === 'kyc'"
+                    /><AdminProfessionalSpacesPanel v-else />
                 </section>
-
-                <section v-else-if="activeSection === 'alerts'">
-                    <AdminAlertsPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'funds'">
-                    <AdminFundsPanel />
-                </section>
-
+                <section v-else-if="activeSection === 'alerts'"><AdminAlertsPanel /></section>
+                <section v-else-if="activeSection === 'funds'"><AdminFundsPanel /></section>
                 <section v-else-if="activeSection === 'advertising'" class="flex flex-col gap-5">
                     <div
                         class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
@@ -224,7 +206,6 @@ async function logout(): Promise<void> {
                             {{ tab.label }}
                         </button>
                     </div>
-
                     <AdminAdvertisingOverviewPanel
                         v-if="activeAdvertisingTab === 'overview'"
                         @open-tab="activeAdvertisingTab = $event"
@@ -236,21 +217,16 @@ async function logout(): Promise<void> {
                         <AdminCampaignsPanel />
                     </div>
                     <div v-else-if="activeAdvertisingTab === 'feed'" class="flex flex-col gap-4">
-                        <AdminFeedPanel ref="feedPanel" />
-                        <AdminFeedRiskPanel @resolved="onFeedHoldResolved" />
+                        <AdminFeedPanel ref="feedPanel" /><AdminFeedRiskPanel
+                            @resolved="onFeedHoldResolved"
+                        /><AdminLiveRewardsPanel />
                     </div>
-                    <AdminMatchingPanel v-else-if="activeAdvertisingTab === 'matching'" />
-                    <AdminSmartProfilePanel v-else />
+                    <AdminMatchingPanel v-else-if="activeAdvertisingTab === 'matching'" /><AdminSmartProfilePanel
+                        v-else
+                    />
                 </section>
-
-                <section v-else-if="activeSection === 'finance'">
-                    <AdminFinanceOverviewPanel />
-                </section>
-
-                <section v-else-if="activeSection === 'offers'">
-                    <AdminSubscriptionsPanel />
-                </section>
-
+                <section v-else-if="activeSection === 'finance'"><AdminFinanceOverviewPanel /></section>
+                <section v-else-if="activeSection === 'offers'"><AdminSubscriptionsPanel /></section>
                 <section v-else class="flex flex-col gap-5">
                     <div
                         class="border-wpx-border-dark rounded-wpx-lg bg-wpx-navy-850 flex gap-2 overflow-x-auto border p-2"
@@ -270,10 +246,9 @@ async function logout(): Promise<void> {
                             {{ tab.label }}
                         </button>
                     </div>
-
-                    <AdminPermissionsPanel v-if="activeSettingsTab === 'capabilities'" />
-                    <AdminPaymentsSettingsPanel v-else-if="activeSettingsTab === 'payments'" />
-                    <AdminAuditSecurityPanel v-else />
+                    <AdminPermissionsPanel v-if="activeSettingsTab === 'capabilities'" /><AdminPaymentsSettingsPanel
+                        v-else-if="activeSettingsTab === 'payments'"
+                    /><AdminAuditSecurityPanel v-else />
                 </section>
             </main>
         </div>

@@ -23,17 +23,21 @@ interface InteractionSettings {
 }
 
 interface RewardAttentionState {
-    status: 'inactive' | 'tracking' | 'paused' | 'completed' | 'funding_exhausted';
+    status: 'inactive' | 'tracking' | 'paused' | 'completed' | 'funding_exhausted' | 'rewards_paused' | 'unavailable';
     validated_blocks: number;
+    captured_blocks: number;
+    pending_review_blocks: number;
     max_blocks: number;
     current_block_ms: number;
     block_duration_ms: number;
     progress_percent: number;
     reward_per_block_minor: number;
     earned_minor: number;
+    pending_review_minor: number;
     max_reward_minor: number;
     funded_blocks: number;
-    captured_blocks: number;
+    committed_blocks: number;
+    rewards_paused: boolean;
     balance_minor: number;
 }
 
@@ -41,11 +45,7 @@ interface ApiError {
     response?: { data?: { message?: string } };
 }
 
-const props = defineProps<{
-    liveId: string;
-    mode: 'host' | 'viewer';
-}>();
-
+const props = defineProps<{ liveId: string; mode: 'host' | 'viewer' }>();
 const emit = defineEmits<{ viewerCount: [count: number] }>();
 const page = usePage<{ auth: AuthShared }>();
 const comments = ref<LiveComment[]>([]);
@@ -76,49 +76,38 @@ const composerEnabled = computed(() => isHost.value || (settings.value.comments_
 function messageFrom(cause: unknown): string {
     return (cause as ApiError)?.response?.data?.message ?? 'Impossible de mettre à jour les interactions du Live.';
 }
-
 function stateEndpoint(): string {
     return isHost.value ? `/advertiser/lives/${props.liveId}/comments` : `/lives/${props.liveId}/comments`;
 }
-
 function commentEndpoint(): string {
     return stateEndpoint();
 }
-
 function reactionEndpoint(): string {
     return isHost.value ? `/advertiser/lives/${props.liveId}/reactions` : `/lives/${props.liveId}/reactions`;
 }
-
 function money(value: number): string {
     return new Intl.NumberFormat('fr-FR').format(value) + ' WP';
 }
-
 function rewardStatusLabel(state: RewardAttentionState): string {
+    if (state.rewards_paused || state.status === 'rewards_paused') return 'Récompenses momentanément suspendues';
+    if (state.pending_review_blocks > 0) return `Gain en vérification · ${money(state.pending_review_minor)}`;
     if (state.status === 'paused') return 'Gain en pause';
     if (state.status === 'completed') return 'Plafond atteint';
     if (state.status === 'funding_exhausted') return 'Enveloppe épuisée';
     if (state.status === 'tracking') return `Bloc en cours · ${state.progress_percent}%`;
-
     return 'Place non rémunérée';
 }
-
 function upsertComment(comment: LiveComment): void {
     if (!isHost.value && comment.status === 'hidden') {
         comments.value = comments.value.filter((item) => item.id !== comment.id);
         if (replyingTo.value?.id === comment.id) replyingTo.value = null;
         return;
     }
-
     const index = comments.value.findIndex((item) => item.id === comment.id);
-    if (index >= 0) {
-        comments.value.splice(index, 1, comment);
-    } else {
-        comments.value.push(comment);
-    }
-
+    if (index >= 0) comments.value.splice(index, 1, comment);
+    else comments.value.push(comment);
     if (comments.value.length > 80) comments.value = comments.value.slice(-80);
 }
-
 function addReactionBurst(emoji: string): void {
     const id = ++reactionSequence;
     reactionBursts.value.push({ id, emoji });
@@ -128,13 +117,10 @@ function addReactionBurst(emoji: string): void {
     }, 1800);
     reactionTimers.add(timer);
 }
-
 function formatTime(value: string | null): string {
     if (!value) return '';
-
     return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
-
 async function load(): Promise<void> {
     error.value = null;
     try {
@@ -142,9 +128,8 @@ async function load(): Promise<void> {
         comments.value = data.comments ?? [];
         settings.value = data.settings ?? settings.value;
         if (typeof data.viewer_count === 'number') emit('viewerCount', data.viewer_count);
-        if (isHost.value) {
-            silencedAccountIds.value = data.moderation?.silenced_account_ids ?? [];
-        } else {
+        if (isHost.value) silencedAccountIds.value = data.moderation?.silenced_account_ids ?? [];
+        else {
             canComment.value = data.viewer?.can_comment ?? true;
             restrictionMessage.value = data.viewer?.restriction_message ?? null;
         }
@@ -152,13 +137,11 @@ async function load(): Promise<void> {
         error.value = messageFrom(cause);
     }
 }
-
 async function heartbeatRewardAttention(
     visible = document.visibilityState === 'visible',
     mediaConnected = true,
 ): Promise<void> {
     if (isHost.value) return;
-
     try {
         const { data } = await http.post(`/lives/${props.liveId}/reward-attention/heartbeat`, {
             visible,
@@ -166,22 +149,20 @@ async function heartbeatRewardAttention(
         });
         rewardAttention.value = data.reward_attention ?? null;
     } catch {
-        // The Live remains watchable if the reward telemetry endpoint is briefly
-        // unavailable. No optimistic gain is ever shown or credited locally.
+        // Le Live reste regardable si la télémétrie est indisponible. Aucun
+        // gain optimiste n'est créé côté navigateur.
     }
 }
-
+function onVisibilityChange(): void {
+    if (!isHost.value) void heartbeatRewardAttention(document.visibilityState === 'visible', true);
+}
 async function sendComment(): Promise<void> {
     const body = draft.value.trim();
     if (!body || !composerEnabled.value || busy.value) return;
-
     busy.value = true;
     error.value = null;
     try {
-        const { data } = await http.post(commentEndpoint(), {
-            body,
-            parent_comment_id: replyingTo.value?.id ?? null,
-        });
+        const { data } = await http.post(commentEndpoint(), { body, parent_comment_id: replyingTo.value?.id ?? null });
         upsertComment(data.comment);
         draft.value = '';
         replyingTo.value = null;
@@ -191,7 +172,6 @@ async function sendComment(): Promise<void> {
         busy.value = false;
     }
 }
-
 async function react(reaction: ReactionType, emoji: string): Promise<void> {
     addReactionBurst(emoji);
     try {
@@ -200,14 +180,11 @@ async function react(reaction: ReactionType, emoji: string): Promise<void> {
         error.value = messageFrom(cause);
     }
 }
-
 async function report(comment: LiveComment): Promise<void> {
     if (isHost.value || comment.author.account_id === currentAccountId.value) return;
     error.value = null;
     try {
-        await http.post(`/lives/${props.liveId}/comments/${comment.id}/report`, {
-            category: 'other',
-        });
+        await http.post(`/lives/${props.liveId}/comments/${comment.id}/report`, { category: 'other' });
         notice.value = 'Signalement envoyé à Wasplex.';
         setTimeout(() => {
             notice.value = null;
@@ -216,7 +193,6 @@ async function report(comment: LiveComment): Promise<void> {
         error.value = messageFrom(cause);
     }
 }
-
 async function togglePin(comment: LiveComment): Promise<void> {
     error.value = null;
     try {
@@ -227,7 +203,6 @@ async function togglePin(comment: LiveComment): Promise<void> {
         error.value = messageFrom(cause);
     }
 }
-
 async function hide(comment: LiveComment): Promise<void> {
     error.value = null;
     try {
@@ -237,16 +212,12 @@ async function hide(comment: LiveComment): Promise<void> {
         error.value = messageFrom(cause);
     }
 }
-
 async function toggleComments(): Promise<void> {
     await updateSettings({ comments_enabled: !settings.value.comments_enabled });
 }
-
 async function changeSlowMode(event: Event): Promise<void> {
-    const target = event.target as HTMLSelectElement;
-    await updateSettings({ slow_mode_seconds: Number(target.value) });
+    await updateSettings({ slow_mode_seconds: Number((event.target as HTMLSelectElement).value) });
 }
-
 async function updateSettings(attributes: Partial<InteractionSettings>): Promise<void> {
     error.value = null;
     try {
@@ -256,7 +227,6 @@ async function updateSettings(attributes: Partial<InteractionSettings>): Promise
         error.value = messageFrom(cause);
     }
 }
-
 async function toggleSilence(comment: LiveComment): Promise<void> {
     const accountId = comment.author.account_id;
     error.value = null;
@@ -273,46 +243,37 @@ async function toggleSilence(comment: LiveComment): Promise<void> {
     }
 }
 
-useEcho(`live.${props.liveId}`, '.live.comment.created', (payload: { comment: LiveComment }) => {
-    upsertComment(payload.comment);
-});
-
+useEcho(`live.${props.liveId}`, '.live.comment.created', (payload: { comment: LiveComment }) =>
+    upsertComment(payload.comment),
+);
 useEcho(
     `live.${props.liveId}`,
     '.live.comment.updated',
     (payload: { comment: LiveComment; clear_pinned?: boolean }) => {
-        if (payload.clear_pinned) {
-            comments.value = comments.value.map((item) => ({ ...item, is_pinned: false }));
-        }
+        if (payload.clear_pinned) comments.value = comments.value.map((item) => ({ ...item, is_pinned: false }));
         upsertComment(payload.comment);
     },
 );
-
 useEcho(`live.${props.liveId}`, '.live.settings.updated', (payload: { settings: InteractionSettings }) => {
     settings.value = payload.settings;
 });
-
 useEcho(
     `live.${props.liveId}`,
     '.live.restriction.updated',
     (payload: { account_id: string; can_comment: boolean; message: string | null }) => {
-        if (payload.can_comment) {
+        if (payload.can_comment)
             silencedAccountIds.value = silencedAccountIds.value.filter((id) => id !== payload.account_id);
-        } else if (!silencedAccountIds.value.includes(payload.account_id)) {
+        else if (!silencedAccountIds.value.includes(payload.account_id))
             silencedAccountIds.value = [...silencedAccountIds.value, payload.account_id];
-        }
-
         if (payload.account_id === currentAccountId.value) {
             canComment.value = payload.can_comment;
             restrictionMessage.value = payload.message;
         }
     },
 );
-
-useEcho(`live.${props.liveId}`, '.live.viewer-count.changed', (payload: { viewer_count: number }) => {
-    emit('viewerCount', payload.viewer_count);
-});
-
+useEcho(`live.${props.liveId}`, '.live.viewer-count.changed', (payload: { viewer_count: number }) =>
+    emit('viewerCount', payload.viewer_count),
+);
 useEcho(`live.${props.liveId}`, '.live.reaction', (payload: { emoji: string; account_id: string }) => {
     if (payload.account_id !== currentAccountId.value) addReactionBurst(payload.emoji);
 });
@@ -320,29 +281,27 @@ useEcho(`live.${props.liveId}`, '.live.reaction', (payload: { emoji: string; acc
 onMounted(() => {
     void load();
     syncPoll = setInterval(() => void load(), 30000);
-
     if (!isHost.value) {
         void heartbeatRewardAttention();
         rewardAttentionPoll = setInterval(() => void heartbeatRewardAttention(), 3000);
+        document.addEventListener('visibilitychange', onVisibilityChange);
     }
 });
 onBeforeUnmount(() => {
     if (syncPoll) clearInterval(syncPoll);
     if (rewardAttentionPoll) clearInterval(rewardAttentionPoll);
     reactionTimers.forEach((timer) => clearTimeout(timer));
-
-    if (!isHost.value) {
-        void heartbeatRewardAttention(false, false);
-    }
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    if (!isHost.value) void heartbeatRewardAttention(false, false);
 });
 </script>
 
 <template>
     <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end p-3 pt-16">
         <div class="pointer-events-none absolute right-3 bottom-16 flex flex-col-reverse items-center gap-1">
-            <span v-for="burst in reactionBursts" :key="burst.id" class="animate-bounce text-3xl drop-shadow-lg">
-                {{ burst.emoji }}
-            </span>
+            <span v-for="burst in reactionBursts" :key="burst.id" class="animate-bounce text-3xl drop-shadow-lg">{{
+                burst.emoji
+            }}</span>
         </div>
 
         <div
@@ -362,6 +321,12 @@ onBeforeUnmount(() => {
                 <div class="shrink-0 text-right">
                     <p class="text-[11px] font-black text-amber-200">{{ money(rewardAttention.earned_minor) }}</p>
                     <p class="text-[8px] text-white/50">acquis</p>
+                    <p
+                        v-if="rewardAttention.pending_review_minor > 0"
+                        class="mt-0.5 text-[9px] font-bold text-orange-200"
+                    >
+                        + {{ money(rewardAttention.pending_review_minor) }} en vérification
+                    </p>
                 </div>
             </div>
             <div
@@ -398,13 +363,12 @@ onBeforeUnmount(() => {
                 <div class="flex items-start justify-between gap-2">
                     <p class="min-w-0 text-[11px] leading-snug">
                         <span class="font-black">{{ comment.author.display_name }}</span>
-                        <span class="ml-1 text-white/90" :class="comment.status === 'hidden' ? 'line-through' : ''">
-                            {{ comment.body }}
-                        </span>
+                        <span class="ml-1 text-white/90" :class="comment.status === 'hidden' ? 'line-through' : ''">{{
+                            comment.body
+                        }}</span>
                     </p>
                     <span class="shrink-0 text-[8px] text-white/40">{{ formatTime(comment.created_at) }}</span>
                 </div>
-
                 <div
                     v-if="comment.status === 'visible'"
                     class="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-bold text-white/55"
@@ -484,7 +448,6 @@ onBeforeUnmount(() => {
             >
             <button type="button" class="font-black" @click="replyingTo = null">×</button>
         </div>
-
         <div
             v-if="!isHost && !settings.comments_enabled"
             class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold"
@@ -519,7 +482,6 @@ onBeforeUnmount(() => {
                     Envoyer
                 </button>
             </div>
-
             <button
                 type="button"
                 class="rounded-full bg-black/70 p-2 text-base"
