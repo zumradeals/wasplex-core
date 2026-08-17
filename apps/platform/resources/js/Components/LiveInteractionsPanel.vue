@@ -23,14 +23,7 @@ interface InteractionSettings {
 }
 
 interface RewardAttentionState {
-    status:
-        | 'inactive'
-        | 'tracking'
-        | 'paused'
-        | 'completed'
-        | 'funding_exhausted'
-        | 'rewards_paused'
-        | 'unavailable';
+    status: 'inactive' | 'tracking' | 'paused' | 'completed' | 'funding_exhausted' | 'rewards_paused' | 'unavailable';
     validated_blocks: number;
     captured_blocks: number;
     pending_review_blocks: number;
@@ -74,7 +67,9 @@ const reactionTimers = new Set<ReturnType<typeof setTimeout>>();
 
 const isHost = computed(() => props.mode === 'host');
 const currentAccountId = computed(() => page.props.auth.account.id);
-const pinnedComment = computed(() => comments.value.find((comment) => comment.is_pinned && comment.status === 'visible'));
+const pinnedComment = computed(() =>
+    comments.value.find((comment) => comment.is_pinned && comment.status === 'visible'),
+);
 const recentComments = computed(() => comments.value.slice(-8));
 const composerEnabled = computed(() => isHost.value || (settings.value.comments_enabled && canComment.value));
 
@@ -179,7 +174,11 @@ async function sendComment(): Promise<void> {
 }
 async function react(reaction: ReactionType, emoji: string): Promise<void> {
     addReactionBurst(emoji);
-    try { await http.post(reactionEndpoint(), { reaction }); } catch (cause) { error.value = messageFrom(cause); }
+    try {
+        await http.post(reactionEndpoint(), { reaction });
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    }
 }
 async function report(comment: LiveComment): Promise<void> {
     if (isHost.value || comment.author.account_id === currentAccountId.value) return;
@@ -187,8 +186,12 @@ async function report(comment: LiveComment): Promise<void> {
     try {
         await http.post(`/lives/${props.liveId}/comments/${comment.id}/report`, { category: 'other' });
         notice.value = 'Signalement envoyé à Wasplex.';
-        setTimeout(() => { notice.value = null; }, 2500);
-    } catch (cause) { error.value = messageFrom(cause); }
+        setTimeout(() => {
+            notice.value = null;
+        }, 2500);
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    }
 }
 async function togglePin(comment: LiveComment): Promise<void> {
     error.value = null;
@@ -196,14 +199,18 @@ async function togglePin(comment: LiveComment): Promise<void> {
         const { data } = await http.post(`/advertiser/lives/${props.liveId}/comments/${comment.id}/pin`);
         comments.value = comments.value.map((item) => ({ ...item, is_pinned: false }));
         upsertComment(data.comment);
-    } catch (cause) { error.value = messageFrom(cause); }
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    }
 }
 async function hide(comment: LiveComment): Promise<void> {
     error.value = null;
     try {
         const { data } = await http.post(`/advertiser/lives/${props.liveId}/comments/${comment.id}/hide`);
         upsertComment(data.comment);
-    } catch (cause) { error.value = messageFrom(cause); }
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    }
 }
 async function toggleComments(): Promise<void> {
     await updateSettings({ comments_enabled: !settings.value.comments_enabled });
@@ -216,7 +223,9 @@ async function updateSettings(attributes: Partial<InteractionSettings>): Promise
     try {
         const { data } = await http.patch(`/advertiser/lives/${props.liveId}/interactions`, attributes);
         settings.value = data.settings;
-    } catch (cause) { error.value = messageFrom(cause); }
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    }
 }
 async function toggleSilence(comment: LiveComment): Promise<void> {
     const accountId = comment.author.account_id;
@@ -229,24 +238,42 @@ async function toggleSilence(comment: LiveComment): Promise<void> {
             await http.post(`/advertiser/lives/${props.liveId}/participants/${accountId}/silence`, {});
             silencedAccountIds.value = [...silencedAccountIds.value, accountId];
         }
-    } catch (cause) { error.value = messageFrom(cause); }
+    } catch (cause) {
+        error.value = messageFrom(cause);
+    }
 }
 
-useEcho(`live.${props.liveId}`, '.live.comment.created', (payload: { comment: LiveComment }) => upsertComment(payload.comment));
-useEcho(`live.${props.liveId}`, '.live.comment.updated', (payload: { comment: LiveComment; clear_pinned?: boolean }) => {
-    if (payload.clear_pinned) comments.value = comments.value.map((item) => ({ ...item, is_pinned: false }));
-    upsertComment(payload.comment);
+useEcho(`live.${props.liveId}`, '.live.comment.created', (payload: { comment: LiveComment }) =>
+    upsertComment(payload.comment),
+);
+useEcho(
+    `live.${props.liveId}`,
+    '.live.comment.updated',
+    (payload: { comment: LiveComment; clear_pinned?: boolean }) => {
+        if (payload.clear_pinned) comments.value = comments.value.map((item) => ({ ...item, is_pinned: false }));
+        upsertComment(payload.comment);
+    },
+);
+useEcho(`live.${props.liveId}`, '.live.settings.updated', (payload: { settings: InteractionSettings }) => {
+    settings.value = payload.settings;
 });
-useEcho(`live.${props.liveId}`, '.live.settings.updated', (payload: { settings: InteractionSettings }) => { settings.value = payload.settings; });
-useEcho(`live.${props.liveId}`, '.live.restriction.updated', (payload: { account_id: string; can_comment: boolean; message: string | null }) => {
-    if (payload.can_comment) silencedAccountIds.value = silencedAccountIds.value.filter((id) => id !== payload.account_id);
-    else if (!silencedAccountIds.value.includes(payload.account_id)) silencedAccountIds.value = [...silencedAccountIds.value, payload.account_id];
-    if (payload.account_id === currentAccountId.value) {
-        canComment.value = payload.can_comment;
-        restrictionMessage.value = payload.message;
-    }
-});
-useEcho(`live.${props.liveId}`, '.live.viewer-count.changed', (payload: { viewer_count: number }) => emit('viewerCount', payload.viewer_count));
+useEcho(
+    `live.${props.liveId}`,
+    '.live.restriction.updated',
+    (payload: { account_id: string; can_comment: boolean; message: string | null }) => {
+        if (payload.can_comment)
+            silencedAccountIds.value = silencedAccountIds.value.filter((id) => id !== payload.account_id);
+        else if (!silencedAccountIds.value.includes(payload.account_id))
+            silencedAccountIds.value = [...silencedAccountIds.value, payload.account_id];
+        if (payload.account_id === currentAccountId.value) {
+            canComment.value = payload.can_comment;
+            restrictionMessage.value = payload.message;
+        }
+    },
+);
+useEcho(`live.${props.liveId}`, '.live.viewer-count.changed', (payload: { viewer_count: number }) =>
+    emit('viewerCount', payload.viewer_count),
+);
 useEcho(`live.${props.liveId}`, '.live.reaction', (payload: { emoji: string; account_id: string }) => {
     if (payload.account_id !== currentAccountId.value) addReactionBurst(payload.emoji);
 });
@@ -272,52 +299,99 @@ onBeforeUnmount(() => {
 <template>
     <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end p-3 pt-16">
         <div class="pointer-events-none absolute right-3 bottom-16 flex flex-col-reverse items-center gap-1">
-            <span v-for="burst in reactionBursts" :key="burst.id" class="animate-bounce text-3xl drop-shadow-lg">{{ burst.emoji }}</span>
+            <span v-for="burst in reactionBursts" :key="burst.id" class="animate-bounce text-3xl drop-shadow-lg">{{
+                burst.emoji
+            }}</span>
         </div>
 
-        <div v-if="!isHost && rewardAttention && rewardAttention.status !== 'inactive'" class="pointer-events-auto mb-2 rounded-xl border border-amber-300/25 bg-black/70 px-3 py-2 backdrop-blur-sm">
+        <div
+            v-if="!isHost && rewardAttention && rewardAttention.status !== 'inactive'"
+            class="pointer-events-auto mb-2 rounded-xl border border-amber-300/25 bg-black/70 px-3 py-2 backdrop-blur-sm"
+        >
             <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0">
                     <p class="text-[9px] font-black tracking-wide text-amber-200 uppercase">Attention rémunérée</p>
                     <p class="mt-0.5 text-[10px] font-bold text-white">
-                        {{ rewardStatusLabel(rewardAttention) }} · {{ rewardAttention.validated_blocks }}/{{ rewardAttention.max_blocks }} blocs
+                        {{ rewardStatusLabel(rewardAttention) }} · {{ rewardAttention.validated_blocks }}/{{
+                            rewardAttention.max_blocks
+                        }}
+                        blocs
                     </p>
                 </div>
                 <div class="shrink-0 text-right">
                     <p class="text-[11px] font-black text-amber-200">{{ money(rewardAttention.earned_minor) }}</p>
                     <p class="text-[8px] text-white/50">acquis</p>
-                    <p v-if="rewardAttention.pending_review_minor > 0" class="mt-0.5 text-[9px] font-bold text-orange-200">
+                    <p
+                        v-if="rewardAttention.pending_review_minor > 0"
+                        class="mt-0.5 text-[9px] font-bold text-orange-200"
+                    >
                         + {{ money(rewardAttention.pending_review_minor) }} en vérification
                     </p>
                 </div>
             </div>
-            <div v-if="rewardAttention.status === 'tracking' || rewardAttention.status === 'paused'" class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div class="h-full rounded-full bg-amber-300 transition-[width] duration-500" :style="{ width: `${rewardAttention.progress_percent}%` }"></div>
+            <div
+                v-if="rewardAttention.status === 'tracking' || rewardAttention.status === 'paused'"
+                class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
+            >
+                <div
+                    class="h-full rounded-full bg-amber-300 transition-[width] duration-500"
+                    :style="{ width: `${rewardAttention.progress_percent}%` }"
+                ></div>
             </div>
         </div>
 
-        <div v-if="pinnedComment" class="pointer-events-auto mb-2 rounded-xl bg-amber-300/95 px-3 py-2 text-slate-950 shadow-lg">
+        <div
+            v-if="pinnedComment"
+            class="pointer-events-auto mb-2 rounded-xl bg-amber-300/95 px-3 py-2 text-slate-950 shadow-lg"
+        >
             <p class="text-[9px] font-black tracking-wide uppercase">📌 Épinglé par l’hôte</p>
-            <p class="mt-0.5 text-[11px] font-bold">{{ pinnedComment.author.display_name }} · {{ pinnedComment.body }}</p>
+            <p class="mt-0.5 text-[11px] font-bold">
+                {{ pinnedComment.author.display_name }} · {{ pinnedComment.body }}
+            </p>
         </div>
 
         <div class="pointer-events-auto max-h-40 [scrollbar-width:none] space-y-1.5 overflow-y-auto pr-1">
-            <div v-for="comment in recentComments" :key="comment.id" class="rounded-xl bg-black/55 px-2.5 py-2 backdrop-blur-sm" :class="comment.status === 'hidden' ? 'opacity-45' : ''">
-                <p v-if="comment.reply_to" class="mb-0.5 text-[9px] text-white/55">↪ {{ comment.reply_to.display_name }} · {{ comment.reply_to.excerpt }}</p>
+            <div
+                v-for="comment in recentComments"
+                :key="comment.id"
+                class="rounded-xl bg-black/55 px-2.5 py-2 backdrop-blur-sm"
+                :class="comment.status === 'hidden' ? 'opacity-45' : ''"
+            >
+                <p v-if="comment.reply_to" class="mb-0.5 text-[9px] text-white/55">
+                    ↪ {{ comment.reply_to.display_name }} · {{ comment.reply_to.excerpt }}
+                </p>
                 <div class="flex items-start justify-between gap-2">
                     <p class="min-w-0 text-[11px] leading-snug">
                         <span class="font-black">{{ comment.author.display_name }}</span>
-                        <span class="ml-1 text-white/90" :class="comment.status === 'hidden' ? 'line-through' : ''">{{ comment.body }}</span>
+                        <span class="ml-1 text-white/90" :class="comment.status === 'hidden' ? 'line-through' : ''">{{
+                            comment.body
+                        }}</span>
                     </p>
                     <span class="shrink-0 text-[8px] text-white/40">{{ formatTime(comment.created_at) }}</span>
                 </div>
-                <div v-if="comment.status === 'visible'" class="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-bold text-white/55">
+                <div
+                    v-if="comment.status === 'visible'"
+                    class="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-bold text-white/55"
+                >
                     <button type="button" @click="replyingTo = comment">Répondre</button>
-                    <button v-if="!isHost && comment.author.account_id !== currentAccountId" type="button" @click="report(comment)">Signaler</button>
+                    <button
+                        v-if="!isHost && comment.author.account_id !== currentAccountId"
+                        type="button"
+                        @click="report(comment)"
+                    >
+                        Signaler
+                    </button>
                     <template v-if="isHost">
-                        <button type="button" class="text-amber-200" @click="togglePin(comment)">{{ comment.is_pinned ? 'Désépingler' : 'Épingler' }}</button>
+                        <button type="button" class="text-amber-200" @click="togglePin(comment)">
+                            {{ comment.is_pinned ? 'Désépingler' : 'Épingler' }}
+                        </button>
                         <button type="button" class="text-red-200" @click="hide(comment)">Masquer</button>
-                        <button v-if="comment.author.account_id !== currentAccountId" type="button" class="text-orange-200" @click="toggleSilence(comment)">
+                        <button
+                            v-if="comment.author.account_id !== currentAccountId"
+                            type="button"
+                            class="text-orange-200"
+                            @click="toggleSilence(comment)"
+                        >
                             {{ silencedAccountIds.includes(comment.author.account_id) ? 'Réautoriser' : 'Silence' }}
                         </button>
                     </template>
@@ -325,35 +399,105 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <p v-if="notice" class="pointer-events-auto mt-2 rounded-lg bg-emerald-500/90 px-2.5 py-1.5 text-[10px] font-bold text-white">{{ notice }}</p>
-        <p v-if="error" class="pointer-events-auto mt-2 rounded-lg bg-red-700/90 px-2.5 py-1.5 text-[10px] font-bold text-white">{{ error }}</p>
+        <p
+            v-if="notice"
+            class="pointer-events-auto mt-2 rounded-lg bg-emerald-500/90 px-2.5 py-1.5 text-[10px] font-bold text-white"
+        >
+            {{ notice }}
+        </p>
+        <p
+            v-if="error"
+            class="pointer-events-auto mt-2 rounded-lg bg-red-700/90 px-2.5 py-1.5 text-[10px] font-bold text-white"
+        >
+            {{ error }}
+        </p>
 
-        <div v-if="isHost" class="pointer-events-auto mt-2 flex items-center gap-2 rounded-xl bg-black/65 p-2 backdrop-blur-sm">
-            <button type="button" class="rounded-full px-2.5 py-1.5 text-[9px] font-black" :class="settings.comments_enabled ? 'bg-emerald-400 text-slate-950' : 'bg-red-600 text-white'" @click="toggleComments">
+        <div
+            v-if="isHost"
+            class="pointer-events-auto mt-2 flex items-center gap-2 rounded-xl bg-black/65 p-2 backdrop-blur-sm"
+        >
+            <button
+                type="button"
+                class="rounded-full px-2.5 py-1.5 text-[9px] font-black"
+                :class="settings.comments_enabled ? 'bg-emerald-400 text-slate-950' : 'bg-red-600 text-white'"
+                @click="toggleComments"
+            >
                 {{ settings.comments_enabled ? '💬 Chat ouvert' : '🔒 Chat fermé' }}
             </button>
             <label class="ml-auto flex items-center gap-1 text-[9px] text-white/65">
                 Mode lent
-                <select :value="settings.slow_mode_seconds" class="rounded-lg bg-white/10 px-1.5 py-1 text-[9px] font-bold text-white outline-none" @change="changeSlowMode">
-                    <option :value="0">Off</option><option :value="2">2 s</option><option :value="5">5 s</option><option :value="10">10 s</option>
+                <select
+                    :value="settings.slow_mode_seconds"
+                    class="rounded-lg bg-white/10 px-1.5 py-1 text-[9px] font-bold text-white outline-none"
+                    @change="changeSlowMode"
+                >
+                    <option :value="0">Off</option>
+                    <option :value="2">2 s</option>
+                    <option :value="5">5 s</option>
+                    <option :value="10">10 s</option>
                 </select>
             </label>
         </div>
 
-        <div v-if="replyingTo" class="pointer-events-auto mt-2 flex items-center justify-between rounded-lg bg-white/10 px-2.5 py-1.5 text-[9px]">
-            <span>Réponse à <strong>{{ replyingTo.author.display_name }}</strong></span>
+        <div
+            v-if="replyingTo"
+            class="pointer-events-auto mt-2 flex items-center justify-between rounded-lg bg-white/10 px-2.5 py-1.5 text-[9px]"
+        >
+            <span
+                >Réponse à <strong>{{ replyingTo.author.display_name }}</strong></span
+            >
             <button type="button" class="font-black" @click="replyingTo = null">×</button>
         </div>
-        <div v-if="!isHost && !settings.comments_enabled" class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold">🔒 Les commentaires sont temporairement fermés</div>
-        <div v-else-if="!isHost && !canComment" class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold">{{ restrictionMessage ?? 'Vous pouvez regarder ce Live, mais vous ne pouvez plus commenter.' }}</div>
+        <div
+            v-if="!isHost && !settings.comments_enabled"
+            class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold"
+        >
+            🔒 Les commentaires sont temporairement fermés
+        </div>
+        <div
+            v-else-if="!isHost && !canComment"
+            class="pointer-events-auto mt-2 rounded-xl bg-black/70 px-3 py-2 text-center text-[10px] font-bold"
+        >
+            {{ restrictionMessage ?? 'Vous pouvez regarder ce Live, mais vous ne pouvez plus commenter.' }}
+        </div>
 
         <div class="pointer-events-auto mt-2 flex items-center gap-1.5">
-            <div v-if="composerEnabled" class="flex min-w-0 flex-1 items-center rounded-full bg-black/70 pr-1 pl-3 backdrop-blur-sm">
-                <input v-model="draft" maxlength="300" placeholder="Écrire un commentaire…" class="min-w-0 flex-1 bg-transparent py-2.5 text-[11px] text-white outline-none placeholder:text-white/45" @keydown.enter.exact.prevent="sendComment" />
-                <button type="button" class="rounded-full bg-white px-3 py-2 text-[10px] font-black text-slate-950 disabled:opacity-40" :disabled="busy || draft.trim() === ''" @click="sendComment">Envoyer</button>
+            <div
+                v-if="composerEnabled"
+                class="flex min-w-0 flex-1 items-center rounded-full bg-black/70 pr-1 pl-3 backdrop-blur-sm"
+            >
+                <input
+                    v-model="draft"
+                    maxlength="300"
+                    placeholder="Écrire un commentaire…"
+                    class="min-w-0 flex-1 bg-transparent py-2.5 text-[11px] text-white outline-none placeholder:text-white/45"
+                    @keydown.enter.exact.prevent="sendComment"
+                />
+                <button
+                    type="button"
+                    class="rounded-full bg-white px-3 py-2 text-[10px] font-black text-slate-950 disabled:opacity-40"
+                    :disabled="busy || draft.trim() === ''"
+                    @click="sendComment"
+                >
+                    Envoyer
+                </button>
             </div>
-            <button type="button" class="rounded-full bg-black/70 p-2 text-base" aria-label="Envoyer un cœur" @click="react('heart', '❤️')">❤️</button>
-            <button type="button" class="rounded-full bg-black/70 p-2 text-base" aria-label="Applaudir" @click="react('clap', '👏')">👏</button>
+            <button
+                type="button"
+                class="rounded-full bg-black/70 p-2 text-base"
+                aria-label="Envoyer un cœur"
+                @click="react('heart', '❤️')"
+            >
+                ❤️
+            </button>
+            <button
+                type="button"
+                class="rounded-full bg-black/70 p-2 text-base"
+                aria-label="Applaudir"
+                @click="react('clap', '👏')"
+            >
+                👏
+            </button>
         </div>
     </div>
 </template>
