@@ -29,8 +29,18 @@ type ProgramVersion = {
     reserve_min_balance_minor: number;
     reciprocity_min_score: number;
     rehabilitation_incident_threshold: number;
+    eligible_subscription_classes: string[] | null;
 };
 type Program = { id: string; code: string; name: string; status: string; versions: ProgramVersion[] };
+
+// Classes économiques payantes existantes (App\Modules\Subscriptions\Infrastructure\Models\EconomicClass).
+// FREE est volontairement exclue : "les membres gratuits de Wasplex ne peuvent pas adhérer à Fonds"
+// (docs/01-module-fonds-wasplex.md §5).
+const ELIGIBLE_CLASS_OPTIONS = [
+    { code: 'PREMIUM', label: 'Premium' },
+    { code: 'GOLD', label: 'Gold' },
+    { code: 'PLATINUM', label: 'Platinum' },
+];
 type Category = { id: string; code: string; name: string; icon: string | null; is_active: boolean };
 type Wish = {
     id: string;
@@ -69,28 +79,38 @@ const showCategory = ref(false);
 const editingProgram = ref<Program | null>(null);
 const reviewWish = ref<Wish | null>(null);
 
-const programForm = ref({
-    code: '',
-    name: '',
-    membership_fee_minor: 0,
-    duration_days: 365,
-    max_active_wishes: 1,
-    max_wishes_per_period: 1,
-    max_wish_amount_minor: 1000000,
-    personal_contribution_percent: 30,
-    min_debit_minor: 100,
-    max_debit_minor: 1000,
-    monthly_cap_minor: 5000,
-    wasplex_fee_minor: 100,
-    notice_hours: 24,
-    grace_period_days: 7,
-    arrears_grace_days: 7,
-    max_simultaneous_collections: 1,
-    emergency_queue_share_percent: 20,
-    reserve_min_balance_minor: 0,
-    reciprocity_min_score: 0,
-    rehabilitation_incident_threshold: 3,
-});
+function defaultProgramForm() {
+    return {
+        code: '',
+        name: '',
+        membership_fee_minor: null as number | null,
+        duration_days: 365,
+        max_active_wishes: 1,
+        max_wishes_per_period: 1,
+        max_wish_amount_minor: 1000000,
+        personal_contribution_percent: 30,
+        min_debit_minor: 100,
+        max_debit_minor: 1000,
+        monthly_cap_minor: 5000,
+        wasplex_fee_minor: 100,
+        notice_hours: 24,
+        grace_period_days: 7,
+        arrears_grace_days: 7,
+        max_simultaneous_collections: 1,
+        emergency_queue_share_percent: 20,
+        reserve_min_balance_minor: 0,
+        reciprocity_min_score: 0,
+        rehabilitation_incident_threshold: 3,
+        eligible_subscription_classes: [] as string[],
+    };
+}
+
+const programForm = ref(defaultProgramForm());
+// Programme déjà créé (étape 1 réussie) mais dont la version ou la
+// publication a échoué : une relance reprend ce même programme au lieu
+// d'en recréer un autre — sinon le code reste "coincé" sur un brouillon
+// orphelin (aucune suppression possible une fois une version publiée).
+const pendingProgramId = ref<string | null>(null);
 const categoryForm = ref({ code: '', name: '', icon: '🎯', description: '' });
 const reviewForm = ref({ decision: 'approve', note: '' });
 
@@ -116,40 +136,33 @@ async function load(): Promise<void> {
 
 function resetProgram(): void {
     editingProgram.value = null;
-    programForm.value = {
-        code: '',
-        name: '',
-        membership_fee_minor: 0,
-        duration_days: 365,
-        max_active_wishes: 1,
-        max_wishes_per_period: 1,
-        max_wish_amount_minor: 1000000,
-        personal_contribution_percent: 30,
-        min_debit_minor: 100,
-        max_debit_minor: 1000,
-        monthly_cap_minor: 5000,
-        wasplex_fee_minor: 100,
-        notice_hours: 24,
-        grace_period_days: 7,
-        arrears_grace_days: 7,
-        max_simultaneous_collections: 1,
-        emergency_queue_share_percent: 20,
-        reserve_min_balance_minor: 0,
-        reciprocity_min_score: 0,
-        rehabilitation_incident_threshold: 3,
-    };
+    pendingProgramId.value = null;
+    programForm.value = defaultProgramForm();
     showProgram.value = true;
+}
+
+function apiErrorMessage(e: unknown, fallback: string): string {
+    return (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? fallback;
 }
 
 async function createProgram(): Promise<void> {
     busy.value = true;
     error.value = '';
     try {
-        const created = await http.post('/admin/funds/programs', {
-            code: programForm.value.code,
-            name: programForm.value.name,
-        });
-        const version = await http.post(`/admin/funds/programs/${created.data.id}/versions`, {
+        let programId = pendingProgramId.value;
+        if (programId === null) {
+            const created = await http.post('/admin/funds/programs', {
+                code: programForm.value.code.trim().toLowerCase(),
+                name: programForm.value.name,
+            });
+            programId = created.data.id;
+            // Mémorisé dès que le programme existe : si l'étape suivante
+            // échoue, "Créer et publier" pourra reprendre sans recréer un
+            // programme (et sans se heurter à un code déjà pris).
+            pendingProgramId.value = programId;
+        }
+
+        const version = await http.post(`/admin/funds/programs/${programId}/versions`, {
             currency: 'XOF',
             membership_fee_minor: programForm.value.membership_fee_minor,
             duration_days: programForm.value.duration_days,
@@ -172,12 +185,27 @@ async function createProgram(): Promise<void> {
             reserve_min_balance_minor: programForm.value.reserve_min_balance_minor,
             reciprocity_min_score: programForm.value.reciprocity_min_score,
             rehabilitation_incident_threshold: programForm.value.rehabilitation_incident_threshold,
+            eligible_subscription_classes: programForm.value.eligible_subscription_classes,
         });
         await http.post(`/admin/funds/program-versions/${version.data.id}/publish`);
         showProgram.value = false;
+        pendingProgramId.value = null;
         await load();
-    } catch {
-        error.value = 'Le programme n’a pas pu être créé.';
+    } catch (e) {
+        error.value = apiErrorMessage(e, 'Le programme n’a pas pu être créé.');
+    } finally {
+        busy.value = false;
+    }
+}
+
+async function deleteProgram(program: Program): Promise<void> {
+    busy.value = true;
+    error.value = '';
+    try {
+        await http.delete(`/admin/funds/programs/${program.id}`);
+        await load();
+    } catch (e) {
+        error.value = apiErrorMessage(e, 'Le programme n’a pas pu être supprimé.');
     } finally {
         busy.value = false;
     }
@@ -190,8 +218,8 @@ async function toggleProgram(program: Program): Promise<void> {
             status: program.status === 'active' ? 'disabled' : 'active',
         });
         await load();
-    } catch {
-        error.value = 'Le statut du programme n’a pas pu être changé.';
+    } catch (e) {
+        error.value = apiErrorMessage(e, 'Le statut du programme n’a pas pu être changé.');
     } finally {
         busy.value = false;
     }
@@ -200,12 +228,15 @@ async function toggleProgram(program: Program): Promise<void> {
 async function createCategory(): Promise<void> {
     busy.value = true;
     try {
-        await http.post('/admin/funds/categories', categoryForm.value);
+        await http.post('/admin/funds/categories', {
+            ...categoryForm.value,
+            code: categoryForm.value.code.trim().toLowerCase(),
+        });
         categoryForm.value = { code: '', name: '', icon: '🎯', description: '' };
         showCategory.value = false;
         await load();
-    } catch {
-        error.value = 'La catégorie n’a pas pu être créée.';
+    } catch (e) {
+        error.value = apiErrorMessage(e, 'La catégorie n’a pas pu être créée.');
     } finally {
         busy.value = false;
     }
@@ -233,8 +264,8 @@ async function submitReview(): Promise<void> {
         await http.post(`/admin/funds/wishes/${reviewWish.value.id}/review`, reviewForm.value);
         reviewWish.value = null;
         await load();
-    } catch {
-        error.value = 'La décision n’a pas pu être enregistrée.';
+    } catch (e) {
+        error.value = apiErrorMessage(e, 'La décision n’a pas pu être enregistrée.');
     } finally {
         busy.value = false;
     }
@@ -345,17 +376,40 @@ onMounted(load);
                             </div>
                             <p class="text-wpx-muted-dark mt-1 font-mono text-[11px]">{{ program.code }}</p>
                         </div>
-                        <button
-                            v-if="program.status !== 'draft'"
-                            class="border-wpx-border-dark rounded-lg border px-3 py-2 text-xs font-bold"
-                            :class="program.status === 'active' ? 'text-wpx-danger' : 'text-wpx-cyan'"
-                            :disabled="busy"
-                            @click="toggleProgram(program)"
-                        >
-                            {{ program.status === 'active' ? 'Désactiver' : 'Activer' }}
-                        </button>
+                        <div class="flex gap-2">
+                            <button
+                                v-if="program.status === 'draft' && program.versions.length === 0"
+                                class="border-wpx-border-dark text-wpx-danger rounded-lg border px-3 py-2 text-xs font-bold"
+                                :disabled="busy"
+                                @click="deleteProgram(program)"
+                            >
+                                Supprimer
+                            </button>
+                            <button
+                                v-if="program.status !== 'draft'"
+                                class="border-wpx-border-dark rounded-lg border px-3 py-2 text-xs font-bold"
+                                :class="program.status === 'active' ? 'text-wpx-danger' : 'text-wpx-cyan'"
+                                :disabled="busy"
+                                @click="toggleProgram(program)"
+                            >
+                                {{ program.status === 'active' ? 'Désactiver' : 'Activer' }}
+                            </button>
+                        </div>
                     </div>
-                    <div v-if="program.versions[0]" class="mt-4 grid gap-2 sm:grid-cols-4">
+                    <p
+                        v-if="program.status === 'draft' && program.versions.length === 0"
+                        class="text-wpx-danger-light mt-2 text-xs"
+                    >
+                        Brouillon incomplet : aucune version n’a été publiée (création interrompue). Supprimez-le et
+                        recréez le programme.
+                    </p>
+                    <div v-if="program.versions[0]" class="mt-4 grid gap-2 sm:grid-cols-5">
+                        <div class="bg-wpx-navy-950 rounded-lg p-3">
+                            <p class="text-wpx-muted-dark text-[10px] uppercase">Adhésion</p>
+                            <p class="text-wpx-gold mt-1 text-sm font-bold">
+                                {{ money(program.versions[0].membership_fee_minor) }}
+                            </p>
+                        </div>
                         <div class="bg-wpx-navy-950 rounded-lg p-3">
                             <p class="text-wpx-muted-dark text-[10px] uppercase">Apport</p>
                             <p class="text-wpx-white-soft mt-1 text-sm font-bold">
@@ -382,6 +436,15 @@ onMounted(load);
                             </p>
                         </div>
                     </div>
+                    <p v-if="program.versions[0]" class="text-wpx-muted-dark mt-2 text-[11px]">
+                        Éligible :
+                        <span class="text-wpx-cyan font-semibold">{{
+                            program.versions[0].eligible_subscription_classes &&
+                            program.versions[0].eligible_subscription_classes.length > 0
+                                ? program.versions[0].eligible_subscription_classes.join(', ')
+                                : 'tout abonnement payant éligible à Fonds'
+                        }}</span>
+                    </p>
                 </article>
             </section>
 
@@ -479,6 +542,34 @@ onMounted(load);
                                 class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
                                 placeholder="gold"
                         /></label>
+                        <label class="text-wpx-gold text-xs font-bold sm:col-span-2"
+                            >Prix d’adhésion (FCFA) — un programme Fonds n’est jamais gratuit
+                            <input
+                                v-model.number="programForm.membership_fee_minor"
+                                type="number"
+                                min="1"
+                                inputmode="numeric"
+                                class="bg-wpx-navy-850 border-wpx-gold/40 text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 font-bold"
+                                placeholder="Ex. 2500"
+                        /></label>
+                        <label class="text-wpx-muted-dark text-xs sm:col-span-2"
+                            >Classes d’abonnement éligibles (aucune sélection = tout abonnement payant éligible à Fonds)
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <label
+                                    v-for="option in ELIGIBLE_CLASS_OPTIONS"
+                                    :key="option.code"
+                                    class="border-wpx-border-dark has-checked:border-wpx-gold has-checked:text-wpx-gold text-wpx-muted-dark flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold"
+                                >
+                                    <input
+                                        v-model="programForm.eligible_subscription_classes"
+                                        type="checkbox"
+                                        :value="option.code"
+                                        class="accent-wpx-gold"
+                                    />
+                                    {{ option.label }}
+                                </label>
+                            </div>
+                        </label>
                         <label class="text-wpx-muted-dark text-xs"
                             >Apport personnel (%)<input
                                 v-model.number="programForm.personal_contribution_percent"
@@ -590,11 +681,27 @@ onMounted(load);
                     </div>
                     <button
                         class="from-wpx-orange to-wpx-gold text-wpx-navy-950 mt-5 w-full rounded-xl bg-gradient-to-r px-4 py-3 font-extrabold disabled:opacity-40"
-                        :disabled="busy || !programForm.name || !programForm.code"
+                        :disabled="
+                            busy ||
+                            !programForm.name ||
+                            !programForm.code ||
+                            !programForm.membership_fee_minor ||
+                            programForm.membership_fee_minor < 1
+                        "
                         @click="createProgram"
                     >
-                        Créer et publier le programme
+                        {{
+                            busy
+                                ? 'Création…'
+                                : pendingProgramId
+                                  ? 'Reprendre et publier le programme'
+                                  : 'Créer et publier le programme'
+                        }}
                     </button>
+                    <p v-if="pendingProgramId" class="text-wpx-muted-dark mt-2 text-center text-[11px]">
+                        Le programme « {{ programForm.code }} » a déjà été créé ; corrigez les champs puis relancez pour
+                        publier sa première version.
+                    </p>
                 </div>
             </div>
 

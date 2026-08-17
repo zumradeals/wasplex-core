@@ -60,14 +60,25 @@ final class AdminFundsController
     public function storeProgram(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'code' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('fund_programs', 'code')],
+            'code' => ['required', 'string', 'max:50', 'alpha_dash'],
             'name' => ['required', 'string', 'max:100'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        // Le code est toujours normalisé en minuscule avant stockage : la
+        // vérification d'unicité doit porter sur cette même valeur, sinon
+        // une relance avec une casse différente passe la validation puis
+        // échoue en 500 sur la contrainte d'unicité réelle en base.
+        $code = Str::lower($data['code']);
+        abort_if(
+            FundProgram::query()->where('code', $code)->exists(),
+            422,
+            'Ce code de programme est déjà utilisé.',
+        );
+
         $program = FundProgram::query()->create([
             ...$data,
-            'code' => Str::lower($data['code']),
+            'code' => $code,
             'status' => FundProgram::STATUS_DRAFT,
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
@@ -77,11 +88,31 @@ final class AdminFundsController
         return response()->json($program, 201);
     }
 
+    /**
+     * Nettoyage sûr d'un programme resté à l'état brouillon (ex. la version
+     * ou la publication a échoué juste après la création du programme).
+     * Un programme possédant la moindre version — même non publiée — n'est
+     * jamais supprimable : docs/CLAUDE.md §7 interdit toute suppression
+     * d'écriture ou d'engagement, et une version peut déjà être référencée.
+     */
+    public function destroyProgram(Request $request, FundProgram $program): JsonResponse
+    {
+        abort_if($program->status !== FundProgram::STATUS_DRAFT, 422, 'Seul un programme encore à l’état brouillon peut être supprimé.');
+        abort_if($program->versions()->exists(), 422, 'Un programme ayant au moins une version ne peut pas être supprimé.');
+
+        $program->delete();
+        FundAuditEvent::record((string) $request->user()->id, 'FundProgramDeleted', 'fund_program', $program->id);
+
+        return response()->json(null, 204);
+    }
+
     public function storeVersion(Request $request, FundProgram $program): JsonResponse
     {
         $data = $request->validate([
             'currency' => ['required', 'string', 'size:3'],
-            'membership_fee_minor' => ['required', 'integer', 'min:0'],
+            // Un programme Fonds n'est jamais gratuit (décision fondateur) :
+            // le prix d'adhésion doit toujours être strictement positif.
+            'membership_fee_minor' => ['required', 'integer', 'min:1'],
             'duration_days' => ['required', 'integer', 'min:1'],
             'minimum_subscription_age_days' => ['nullable', 'integer', 'min:0'],
             'max_active_wishes' => ['required', 'integer', 'min:1'],
@@ -153,7 +184,7 @@ final class AdminFundsController
     public function storeCategory(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'code' => ['required', 'string', 'max:50', 'alpha_dash', Rule::unique('fund_wish_categories', 'code')],
+            'code' => ['required', 'string', 'max:50', 'alpha_dash'],
             'name' => ['required', 'string', 'max:100'],
             'icon' => ['nullable', 'string', 'max:20'],
             'description' => ['nullable', 'string', 'max:500'],
@@ -161,9 +192,16 @@ final class AdminFundsController
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        $code = Str::lower($data['code']);
+        abort_if(
+            FundWishCategory::query()->where('code', $code)->exists(),
+            422,
+            'Ce code de catégorie est déjà utilisé.',
+        );
+
         $category = FundWishCategory::query()->create([
             ...$data,
-            'code' => Str::lower($data['code']),
+            'code' => $code,
             'is_active' => true,
             'requires_sensitive_documents' => $data['requires_sensitive_documents'] ?? false,
             'sort_order' => $data['sort_order'] ?? 0,
