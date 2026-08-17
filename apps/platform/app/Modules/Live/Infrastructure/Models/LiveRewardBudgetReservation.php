@@ -14,7 +14,6 @@ final class LiveRewardBudgetReservation extends Model
     use HasUlids;
 
     public const STATUS_RESERVED = 'reserved';
-
     public const STATUS_RELEASED = 'released';
 
     protected $fillable = [
@@ -22,6 +21,7 @@ final class LiveRewardBudgetReservation extends Model
         'live_reward_quote_id',
         'advertiser_organization_id',
         'amount_minor',
+        'released_amount_minor',
         'status',
         'idempotency_key',
         'ledger_transaction_id',
@@ -33,6 +33,7 @@ final class LiveRewardBudgetReservation extends Model
     {
         return [
             'amount_minor' => 'integer',
+            'released_amount_minor' => 'integer',
             'reserved_at' => 'datetime',
             'released_at' => 'datetime',
         ];

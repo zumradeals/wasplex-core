@@ -11,38 +11,34 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class LiveRewardAttentionState extends Model
+final class LiveRewardRiskEvent extends Model
 {
     use HasUlids;
+
+    public const SEVERITY_LOW = 'low';
+    public const SEVERITY_MEDIUM = 'medium';
+    public const SEVERITY_HIGH = 'high';
+    public const SEVERITY_CRITICAL = 'critical';
 
     protected $fillable = [
         'live_reward_campaign_id',
         'live_id',
         'account_id',
-        'live_reward_seat_id',
-        'viewer_session_id',
+        'live_reward_attention_state_id',
         'account_session_id',
         'device_id',
-        'validated_blocks',
-        'current_block_ms',
-        'risk_signal_count',
-        'risk_hold_required',
-        'last_heartbeat_qualified',
-        'last_risk_signal_code',
-        'last_heartbeat_at',
-        'last_qualified_at',
+        'signal_code',
+        'severity',
+        'mode',
+        'evidence',
+        'occurred_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'validated_blocks' => 'integer',
-            'current_block_ms' => 'integer',
-            'risk_signal_count' => 'integer',
-            'risk_hold_required' => 'boolean',
-            'last_heartbeat_qualified' => 'boolean',
-            'last_heartbeat_at' => 'datetime',
-            'last_qualified_at' => 'datetime',
+            'evidence' => 'array',
+            'occurred_at' => 'datetime',
         ];
     }
 
@@ -61,14 +57,9 @@ final class LiveRewardAttentionState extends Model
         return $this->belongsTo(Account::class);
     }
 
-    public function seat(): BelongsTo
+    public function attentionState(): BelongsTo
     {
-        return $this->belongsTo(LiveRewardSeat::class, 'live_reward_seat_id');
-    }
-
-    public function viewerSession(): BelongsTo
-    {
-        return $this->belongsTo(LiveViewerSession::class, 'viewer_session_id');
+        return $this->belongsTo(LiveRewardAttentionState::class, 'live_reward_attention_state_id');
     }
 
     public function accountSession(): BelongsTo

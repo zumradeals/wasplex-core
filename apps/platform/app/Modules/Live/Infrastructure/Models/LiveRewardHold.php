@@ -8,52 +8,54 @@ use App\Modules\Identity\Infrastructure\Models\Account;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
-final class LiveRewardAttentionBlock extends Model
+final class LiveRewardHold extends Model
 {
     use HasUlids;
 
-    public const STATUS_CAPTURED = 'captured';
-    public const STATUS_HELD = 'held';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_RELEASED = 'released';
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
+        'live_reward_attention_block_id',
         'live_reward_campaign_id',
-        'live_reward_quote_id',
         'live_id',
         'account_id',
-        'live_reward_seat_id',
-        'viewer_session_id',
         'block_index',
-        'attention_ms',
         'reward_minor',
         'gross_amount_minor',
-        'risk_mode',
         'status',
+        'risk_codes',
+        'evidence',
+        'reviewed_by_account_id',
+        'resolution_note',
         'ledger_transaction_id',
-        'captured_at',
+        'opened_at',
+        'reviewed_at',
     ];
 
     protected function casts(): array
     {
         return [
             'block_index' => 'integer',
-            'attention_ms' => 'integer',
             'reward_minor' => 'integer',
             'gross_amount_minor' => 'integer',
-            'captured_at' => 'datetime',
+            'risk_codes' => 'array',
+            'evidence' => 'array',
+            'opened_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
+    }
+
+    public function block(): BelongsTo
+    {
+        return $this->belongsTo(LiveRewardAttentionBlock::class, 'live_reward_attention_block_id');
     }
 
     public function campaign(): BelongsTo
     {
         return $this->belongsTo(LiveRewardCampaign::class, 'live_reward_campaign_id');
-    }
-
-    public function quote(): BelongsTo
-    {
-        return $this->belongsTo(LiveRewardQuote::class, 'live_reward_quote_id');
     }
 
     public function live(): BelongsTo
@@ -66,8 +68,8 @@ final class LiveRewardAttentionBlock extends Model
         return $this->belongsTo(Account::class);
     }
 
-    public function hold(): HasOne
+    public function reviewedBy(): BelongsTo
     {
-        return $this->hasOne(LiveRewardHold::class, 'live_reward_attention_block_id');
+        return $this->belongsTo(Account::class, 'reviewed_by_account_id');
     }
 }
