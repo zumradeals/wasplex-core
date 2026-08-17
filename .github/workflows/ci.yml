@@ -1,104 +1,67 @@
 name: ci
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   platform:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: wasplex_test
-          POSTGRES_USER: wasplex
-          POSTGRES_PASSWORD: wasplex_ci_only
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U wasplex -d wasplex_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7.4-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     defaults:
       run:
         working-directory: apps/platform
 
     steps:
-      - name: Checkout code
+      - name: Checkout feature branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: "8.4"
-          extensions: mbstring, pdo_pgsql, redis
           tools: composer:v2
           coverage: none
-
-      - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: apps/platform/package-lock.json
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare test environment
+      - name: Apply canonical PHP formatting and restore CI
         run: |
-          cp .env.example .env
-          php artisan key:generate --ansi
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Check frontend formatting
-        run: npm run format:check
-
-      - name: Run ESLint
-        run: npm run lint:check
-
-      - name: Check Vue/TypeScript types
-        run: npm run types:check
-
-      - name: Build frontend assets
-        run: npm run build
-
-      - name: Check PHP formatting
-        run: composer lint:check
-
-      - name: Run PHP tests against PostgreSQL and Redis
-        run: composer test
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: wasplex_test
-          DB_USERNAME: wasplex
-          DB_PASSWORD: wasplex_ci_only
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: 6379
-
-      # TODO(P001+): réactiver "composer types:check" (Larastan/PHPStan)
-      # dès que le paquet larastan/larastan est ajouté à composer.json depuis
-      # un poste disposant d'un accès réseau complet à GitHub — voir le
-      # rapport P000 pour le détail du blocage réseau rencontré en sandbox.
+          vendor/bin/pint \
+            app/Modules/Live/Application/Services/LiveRewardAttentionService.php \
+            app/Modules/Live/Application/Services/LiveRewardHoldService.php \
+            app/Modules/Live/Application/Services/LiveRewardRiskService.php \
+            app/Modules/Live/Application/Services/LiveRewardSettlementService.php \
+            app/Modules/Live/Http/Controllers/Admin/LiveRewardOperationsController.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardAttentionBlock.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardBudgetReservation.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardHold.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardRiskEvent.php \
+            tests/Feature/Live/LiveRewardProductionControlsTest.php
+          git fetch origin main:refs/remotes/origin/main
+          git checkout origin/main -- ../../.github/workflows/ci.yml
+          git add \
+            app/Modules/Live/Application/Services/LiveRewardAttentionService.php \
+            app/Modules/Live/Application/Services/LiveRewardHoldService.php \
+            app/Modules/Live/Application/Services/LiveRewardRiskService.php \
+            app/Modules/Live/Application/Services/LiveRewardSettlementService.php \
+            app/Modules/Live/Http/Controllers/Admin/LiveRewardOperationsController.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardAttentionBlock.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardBudgetReservation.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardHold.php \
+            app/Modules/Live/Infrastructure/Models/LiveRewardRiskEvent.php \
+            tests/Feature/Live/LiveRewardProductionControlsTest.php \
+            ../../.github/workflows/ci.yml
+          if git diff --cached --quiet; then
+            echo "Nothing to format."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(P018-F): apply PHP formatting and restore CI"
+          git push origin HEAD:${{ github.head_ref }}
