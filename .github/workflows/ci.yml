@@ -71,8 +71,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Check frontend formatting
-        run: npm run format:check
+      - name: Diagnose frontend formatting
+        run: |
+          npm run format
+          for file in \
+            resources/js/Components/AdminLiveRewardsPanel.vue \
+            resources/js/Components/LiveInteractionsPanel.vue \
+            resources/js/Pages/Identity/AdminShell.vue; do
+            echo "P018F_FORMAT_BEGIN:${file}"
+            base64 -w0 "${file}"
+            echo
+            echo "P018F_FORMAT_END:${file}"
+          done
+          exit 1
 
       - name: Run ESLint
         run: npm run lint:check
