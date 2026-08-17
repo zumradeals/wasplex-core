@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useEcho } from '@laravel/echo-vue';
 import { usePage } from '@inertiajs/vue3';
 import http from '@/lib/http';
+import { useWalletPrivacy } from '@/lib/walletPrivacy';
 import WalletHistoryAccordions from '@/Components/WalletHistoryAccordions.vue';
 import type { AuthShared } from '@/types/identity';
 
@@ -48,12 +49,60 @@ const transferBusy = ref(false);
 const transferError = ref<string | null>(null);
 const transferIdempotency = ref('');
 
+type TransferStep = 'form' | 'pin-setup' | 'pin-confirm';
+const transferStep = ref<TransferStep>('form');
+const pinExists = ref<boolean | null>(null);
+const pinSetupValue = ref('');
+const pinSetupConfirmValue = ref('');
+const pinSetupBusy = ref(false);
+const pinSetupError = ref<string | null>(null);
+const pinConfirmValue = ref('');
+
+const showPinChange = ref(false);
+const pinChangeCurrent = ref('');
+const pinChangeNew = ref('');
+const pinChangeConfirm = ref('');
+const pinChangeBusy = ref(false);
+const pinChangeError = ref<string | null>(null);
+
 const showWithdrawal = ref(false);
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 const page = usePage<{ auth: AuthShared }>();
+const { hidden: amountsHidden, toggle: toggleAmountsHidden, maskAmount } = useWalletPrivacy();
 
-const availableLabel = computed(() => numberFormatter.format(balance.value ?? 0));
+const availableLabel = computed(() => maskAmount(numberFormatter.format(balance.value ?? 0)));
+const todayCreditsLabel = computed(() => maskAmount(numberFormatter.format(summary.value.today_credits_minor)));
+const monthCreditsLabel = computed(() => maskAmount(numberFormatter.format(summary.value.month_credits_minor)));
+const pendingDepositsLabel = computed(() => maskAmount(numberFormatter.format(summary.value.pending_deposits_minor)));
+
+interface ApiErrorBody {
+    code?: string;
+    message?: string;
+    details?: { retry_after_seconds?: number; attempts_remaining?: number };
+}
+
+function apiError(e: unknown): ApiErrorBody {
+    return (e as { response?: { data?: ApiErrorBody } }).response?.data ?? {};
+}
+
+function sanitizePinDigits(value: string): string {
+    return value.replace(/\D/g, '').slice(0, 4);
+}
+
+function lockedMessage(seconds: number | undefined): string {
+    const minutes = Math.max(1, Math.ceil((seconds ?? 60) / 60));
+    return `Trop de tentatives. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`;
+}
+
+async function loadPinStatus(): Promise<void> {
+    try {
+        const { data } = await http.get('/me/wallet/pin');
+        pinExists.value = Boolean(data.exists);
+    } catch {
+        pinExists.value = null;
+    }
+}
 
 async function load(): Promise<void> {
     loading.value = true;
@@ -108,7 +157,13 @@ function openTransferModal(): void {
     transferAmount.value = null;
     transferError.value = null;
     transferIdempotency.value = '';
+    transferStep.value = 'form';
+    pinSetupValue.value = '';
+    pinSetupConfirmValue.value = '';
+    pinSetupError.value = null;
+    pinConfirmValue.value = '';
     showTransfer.value = true;
+    if (pinExists.value === null) void loadPinStatus();
 }
 
 async function resolveRecipient(): Promise<void> {
@@ -131,10 +186,49 @@ async function resolveRecipient(): Promise<void> {
     }
 }
 
-async function submitTransfer(): Promise<void> {
+async function proceedToPinStep(): Promise<void> {
     if (!recipient.value || !transferAmount.value || transferAmount.value <= 0) return;
     if (transferAmount.value > (balance.value ?? 0)) {
         transferError.value = 'Votre solde disponible est insuffisant.';
+        return;
+    }
+
+    transferError.value = null;
+    if (pinExists.value === null) await loadPinStatus();
+    transferStep.value = pinExists.value ? 'pin-confirm' : 'pin-setup';
+}
+
+async function createPinThenContinue(): Promise<void> {
+    if (pinSetupValue.value.length !== 4) {
+        pinSetupError.value = 'Le code PIN doit comporter exactement 4 chiffres.';
+        return;
+    }
+    if (pinSetupValue.value !== pinSetupConfirmValue.value) {
+        pinSetupError.value = 'La confirmation ne correspond pas au code PIN.';
+        return;
+    }
+
+    pinSetupBusy.value = true;
+    pinSetupError.value = null;
+    try {
+        await http.post('/me/wallet/pin', {
+            pin: pinSetupValue.value,
+            pin_confirmation: pinSetupConfirmValue.value,
+        });
+        pinExists.value = true;
+        pinConfirmValue.value = '';
+        transferStep.value = 'pin-confirm';
+    } catch (e) {
+        pinSetupError.value = apiError(e).message ?? 'Impossible de créer le code PIN.';
+    } finally {
+        pinSetupBusy.value = false;
+    }
+}
+
+async function submitTransfer(): Promise<void> {
+    if (!recipient.value || !transferAmount.value || transferAmount.value <= 0) return;
+    if (pinConfirmValue.value.length !== 4) {
+        transferError.value = 'Entrez votre code PIN à 4 chiffres.';
         return;
     }
 
@@ -146,15 +240,67 @@ async function submitTransfer(): Promise<void> {
             recipient_account_id: recipient.value.account_id,
             amount_minor: Math.trunc(transferAmount.value),
             idempotency_key: transferIdempotency.value,
+            pin: pinConfirmValue.value,
         });
         notice.value = `${numberFormatter.format(Math.trunc(transferAmount.value))} WP transférés à ${recipient.value.display_name}.`;
         showTransfer.value = false;
+        transferStep.value = 'form';
         await load();
     } catch (e) {
-        transferError.value =
-            (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Le transfert a échoué.';
+        const error = apiError(e);
+        pinConfirmValue.value = '';
+        if (error.code === 'WALLET_PIN_LOCKED') {
+            transferError.value = lockedMessage(error.details?.retry_after_seconds);
+        } else if (error.code === 'WALLET_PIN_NOT_SET') {
+            pinExists.value = false;
+            transferStep.value = 'pin-setup';
+        } else if (error.code === 'WALLET_PIN_INVALID') {
+            const remaining = error.details?.attempts_remaining;
+            const suffix =
+                remaining !== undefined
+                    ? ` (${remaining} tentative${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''})`
+                    : '';
+            transferError.value = (error.message ?? 'Le code PIN est incorrect.') + suffix;
+        } else {
+            transferError.value = error.message ?? 'Le transfert a échoué.';
+        }
     } finally {
         transferBusy.value = false;
+    }
+}
+
+function openPinChangeModal(): void {
+    pinChangeCurrent.value = '';
+    pinChangeNew.value = '';
+    pinChangeConfirm.value = '';
+    pinChangeError.value = null;
+    showPinChange.value = true;
+}
+
+async function submitPinChange(): Promise<void> {
+    if (pinChangeCurrent.value.length !== 4 || pinChangeNew.value.length !== 4 || pinChangeConfirm.value.length !== 4) {
+        pinChangeError.value = 'Chaque code PIN doit comporter exactement 4 chiffres.';
+        return;
+    }
+
+    pinChangeBusy.value = true;
+    pinChangeError.value = null;
+    try {
+        await http.put('/me/wallet/pin', {
+            current_pin: pinChangeCurrent.value,
+            pin: pinChangeNew.value,
+            pin_confirmation: pinChangeConfirm.value,
+        });
+        notice.value = 'Votre code PIN Wallet a été modifié.';
+        showPinChange.value = false;
+    } catch (e) {
+        const error = apiError(e);
+        pinChangeError.value =
+            error.code === 'WALLET_PIN_LOCKED'
+                ? lockedMessage(error.details?.retry_after_seconds)
+                : (error.message ?? 'Impossible de modifier le code PIN.');
+    } finally {
+        pinChangeBusy.value = false;
     }
 }
 
@@ -192,6 +338,7 @@ defineExpose({ load });
 onMounted(async () => {
     await processPaymentReturn();
     await load();
+    await loadPinStatus();
 });
 
 useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load);
@@ -228,7 +375,45 @@ useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load)
                     </span>
                 </div>
 
-                <p class="text-wpx-navy-950/65 mt-6 text-xs font-bold">Solde utilisable</p>
+                <div class="mt-6 flex items-center gap-2">
+                    <p class="text-wpx-navy-950/65 text-xs font-bold">Solde utilisable</p>
+                    <button
+                        type="button"
+                        class="text-wpx-navy-950/70 hover:text-wpx-navy-950 focus-visible:ring-wpx-navy-950/40 flex h-6 w-6 items-center justify-center rounded-full transition focus-visible:ring-2 focus-visible:outline-none"
+                        :aria-label="
+                            amountsHidden ? 'Afficher les montants du Wallet' : 'Masquer les montants du Wallet'
+                        "
+                        :aria-pressed="amountsHidden"
+                        :title="amountsHidden ? 'Afficher les montants' : 'Masquer les montants'"
+                        @click="toggleAmountsHidden"
+                    >
+                        <svg
+                            v-if="amountsHidden"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                        >
+                            <path
+                                d="M3 3l18 18M10.6 10.7a2.5 2.5 0 003.5 3.5M6.6 6.7C4.5 8.1 3 10 2 12c1.8 3.8 5.7 7 10 7 1.7 0 3.3-.4 4.7-1.2M9.9 4.2A10.4 10.4 0 0112 4c4.3 0 8.2 3.2 10 7a13.6 13.6 0 01-2.5 3.5"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                        <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                                d="M2 12c1.8-3.8 5.7-7 10-7s8.2 3.2 10 7c-1.8 3.8-5.7 7-10 7s-8.2-3.2-10-7z"
+                                stroke="currentColor"
+                                stroke-width="1.7"
+                                stroke-linejoin="round"
+                            />
+                            <circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.7" />
+                        </svg>
+                    </button>
+                </div>
                 <p class="text-wpx-navy-950 mt-0.5 text-[2.65rem] leading-none font-extrabold tabular-nums">
                     <span v-if="loading">…</span>
                     <template v-else>{{ availableLabel }} <span class="text-xl">WP</span></template>
@@ -278,21 +463,15 @@ useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load)
 
         <section class="grid grid-cols-3 gap-2.5">
             <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3 text-center">
-                <p class="text-wpx-success text-base font-bold">
-                    +{{ numberFormatter.format(summary.today_credits_minor) }}
-                </p>
+                <p class="text-wpx-success text-base font-bold">+{{ todayCreditsLabel }}</p>
                 <p class="text-wpx-muted-dark mt-0.5 text-[10px]">Aujourd’hui</p>
             </div>
             <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3 text-center">
-                <p class="text-wpx-blue text-base font-bold">
-                    +{{ numberFormatter.format(summary.month_credits_minor) }}
-                </p>
+                <p class="text-wpx-blue text-base font-bold">+{{ monthCreditsLabel }}</p>
                 <p class="text-wpx-muted-dark mt-0.5 text-[10px]">Ce mois</p>
             </div>
             <div class="bg-wpx-navy-850 border-wpx-border-dark rounded-wpx-md border p-3 text-center">
-                <p class="text-wpx-gold text-base font-bold">
-                    {{ numberFormatter.format(summary.pending_deposits_minor) }}
-                </p>
+                <p class="text-wpx-gold text-base font-bold">{{ pendingDepositsLabel }}</p>
                 <p class="text-wpx-muted-dark mt-0.5 text-[10px]">En attente</p>
             </div>
         </section>
@@ -310,6 +489,22 @@ useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load)
                 <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">Gérez votre plan et vos avantages</span>
             </span>
             <span class="text-wpx-blue text-xs font-bold">Voir ›</span>
+        </button>
+
+        <button
+            v-if="pinExists"
+            type="button"
+            class="from-wpx-navy-750 to-wpx-navy-850 border-wpx-border-dark rounded-wpx-lg flex items-center gap-3 border bg-gradient-to-br p-3.5 text-left"
+            @click="openPinChangeModal"
+        >
+            <span class="bg-wpx-gold/18 rounded-wpx-sm flex h-10 w-10 shrink-0 items-center justify-center text-lg">
+                🔒
+            </span>
+            <span class="flex-1">
+                <span class="text-wpx-white-soft block text-sm font-bold">Code PIN Wallet</span>
+                <span class="text-wpx-muted-dark mt-0.5 block text-[11px]">Protège vos transferts sortants</span>
+            </span>
+            <span class="text-wpx-blue text-xs font-bold">Changer ›</span>
         </button>
 
         <WalletHistoryAccordions :refresh-key="historyRefreshKey" />
@@ -384,82 +579,303 @@ useEcho(`wallet.${page.props.auth.account.id}`, '.wallet.balance.changed', load)
                 >
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <h2 class="text-wpx-white-soft text-lg font-bold">Transférer des WP</h2>
+                            <h2 class="text-wpx-white-soft text-lg font-bold">
+                                {{
+                                    transferStep === 'pin-setup'
+                                        ? 'Sécurisez vos transferts'
+                                        : transferStep === 'pin-confirm'
+                                          ? 'Confirmer le transfert'
+                                          : 'Transférer des WP'
+                                }}
+                            </h2>
                             <p class="text-wpx-muted-dark mt-1 text-xs">
-                                Le transfert est immédiat et enregistré dans le Grand Livre.
+                                {{
+                                    transferStep === 'pin-setup'
+                                        ? 'Créez votre code PIN Wallet. Il protège tous vos transferts sortants.'
+                                        : transferStep === 'pin-confirm'
+                                          ? 'Entrez votre code PIN pour valider ce transfert.'
+                                          : 'Le transfert est immédiat et enregistré dans le Grand Livre.'
+                                }}
                             </p>
                         </div>
                         <button
                             type="button"
-                            class="bg-wpx-navy-750 text-wpx-white-soft h-9 w-9 rounded-full"
+                            class="bg-wpx-navy-750 text-wpx-white-soft h-9 w-9 shrink-0 rounded-full"
                             @click="showTransfer = false"
                         >
                             ×
                         </button>
                     </div>
 
-                    <label class="text-wpx-muted-dark mt-5 block text-[11px] font-bold uppercase"
-                        >Téléphone ou e-mail Wasplex</label
-                    >
-                    <div class="mt-2 flex gap-2">
+                    <template v-if="transferStep === 'form'">
+                        <label class="text-wpx-muted-dark mt-5 block text-[11px] font-bold uppercase"
+                            >Téléphone ou e-mail Wasplex</label
+                        >
+                        <div class="mt-2 flex gap-2">
+                            <input
+                                v-model="recipientIdentifier"
+                                type="text"
+                                class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md min-w-0 flex-1 border px-3 py-3 text-sm outline-none"
+                                placeholder="+225… ou membre@email.com"
+                                @input="recipient = null"
+                            />
+                            <button
+                                type="button"
+                                class="bg-wpx-blue/15 text-wpx-blue rounded-wpx-md px-3 text-xs font-bold disabled:opacity-50"
+                                :disabled="recipientBusy || !recipientIdentifier.trim()"
+                                @click="resolveRecipient"
+                            >
+                                {{ recipientBusy ? '…' : 'Vérifier' }}
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="recipient"
+                            class="border-wpx-success/25 bg-wpx-success/8 rounded-wpx-md mt-3 border p-3"
+                        >
+                            <p class="text-wpx-success-light text-sm font-bold">{{ recipient.display_name }}</p>
+                            <p class="text-wpx-muted-dark mt-0.5 text-xs">{{ recipient.identifier_hint }}</p>
+                        </div>
+
+                        <template v-if="recipient">
+                            <label class="text-wpx-muted-dark mt-5 block text-[11px] font-bold uppercase"
+                                >Montant</label
+                            >
+                            <div
+                                class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-md mt-2 flex items-center border px-3"
+                            >
+                                <input
+                                    v-model.number="transferAmount"
+                                    type="number"
+                                    min="1"
+                                    :max="balance ?? 0"
+                                    inputmode="numeric"
+                                    class="text-wpx-white-soft min-w-0 flex-1 bg-transparent py-3.5 text-xl font-bold outline-none"
+                                    placeholder="100"
+                                />
+                                <span class="text-wpx-blue text-sm font-bold">WP</span>
+                            </div>
+                            <p class="text-wpx-muted-dark mt-2 text-xs">Disponible : {{ availableLabel }} WP</p>
+                        </template>
+
+                        <p
+                            v-if="transferError"
+                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mt-3 p-3 text-xs"
+                        >
+                            {{ transferError }}
+                        </p>
+
+                        <button
+                            v-if="recipient"
+                            type="button"
+                            class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md mt-5 w-full bg-gradient-to-br px-4 py-3 text-sm font-extrabold disabled:opacity-50"
+                            :disabled="!transferAmount || transferAmount <= 0"
+                            @click="proceedToPinStep"
+                        >
+                            Continuer · {{ numberFormatter.format(transferAmount ?? 0) }} WP
+                        </button>
+                    </template>
+
+                    <template v-else-if="transferStep === 'pin-setup'">
+                        <div class="bg-wpx-gold/10 rounded-wpx-md mt-5 flex items-center gap-3 p-3.5">
+                            <span class="text-2xl" aria-hidden="true">🔒</span>
+                            <p class="text-wpx-muted-dark text-xs leading-relaxed">
+                                Votre argent est protégé. Ce code à 4 chiffres vous sera demandé à chaque transfert
+                                sortant.
+                            </p>
+                        </div>
+
+                        <label class="text-wpx-muted-dark mt-5 block text-[11px] font-bold uppercase"
+                            >Créez votre code PIN</label
+                        >
                         <input
-                            v-model="recipientIdentifier"
-                            type="text"
-                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md min-w-0 flex-1 border px-3 py-3 text-sm outline-none"
-                            placeholder="+225… ou membre@email.com"
-                            @input="recipient = null"
+                            :value="pinSetupValue"
+                            type="password"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="4"
+                            placeholder="••••"
+                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md mt-2 w-full border px-3 py-3.5 text-center text-2xl font-bold tracking-[0.6em] outline-none"
+                            aria-label="Nouveau code PIN, 4 chiffres"
+                            @input="pinSetupValue = sanitizePinDigits(($event.target as HTMLInputElement).value)"
                         />
+
+                        <label class="text-wpx-muted-dark mt-4 block text-[11px] font-bold uppercase"
+                            >Confirmez votre code PIN</label
+                        >
+                        <input
+                            :value="pinSetupConfirmValue"
+                            type="password"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="4"
+                            placeholder="••••"
+                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md mt-2 w-full border px-3 py-3.5 text-center text-2xl font-bold tracking-[0.6em] outline-none"
+                            aria-label="Confirmation du code PIN, 4 chiffres"
+                            @input="pinSetupConfirmValue = sanitizePinDigits(($event.target as HTMLInputElement).value)"
+                            @keyup.enter="createPinThenContinue"
+                        />
+
+                        <p
+                            v-if="pinSetupError"
+                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mt-3 p-3 text-xs"
+                        >
+                            {{ pinSetupError }}
+                        </p>
+
                         <button
                             type="button"
-                            class="bg-wpx-blue/15 text-wpx-blue rounded-wpx-md px-3 text-xs font-bold disabled:opacity-50"
-                            :disabled="recipientBusy || !recipientIdentifier.trim()"
-                            @click="resolveRecipient"
+                            class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md mt-5 w-full bg-gradient-to-br px-4 py-3 text-sm font-extrabold disabled:opacity-50"
+                            :disabled="pinSetupBusy || pinSetupValue.length !== 4 || pinSetupConfirmValue.length !== 4"
+                            @click="createPinThenContinue"
                         >
-                            {{ recipientBusy ? '…' : 'Vérifier' }}
+                            {{ pinSetupBusy ? 'Création…' : 'Créer mon code PIN' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="text-wpx-muted-dark mt-3 w-full text-center text-xs"
+                            @click="transferStep = 'form'"
+                        >
+                            ‹ Retour
+                        </button>
+                    </template>
+
+                    <template v-else-if="transferStep === 'pin-confirm' && recipient">
+                        <div class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-md mt-5 border p-4 text-center">
+                            <p class="text-wpx-muted-dark text-xs">Vous envoyez</p>
+                            <p class="text-wpx-white-soft mt-1 text-2xl font-extrabold tabular-nums">
+                                {{ numberFormatter.format(transferAmount ?? 0) }} WP
+                            </p>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">
+                                à <span class="text-wpx-white-soft font-semibold">{{ recipient.display_name }}</span>
+                            </p>
+                        </div>
+
+                        <label class="text-wpx-muted-dark mt-5 block text-center text-[11px] font-bold uppercase"
+                            >Entrez votre code PIN pour confirmer</label
+                        >
+                        <input
+                            :value="pinConfirmValue"
+                            type="password"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="4"
+                            placeholder="••••"
+                            class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md mt-2 w-full border px-3 py-3.5 text-center text-2xl font-bold tracking-[0.6em] outline-none"
+                            aria-label="Code PIN, 4 chiffres"
+                            @input="pinConfirmValue = sanitizePinDigits(($event.target as HTMLInputElement).value)"
+                            @keyup.enter="submitTransfer"
+                        />
+
+                        <p
+                            v-if="transferError"
+                            class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mt-3 p-3 text-xs"
+                        >
+                            {{ transferError }}
+                        </p>
+
+                        <button
+                            type="button"
+                            class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md mt-5 w-full bg-gradient-to-br px-4 py-3 text-sm font-extrabold disabled:opacity-50"
+                            :disabled="transferBusy || pinConfirmValue.length !== 4"
+                            @click="submitTransfer"
+                        >
+                            {{ transferBusy ? 'Transfert…' : 'Confirmer le transfert' }}
+                        </button>
+                        <button
+                            type="button"
+                            class="text-wpx-muted-dark mt-3 w-full text-center text-xs"
+                            @click="transferStep = 'form'"
+                        >
+                            ‹ Retour
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </Teleport>
+
+        <Teleport to="body">
+            <div
+                v-if="showPinChange"
+                class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+                @click.self="showPinChange = false"
+            >
+                <div
+                    class="bg-wpx-navy-950 border-wpx-border-dark w-full max-w-md rounded-t-3xl border p-5 sm:rounded-3xl"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 class="text-wpx-white-soft text-lg font-bold">Changer mon code PIN</h2>
+                            <p class="text-wpx-muted-dark mt-1 text-xs">Protège tous vos transferts sortants.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="bg-wpx-navy-750 text-wpx-white-soft h-9 w-9 shrink-0 rounded-full"
+                            @click="showPinChange = false"
+                        >
+                            ×
                         </button>
                     </div>
 
-                    <div v-if="recipient" class="border-wpx-success/25 bg-wpx-success/8 rounded-wpx-md mt-3 border p-3">
-                        <p class="text-wpx-success-light text-sm font-bold">{{ recipient.display_name }}</p>
-                        <p class="text-wpx-muted-dark mt-0.5 text-xs">{{ recipient.identifier_hint }}</p>
-                    </div>
+                    <label class="text-wpx-muted-dark mt-5 block text-[11px] font-bold uppercase">Ancien PIN</label>
+                    <input
+                        :value="pinChangeCurrent"
+                        type="password"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="4"
+                        placeholder="••••"
+                        class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md mt-2 w-full border px-3 py-3.5 text-center text-2xl font-bold tracking-[0.6em] outline-none"
+                        aria-label="Ancien code PIN, 4 chiffres"
+                        @input="pinChangeCurrent = sanitizePinDigits(($event.target as HTMLInputElement).value)"
+                    />
 
-                    <template v-if="recipient">
-                        <label class="text-wpx-muted-dark mt-5 block text-[11px] font-bold uppercase">Montant</label>
-                        <div
-                            class="border-wpx-border-dark bg-wpx-navy-850 rounded-wpx-md mt-2 flex items-center border px-3"
-                        >
-                            <input
-                                v-model.number="transferAmount"
-                                type="number"
-                                min="1"
-                                :max="balance ?? 0"
-                                inputmode="numeric"
-                                class="text-wpx-white-soft min-w-0 flex-1 bg-transparent py-3.5 text-xl font-bold outline-none"
-                                placeholder="100"
-                            />
-                            <span class="text-wpx-blue text-sm font-bold">WP</span>
-                        </div>
-                        <p class="text-wpx-muted-dark mt-2 text-xs">Disponible : {{ availableLabel }} WP</p>
-                    </template>
+                    <label class="text-wpx-muted-dark mt-4 block text-[11px] font-bold uppercase">Nouveau PIN</label>
+                    <input
+                        :value="pinChangeNew"
+                        type="password"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="4"
+                        placeholder="••••"
+                        class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md mt-2 w-full border px-3 py-3.5 text-center text-2xl font-bold tracking-[0.6em] outline-none"
+                        aria-label="Nouveau code PIN, 4 chiffres"
+                        @input="pinChangeNew = sanitizePinDigits(($event.target as HTMLInputElement).value)"
+                    />
+
+                    <label class="text-wpx-muted-dark mt-4 block text-[11px] font-bold uppercase">Confirmation</label>
+                    <input
+                        :value="pinChangeConfirm"
+                        type="password"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="4"
+                        placeholder="••••"
+                        class="border-wpx-border-dark bg-wpx-navy-850 text-wpx-white-soft rounded-wpx-md mt-2 w-full border px-3 py-3.5 text-center text-2xl font-bold tracking-[0.6em] outline-none"
+                        aria-label="Confirmation du nouveau code PIN, 4 chiffres"
+                        @input="pinChangeConfirm = sanitizePinDigits(($event.target as HTMLInputElement).value)"
+                        @keyup.enter="submitPinChange"
+                    />
 
                     <p
-                        v-if="transferError"
+                        v-if="pinChangeError"
                         class="bg-wpx-danger/10 text-wpx-danger-light rounded-wpx-md mt-3 p-3 text-xs"
                     >
-                        {{ transferError }}
+                        {{ pinChangeError }}
                     </p>
 
                     <button
-                        v-if="recipient"
                         type="button"
                         class="from-wpx-blue to-wpx-cyan text-wpx-navy-950 rounded-wpx-md mt-5 w-full bg-gradient-to-br px-4 py-3 text-sm font-extrabold disabled:opacity-50"
-                        :disabled="transferBusy || !transferAmount || transferAmount <= 0"
-                        @click="submitTransfer"
+                        :disabled="
+                            pinChangeBusy ||
+                            pinChangeCurrent.length !== 4 ||
+                            pinChangeNew.length !== 4 ||
+                            pinChangeConfirm.length !== 4
+                        "
+                        @click="submitPinChange"
                     >
-                        {{
-                            transferBusy ? 'Transfert…' : `Confirmer ${numberFormatter.format(transferAmount ?? 0)} WP`
-                        }}
+                        {{ pinChangeBusy ? 'Modification…' : 'Changer mon code PIN' }}
                     </button>
                 </div>
             </div>

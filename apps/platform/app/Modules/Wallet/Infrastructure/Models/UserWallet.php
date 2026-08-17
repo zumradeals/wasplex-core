@@ -15,5 +15,14 @@ final class UserWallet extends Model
 
     protected $table = 'user_wallets';
 
-    protected $fillable = ['account_id', 'currency', 'status'];
+    protected $fillable = ['account_id', 'currency', 'status', 'pin_hash', 'pin_set_at'];
+
+    protected $hidden = ['pin_hash'];
+
+    protected function casts(): array
+    {
+        return [
+            'pin_set_at' => 'datetime',
+        ];
+    }
 }

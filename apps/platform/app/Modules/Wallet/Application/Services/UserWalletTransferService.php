@@ -21,6 +21,7 @@ final class UserWalletTransferService
     public function __construct(
         private readonly LedgerPostingContract $posting,
         private readonly UserWalletQueryService $wallet,
+        private readonly UserWalletPinService $pin,
     ) {}
 
     /** @return array{account_id: string, display_name: string, identifier_hint: string} */
@@ -66,10 +67,16 @@ final class UserWalletTransferService
         string $recipientAccountId,
         int $amountMinor,
         string $idempotencyKey,
+        ?string $pin,
     ): UserWalletTransfer {
         if ($senderAccountId === $recipientAccountId) {
             throw new AppException('WALLET_TRANSFER_SELF', 'Vous ne pouvez pas vous transférer des WP à vous-même.');
         }
+
+        // Le PIN est vérifié avant toute ouverture de transaction DB : un
+        // PIN absent ou incorrect ne doit produire aucune écriture Ledger
+        // ni aucun mouvement de fonds (docs/CLAUDE.md §7, P020 §2.6).
+        $this->pin->assertValid($senderAccountId, $pin);
 
         $recipient = Account::query()->find($recipientAccountId);
         if ($recipient === null || ! $recipient->isActive()) {

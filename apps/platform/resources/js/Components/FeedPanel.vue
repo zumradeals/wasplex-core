@@ -750,7 +750,9 @@ onBeforeUnmount(() => {
                 <span class="text-[11px] text-white/60">· {{ durationLabel }}</span>
             </div>
 
-            <div class="absolute right-2 bottom-28 z-20 flex flex-col items-center gap-3.5">
+            <div
+                class="absolute right-2 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-20 flex flex-col items-center gap-3.5"
+            >
                 <button
                     type="button"
                     class="flex flex-col items-center gap-0.5"

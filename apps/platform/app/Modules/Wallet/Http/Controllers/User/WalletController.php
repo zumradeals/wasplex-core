@@ -115,6 +115,7 @@ final class WalletController extends Controller
             'recipient_account_id' => ['required', 'string'],
             'amount_minor' => ['required', 'integer', 'min:1'],
             'idempotency_key' => ['required', 'string', 'max:100'],
+            'pin' => ['nullable', 'string', 'max:4'],
         ]);
 
         /** @var Account $account */
@@ -124,6 +125,7 @@ final class WalletController extends Controller
             (string) $data['recipient_account_id'],
             (int) $data['amount_minor'],
             (string) $data['idempotency_key'],
+            isset($data['pin']) ? (string) $data['pin'] : null,
         );
 
         return response()->json(['transfer' => $transfer]);
