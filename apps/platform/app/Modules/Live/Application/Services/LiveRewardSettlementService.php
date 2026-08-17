@@ -66,6 +66,7 @@ final class LiveRewardSettlementService
                     "live-budget-settlement:{$reservation->id}:{$newReleasedTotal}",
                 );
                 $reservation->released_amount_minor = $newReleasedTotal;
+                $reservation->save();
                 $this->audit($live, $actorAccountId, 'LiveRewardBudgetPartiallyReleased', [
                     'reservation_id' => $reservation->id,
                     'released_minor' => $releasable,
