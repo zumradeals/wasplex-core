@@ -32,7 +32,7 @@ beforeEach(function (): void {
         'live.rewards_enabled' => true,
         'live.reward_antifraud_mode' => 'observe',
         'live.reward_risk_repeat_threshold' => 3,
-        'live.reward_heartbeat_min_interval_ms' => 100,
+        'live.reward_heartbeat_min_interval_ms' => 10000,
         'live.reward_heartbeat_max_gap_ms' => 200000,
     ]);
     config()->set('services.livekit.url', 'wss://live.test');
