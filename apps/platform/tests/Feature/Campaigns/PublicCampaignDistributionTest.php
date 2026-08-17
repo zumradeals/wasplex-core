@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Campaigns\Application\Services\PublicCampaignService;
 use App\Modules\Campaigns\Infrastructure\Models\Campaign;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignEnvelopeConsumption;
 use App\Modules\Campaigns\Infrastructure\Models\CampaignPublicVisit;
@@ -65,7 +66,6 @@ it('serves an approved public campaign without authentication and measures only 
 
     $visitId = $first->json('visit_id');
 
-    // Même chargement = même visite, pas un compteur artificiellement doublé.
     test()->postJson('/api/public/campaigns/public-campaign-test/visits', [
         'visitor_token' => 'visitor-token-same-person-0001',
         'visit_token' => 'visit-token-session-00000001',
@@ -83,10 +83,24 @@ it('serves an approved public campaign without authentication and measures only 
     expect($visit->completed_at)->not->toBeNull();
     expect($visit->share_count)->toBe(1);
 
-    // La couche publique n'ouvre jamais un droit à récompense et ne réserve
-    // aucune nouvelle part du budget publicitaire.
     expect(FeedCampaignReward::query()->count())->toBe($rewardCount);
     expect(CampaignEnvelopeConsumption::query()->count())->toBe($envelopeCount);
+});
+
+it('lists only currently visible members-public campaigns for the guest feed', function (): void {
+    publicCampaignForDistributionTests('guest-feed-public');
+    publicCampaignForDistributionTests('guest-feed-private', Campaign::DISTRIBUTION_MEMBERS_ONLY);
+    publicCampaignForDistributionTests(
+        'guest-feed-suspended',
+        Campaign::DISTRIBUTION_MEMBERS_PUBLIC,
+        Campaign::STATUS_SUSPENDED,
+    );
+
+    $slugs = collect(app(PublicCampaignService::class)->feed())->pluck('slug');
+
+    expect($slugs)->toContain('guest-feed-public');
+    expect($slugs)->not->toContain('guest-feed-private');
+    expect($slugs)->not->toContain('guest-feed-suspended');
 });
 
 it('counts repeat public visits separately while keeping approximate visitors pseudonymous', function (): void {
