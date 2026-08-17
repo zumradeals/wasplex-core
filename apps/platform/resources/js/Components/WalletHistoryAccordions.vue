@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, watch } from 'vue';
 import http from '@/lib/http';
+import { useWalletPrivacy } from '@/lib/walletPrivacy';
 
 type Category = {
     key: string;
@@ -33,6 +34,13 @@ const categories = reactive<Category[]>([]);
 const open = reactive<Record<string, boolean>>({});
 const buckets = reactive<Record<string, Bucket>>({});
 const numberFormatter = new Intl.NumberFormat('fr-FR');
+const { maskAmount } = useWalletPrivacy();
+
+function amountLabel(entry: Entry): string {
+    const sign = entry.direction === 'credit' ? '+' : '−';
+
+    return `${sign}${maskAmount(numberFormatter.format(entry.amount_minor))} WP`;
+}
 
 function bucket(key: string): Bucket {
     buckets[key] ??= { entries: [], page: 0, lastPage: 1, loading: false, loaded: false };
@@ -158,8 +166,7 @@ watch(() => props.refreshKey, refresh);
                             class="shrink-0 text-sm font-bold tabular-nums"
                             :class="entry.direction === 'credit' ? 'text-wpx-success-light' : 'text-wpx-orange'"
                         >
-                            {{ entry.direction === 'credit' ? '+' : '−'
-                            }}{{ numberFormatter.format(entry.amount_minor) }} WP
+                            {{ amountLabel(entry) }}
                         </span>
                     </li>
                     <li

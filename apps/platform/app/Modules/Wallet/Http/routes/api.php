@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Identity\Http\Middleware\EnsureSessionNotRevoked;
 use App\Modules\Wallet\Http\Controllers\User\WalletController;
+use App\Modules\Wallet\Http\Controllers\User\WalletPinController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', EnsureSessionNotRevoked::class])
@@ -15,4 +16,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class])
         Route::post('/deposits/{deposit}/refresh', [WalletController::class, 'refreshDeposit']);
         Route::post('/transfers/recipient', [WalletController::class, 'resolveRecipient']);
         Route::post('/transfers', [WalletController::class, 'transfer']);
+        Route::get('/pin', [WalletPinController::class, 'show']);
+        Route::post('/pin', [WalletPinController::class, 'store']);
+        Route::put('/pin', [WalletPinController::class, 'update']);
     });
