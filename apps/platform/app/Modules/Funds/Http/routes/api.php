@@ -69,6 +69,7 @@ Route::middleware(['auth', EnsureSessionNotRevoked::class, EnsureRecentMfa::clas
     ->group(function (): void {
         Route::get('/', [AdminFundsController::class, 'dashboard'])->middleware(EnsureCapability::class.':admin.funds.view');
         Route::post('/programs', [AdminFundsController::class, 'storeProgram'])->middleware(EnsureCapability::class.':admin.funds.manage');
+        Route::delete('/programs/{program}', [AdminFundsController::class, 'destroyProgram'])->middleware(EnsureCapability::class.':admin.funds.manage');
         Route::post('/programs/{program}/versions', [AdminFundsController::class, 'storeVersion'])->middleware(EnsureCapability::class.':admin.funds.manage');
         Route::post('/program-versions/{version}/publish', [AdminFundsController::class, 'publishVersion'])->middleware(EnsureCapability::class.':admin.funds.manage');
         Route::post('/programs/{program}/status', [AdminFundsController::class, 'setProgramStatus'])->middleware(EnsureCapability::class.':admin.funds.manage');
