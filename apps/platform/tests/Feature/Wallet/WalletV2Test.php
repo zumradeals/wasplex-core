@@ -128,6 +128,7 @@ it('transfers WP atomically, resolves a minimal recipient identity and is idempo
     $sender = Account::query()->whereHas('identifiers', fn ($q) => $q->where('value', 'wallet-sender-v2@example.com'))->firstOrFail();
     $recipient = walletV2Recipient('wallet-recipient-v2@example.com', 'Awa Test');
     walletV2Credit($sender->id, 1000, 'wallet-v2-credit-1');
+    test()->postJson('/api/me/wallet/pin', ['pin' => '1234', 'pin_confirmation' => '1234'])->assertCreated();
 
     test()->postJson('/api/me/wallet/transfers/recipient', ['identifier' => 'wallet-recipient-v2@example.com'])
         ->assertOk()
@@ -138,6 +139,7 @@ it('transfers WP atomically, resolves a minimal recipient identity and is idempo
         'recipient_account_id' => $recipient->id,
         'amount_minor' => 350,
         'idempotency_key' => 'client-transfer-unique-1',
+        'pin' => '1234',
     ];
 
     test()->postJson('/api/me/wallet/transfers', $payload)
@@ -155,17 +157,20 @@ it('refuses self transfers and transfers above the available balance', function 
     $sender = Account::query()->whereHas('identifiers', fn ($q) => $q->where('value', 'wallet-limits-v2@example.com'))->firstOrFail();
     $recipient = walletV2Recipient('wallet-limits-recipient@example.com');
     walletV2Credit($sender->id, 100, 'wallet-v2-credit-2');
+    test()->postJson('/api/me/wallet/pin', ['pin' => '1234', 'pin_confirmation' => '1234'])->assertCreated();
 
     test()->postJson('/api/me/wallet/transfers', [
         'recipient_account_id' => $sender->id,
         'amount_minor' => 10,
         'idempotency_key' => 'self-transfer',
+        'pin' => '1234',
     ])->assertUnprocessable();
 
     test()->postJson('/api/me/wallet/transfers', [
         'recipient_account_id' => $recipient->id,
         'amount_minor' => 101,
         'idempotency_key' => 'too-much-transfer',
+        'pin' => '1234',
     ])->assertConflict();
 
     expect(app(UserWalletQueryService::class)->balanceMinor($sender->id))->toBe(100);

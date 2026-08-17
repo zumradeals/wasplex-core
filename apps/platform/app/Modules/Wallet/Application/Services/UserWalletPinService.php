@@ -75,9 +75,9 @@ final class UserWalletPinService
 
     /**
      * @throws AppException WALLET_PIN_NOT_SET, WALLET_PIN_REQUIRED,
-     *                       WALLET_PIN_LOCKED or WALLET_PIN_INVALID — always
-     *                       thrown before the caller opens any Ledger
-     *                       write (docs/CLAUDE.md §7, P020 §2.6).
+     *                      WALLET_PIN_LOCKED or WALLET_PIN_INVALID — always
+     *                      thrown before the caller opens any Ledger
+     *                      write (docs/CLAUDE.md §7, P020 §2.6).
      */
     public function assertValid(string $accountId, ?string $pin): void
     {
