@@ -17,6 +17,11 @@ return [
     // les retenues automatiques pour revue manuelle.
     'antifraud_mode' => $antifraudMode,
 
+    // Le Feed public invité affiche un gain POTENTIEL uniquement dans le
+    // navigateur. Cette valeur n'est jamais écrite dans le Ledger et ne
+    // consomme jamais le budget annonceur.
+    'guest_simulated_reward_minor' => max(0, (int) env('FEED_GUEST_SIMULATED_REWARD_MINOR', 30)),
+
     // FeedPanel.vue envoie un heartbeat toutes les 400 ms — un intervalle
     // plus court qu'une fraction de cela dénote une automatisation plutôt
     // qu'un rythme d'interface utilisateur réel.

@@ -24,42 +24,30 @@ final class PublicCampaignService
     ) {}
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function feed(int $limit = 20): array
+    {
+        return $this->visibleCampaignQuery()
+            ->whereNotNull('public_slug')
+            ->orderByDesc('updated_at')
+            ->limit(max(1, min($limit, 50)))
+            ->with('versions')
+            ->get()
+            ->map(fn (Campaign $campaign): ?array => $this->presentCampaign($campaign))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function presentation(string $slug): ?array
     {
         $campaign = $this->visibleCampaign($slug);
 
-        if ($campaign === null) {
-            return null;
-        }
-
-        $version = $campaign->currentVersion();
-        if ($version === null) {
-            return null;
-        }
-
-        $brand = $this->brands->find($campaign->organization_id, $campaign->brand_id);
-        $asset = null;
-        $assetId = $version->creative_configuration['asset_id'] ?? null;
-
-        if (is_string($assetId) && $assetId !== '') {
-            $asset = $this->creativeAssets->find($campaign->organization_id, $assetId);
-        }
-
-        return [
-            'id' => $campaign->id,
-            'slug' => $campaign->public_slug,
-            'title' => trim((string) ($version->creative_configuration['title'] ?? '')) ?: ($brand?->name ?? 'Publicité Wasplex'),
-            'brand_name' => $brand?->name ?? 'Annonceur Wasplex',
-            'objective_code' => $campaign->objective_code,
-            'cta_label' => Campaign::ctaFor($campaign->objective_code),
-            'creative' => $asset === null ? null : [
-                'url' => $asset->url,
-                'type' => $asset->type,
-                'duration' => $asset->duration,
-            ],
-        ];
+        return $campaign === null ? null : $this->presentCampaign($campaign);
     }
 
     public function startVisit(string $slug, string $visitorToken, string $visitToken): ?CampaignPublicVisit
@@ -143,18 +131,56 @@ final class PublicCampaignService
         return url('/c/'.$campaign->public_slug);
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function presentCampaign(Campaign $campaign): ?array
+    {
+        $version = $campaign->currentVersion();
+        if ($version === null) {
+            return null;
+        }
+
+        $brand = $this->brands->find($campaign->organization_id, $campaign->brand_id);
+        $asset = null;
+        $assetId = $version->creative_configuration['asset_id'] ?? null;
+
+        if (is_string($assetId) && $assetId !== '') {
+            $asset = $this->creativeAssets->find($campaign->organization_id, $assetId);
+        }
+
+        return [
+            'id' => $campaign->id,
+            'slug' => $campaign->public_slug,
+            'title' => trim((string) ($version->creative_configuration['title'] ?? '')) ?: ($brand?->name ?? 'Publicité Wasplex'),
+            'brand_name' => $brand?->name ?? 'Annonceur Wasplex',
+            'objective_code' => $campaign->objective_code,
+            'cta_label' => Campaign::ctaFor($campaign->objective_code),
+            'creative' => $asset === null ? null : [
+                'url' => $asset->url,
+                'type' => $asset->type,
+                'duration' => $asset->duration,
+            ],
+        ];
+    }
+
     private function visibleCampaign(string $slug): ?Campaign
+    {
+        return $this->visibleCampaignQuery()
+            ->where('public_slug', $slug)
+            ->with('versions')
+            ->first();
+    }
+
+    private function visibleCampaignQuery(): Builder
     {
         $today = Carbon::now('UTC')->toDateString();
 
         return Campaign::query()
-            ->where('public_slug', $slug)
             ->where('distribution_mode', Campaign::DISTRIBUTION_MEMBERS_PUBLIC)
             ->where('status', Campaign::STATUS_APPROVED)
             ->where(fn (Builder $query) => $query->whereNull('scheduled_start')->orWhere('scheduled_start', '<=', $today))
-            ->where(fn (Builder $query) => $query->whereNull('scheduled_end')->orWhere('scheduled_end', '>=', $today))
-            ->with('versions')
-            ->first();
+            ->where(fn (Builder $query) => $query->whereNull('scheduled_end')->orWhere('scheduled_end', '>=', $today));
     }
 
     private function updateVisit(string $slug, string $visitId, callable $callback): ?CampaignPublicVisit

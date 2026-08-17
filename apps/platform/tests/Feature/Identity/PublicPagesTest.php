@@ -1,16 +1,31 @@
 <?php
 
-it('renders the public landing page for a guest', function (): void {
+it('renders the public guest feed at the root', function (): void {
     $this->get('/')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('Identity/Landing'));
+        ->assertInertia(fn ($page) => $page
+            ->component('Identity/GuestFeed')
+            ->where('simulatedRewardMinor', 30)
+        );
 });
 
-it('uses the public landing as the single login page', function (): void {
-    $this->get('/login')->assertRedirect('/');
+it('serves the existing visual auth experience for login and registration', function (): void {
+    $this->get('/login')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Identity/Landing')
+            ->where('initialMode', 'login')
+        );
+
+    $this->get('/register')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Identity/Landing')
+            ->where('initialMode', 'register')
+        );
 });
 
-it('redirects an authenticated user space account away from the landing page to its shell', function (): void {
+it('redirects an authenticated user space account away from the public feed to its shell', function (): void {
     registerAndLogin('landing-user@example.com');
 
     $this->get('/')->assertRedirect('/app');
@@ -24,5 +39,5 @@ it('serves the technical status page at /status', function (): void {
 
 it('no longer serves the technical page at the root', function (): void {
     $this->get('/')
-        ->assertInertia(fn ($page) => $page->component('Identity/Landing'));
+        ->assertInertia(fn ($page) => $page->component('Identity/GuestFeed'));
 });

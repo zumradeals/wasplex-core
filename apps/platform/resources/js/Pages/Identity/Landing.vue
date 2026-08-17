@@ -1,18 +1,28 @@
 <script setup lang="ts">
 import PhoneQuickConnect from '@/Components/PhoneQuickConnect.vue';
+
+withDefaults(
+    defineProps<{
+        initialMode?: 'login' | 'register';
+    }>(),
+    {
+        initialMode: 'login',
+    },
+);
 </script>
 
 <template>
     <main class="bg-wpx-navy-950 flex min-h-screen justify-center">
         <div class="flex w-full max-w-md flex-col gap-6 px-6 py-12">
-            <!-- Hero -->
             <section class="flex flex-col items-center gap-3 text-center">
-                <img
-                    src="/brand/wasplex-logo-transparent.png"
-                    alt="Wasplex"
-                    class="h-24 w-24 object-contain"
-                    style="filter: drop-shadow(0 10px 24px rgba(79, 163, 255, 0.25))"
-                />
+                <a href="/" aria-label="Retour au Feed public">
+                    <img
+                        src="/brand/wasplex-logo-transparent.png"
+                        alt="Wasplex"
+                        class="h-24 w-24 object-contain"
+                        style="filter: drop-shadow(0 10px 24px rgba(79, 163, 255, 0.25))"
+                    />
+                </a>
                 <h1 class="text-wpx-white-soft text-xl leading-snug font-bold">
                     Ton attention a de la valeur.<br />Wasplex te la rend.
                 </h1>
@@ -21,7 +31,6 @@ import PhoneQuickConnect from '@/Components/PhoneQuickConnect.vue';
                 </p>
             </section>
 
-            <!-- Cartes de valeur -->
             <section class="grid grid-cols-3 gap-2">
                 <div
                     class="rounded-wpx-md bg-wpx-navy-850 border-wpx-border-dark flex flex-col items-center gap-0.5 border p-3 text-center"
@@ -43,8 +52,7 @@ import PhoneQuickConnect from '@/Components/PhoneQuickConnect.vue';
                 </div>
             </section>
 
-            <!-- Connexion rapide -->
-            <PhoneQuickConnect />
+            <PhoneQuickConnect :initial-mode="initialMode" />
 
             <p class="text-wpx-muted-dark text-center text-[11px] leading-relaxed">
                 Un seul compte Wasplex donne accès à ton espace, à ton wallet et, si besoin, à ton Studio Annonceur.
