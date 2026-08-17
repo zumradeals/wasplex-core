@@ -309,15 +309,14 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div
-                        v-if="gainToast !== null"
-                        class="absolute inset-x-0 top-28 z-30 flex justify-center px-4"
-                    >
+                    <div v-if="gainToast !== null" class="absolute inset-x-0 top-28 z-30 flex justify-center px-4">
                         <div
                             class="border-wpx-gold/40 bg-wpx-navy-950/92 rounded-2xl border px-4 py-3 text-center shadow-2xl backdrop-blur"
                         >
                             <p class="text-wpx-gold text-lg font-black">+{{ gainToast }} WP potentiels</p>
-                            <p class="mt-0.5 text-[10px] text-white/70">Simulation — inscris-toi pour gagner réellement.</p>
+                            <p class="mt-0.5 text-[10px] text-white/70">
+                                Simulation — inscris-toi pour gagner réellement.
+                            </p>
                         </div>
                     </div>
 

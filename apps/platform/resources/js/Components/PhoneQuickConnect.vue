@@ -71,7 +71,9 @@ const canSubmit = computed(
         password.value.length >= 8 &&
         !submitting.value,
 );
-const relevantConsents = computed(() => consents.value.filter((consent) => REQUIRED_CONSENT_CODES.includes(consent.code)));
+const relevantConsents = computed(() =>
+    consents.value.filter((consent) => REQUIRED_CONSENT_CODES.includes(consent.code)),
+);
 const selectedInterestCount = computed(() => selectedInterestIds.value.length);
 
 function switchMode(next: 'login' | 'register'): void {
@@ -182,7 +184,9 @@ async function saveProfile(): Promise<void> {
 
     try {
         const selectedInterests = interests.value.filter((entry) => selectedInterestIds.value.includes(entry.id));
-        await Promise.all(selectedInterests.map((entry) => http.post(`/me/smart-profile/${entry.id}`, { answer: true })));
+        await Promise.all(
+            selectedInterests.map((entry) => http.post(`/me/smart-profile/${entry.id}`, { answer: true })),
+        );
 
         const consentGrants = relevantConsents.value
             .filter((consent) => selectedConsentCodes.value.includes(consent.code) && consent.status !== 'granted')
@@ -351,26 +355,20 @@ function discoverAdvertiserSpace(): void {
             <button
                 type="button"
                 class="rounded-wpx-lg border p-4 text-left transition"
-                :class="
-                    wantsMember
-                        ? 'border-wpx-cyan bg-wpx-cyan/10'
-                        : 'border-wpx-border-dark bg-wpx-navy-850'
-                "
+                :class="wantsMember ? 'border-wpx-cyan bg-wpx-cyan/10' : 'border-wpx-border-dark bg-wpx-navy-850'"
                 @click="toggleIntent('member')"
             >
                 <span class="text-wpx-white-soft block text-sm font-black">👀 Découvrir & gagner</span>
-                <span class="text-wpx-muted-dark mt-1 block text-xs">Voir les campagnes pertinentes et gagner des WP.</span>
+                <span class="text-wpx-muted-dark mt-1 block text-xs"
+                    >Voir les campagnes pertinentes et gagner des WP.</span
+                >
                 <span v-if="wantsMember" class="text-wpx-cyan mt-2 block text-[11px] font-bold">✓ Sélectionné</span>
             </button>
 
             <button
                 type="button"
                 class="rounded-wpx-lg border p-4 text-left transition"
-                :class="
-                    wantsAdvertiser
-                        ? 'border-wpx-gold bg-wpx-gold/10'
-                        : 'border-wpx-border-dark bg-wpx-navy-850'
-                "
+                :class="wantsAdvertiser ? 'border-wpx-gold bg-wpx-gold/10' : 'border-wpx-border-dark bg-wpx-navy-850'"
                 @click="toggleIntent('advertiser')"
             >
                 <span class="text-wpx-white-soft block text-sm font-black">📣 Promouvoir mon activité</span>
@@ -418,7 +416,8 @@ function discoverAdvertiserSpace(): void {
                 </button>
             </div>
             <p v-else class="text-wpx-muted-dark rounded-wpx-md bg-wpx-navy-850 p-3 text-xs">
-                Les centres d’intérêt configurés par Wasplex pourront être complétés plus tard dans ton Profil intelligent.
+                Les centres d’intérêt configurés par Wasplex pourront être complétés plus tard dans ton Profil
+                intelligent.
             </p>
 
             <div v-if="relevantConsents.length > 0" class="border-wpx-border-dark rounded-wpx-lg border p-3.5">
