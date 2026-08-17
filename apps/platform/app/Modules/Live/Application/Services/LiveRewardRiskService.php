@@ -14,6 +14,7 @@ use App\Modules\Live\Infrastructure\Models\LiveRewardRiskEvent;
 final class LiveRewardRiskService
 {
     public const MODE_OBSERVE = 'observe';
+
     public const MODE_ENFORCE = 'enforce';
 
     public function mode(): string

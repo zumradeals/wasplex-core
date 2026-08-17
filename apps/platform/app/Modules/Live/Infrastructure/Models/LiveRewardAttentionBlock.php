@@ -15,7 +15,9 @@ final class LiveRewardAttentionBlock extends Model
     use HasUlids;
 
     public const STATUS_CAPTURED = 'captured';
+
     public const STATUS_HELD = 'held';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [

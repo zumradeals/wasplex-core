@@ -89,6 +89,7 @@ final class LiveRewardSettlementService
             }
 
             $reservation->save();
+
             return $this->report($live);
         });
     }

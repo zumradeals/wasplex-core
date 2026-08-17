@@ -14,6 +14,7 @@ final class LiveRewardBudgetReservation extends Model
     use HasUlids;
 
     public const STATUS_RESERVED = 'reserved';
+
     public const STATUS_RELEASED = 'released';
 
     protected $fillable = [

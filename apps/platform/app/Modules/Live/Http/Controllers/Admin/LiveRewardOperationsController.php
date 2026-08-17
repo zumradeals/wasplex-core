@@ -33,6 +33,7 @@ final class LiveRewardOperationsController
     {
         $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
         $resolved = $this->holds->release($hold, (string) $request->user()->id, $data['note'] ?? null);
+
         return response()->json(['hold' => $this->format($resolved)]);
     }
 
@@ -40,6 +41,7 @@ final class LiveRewardOperationsController
     {
         $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
         $resolved = $this->holds->reject($hold, (string) $request->user()->id, $data['note'] ?? null);
+
         return response()->json(['hold' => $this->format($resolved)]);
     }
 

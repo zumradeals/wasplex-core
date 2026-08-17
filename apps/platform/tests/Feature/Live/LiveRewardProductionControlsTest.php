@@ -103,6 +103,7 @@ function p018fFundedLive(int $capacity = 1, int $maxBlocks = 2): array
     ])->assertOk();
     test()->postJson("/api/advertiser/lives/{$liveId}/fund")->assertOk();
     test()->postJson("/api/advertiser/lives/{$liveId}/start")->assertOk();
+
     return ['live_id' => $liveId, 'organization_id' => $organizationId];
 }
 
@@ -134,6 +135,7 @@ function p018fCreateHeldBlock(string $liveId, string $email = 'p018f-held@exampl
         ->assertOk()
         ->assertJsonPath('reward_attention.pending_review_blocks', 1)
         ->assertJsonPath('reward_attention.earned_minor', 0);
+
     return LiveRewardHold::query()->where('live_id', $liveId)->firstOrFail();
 }
 

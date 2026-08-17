@@ -89,6 +89,7 @@ final class LiveRewardHoldService
                     'hold_id' => $hold->id,
                     'reason' => 'advertiser_self_reward',
                 ]);
+
                 return $hold->refresh();
             }
 
@@ -122,6 +123,7 @@ final class LiveRewardHoldService
                 'reward_minor' => $amountMinor,
                 'ledger_transaction_id' => $ledgerTransactionId,
             ]);
+
             return $hold->refresh();
         });
 
@@ -131,6 +133,7 @@ final class LiveRewardHoldService
         if ($live instanceof LiveEvent && $live->status === LiveEvent::STATUS_ENDED) {
             $this->settlement->settleLive($live, $adminAccountId);
         }
+
         return $hold->refresh();
     }
 
@@ -162,12 +165,14 @@ final class LiveRewardHoldService
                 'hold_id' => $hold->id,
                 'block_id' => $block->id,
             ]);
+
             return $hold->refresh();
         });
 
         if ($live instanceof LiveEvent && $live->status === LiveEvent::STATUS_ENDED) {
             $this->settlement->settleLive($live, $adminAccountId);
         }
+
         return $hold->refresh();
     }
 

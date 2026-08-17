@@ -14,7 +14,9 @@ final class LiveRewardHold extends Model
     use HasUlids;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_RELEASED = 'released';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [

@@ -67,6 +67,7 @@ final class LiveRewardAttentionService
                 ->first();
             if ($seat === null) {
                 $this->resetState($live, (string) $viewer->id);
+
                 return null;
             }
 
@@ -78,6 +79,7 @@ final class LiveRewardAttentionService
                 ->first();
             if ($viewerSession === null || ! in_array($viewerSession->status, [LiveViewerSession::STATUS_WATCHING, LiveViewerSession::STATUS_PAUSED], true)) {
                 $this->resetState($live, (string) $viewer->id);
+
                 return null;
             }
 
@@ -110,6 +112,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_qualified = false;
                 $state->risk_hold_required = false;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -121,6 +124,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = now();
                 $state->last_heartbeat_qualified = false;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -130,6 +134,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = false;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -137,6 +142,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = false;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -145,6 +151,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = false;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -153,6 +160,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = false;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -161,6 +169,7 @@ final class LiveRewardAttentionService
                 $state->last_qualified_at = $now;
                 $state->last_heartbeat_qualified = true;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -174,6 +183,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = true;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -184,6 +194,7 @@ final class LiveRewardAttentionService
                 $state->last_heartbeat_at = $now;
                 $state->last_heartbeat_qualified = true;
                 $state->save();
+
                 return $state->refresh();
             }
 
@@ -275,6 +286,7 @@ final class LiveRewardAttentionService
                 $state->current_block_ms = 0;
             }
             $state->save();
+
             return $state->refresh();
         });
 
@@ -298,6 +310,7 @@ final class LiveRewardAttentionService
             ->where('live_id', $live->id)
             ->where('account_id', $viewer->id)
             ->first();
+
         return $this->present($live, (string) $viewer->id, $state);
     }
 
