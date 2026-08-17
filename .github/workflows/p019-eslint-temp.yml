@@ -1,0 +1,51 @@
+name: p019-eslint-temp
+
+on:
+  push:
+    branches:
+      - feat/p019-public-feed-onboarding
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Apply ESLint fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('apps/platform/resources/js/Pages/Identity/GuestFeed.vue')
+          text = path.read_text()
+          old = "    event.deltaY > 0 ? nextCampaign() : previousCampaign();"
+          new = "    if (event.deltaY > 0) {\n        nextCampaign();\n    } else {\n        previousCampaign();\n    }"
+          if old not in text:
+              raise SystemExit('Expected ESLint target not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          cd apps/platform
+          npm ci
+          npx prettier --write resources/js/Pages/Identity/GuestFeed.vue
+          cd ../..
+
+      - name: Commit fix and remove helper
+        run: |
+          rm .github/workflows/p019-eslint-temp.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/platform/resources/js/Pages/Identity/GuestFeed.vue .github/workflows/p019-eslint-temp.yml
+          git commit -m "P019 — corriger ESLint du Feed invité"
+          git push origin HEAD:feat/p019-public-feed-onboarding
