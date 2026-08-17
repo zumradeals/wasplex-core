@@ -1,0 +1,46 @@
+name: p019-format-temp
+
+on:
+  push:
+    branches:
+      - feat/p019-public-feed-onboarding
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/platform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/platform/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Format P019 files
+        run: npx prettier --write resources/js/Components/PhoneQuickConnect.vue resources/js/Pages/Identity/GuestFeed.vue
+
+      - name: Emit formatted files
+        run: |
+          echo "__PHONE_BEGIN__"
+          base64 -w0 resources/js/Components/PhoneQuickConnect.vue
+          echo
+          echo "__PHONE_END__"
+          echo "__GUEST_BEGIN__"
+          base64 -w0 resources/js/Pages/Identity/GuestFeed.vue
+          echo
+          echo "__GUEST_END__"
