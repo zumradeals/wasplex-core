@@ -177,7 +177,11 @@ function onWheel(event: WheelEvent): void {
     if (wheelLocked || Math.abs(event.deltaY) < 40) return;
     wheelLocked = true;
 
-    event.deltaY > 0 ? nextCampaign() : previousCampaign();
+    if (event.deltaY > 0) {
+        nextCampaign();
+    } else {
+        previousCampaign();
+    }
 
     setTimeout(() => {
         wheelLocked = false;
