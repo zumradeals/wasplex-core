@@ -89,6 +89,28 @@ final class AdminFundsController
     }
 
     /**
+     * Modifie l'identité du programme (nom, ordre d'affichage) — jamais son
+     * `code`, qui reste stable une fois créé. Les paramètres économiques
+     * (prix, plafonds, éligibilité…) ne se modifient pas ici : ils passent
+     * toujours par une nouvelle version (`storeVersion` + `publishVersion`)
+     * pour ne jamais changer rétroactivement les conditions déjà acceptées
+     * par un membre (docs/01-module-fonds-wasplex.md — "les engagements
+     * existants restent liés à la version acceptée").
+     */
+    public function updateProgram(Request $request, FundProgram $program): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['sometimes', 'string', 'max:100'],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
+        ]);
+
+        $program->update($data);
+        FundAuditEvent::record((string) $request->user()->id, 'FundProgramUpdated', 'fund_program', $program->id, $data);
+
+        return response()->json($program->refresh());
+    }
+
+    /**
      * Nettoyage sûr d'un programme resté à l'état brouillon (ex. la version
      * ou la publication a échoué juste après la création du programme).
      * Un programme possédant la moindre version — même non publiée — n'est

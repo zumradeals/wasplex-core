@@ -2,10 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Modules\Funds\Infrastructure\Models\FundMembership;
 use App\Modules\Funds\Infrastructure\Models\FundProgram;
 use App\Modules\Funds\Infrastructure\Models\FundProgramVersion;
 use App\Modules\Funds\Infrastructure\Models\FundWishCategory;
 use App\Modules\Identity\Infrastructure\Models\Account;
+use App\Modules\Ledger\Application\Services\LedgerPostingContract;
+use App\Modules\Ledger\Domain\ValueObjects\LedgerEntryInput;
+use App\Modules\Ledger\Domain\ValueObjects\PostLedgerTransaction;
+use App\Modules\Subscriptions\Infrastructure\Models\SubscriptionEntitlement;
+use App\Modules\Subscriptions\Infrastructure\Models\UserSubscription;
+use App\Shared\Money\Money;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
 function fundProgramAccountByIdentifier(string $identifierValue): Account
@@ -32,6 +42,29 @@ function fundProgramLoginAsAdmin(string $identifier): array
     fundProgramVerifyRecentMfa();
 
     return ['account_id' => $account->id];
+}
+
+/**
+ * Switches the test client's session cookie back to an already-registered
+ * account (e.g. the admin, after a test briefly logged in as a member) —
+ * registerAndLogin() cannot be reused here since it always registers a new
+ * account first.
+ */
+function fundProgramReloginAsAdmin(string $identifier, string $password = 'Password123!'): void
+{
+    $login = test()->postJson('/api/login', [
+        'identifier_value' => $identifier,
+        'password' => $password,
+    ])->assertOk();
+
+    $sessionCookieName = config('session.cookie');
+    foreach ($login->headers->getCookies() as $cookie) {
+        if ($cookie->getName() === $sessionCookieName) {
+            test()->withUnencryptedCookie($sessionCookieName, $cookie->getValue());
+        }
+    }
+
+    fundProgramVerifyRecentMfa();
 }
 
 /** @return array{version_minimal_payload: array<string, mixed>} */
@@ -172,4 +205,138 @@ it('refuses to delete a program that is no longer in draft status', function ():
     test()->postJson("/api/admin/funds/program-versions/{$version->json('id')}/publish")->assertOk();
 
     test()->deleteJson("/api/admin/funds/programs/{$program->json('id')}")->assertUnprocessable();
+});
+
+it('updates a program name via PATCH without touching its code', function (): void {
+    fundProgramLoginAsAdmin('funds-patch-name@wasplex.test');
+    $program = test()->postJson('/api/admin/funds/programs', ['code' => 'renamable', 'name' => 'Old Name'])->assertCreated();
+
+    test()->patchJson("/api/admin/funds/programs/{$program->json('id')}", ['name' => 'New Name'])
+        ->assertOk()
+        ->assertJsonPath('name', 'New Name')
+        ->assertJsonPath('code', 'renamable');
+});
+
+it('refuses to update a program without the capability', function (): void {
+    fundProgramLoginAsAdmin('funds-patch-owner@wasplex.test');
+    $program = test()->postJson('/api/admin/funds/programs', ['code' => 'untouchable', 'name' => 'Untouchable'])->assertCreated();
+
+    registerAndLogin('funds-patch-no-capability@wasplex.test');
+    grantFounderAccessForTests(fundProgramAccountByIdentifier('funds-patch-no-capability@wasplex.test'), []);
+    fundProgramVerifyRecentMfa();
+
+    test()->patchJson("/api/admin/funds/programs/{$program->json('id')}", ['name' => 'X'])->assertStatus(403);
+});
+
+function fundProgramPaidSubscription(string $accountId): void
+{
+    $economicClassId = (string) Str::ulid();
+    $planId = (string) Str::ulid();
+    $planVersionId = (string) Str::ulid();
+    $subscriptionId = (string) Str::ulid();
+
+    DB::table('economic_classes')->insert([
+        'id' => $economicClassId,
+        'code' => 'PREMIUM-'.Str::lower(Str::random(8)),
+        'status' => 'active',
+        'created_at' => now(),
+    ]);
+
+    DB::table('subscription_plans')->insert([
+        'id' => $planId,
+        'code' => 'premium-'.Str::lower(Str::random(8)),
+        'name' => 'Premium test Fonds edit',
+        'created_at' => now(),
+    ]);
+
+    DB::table('subscription_plan_versions')->insert([
+        'id' => $planVersionId,
+        'plan_id' => $planId,
+        'status' => 'published',
+        'price_minor' => 500000,
+        'currency' => 'XOF',
+        'duration_days' => 30,
+        'effective_from' => now()->subDay(),
+        'created_at' => now(),
+    ]);
+
+    DB::table('user_subscriptions')->insert([
+        'id' => $subscriptionId,
+        'account_id' => $accountId,
+        'plan_version_id' => $planVersionId,
+        'economic_class_id' => $economicClassId,
+        'status' => UserSubscription::STATUS_ACTIVE,
+        'started_at' => now()->subDays(30),
+        'current_period_end' => now()->addDays(30),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    DB::table('subscription_entitlements')->insert([
+        'id' => (string) Str::ulid(),
+        'user_subscription_id' => $subscriptionId,
+        'key' => SubscriptionEntitlement::KEY_FONDS_ELIGIBLE,
+        'enabled' => true,
+        'created_at' => now(),
+    ]);
+}
+
+function fundProgramCreditWallet(string $accountId, int $amountMinor, string $key): void
+{
+    app(LedgerPostingContract::class)->post(new PostLedgerTransaction(
+        type: 'TEST_WALLET_CREDIT',
+        sourceModule: 'tests',
+        idempotencyKey: $key,
+        entries: [
+            LedgerEntryInput::debit(ledgerSuspense(), Money::of($amountMinor, 'WP'), 'Crédit test'),
+            LedgerEntryInput::credit(ledgerUserAvailable($accountId), Money::of($amountMinor, 'WP'), 'Crédit test'),
+        ],
+    ));
+}
+
+it('publishing a new version supersedes the previous one while an already engaged member keeps their accepted version', function (): void {
+    Artisan::call('ledger:seed-catalog');
+
+    fundProgramLoginAsAdmin('funds-edit-admin@wasplex.test');
+    $program = test()->postJson('/api/admin/funds/programs', ['code' => 'evolving', 'name' => 'Evolving'])->assertCreated();
+    $programId = $program->json('id');
+
+    $v1 = test()->postJson("/api/admin/funds/programs/{$programId}/versions", [
+        ...fundProgramMinimalVersionPayload(),
+        'membership_fee_minor' => 1000,
+    ])->assertCreated();
+    test()->postJson("/api/admin/funds/program-versions/{$v1->json('id')}/publish")->assertOk();
+
+    registerAndLogin('funds-edit-member@wasplex.test');
+    $memberId = fundProgramAccountByIdentifier('funds-edit-member@wasplex.test')->id;
+    fundProgramPaidSubscription($memberId);
+    fundProgramCreditWallet($memberId, 5000, 'funds-edit-member-credit');
+
+    $membership = test()->postJson('/api/funds/membership', [
+        'program_id' => $programId,
+        'personal_cap_minor' => 100,
+        'accept_mandate' => true,
+    ])->assertCreated();
+
+    expect(FundMembership::query()->whereKey($membership->json('id'))->value('program_version_id'))->toBe($v1->json('id'));
+
+    // L'admin republie le programme avec un nouveau prix — c'est la
+    // modification demandée par le fondateur, exposée par "Modifier" côté
+    // admin, mais elle passe toujours par une nouvelle version.
+    fundProgramReloginAsAdmin('funds-edit-admin@wasplex.test');
+    $v2 = test()->postJson("/api/admin/funds/programs/{$programId}/versions", [
+        ...fundProgramMinimalVersionPayload(),
+        'membership_fee_minor' => 3000,
+    ])->assertCreated();
+    test()->postJson("/api/admin/funds/program-versions/{$v2->json('id')}/publish")
+        ->assertOk()
+        ->assertJsonPath('membership_fee_minor', 3000)
+        ->assertJsonPath('status', 'published');
+
+    expect(FundProgramVersion::query()->whereKey($v1->json('id'))->value('status'))->toBe('retired');
+    expect(FundProgramVersion::query()->whereKey($v2->json('id'))->value('status'))->toBe('published');
+
+    // Le membre déjà engagé garde exactement les conditions qu'il a
+    // acceptées — la nouvelle version ne s'applique pas rétroactivement.
+    expect(FundMembership::query()->whereKey($membership->json('id'))->value('program_version_id'))->toBe($v1->json('id'));
 });
