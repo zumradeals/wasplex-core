@@ -141,11 +141,48 @@ function resetProgram(): void {
     showProgram.value = true;
 }
 
+// "Modifier" ouvre le même formulaire pré-rempli avec la dernière version
+// du programme (versions[0] : le tableau est trié par version décroissante
+// dans le tableau de bord). Le code reste figé — seule une nouvelle
+// version peut changer les paramètres économiques ; les membres déjà
+// engagés restent liés à la version qu'ils ont acceptée.
+function editProgram(program: Program): void {
+    const latest = program.versions[0] ?? null;
+    editingProgram.value = program;
+    pendingProgramId.value = program.id;
+    programForm.value = {
+        code: program.code,
+        name: program.name,
+        membership_fee_minor: latest?.membership_fee_minor ?? null,
+        duration_days: latest?.duration_days ?? 365,
+        max_active_wishes: latest?.max_active_wishes ?? 1,
+        max_wishes_per_period: latest?.max_wishes_per_period ?? 1,
+        max_wish_amount_minor: latest?.max_wish_amount_minor ?? 1000000,
+        personal_contribution_percent: latest?.personal_contribution_percent ?? 30,
+        min_debit_minor: latest?.min_debit_minor ?? 100,
+        max_debit_minor: latest?.max_debit_minor ?? 1000,
+        monthly_cap_minor: latest?.monthly_cap_minor ?? 5000,
+        wasplex_fee_minor: latest?.wasplex_fee_minor ?? 100,
+        notice_hours: latest?.notice_hours ?? 24,
+        grace_period_days: latest?.grace_period_days ?? 7,
+        arrears_grace_days: latest?.arrears_grace_days ?? 7,
+        max_simultaneous_collections: latest?.max_simultaneous_collections ?? 1,
+        emergency_queue_share_percent: latest?.emergency_queue_share_percent ?? 20,
+        reserve_min_balance_minor: latest?.reserve_min_balance_minor ?? 0,
+        reciprocity_min_score: latest?.reciprocity_min_score ?? 0,
+        rehabilitation_incident_threshold: latest?.rehabilitation_incident_threshold ?? 3,
+        eligible_subscription_classes: latest?.eligible_subscription_classes
+            ? [...latest.eligible_subscription_classes]
+            : [],
+    };
+    showProgram.value = true;
+}
+
 function apiErrorMessage(e: unknown, fallback: string): string {
     return (e as { response?: { data?: { message?: string } } }).response?.data?.message ?? fallback;
 }
 
-async function createProgram(): Promise<void> {
+async function saveProgram(): Promise<void> {
     busy.value = true;
     error.value = '';
     try {
@@ -157,9 +194,11 @@ async function createProgram(): Promise<void> {
             });
             programId = created.data.id;
             // Mémorisé dès que le programme existe : si l'étape suivante
-            // échoue, "Créer et publier" pourra reprendre sans recréer un
-            // programme (et sans se heurter à un code déjà pris).
+            // échoue, la relance reprendra sans recréer un programme (et
+            // sans se heurter à un code déjà pris).
             pendingProgramId.value = programId;
+        } else if (editingProgram.value) {
+            await http.patch(`/admin/funds/programs/${programId}`, { name: programForm.value.name });
         }
 
         const version = await http.post(`/admin/funds/programs/${programId}/versions`, {
@@ -190,9 +229,13 @@ async function createProgram(): Promise<void> {
         await http.post(`/admin/funds/program-versions/${version.data.id}/publish`);
         showProgram.value = false;
         pendingProgramId.value = null;
+        editingProgram.value = null;
         await load();
     } catch (e) {
-        error.value = apiErrorMessage(e, 'Le programme n’a pas pu être créé.');
+        error.value = apiErrorMessage(
+            e,
+            editingProgram.value ? 'Le programme n’a pas pu être modifié.' : 'Le programme n’a pas pu être créé.',
+        );
     } finally {
         busy.value = false;
     }
@@ -378,6 +421,14 @@ onMounted(load);
                         </div>
                         <div class="flex gap-2">
                             <button
+                                v-if="program.versions[0]"
+                                class="border-wpx-border-dark text-wpx-gold rounded-lg border px-3 py-2 text-xs font-bold"
+                                :disabled="busy"
+                                @click="editProgram(program)"
+                            >
+                                Modifier
+                            </button>
+                            <button
                                 v-if="program.status === 'draft' && program.versions.length === 0"
                                 class="border-wpx-border-dark text-wpx-danger rounded-lg border px-3 py-2 text-xs font-bold"
                                 :disabled="busy"
@@ -525,7 +576,9 @@ onMounted(load);
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="text-wpx-cyan text-xs font-bold uppercase">Configuration</p>
-                            <h3 class="text-wpx-white-soft mt-1 text-xl font-extrabold">Nouveau programme Fonds</h3>
+                            <h3 class="text-wpx-white-soft mt-1 text-xl font-extrabold">
+                                {{ editingProgram ? `Modifier ${editingProgram.name}` : 'Nouveau programme Fonds' }}
+                            </h3>
                         </div>
                         <button class="bg-wpx-navy-750 h-9 w-9 rounded-full" @click="showProgram = false">×</button>
                     </div>
@@ -537,9 +590,11 @@ onMounted(load);
                                 placeholder="Ex. Gold"
                         /></label>
                         <label class="text-wpx-muted-dark text-xs"
-                            >Code<input
+                            >Code{{ editingProgram ? ' (fixé à la création)' : '' }}
+                            <input
                                 v-model="programForm.code"
-                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3"
+                                :disabled="!!editingProgram"
+                                class="bg-wpx-navy-850 border-wpx-border-dark text-wpx-white-soft mt-1 w-full rounded-xl border px-3 py-3 disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="gold"
                         /></label>
                         <label class="text-wpx-gold text-xs font-bold sm:col-span-2"
@@ -688,17 +743,25 @@ onMounted(load);
                             !programForm.membership_fee_minor ||
                             programForm.membership_fee_minor < 1
                         "
-                        @click="createProgram"
+                        @click="saveProgram"
                     >
                         {{
                             busy
-                                ? 'Création…'
-                                : pendingProgramId
-                                  ? 'Reprendre et publier le programme'
-                                  : 'Créer et publier le programme'
+                                ? editingProgram
+                                    ? 'Enregistrement…'
+                                    : 'Création…'
+                                : editingProgram
+                                  ? 'Publier la nouvelle version'
+                                  : pendingProgramId
+                                    ? 'Reprendre et publier le programme'
+                                    : 'Créer et publier le programme'
                         }}
                     </button>
-                    <p v-if="pendingProgramId" class="text-wpx-muted-dark mt-2 text-center text-[11px]">
+                    <p v-if="editingProgram" class="text-wpx-muted-dark mt-2 text-center text-[11px]">
+                        Une nouvelle version sera publiée pour « {{ editingProgram.name }} ». Les membres déjà engagés
+                        gardent les conditions de leur version acceptée.
+                    </p>
+                    <p v-else-if="pendingProgramId" class="text-wpx-muted-dark mt-2 text-center text-[11px]">
                         Le programme « {{ programForm.code }} » a déjà été créé ; corrigez les champs puis relancez pour
                         publier sa première version.
                     </p>
